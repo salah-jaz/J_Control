@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import Customers from './pages/Customers';
 import Invoices from './pages/Invoices';
 import Leads from './pages/Leads';
+import Reports from './pages/Reports';
+import FollowUpCalendar from './pages/FollowUpCalendar';
 
 function App() {
   return (
@@ -27,13 +29,18 @@ function App() {
               </Layout>
             } />
             <Route path="/customers" element={
-              <Layout title="Customer Management">
+              <Layout title="Clients Management">
                 <Customers />
               </Layout>
             } />
             <Route path="/invoices" element={
               <Layout title="Invoices">
                 <Invoices />
+              </Layout>
+            } />
+            <Route path="/reports" element={
+              <Layout title="Reports">
+                <Reports />
               </Layout>
             } />
           </Route>
