@@ -7,7 +7,6 @@
     @apply antialiased bg-gray-50 text-gray-900;
   }
 .input {
-  .input {
   @apply border rounded-lg px-3 py-2 w-full
   focus:outline-none focus:ring-2 focus:ring-indigo-500;
 }
@@ -29,4 +28,4 @@
 
 
 }
-}
+
