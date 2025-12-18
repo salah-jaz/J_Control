@@ -9,6 +9,8 @@ import Invoices from "./pages/Invoices";
 import Leads from "./pages/Leads";
 import Income from "./pages/Income";
 import BankAccounts from "./pages/BankAccounts";
+import Expense from "./pages/Expense";
+import Transaction from "./pages/Transaction";
 
 function App() {
   return (
@@ -66,6 +68,16 @@ function App() {
                 </Layout>
               }
             />
+              <Route path="/expense" element={
+              <Layout title="Expense">
+                <Expense />
+              </Layout>
+            } />
+             <Route path="/transaction" element={
+              <Layout title="Transaction">
+                <Transaction />
+              </Layout>
+            } />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
