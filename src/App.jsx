@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import Customers from './pages/Customers';
 import Invoices from './pages/Invoices';
 import Leads from './pages/Leads';
+import Expense from "./pages/Expense";
+import Transaction from "./pages/Transaction";
 
 function App() {
   return (
@@ -21,6 +23,7 @@ function App() {
                 <Dashboard />
               </Layout>
             } />
+          
             <Route path="/leads" element={
               <Layout title="Lead Management">
                 <Leads />
@@ -34,6 +37,16 @@ function App() {
             <Route path="/invoices" element={
               <Layout title="Invoices">
                 <Invoices />
+              </Layout>
+            } />
+              <Route path="/expense" element={
+              <Layout title="Expense">
+                <Expense />
+              </Layout>
+            } />
+             <Route path="/transaction" element={
+              <Layout title="Transaction">
+                <Transaction />
               </Layout>
             } />
           </Route>
