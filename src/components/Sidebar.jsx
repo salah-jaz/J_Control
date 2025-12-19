@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, Users, LogOut, Briefcase, Wallet, Landmark, BookOpen, FileBarChart2, Building2, Factory, Calendar } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, LogOut, Briefcase,Wallet, Landmark, BookOpen, FileBarChart2, Building2, Factory, Calendar, User, Settings } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
 
@@ -17,6 +17,8 @@ const Sidebar = () => {
         { label: "Bank Accounts", path: "/banks", icon: Landmark },
         { label: 'Transaction', path: '/transaction', icon: BookOpen },
         { label: 'Reports', path: '/reports', icon: FileBarChart2 },
+        { label: 'User', path: '/User', icon: User },
+        { label: "Settings", path: "/settings", icon: Settings },
     ];
 
     return (

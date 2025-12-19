@@ -14,6 +14,8 @@ import BankAccounts from "./pages/BankAccounts";
 import Expense from "./pages/Expense";
 import Transaction from "./pages/Transaction";
 import { Toaster } from 'react-hot-toast';
+import Settings from "./pages/Settings";
+import User from "./pages/User";
 
 function App() {
   return (
@@ -87,6 +89,20 @@ function App() {
                 <Reports />
               </Layout>
             } />
+            <Route
+              path="/settings"
+              element={
+                <Layout title="Settings">
+                  <Settings />
+                </Layout>
+              }
+            />
+            <Route path="/user" element={
+              <Layout title="User">
+                <User />
+              </Layout>
+            } />
+            
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
