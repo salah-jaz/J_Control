@@ -112,7 +112,9 @@ export const getLeads = async () => {
             lastName: lead.last_name,
             jobTitle: lead.job_title,
             assignedTo: lead.assigned_to,
-            createdAt: lead.created_at
+            createdAt: lead.created_at,
+            followUps: lead.follow_ups || lead.followUps || [],
+            callLogs: lead.call_logs || lead.callLogs || []
         }));
     } catch (error) {
         console.error("Failed to fetch leads:", error);
@@ -226,3 +228,48 @@ export const getDashboardStats = async () => {
     }
 };
 
+
+export const getFollowUps = async (params) => {
+    try {
+        const response = await api.get('/follow-ups', { params });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch follow-ups:", error);
+        return [];
+    }
+};
+
+export const saveFollowUp = async (followUp) => {
+    try {
+        if (followUp.id) {
+            const response = await api.put(`/follow-ups/${followUp.id}`, followUp);
+            return response.data;
+        } else {
+            const response = await api.post('/follow-ups', followUp);
+            return response.data;
+        }
+    } catch (error) {
+        console.error("Failed to save follow-up:", error);
+        throw error;
+    }
+};
+
+export const saveCallLog = async (callLog) => {
+    try {
+        const response = await api.post('/call-logs', callLog);
+        return response.data;
+    } catch (error) {
+        console.error("Failed to save call log:", error);
+        throw error;
+    }
+};
+
+export const deleteFollowUp = async (id) => {
+    try {
+        await api.delete(`/follow-ups/${id}`);
+        return true;
+    } catch (error) {
+        console.error("Failed to delete follow-up:", error);
+        return false;
+    }
+};

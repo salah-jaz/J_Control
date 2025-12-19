@@ -9,7 +9,9 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
         customerId: '',
         date: new Date().toISOString().split('T')[0],
         amount: '',
-        status: 'Pending'
+        status: 'Pending',
+        gst: 0,
+        discount: 0
     });
 
     useEffect(() => {
@@ -18,14 +20,18 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                 customerId: invoice.customer_id || invoice.customerId || '',
                 date: invoice.date,
                 amount: invoice.amount,
-                status: invoice.status
+                status: invoice.status,
+                gst: invoice.gst || 0,
+                discount: invoice.discount || 0
             });
         } else if (!invoice && isOpen) {
             setFormData({
                 customerId: '',
                 date: new Date().toISOString().split('T')[0],
                 amount: '',
-                status: 'Pending'
+                status: 'Pending',
+                gst: 0,
+                discount: 0
             });
         }
     }, [invoice, isOpen]);
@@ -54,7 +60,9 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                 customer_name: customer.name,
                 date: formData.date,
                 amount: parseFloat(formData.amount),
-                status: formData.status
+                status: formData.status,
+                gst: parseFloat(formData.gst),
+                discount: parseFloat(formData.discount)
             });
             onClose();
         } catch (error) {
@@ -63,64 +71,115 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
         }
     };
 
+    const calculateTotal = () => {
+        const subtotal = parseFloat(formData.amount) || 0;
+        const gstAmount = subtotal * ((parseFloat(formData.gst) || 0) / 100);
+        const discountAmount = parseFloat(formData.discount) || 0;
+        return Math.max(0, subtotal + gstAmount - discountAmount);
+    };
+
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
                     <h3 className="text-lg font-bold text-gray-800">{invoice ? 'Edit Invoice' : 'Create New Invoice'}</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">&times;</button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-                        <select
-                            required
-                            value={formData.customerId}
-                            onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white"
-                        >
-                            <option value="">Select a customer</option>
-                            {customers.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
+                <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                            <select
+                                required
+                                value={formData.customerId}
+                                onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white"
+                            >
+                                <option value="">Select a customer</option>
+                                {customers.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                            <input
+                                type="date"
+                                required
+                                value={formData.date}
+                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                        <input
-                            type="date"
-                            required
-                            value={formData.date}
-                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
-                        />
+
+                    <div className="bg-gray-50 p-4 rounded-xl space-y-4 border border-gray-100">
+                        <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wide mb-2">Financial Details</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    required
+                                    min="0"
+                                    value={formData.amount}
+                                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                <select
+                                    value={formData.status}
+                                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white"
+                                >
+                                    <option value="Pending">Pending</option>
+                                    <option value="Paid">Paid</option>
+                                    <option value="Overdue">Overdue</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">GST %</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                    value={formData.gst}
+                                    onChange={(e) => setFormData({ ...formData, gst: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white"
+                                    placeholder="0"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Discount (₹)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={formData.discount}
+                                    onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            required
-                            min="0"
-                            value={formData.amount}
-                            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
-                            placeholder="0.00"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                        <select
-                            value={formData.status}
-                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white"
-                        >
-                            <option value="Pending">Pending</option>
-                            <option value="Paid">Paid</option>
-                            <option value="Overdue">Overdue</option>
-                        </select>
+
+                    <div className="flex justify-between items-center p-5 bg-indigo-50 rounded-xl border border-indigo-100">
+                        <div>
+                            <p className="text-sm text-indigo-600 font-medium">Grand Total</p>
+                            <p className="text-xs text-indigo-400">Includes GST & Discount</p>
+                        </div>
+                        <span className="text-2xl font-bold text-indigo-700">₹ {calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="pt-4 flex gap-3">
                         <button
@@ -237,8 +296,8 @@ const Invoices = () => {
                                 <tr key={inv.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4 font-medium text-gray-900">{inv.id}</td>
                                     <td className="px-6 py-4 text-gray-600">{inv.customer_name || inv.customerName}</td>
-                                    <td className="px-6 py-4 text-gray-500">{inv.date}</td>
-                                    <td className="px-6 py-4 font-bold text-gray-900">${parseFloat(inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                    <td className="px-6 py-4 text-gray-500">{typeof inv.date === 'string' ? inv.date.split('T')[0] : inv.date}</td>
+                                    <td className="px-6 py-4 font-bold text-gray-900">₹{parseFloat(inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                                     <td className="px-6 py-4">
                                         <div className="relative group/status inline-block">
                                             <select

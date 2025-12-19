@@ -32,4 +32,13 @@ class Lead extends Model
         'score' => 'integer',
         'value' => 'decimal:2',
     ];
+    public function followUps()
+    {
+        return $this->hasMany(FollowUp::class);
+    }
+    
+    public function callLogs()
+    {
+        return $this->hasMany(CallLog::class);
+    }
 }
