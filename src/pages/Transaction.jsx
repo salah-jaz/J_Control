@@ -1,30 +1,21 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getTransactions } from "../services/transactionService";
 
 export default function Transaction() {
+  const [transactions, setTransactions] = useState([]);
 
-  // 🔹 2 DUPLICATE TRANSACTIONS (AUTO LOAD)
-  const transactions = [
-    {
-      transactionId: "TXN-1001",
-      type: "Income",
-      date: "2025-01-10",
-      reference: "INV-001",
-      party: "ABC Customer",
-      amount: "10,000",
-      paymentMode: "Bank",
-      status: "Posted",
-    },
-    {
-      transactionId: "TXN-1001",
-      type: "Income",
-      date: "2025-01-10",
-      reference: "INV-001",
-      party: "ABC Customer",
-      amount: "10,000",
-      paymentMode: "Bank",
-      status: "Posted",
-    },
-  ];
+  useEffect(() => {
+    loadTransactions();
+  }, []);
+
+  const loadTransactions = async () => {
+    try {
+      const data = await getTransactions();
+      setTransactions(data);
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+    }
+  };
 
   return (
     <div className="p-6">
@@ -49,29 +40,42 @@ export default function Transaction() {
           </thead>
 
           <tbody>
-            {transactions.map((txn, index) => (
-              <tr
-                key={index}
-                className="border-t hover:bg-gray-50"
-              >
-                <td className="px-4 py-3 font-medium">
-                  {txn.transactionId}
-                </td>
-                <td className="px-4 py-3">{txn.type}</td>
-                <td className="px-4 py-3">{txn.date}</td>
-                <td className="px-4 py-3">{txn.reference}</td>
-                <td className="px-4 py-3">{txn.party}</td>
-                <td className="px-4 py-3 font-semibold">
-                  ₹ {txn.amount}
-                </td>
-                <td className="px-4 py-3">{txn.paymentMode}</td>
-                <td className="px-4 py-3">
-                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">
-                    {txn.status}
-                  </span>
+            {transactions.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="p-8 text-center text-gray-500">
+                  No transactions found
                 </td>
               </tr>
-            ))}
+            ) : (
+              transactions.map((txn, index) => (
+                <tr
+                  key={index}
+                  className="border-t hover:bg-gray-50"
+                >
+                  <td className="px-4 py-3 font-medium">
+                    {txn.transactionId}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${txn.type === 'Income' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                      }`}>
+                      {txn.type}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{txn.date}</td>
+                  <td className="px-4 py-3 text-gray-500">{txn.reference || '-'}</td>
+                  <td className="px-4 py-3 font-medium text-gray-700">{txn.party || '-'}</td>
+                  <td className="px-4 py-3 font-bold text-gray-900">
+                    ₹ {txn.amount}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{txn.method}</td>
+                  <td className="px-4 py-3">
+                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">
+                      {txn.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

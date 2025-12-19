@@ -9,16 +9,16 @@ const Sidebar = () => {
 
     const navItems = [
         { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+        { label: 'Client Management', path: '/clients', icon: Building2 },
         { label: 'Lead Management', path: '/leads', icon: Briefcase },
-        { label: 'Invoices', path: '/invoices', icon: FileText },
-        { label: 'Customers', path: '/customers', icon: Users },
-        { label: 'Reports', path: '/reports', icon: FileBarChart2 },
-        { label: "Income",  path: "/income",  icon: Wallet},
-        { label: "Bank Accounts", path: "/banks", icon: Landmark },
+        { label: "Income", path: "/income", icon: Wallet },
         { label: 'Expense', path: '/expense', icon: Wallet },
+        { label: 'Invoices', path: '/invoices', icon: FileText },
+        { label: "Bank Accounts", path: "/banks", icon: Landmark },
         { label: 'Transaction', path: '/transaction', icon: BookOpen },
-        { label: "Settings", path: "/settings", icon: Settings },
+        { label: 'Reports', path: '/reports', icon: FileBarChart2 },
         { label: 'User', path: '/User', icon: User },
+        { label: "Settings", path: "/settings", icon: Settings },
     ];
 
     return (

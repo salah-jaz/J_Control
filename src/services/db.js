@@ -6,10 +6,10 @@ const initialCustomers = [
 ];
 
 const initialInvoices = [
-    { id: 'INV-001', customerId: '1', customerName: 'TechSolutions Inc', date: '2024-03-10', amount: 1500.00, status: 'Paid' },
-    { id: 'INV-002', customerId: '2', customerName: 'Global Corp', date: '2024-03-12', amount: 3200.50, status: 'Pending' },
-    { id: 'INV-003', customerId: '1', customerName: 'TechSolutions Inc', date: '2024-03-15', amount: 850.00, status: 'Pending' },
-    { id: 'INV-004', customerId: '3', customerName: 'StartUp verify', date: '2024-03-01', amount: 1200.00, status: 'Overdue' },
+    { id: 'INV-001', clientId: '1', clientName: 'TechSolutions Inc', date: '2024-03-10', amount: 1500.00, status: 'Paid' },
+    { id: 'INV-002', clientId: '2', clientName: 'Global Corp', date: '2024-03-12', amount: 3200.50, status: 'Pending' },
+    { id: 'INV-003', clientId: '1', clientName: 'TechSolutions Inc', date: '2024-03-15', amount: 850.00, status: 'Pending' },
+    { id: 'INV-004', clientId: '3', clientName: 'StartUp verify', date: '2024-03-01', amount: 1200.00, status: 'Overdue' },
 ];
 
 const initialLeads = [
@@ -194,32 +194,13 @@ export const saveAssignee = (name) => {
 
 export const getDashboardStats = async () => {
     try {
-        const [customers, invoices] = await Promise.all([
-            getCustomers(),
-            getInvoices()
-        ]);
-
-        const totalRevenue = invoices
-            .filter(i => i.status === 'Paid')
-            .reduce((sum, i) => sum + parseFloat(i.amount), 0);
-
-        const pendingAmount = invoices
-            .filter(i => i.status === 'Pending')
-            .reduce((sum, i) => sum + parseFloat(i.amount), 0);
-
-        return {
-            totalCustomers: customers.length,
-            activeCustomers: customers.filter(c => c.status === 'Active').length,
-            totalInvoices: invoices.length,
-            totalRevenue,
-            pendingAmount,
-            recentInvoices: invoices.slice(0, 5) // Assuming API returns sorted, or sort here
-        };
+        const response = await api.get('/dashboard-stats');
+        return response.data;
     } catch (error) {
         console.error("Failed to fetch dashboard stats:", error);
         return {
-            totalCustomers: 0,
-            activeCustomers: 0,
+            totalClients: 0,
+            activeClients: 0,
             totalInvoices: 0,
             totalRevenue: 0,
             pendingAmount: 0,
@@ -271,5 +252,70 @@ export const deleteFollowUp = async (id) => {
     } catch (error) {
         console.error("Failed to delete follow-up:", error);
         return false;
+    }
+};
+
+export const getClients = async () => {
+    try {
+        const response = await api.get('/clients');
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch clients:", error);
+        return [];
+    }
+};
+
+export const saveClient = async (client) => {
+    try {
+        if (client.id) {
+            const response = await api.put(`/clients/${client.id}`, client);
+            return response.data;
+        } else {
+            const response = await api.post('/clients', client);
+            return response.data;
+        }
+    } catch (error) {
+        console.error("Failed to save client:", error);
+        throw error;
+    }
+};
+
+export const deleteClient = async (id) => {
+    try {
+        await api.delete(`/clients/${id}`);
+        return true;
+    } catch (error) {
+        console.error("Failed to delete client:", error);
+        return false;
+    }
+};
+
+export const getReportsSummary = async (filters) => {
+    try {
+        const response = await api.get('/reports/summary', { params: filters });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch reports summary:", error);
+        return { totalIncome: 0, totalExpense: 0, netProfit: 0, closingBalance: 0 };
+    }
+};
+
+export const getReportDetails = async (type, filters) => {
+    try {
+        const response = await api.get('/reports/details', { params: { type, ...filters } });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch report details:", error);
+        return [];
+    }
+};
+
+export const getReportFilters = async () => {
+    try {
+        const response = await api.get('/reports/filters');
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch report filters:", error);
+        return { companies: [], accounts: [], categories: [] };
     }
 };

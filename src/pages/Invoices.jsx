@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Filter, Download, Trash2, CheckCircle, Clock, AlertCircle, Edit2 } from 'lucide-react';
-import { getInvoices, getCustomers, saveInvoice, deleteInvoice } from '../services/db';
+import toast from 'react-hot-toast';
+import { getInvoices, getClients, saveInvoice, deleteInvoice } from '../services/db';
 import clsx from 'clsx';
 
 const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
-    const [customers, setCustomers] = useState([]);
+    const [clients, setClients] = useState([]);
     const [formData, setFormData] = useState({
-        customerId: '',
+        clientId: '',
         date: new Date().toISOString().split('T')[0],
         amount: '',
         status: 'Pending',
@@ -17,7 +18,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
     useEffect(() => {
         if (invoice && isOpen) {
             setFormData({
-                customerId: invoice.customer_id || invoice.customerId || '',
+                clientId: invoice.client_id || invoice.clientId || '',
                 date: invoice.date,
                 amount: invoice.amount,
                 status: invoice.status,
@@ -26,7 +27,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
             });
         } else if (!invoice && isOpen) {
             setFormData({
-                customerId: '',
+                clientId: '',
                 date: new Date().toISOString().split('T')[0],
                 amount: '',
                 status: 'Pending',
@@ -37,27 +38,41 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
     }, [invoice, isOpen]);
 
     useEffect(() => {
-        const fetchCustomers = async () => {
-            const data = await getCustomers();
-            setCustomers(data);
+        const fetchClients = async () => {
+            const data = await getClients();
+            setClients(data);
         };
-        fetchCustomers();
+        fetchClients();
     }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!formData.clientId) {
+            toast.error("Please select a client");
+            return;
+        }
+        if (!formData.date) {
+            toast.error("Date is required");
+            return;
+        }
+        if (!formData.amount) {
+            toast.error("Amount is required");
+            return;
+        }
+
         // Use loose equality (==) because API IDs are numbers but form values are strings
-        const customer = customers.find(c => c.id == formData.customerId);
-        if (!customer) {
-            alert("Please select a valid customer");
+        const client = clients.find(c => c.id == formData.clientId);
+        if (!client) {
+            toast.error("Selected client invalid");
             return;
         }
 
         try {
             await onSave({
                 id: invoice ? invoice.id : null,
-                customer_id: formData.customerId,
-                customer_name: customer.name,
+                client_id: formData.clientId,
+                client_name: client.company_name,
                 date: formData.date,
                 amount: parseFloat(formData.amount),
                 status: formData.status,
@@ -67,7 +82,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
             onClose();
         } catch (error) {
             console.error("Failed to save invoice", error);
-            alert("Failed to save invoice. Please check the console.");
+            toast.error("Failed to save invoice.");
         }
     };
 
@@ -90,16 +105,15 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                 <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
                             <select
-                                required
-                                value={formData.customerId}
-                                onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+                                value={formData.clientId}
+                                onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
                                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition bg-white"
                             >
-                                <option value="">Select a customer</option>
-                                {customers.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                <option value="">Select a client</option>
+                                {clients.map(c => (
+                                    <option key={c.id} value={c.id}>{c.company_name}</option>
                                 ))}
                             </select>
                         </div>
@@ -107,7 +121,6 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                             <input
                                 type="date"
-                                required
                                 value={formData.date}
                                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                                 className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
@@ -123,7 +136,6 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                                 <input
                                     type="number"
                                     step="0.01"
-                                    required
                                     min="0"
                                     value={formData.amount}
                                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
@@ -224,9 +236,14 @@ const Invoices = () => {
 
     const handleDelete = async (id) => {
         if (confirm("Confirm delete invoice?")) {
-            await deleteInvoice(id);
-            const data = await getInvoices();
-            setInvoices(data);
+            try {
+                await deleteInvoice(id);
+                toast.success("Invoice deleted successfully");
+                const data = await getInvoices();
+                setInvoices(data);
+            } catch (error) {
+                toast.error("Failed to delete invoice");
+            }
         }
     };
 
@@ -236,10 +253,15 @@ const Invoices = () => {
     };
 
     const handleStatusChange = async (invoice, newStatus) => {
-        const updatedInvoice = { ...invoice, status: newStatus };
-        await saveInvoice(updatedInvoice);
-        const data = await getInvoices();
-        setInvoices(data);
+        try {
+            const updatedInvoice = { ...invoice, status: newStatus };
+            await saveInvoice(updatedInvoice);
+            toast.success("Invoice status updated");
+            const data = await getInvoices();
+            setInvoices(data);
+        } catch (error) {
+            toast.error("Failed to update status");
+        }
     };
 
     const filteredInvoices = invoices.filter(inv =>
@@ -286,7 +308,7 @@ const Invoices = () => {
                                 <th className="px-6 py-4 font-semibold">Invoice ID</th>
                                 <th className="px-6 py-4 font-semibold">Client</th>
                                 <th className="px-6 py-4 font-semibold">Date</th>
-                                <th className="px-6 py-4 font-semibold">Amount</th>
+                                <th className="px-6 py-4 font-semibold">Grand Total</th>
                                 <th className="px-6 py-4 font-semibold">Status</th>
                                 <th className="px-6 py-4 font-semibold text-right">Actions</th>
                             </tr>
@@ -295,9 +317,11 @@ const Invoices = () => {
                             {filteredInvoices.map((inv) => (
                                 <tr key={inv.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-4 font-medium text-gray-900">{inv.id}</td>
-                                    <td className="px-6 py-4 text-gray-600">{inv.customer_name || inv.customerName}</td>
+                                    <td className="px-6 py-4 text-gray-600">{inv.client_name || inv.clientName}</td>
                                     <td className="px-6 py-4 text-gray-500">{typeof inv.date === 'string' ? inv.date.split('T')[0] : inv.date}</td>
-                                    <td className="px-6 py-4 font-bold text-gray-900">₹{parseFloat(inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                    <td className="px-6 py-4 font-bold text-gray-900">
+                                        ₹{parseFloat(inv.grand_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </td>
                                     <td className="px-6 py-4">
                                         <div className="relative group/status inline-block">
                                             <select

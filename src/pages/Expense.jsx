@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Eye, Edit2, Trash2 } from "lucide-react";
+import toast from "react-hot-toast";
+import { getExpenses, createExpense, updateExpense, deleteExpense } from "../services/expenseService";
+import { getBankAccounts } from "../services/bankAccountService";
 
-const STORAGE_KEY = "expense_records";
 
 const emptyForm = {
   vendor: "",
@@ -32,6 +34,7 @@ const emptyForm = {
 
 export default function Expenses() {
   const [data, setData] = useState([]);
+  const [bankAccounts, setBankAccounts] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [tab, setTab] = useState("basic");
@@ -39,14 +42,23 @@ export default function Expenses() {
   const [openForm, setOpenForm] = useState(false);
   const [openView, setOpenView] = useState(false);
 
-  const [editIndex, setEditIndex] = useState(null);
+  const [editId, setEditId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
 
-  /* LOAD FROM STORAGE */
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    setData(saved);
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      const records = await getExpenses();
+      setData(records);
+      const banks = await getBankAccounts();
+      setBankAccounts(banks);
+    } catch (e) {
+      console.error("Failed to load expenses", e);
+    }
+  };
 
   /* AUTO GST CALCULATION */
   useEffect(() => {
@@ -68,23 +80,18 @@ export default function Expenses() {
     }
   }, [form.amount, form.gstApplied, form.gstPercent]);
 
-  const syncStorage = (records) => {
-    setData(records);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-  };
-
   const openAdd = () => {
     setForm(emptyForm);
     setErrors({});
-    setEditIndex(null);
+    setEditId(null);
     setTab("basic");
     setOpenForm(true);
   };
 
-  const openEdit = (item, index) => {
+  const openEdit = (item) => {
     setForm(item);
     setErrors({});
-    setEditIndex(index);
+    setEditId(item.id);
     setTab("basic");
     setOpenForm(true);
   };
@@ -94,33 +101,58 @@ export default function Expenses() {
     setOpenView(true);
   };
 
-  const deleteExpense = (index) => {
+  const handleDelete = async (id) => {
     if (!window.confirm("Delete this expense record?")) return;
-    syncStorage(data.filter((_, i) => i !== index));
+    try {
+      await deleteExpense(id);
+      toast.success("Expense record deleted successfully");
+      loadData();
+    } catch (e) {
+      toast.error("Failed to delete record");
+    }
   };
 
   const validate = () => {
     const e = {};
-    if (!form.vendor) e.vendor = "Vendor required";
-    if (!form.expenseType) e.expenseType = "Expense type required";
-    if (!form.amount) e.amount = "Amount required";
-    if (!form.method) e.method = "Payment method required";
-    if (!form.paidDate) e.paidDate = "Paid date required";
+    if (!form.vendor) e.vendor = "Vendor is required";
+    if (!form.expenseType) e.expenseType = "Expense type is required";
+    if (!form.amount) e.amount = "Amount is required";
+    if (!form.method) e.method = "Payment method is required";
+    if (!form.paidDate) e.paidDate = "Paid date is required";
     if (form.method !== "Cash" && !form.transactionId) {
-      e.transactionId = "Transaction ID required";
+      e.transactionId = "Transaction ID is required for non-cash payments";
     }
-    setErrors(e);
-    return Object.keys(e).length === 0;
+
+    if (Object.keys(e).length > 0) {
+      setErrors(e);
+      const firstError = Object.values(e)[0];
+      toast.error(Object.keys(e).length > 1 ? `Please fix validation errors. ${firstError}` : firstError);
+      return false;
+    }
+    return true;
   };
 
-  const saveExpense = () => {
+  const handleSave = async () => {
     if (!validate()) return;
-    const updated =
-      editIndex !== null
-        ? data.map((d, i) => (i === editIndex ? form : d))
-        : [...data, form];
-    syncStorage(updated);
-    setOpenForm(false);
+    try {
+      if (editId) {
+        await updateExpense(editId, form);
+        toast.success("Expense updated successfully");
+      } else {
+        await createExpense(form);
+        toast.success("Expense added successfully");
+      }
+      await loadData();
+      setOpenForm(false);
+    } catch (e) {
+      console.error("Failed to save", e);
+      if (e.response && e.response.data && e.response.data.errors) {
+        setErrors(e.response.data.errors);
+        toast.error("Validation failed. Please check the form.");
+      } else {
+        toast.error("Failed to save record: " + (e.message || "Unknown error"));
+      }
+    }
   };
 
   const inputClass = (f) =>
@@ -177,13 +209,13 @@ export default function Expenses() {
                         <Eye size={18} />
                       </button>
                       <button
-                        onClick={() => openEdit(item, i)}
+                        onClick={() => openEdit(item)}
                         className="p-2 text-indigo-600 hover:bg-indigo-50 rounded"
                       >
                         <Edit2 size={18} />
                       </button>
                       <button
-                        onClick={() => deleteExpense(i)}
+                        onClick={() => handleDelete(item.id)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded"
                       >
                         <Trash2 size={18} />
@@ -222,7 +254,7 @@ export default function Expenses() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white w-full max-w-5xl rounded-xl p-8 shadow-2xl max-h-[90vh] flex flex-col">
             <h2 className="text-xl font-bold mb-4">
-              {editIndex !== null ? "Edit Expense" : "Add Expense"}
+              {editId ? "Edit Expense" : "Add Expense"}
             </h2>
 
             {/* TABS */}
@@ -231,11 +263,10 @@ export default function Expenses() {
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`px-6 py-2 text-sm font-semibold uppercase rounded-t-lg ${
-                    tab === t
-                      ? "bg-indigo-600 text-white"
-                      : "text-gray-400 hover:text-gray-600"
-                  }`}
+                  className={`px-6 py-2 text-sm font-semibold uppercase rounded-t-lg ${tab === t
+                    ? "bg-indigo-600 text-white"
+                    : "text-gray-400 hover:text-gray-600"
+                    }`}
                 >
                   {t}
                 </button>
@@ -352,13 +383,20 @@ export default function Expenses() {
 
                   <label>
                     Bank / Wallet
-                    <input
+                    <select
                       className="input"
                       value={form.bank}
                       onChange={(e) =>
                         setForm({ ...form, bank: e.target.value })
                       }
-                    />
+                    >
+                      <option value="">Select Bank / Wallet</option>
+                      {bankAccounts.map((b) => (
+                        <option key={b.id} value={`${b.bankName} - ${b.accountNumber}`}>
+                          {b.bankName} - {b.accountNumber}
+                        </option>
+                      ))}
+                    </select>
                   </label>
 
                   <label>
@@ -523,7 +561,7 @@ export default function Expenses() {
             <div className="flex justify-end gap-3 mt-6 border-t pt-4">
               <button onClick={() => setOpenForm(false)}>Cancel</button>
               <button
-                onClick={saveExpense}
+                onClick={handleSave}
                 className="bg-indigo-600 text-white px-8 py-2 rounded-lg"
               >
                 Save Expense

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Eye, Edit2, Trash2, X } from "lucide-react";
-
-const STORAGE_KEY = "bank_accounts";
+import toast from "react-hot-toast";
+import { getBankAccounts, createBankAccount, updateBankAccount, deleteBankAccount } from "../services/bankAccountService";
 
 const emptyForm = {
   bankName: "",
@@ -31,30 +31,36 @@ export default function BankAccounts() {
   const [errors, setErrors] = useState({});
   const [openForm, setOpenForm] = useState(false);
   const [openView, setOpenView] = useState(false);
-  const [editIndex, setEditIndex] = useState(null);
+  const [editId, setEditId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
-    setData(JSON.parse(localStorage.getItem(STORAGE_KEY)) || []);
+    loadData();
   }, []);
 
-  const syncStorage = (records) => {
-    setData(records);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  const loadData = async () => {
+    try {
+      const records = await getBankAccounts();
+      setData(records);
+    } catch (e) {
+      console.error("Failed to load bank accounts", e);
+    }
   };
+
+
 
   const openAdd = () => {
     setForm(emptyForm);
     setErrors({});
-    setEditIndex(null);
+    setEditId(null);
     setActiveTab(0);
     setOpenForm(true);
   };
 
-  const openEdit = (item, index) => {
+  const openEdit = (item) => {
     setForm(item);
-    setEditIndex(index);
+    setEditId(item.id);
     setErrors({});
     setActiveTab(0);
     setOpenForm(true);
@@ -65,29 +71,56 @@ export default function BankAccounts() {
     setOpenView(true);
   };
 
-  /* ✅ FIX 2: DELETE */
-  const deleteBankaccounts = (index) => {
+  /* DELETE */
+  const deleteBankaccounts = async (id) => {
     if (!window.confirm("Delete this bank account?")) return;
-    const updated = data.filter((_, i) => i !== index);
-    syncStorage(updated);
+    try {
+      await deleteBankAccount(id);
+      toast.success("Bank account deleted successfully");
+      loadData();
+    } catch (e) {
+      console.error("Failed to delete", e);
+      toast.error("Failed to delete");
+    }
   };
 
   const validate = () => {
     const e = {};
-    if (!form.bankName) e.bankName = true;
-    if (!form.accountName) e.accountName = true;
-    if (!form.accountNumber) e.accountNumber = true;
-    if (!form.ifsc) e.ifsc = true;
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    if (!form.bankName) e.bankName = "Bank Name is required";
+    if (!form.accountName) e.accountName = "Account Name is required";
+    if (!form.accountNumber) e.accountNumber = "Account Number is required";
+    if (!form.ifsc) e.ifsc = "IFSC Code is required";
+
+    if (Object.keys(e).length > 0) {
+      setErrors(e);
+      const firstError = Object.values(e)[0];
+      toast.error(Object.keys(e).length > 1 ? `Please fix validation errors. ${firstError}` : firstError);
+      return false;
+    }
+    return true;
   };
 
-  const saveAccount = () => {
+  const saveAccount = async () => {
     if (!validate()) return;
-    const updated = [...data];
-    editIndex !== null ? (updated[editIndex] = form) : updated.push(form);
-    syncStorage(updated);
-    setOpenForm(false);
+    try {
+      if (editId) {
+        await updateBankAccount(editId, form);
+        toast.success("Bank account updated successfully");
+      } else {
+        await createBankAccount(form);
+        toast.success("Bank account added successfully");
+      }
+      await loadData();
+      setOpenForm(false);
+    } catch (e) {
+      console.error("Failed to save", e);
+      if (e.response && e.response.data && e.response.data.errors) {
+        setErrors(e.response.data.errors);
+        toast.error("Validation failed. Please check the form.");
+      } else {
+        toast.error("Failed to save");
+      }
+    }
   };
 
   const input = (name, type = "text") => (
@@ -141,9 +174,8 @@ export default function BankAccounts() {
                   <td className="p-4">{item.accountType}</td>
                   <td className="p-4">
                     <span
-                      className={`badge ${
-                        item.status === "Active" ? "badge-green" : "badge-gray"
-                      }`}
+                      className={`badge ${item.status === "Active" ? "badge-green" : "badge-gray"
+                        }`}
                     >
                       {item.status}
                     </span>
@@ -161,7 +193,7 @@ export default function BankAccounts() {
 
                       {/* EDIT */}
                       <button
-                        onClick={() => openEdit(item, i)}
+                        onClick={() => openEdit(item)}
                         title="Edit"
                         className="p-2 rounded-lg text-indigo-600 hover:bg-indigo-50 transition"
                       >
@@ -170,7 +202,7 @@ export default function BankAccounts() {
 
                       {/* DELETE */}
                       <button
-                        onClick={() => deleteBankaccounts(i)}
+                        onClick={() => deleteBankaccounts(item.id)}
                         title="Delete"
                         className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition"
                       >
@@ -256,7 +288,7 @@ export default function BankAccounts() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white w-full max-w-4xl rounded-xl p-6">
             <h2 className="text-xl font-bold mb-4">
-              {editIndex !== null ? "Edit Bank Account" : "Add Bank Account"}
+              {editId ? "Edit Bank Account" : "Add Bank Account"}
             </h2>
 
             {/* TABS */}
@@ -265,11 +297,10 @@ export default function BankAccounts() {
                 <button
                   key={i}
                   onClick={() => setActiveTab(i)}
-                  className={`px-4 py-2 font-semibold ${
-                    activeTab === i
-                      ? "border-b-2 border-indigo-600 text-indigo-600"
-                      : "text-gray-500"
-                  }`}
+                  className={`px-4 py-2 font-semibold ${activeTab === i
+                    ? "border-b-2 border-indigo-600 text-indigo-600"
+                    : "text-gray-500"
+                    }`}
                 >
                   {t}
                 </button>
