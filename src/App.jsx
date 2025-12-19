@@ -11,6 +11,7 @@ import Income from "./pages/Income";
 import BankAccounts from "./pages/BankAccounts";
 import Expense from "./pages/Expense";
 import Transaction from "./pages/Transaction";
+import Settings from "./pages/Settings";
 
 function App() {
   return (
@@ -68,16 +69,30 @@ function App() {
                 </Layout>
               }
             />
-              <Route path="/expense" element={
-              <Layout title="Expense">
-                <Expense />
-              </Layout>
-            } />
-             <Route path="/transaction" element={
-              <Layout title="Transaction">
-                <Transaction />
-              </Layout>
-            } />
+            <Route
+              path="/expense"
+              element={
+                <Layout title="Expense">
+                  <Expense />
+                </Layout>
+              }
+            />
+            <Route
+              path="/transaction"
+              element={
+                <Layout title="Transaction">
+                  <Transaction />
+                </Layout>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <Layout title="Settings">
+                  <Settings />
+                </Layout>
+              }
+            />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
