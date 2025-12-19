@@ -16,7 +16,7 @@ class AdminUserSeeder extends Seeder
              User::create([
                 'name' => 'Admin User',
                 'email' => 'admin@company.com',
-                'password' => 'admin123', // Will be hashed by model cast
+                'password' => Hash::make('admin123'),
             ]);
         }
     }

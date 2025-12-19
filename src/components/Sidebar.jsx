@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, Users, LogOut, Briefcase,Wallet, Landmark, BookOpen, FileBarChart2, Building2, Factory, Calendar } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, LogOut, Briefcase, Wallet, Landmark, BookOpen, FileBarChart2, Building2, Factory, Calendar } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../context/AuthContext';
 
@@ -9,14 +9,14 @@ const Sidebar = () => {
 
     const navItems = [
         { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+        { label: 'Client Management', path: '/clients', icon: Building2 },
         { label: 'Lead Management', path: '/leads', icon: Briefcase },
-        { label: 'Invoices', path: '/invoices', icon: FileText },
-        { label: 'Customers', path: '/customers', icon: Users },
-        { label: 'Reports', path: '/reports', icon: FileBarChart2 },
-        { label: "Income",  path: "/income",  icon: Wallet},
-        { label: "Bank Accounts", path: "/banks", icon: Landmark },
+        { label: "Income", path: "/income", icon: Wallet },
         { label: 'Expense', path: '/expense', icon: Wallet },
+        { label: 'Invoices', path: '/invoices', icon: FileText },
+        { label: "Bank Accounts", path: "/banks", icon: Landmark },
         { label: 'Transaction', path: '/transaction', icon: BookOpen },
+        { label: 'Reports', path: '/reports', icon: FileBarChart2 },
     ];
 
     return (

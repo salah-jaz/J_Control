@@ -4,7 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Customers from './pages/Customers';
+import ClientManagement from './pages/ClientManagement';
 import Invoices from './pages/Invoices';
 import Leads from './pages/Leads';
 import Reports from './pages/Reports';
@@ -13,11 +13,13 @@ import Income from "./pages/Income";
 import BankAccounts from "./pages/BankAccounts";
 import Expense from "./pages/Expense";
 import Transaction from "./pages/Transaction";
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
         <Routes>
           <Route path="/login" element={<Login />} />
 
@@ -39,10 +41,10 @@ function App() {
               }
             />
             <Route
-              path="/customers"
+              path="/clients"
               element={
-                <Layout title="Customer Management">
-                  <Customers />
+                <Layout title="Client Management">
+                  <ClientManagement />
                 </Layout>
               }
             />
@@ -70,7 +72,7 @@ function App() {
                 </Layout>
               }
             />
-              <Route path="/expense" element={
+            <Route path="/expense" element={
               <Layout title="Expense">
                 <Expense />
               </Layout>

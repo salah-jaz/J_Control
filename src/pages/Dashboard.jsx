@@ -37,8 +37,8 @@ const StatCard = ({ title, value, icon: Icon, trend, color, subValue = null, sub
 
 const Dashboard = () => {
     const [stats, setStats] = useState({
-        totalCustomers: 0,
-        activeCustomers: 0,
+        totalClients: 0,
+        activeClients: 0,
         totalInvoices: 0,
         totalRevenue: 0,
         pendingAmount: 0,
@@ -64,9 +64,9 @@ const Dashboard = () => {
                     color="bg-emerald-500"
                 />
                 <StatCard
-                    title="Active Customers"
-                    value={stats.activeCustomers}
-                    subValue={stats.totalCustomers}
+                    title="Clients"
+                    value={stats.activeClients}
+                    subValue={stats.totalClients}
                     subLabel="Total"
                     icon={Users}
                     color="bg-blue-500"
@@ -95,7 +95,7 @@ const Dashboard = () => {
                             <thead className="text-xs text-gray-500 uppercase bg-gray-50/50">
                                 <tr>
                                     <th className="px-4 py-3">Invoice ID</th>
-                                    <th className="px-4 py-3">Customer</th>
+                                    <th className="px-4 py-3">Client</th>
                                     <th className="px-4 py-3">Date</th>
                                     <th className="px-4 py-3">Amount</th>
                                     <th className="px-4 py-3">Status</th>
@@ -105,7 +105,7 @@ const Dashboard = () => {
                                 {stats.recentInvoices.map((inv) => (
                                     <tr key={inv.id} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="px-4 py-3 font-medium text-gray-900">{inv.id}</td>
-                                        <td className="px-4 py-3 text-gray-600">{inv.customerName}</td>
+                                        <td className="px-4 py-3 text-gray-600">{inv.client_name}</td>
                                         <td className="px-4 py-3 text-gray-500">{inv.date}</td>
                                         <td className="px-4 py-3 font-medium text-gray-900">${inv.amount.toLocaleString()}</td>
                                         <td className="px-4 py-3">
@@ -135,7 +135,7 @@ const Dashboard = () => {
                     <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-32 h-32 bg-purple-600 rounded-full opacity-50 blur-xl"></div>
 
                     <h3 className="text-xl font-bold mb-2 z-10">Pro Plan</h3>
-                    <p className="text-indigo-200 text-sm mb-6 max-w-[200px] z-10">Upgrade to manage more customers and unlock advanced analytics.</p>
+                    <p className="text-indigo-200 text-sm mb-6 max-w-[200px] z-10">Upgrade to manage more clients and unlock advanced analytics.</p>
                     <button className="bg-white text-indigo-900 px-6 py-2 rounded-full font-semibold hover:bg-gray-100 transition z-10">
                         Upgrade Now
                     </button>

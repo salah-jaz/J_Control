@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Eye, Edit2, Trash2 } from "lucide-react";
-
-
-const STORAGE_KEY = "income_records";
+import toast from "react-hot-toast";
+import { getIncomes, createIncome, updateIncome, deleteIncome } from "../services/incomeService";
+import { getBankAccounts } from "../services/bankAccountService";
+import { getClients } from "../services/db";
 
 const emptyForm = {
-  customer: "",
+  client: "",
   source: "",
   project: "",
   category: "",
@@ -31,6 +32,8 @@ const emptyForm = {
 
 export default function Income() {
   const [data, setData] = useState([]);
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [clients, setClients] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [tab, setTab] = useState("basic");
@@ -38,14 +41,26 @@ export default function Income() {
   const [openForm, setOpenForm] = useState(false);
   const [openView, setOpenView] = useState(false);
 
-  const [editIndex, setEditIndex] = useState(null);
+  const [editId, setEditId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
 
   /* LOAD */
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    setData(saved);
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      const records = await getIncomes();
+      setData(records);
+      const banks = await getBankAccounts();
+      setBankAccounts(banks);
+      const clientsData = await getClients();
+      setClients(clientsData);
+    } catch (e) {
+      console.error("Failed to load data", e);
+    }
+  };
 
   /* AUTO-CALCULATE TAX */
   useEffect(() => {
@@ -68,23 +83,18 @@ export default function Income() {
     }
   }, [form.amount, form.gstApplied, form.gstPercent]);
 
-  const syncStorage = (records) => {
-    setData(records);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-  };
-
   const openAdd = () => {
     setForm(emptyForm);
     setErrors({});
-    setEditIndex(null);
+    setEditId(null);
     setTab("basic");
     setOpenForm(true);
   };
 
-  const openEdit = (item, index) => {
+  const openEdit = (item) => {
     setForm(item);
     setErrors({});
-    setEditIndex(index);
+    setEditId(item.id);
     setTab("basic");
     setOpenForm(true);
   };
@@ -94,35 +104,63 @@ export default function Income() {
     setOpenView(true);
   };
 
-  const deleteIncome = (index) => {
+  const handleDelete = async (id) => {
     if (!window.confirm("Delete this income record?")) return;
-    const updated = data.filter((_, i) => i !== index);
-    syncStorage(updated);
+    try {
+      await deleteIncome(id);
+      toast.success("Income record deleted successfully");
+      loadData();
+    } catch (e) {
+      toast.error("Failed to delete record");
+    }
   };
 
   const validate = () => {
     const e = {};
-    if (!form.customer) e.customer = "Customer required";
-    if (!form.source) e.source = "Income source required";
-    if (!form.amount) e.amount = "Amount required";
-    if (!form.method) e.method = "Payment method required";
-    if (!form.receivedDate) e.receivedDate = "Received date required";
-    if (!form.status) e.status = "Status required";
+    if (!form.client) e.client = "Client is required";
+    if (!form.source) e.source = "Income source is required";
+    if (!form.amount) e.amount = "Amount is required";
+    if (!form.method) e.method = "Payment method is required";
+    if (!form.receivedDate) e.receivedDate = "Received date is required";
+    if (!form.status) e.status = "Status is required";
 
     if (form.method !== "Cash" && !form.transactionId) {
-      e.transactionId = "Transaction ID required";
+      e.transactionId = "Transaction ID is required for non-cash payments";
     }
 
-    setErrors(e);
-    return Object.keys(e).length === 0;
+    if (Object.keys(e).length > 0) {
+      setErrors(e);
+      // Show first error or generic message
+      const firstError = Object.values(e)[0];
+      toast.error(Object.keys(e).length > 1 ? `Please fix validation errors. ${firstError}` : firstError);
+      return false;
+    }
+
+    return true;
   };
 
-  const saveIncome = () => {
+  const handleSave = async () => {
     if (!validate()) return;
-    let updated = editIndex !== null ? [...data] : [...data, form];
-    if (editIndex !== null) updated[editIndex] = form;
-    syncStorage(updated);
-    setOpenForm(false);
+
+    try {
+      if (editId) {
+        await updateIncome(editId, form);
+        toast.success("Income updated successfully");
+      } else {
+        await createIncome(form);
+        toast.success("Income added successfully");
+      }
+      await loadData();
+      setOpenForm(false);
+    } catch (e) {
+      console.error("Failed to save", e);
+      if (e.response && e.response.data && e.response.data.errors) {
+        setErrors(e.response.data.errors);
+        toast.error("Server validation failed. Please check the form.");
+      } else {
+        toast.error("Failed to save record: " + (e.message || "Unknown error"));
+      }
+    }
   };
 
   const inputClass = (f) => `input ${errors[f] ? "border-red-500" : ""}`;
@@ -147,7 +185,7 @@ export default function Income() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50/50 text-xs text-gray-500 uppercase border-b border-gray-100">
             <tr>
-              <th className="p-4 text-left font-semibold">Customer</th>
+              <th className="p-4 text-left font-semibold">Client</th>
               <th className="p-4 text-left font-semibold">Source</th>
               <th className="p-4 text-left font-semibold">Amount</th>
               <th className="p-4 text-left font-semibold">Method</th>
@@ -165,7 +203,7 @@ export default function Income() {
             ) : (
               data.map((item, i) => (
                 <tr key={i} className="hover:bg-gray-50">
-                  <td className="p-4">{item.customer}</td>
+                  <td className="p-4">{item.client}</td>
                   <td className="p-4 text-gray-600">{item.source}</td>
                   <td className="p-4 font-bold text-gray-900">
                     ₹{item.amount}
@@ -189,7 +227,7 @@ export default function Income() {
 
                       {/* EDIT */}
                       <button
-                        onClick={() => openEdit(item, i)}
+                        onClick={() => openEdit(item)}
                         title="Edit"
                         className="p-2 rounded-lg text-indigo-600 hover:bg-indigo-50 transition"
                       >
@@ -198,7 +236,7 @@ export default function Income() {
 
                       {/* DELETE */}
                       <button
-                        onClick={() => deleteIncome(i)}
+                        onClick={() => handleDelete(item.id)}
                         title="Delete"
                         className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition"
                       >
@@ -247,7 +285,7 @@ export default function Income() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white w-full max-w-5xl rounded-xl p-8 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <h2 className="text-xl font-bold mb-4">
-              {editIndex !== null ? "Edit Income Record" : "Add New Income"}
+              {editId ? "Edit Income Record" : "Add New Income"}
             </h2>
 
             {/* TABS */}
@@ -256,11 +294,10 @@ export default function Income() {
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`px-6 py-2 text-sm font-semibold uppercase tracking-tight rounded-t-lg transition-all ${
-                    tab === t
-                      ? "bg-indigo-600 text-white"
-                      : "text-gray-400 hover:text-gray-600"
-                  }`}
+                  className={`px-6 py-2 text-sm font-semibold uppercase tracking-tight rounded-t-lg transition-all ${tab === t
+                    ? "bg-indigo-600 text-white"
+                    : "text-gray-400 hover:text-gray-600"
+                    }`}
                 >
                   {t}
                 </button>
@@ -272,15 +309,22 @@ export default function Income() {
               {tab === "basic" && (
                 <>
                   <label className="text-sm font-semibold">
-                    Customer
+                    Client
                     <Req />
-                    <input
-                      className={inputClass("customer")}
-                      value={form.customer}
+                    <select
+                      className={inputClass("client")}
+                      value={form.client}
                       onChange={(e) =>
-                        setForm({ ...form, customer: e.target.value })
+                        setForm({ ...form, client: e.target.value })
                       }
-                    />
+                    >
+                      <option value="">Select Client</option>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.company_name}>
+                          {c.company_name}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className="text-sm font-semibold">
                     Income Source
@@ -369,13 +413,20 @@ export default function Income() {
                   </label>
                   <label className="text-sm font-semibold">
                     Bank / Wallet Name
-                    <input
+                    <select
                       className="input"
                       value={form.bank}
                       onChange={(e) =>
                         setForm({ ...form, bank: e.target.value })
                       }
-                    />
+                    >
+                      <option value="">Select Bank / Wallet</option>
+                      {bankAccounts.map((b) => (
+                        <option key={b.id} value={`${b.bankName} - ${b.accountNumber}`}>
+                          {b.bankName} - {b.accountNumber}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className="text-sm font-semibold">
                     Received Date
@@ -503,7 +554,7 @@ export default function Income() {
                 Cancel
               </button>
               <button
-                onClick={saveIncome}
+                onClick={handleSave}
                 className="bg-indigo-600 text-white px-8 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-700 transition-all"
               >
                 Save Record
