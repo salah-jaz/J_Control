@@ -5,6 +5,9 @@ import {
 } from 'lucide-react';
 import { getLeads, saveLead, deleteLead, getAssignees, saveAssignee } from '../services/db';
 import clsx from 'clsx';
+import SetFollowUpModal from '../components/SetFollowUpModal';
+import LogCallModal from '../components/LogCallModal';
+import FollowUpCalendar from './FollowUpCalendar';
 
 const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssignee }) => {
     const [formData, setFormData] = useState({
@@ -176,7 +179,77 @@ const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssigne
     );
 };
 
-const ViewLeadModal = ({ isOpen, onClose, lead, onEdit }) => {
+const OverdueModal = ({ isOpen, onClose, overdueLeads, onReschedule, onView }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl flex flex-col max-h-[90vh] animate-fade-in-up">
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-orange-50/50 flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                        <div className="p-2 bg-white rounded-lg border border-orange-100 shadow-sm">
+                            <AlertCircle className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-800">Overdue Follow-ups</h3>
+                            <p className="text-xs text-orange-600 font-medium">{overdueLeads.length} lead{overdueLeads.length !== 1 ? 's' : ''} needs immediate attention</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">&times;</button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/30">
+                    {overdueLeads.map(lead => {
+                        const overdueFollowUp = lead.followUps?.find(f => f.status !== 'completed' && new Date(f.scheduled_at) < new Date());
+                        if (!overdueFollowUp) return null;
+
+                        const daysOverdue = Math.floor((new Date() - new Date(overdueFollowUp.scheduled_at)) / (1000 * 60 * 60 * 24));
+
+                        return (
+                            <div key={lead.id} className="bg-white border border-orange-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex gap-3">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono text-xs text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">LEAD-{lead.id}</span>
+                                                <h4 className="font-bold text-gray-900 text-sm">{lead.firstName} {lead.lastName} <span className="text-gray-500 font-normal">({lead.company || 'No Company'})</span></h4>
+                                                <span className="text-[10px] font-bold bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">{daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue</span>
+                                            </div>
+                                            <div className="text-xs text-gray-500 flex items-center gap-4">
+                                                <span>Follow-up Due: <span className="text-gray-900 font-medium">{new Date(overdueFollowUp.scheduled_at).toLocaleString()}</span></span>
+                                            </div>
+                                            <div className="text-xs text-gray-500 space-y-0.5 pt-1">
+                                                <p>Email: <a href={`mailto:${lead.email}`} className="text-blue-600 hover:underline">{lead.email}</a></p>
+                                                <p>Phone: {lead.phone || 'N/A'}</p>
+                                                <p>Assigned to: <span className="text-gray-700 font-medium">{lead.assignedTo}</span></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => {
+                                            onClose();
+                                            onView(lead);
+                                        }} className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 shadow-sm shadow-indigo-200 transition">View</button>
+                                        <button onClick={() => {
+                                            onClose();
+                                            onReschedule(lead, overdueFollowUp);
+                                        }} className="px-3 py-1.5 bg-orange-500 text-white text-xs font-medium rounded-lg hover:bg-orange-600 shadow-sm shadow-orange-200 transition">Reschedule</button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="p-4 border-t border-gray-100 bg-white flex justify-end flex-shrink-0 rounded-b-xl">
+                    <button onClick={onClose} className="px-4 py-2 border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 font-medium text-sm transition">Close</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall }) => {
     if (!isOpen || !lead) return null;
 
     return (
@@ -263,23 +336,57 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit }) => {
                     <div>
                         <h4 className="text-base font-semibold text-gray-700 mb-4 border-b border-gray-100 pb-2">Activity Timeline</h4>
                         <div className="relative border-l-2 border-gray-100 pl-6 ml-2 space-y-6">
+                            {(() => {
+                                const activities = [
+                                    ...(lead.followUps || []).map(f => ({ ...f, type: 'follow_up', date: new Date(f.created_at) })),
+                                    ...(lead.callLogs || []).map(c => ({ ...c, type: 'call_log', date: new Date(c.created_at) }))
+                                ].sort((a, b) => b.date - a.date);
+
+                                return activities.map(act => (
+                                    <div key={`${act.type}-${act.id}`} className="relative">
+                                        <div className={`absolute -left-[29px] top-1 h-3 w-3 rounded-full ring-4 ring-white border ${act.type === 'call_log' ? 'bg-purple-100 border-purple-400' : 'bg-blue-100 border-blue-400'}`}></div>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h5 className="text-sm font-bold text-gray-900">{act.type === 'call_log' ? 'Call Logged' : 'Follow-up Scheduled'}</h5>
+                                                {act.type === 'call_log' ? (
+                                                    <div className="text-xs text-gray-600 mt-0.5">
+                                                        <p>Outcome: <span className="font-medium text-gray-800">{act.outcome || 'N/A'}</span> • Duration: {act.duration ? `${act.duration}m` : 'N/A'}</p>
+                                                        <p className="mt-1 italic">{act.notes}</p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-gray-600 mt-0.5">
+                                                        Follow-up scheduled for {new Date(act.scheduled_at).toLocaleString()}.
+                                                        {act.notes && <span className="opacity-80"> Note: {act.notes}</span>}
+                                                    </p>
+                                                )}
+                                                <p className="text-[10px] text-gray-400 mt-1 uppercase font-medium tracking-wide">By: Default Admin</p>
+                                            </div>
+                                            <span className="text-xs text-gray-400 whitespace-nowrap">{act.date.toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' })}</span>
+                                        </div>
+                                    </div>
+                                ));
+                            })()}
+
                             <div className="relative">
                                 <div className="absolute -left-[29px] top-1 h-3 w-3 rounded-full bg-gray-200 ring-4 ring-white"></div>
-                                <h5 className="text-sm font-medium text-gray-900">Lead Created</h5>
-                                <p className="text-xs text-gray-500 mt-0.5">Lead was created in the system</p>
-                                <p className="text-xs text-gray-400 mt-1">{new Date().toLocaleDateString()}</p>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h5 className="text-sm font-medium text-gray-900">Lead Created</h5>
+                                        <p className="text-xs text-gray-500 mt-0.5">Lead was created in the system</p>
+                                    </div>
+                                    <span className="text-xs text-gray-400 whitespace-nowrap">{new Date(lead.createdAt || Date.now()).toLocaleDateString()}</span>
+                                </div>
                             </div>
-                            {/* Placeholder for more history */}
                         </div>
                     </div>
                 </div>
 
                 <div className="p-6 border-t border-gray-100 flex justify-between gap-3 bg-white flex-shrink-0 rounded-b-xl">
                     <div className="flex gap-2">
-                        <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition shadow-sm text-sm">
+                        <button onClick={() => onLogCall(lead)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition shadow-sm text-sm">
                             <Phone className="h-4 w-4" /> Log Call
                         </button>
-                        <button className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition shadow-sm text-sm">
+                        <button onClick={() => onSetFollowUp(lead)} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition shadow-sm text-sm">
                             <Calendar className="h-4 w-4" /> Set Follow-up
                         </button>
                     </div>
@@ -385,150 +492,7 @@ const KanbanView = ({ leads, onView }) => {
     );
 };
 
-const CalendarView = ({ leads, onView }) => {
-    const [currentDate, setCurrentDate] = useState(new Date());
-    const [selectedDate, setSelectedDate] = useState(new Date());
 
-    const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-    const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay(); // 0 is Sunday
-    const monthName = currentDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-
-    // Adjust firstDay to make Monday 0, Sunday 6
-    const startDay = firstDay === 0 ? 6 : firstDay - 1;
-
-    const days = [];
-    for (let i = 0; i < startDay; i++) {
-        days.push(null);
-    }
-    for (let i = 1; i <= daysInMonth; i++) {
-        days.push(i);
-    }
-
-    const prevMonth = () => {
-        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
-    };
-
-    const nextMonth = () => {
-        setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-    };
-
-    const isToday = (d) => {
-        const today = new Date();
-        return d === today.getDate() && currentDate.getMonth() === today.getMonth() && currentDate.getFullYear() === today.getFullYear();
-    };
-
-    const isSelected = (d) => {
-        return d === selectedDate.getDate() && currentDate.getMonth() === selectedDate.getMonth() && currentDate.getFullYear() === selectedDate.getFullYear();
-    };
-
-    // Mock values for stats for now, can be real later
-    const stats = [
-        { label: 'OVERDUE', value: 0, color: 'bg-red-50 text-red-600 border-red-100', icon: AlertCircle },
-        { label: 'TODAY', value: 0, color: 'bg-orange-50 text-orange-600 border-orange-100', icon: CalendarIcon },
-        { label: 'THIS WEEK', value: 0, color: 'bg-blue-50 text-blue-600 border-blue-100', icon: CalendarIcon },
-        { label: 'TOTAL', value: leads.length, color: 'bg-green-50 text-green-600 border-green-100', icon: CheckSquare },
-    ];
-
-    return (
-        <div className="space-y-6 animate-fade-in-up">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-indigo-700">Follow-up Calendar</h2>
-                <div className="flex gap-2">
-                    <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} className="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 flex items-center gap-1 text-sm font-medium">
-                        <ChevronLeft className="w-4 h-4" /> Prev
-                    </button>
-                    <button onClick={() => setCurrentDate(new Date())} className="px-4 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
-                        Today
-                    </button>
-                    <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} className="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 flex items-center gap-1 text-sm font-medium">
-                        Next <ChevronRight className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
-
-            <p className="text-gray-500 -mt-4">{monthName}</p>
-
-            {/* Stats Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((stat, idx) => (
-                    <div key={idx} className={`p-4 rounded-xl border ${stat.color} border-opacity-50 flex items-center justify-between`}>
-                        <div>
-                            <p className="text-xs font-bold uppercase tracking-wider opacity-70 mb-1">{stat.label}</p>
-                            <h3 className="text-2xl font-bold">{stat.value}</h3>
-                        </div>
-                        <div className={`p-2 rounded-lg bg-white bg-opacity-40`}>
-                            <stat.icon className="w-5 h-5" />
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
-                <span className="font-bold text-gray-700">Legend:</span>
-                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500"></span> Overdue</div>
-                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-500"></span> Today</div>
-                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500"></span> Upcoming</div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Calendar Left */}
-                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="p-4 bg-indigo-600 text-white flex justify-between items-center">
-                        <div className="flex gap-2">
-                            <button onClick={prevMonth} className="p-1 hover:bg-white/20 rounded"><ChevronLeft className="w-5 h-5" /></button>
-                            <button onClick={prevMonth} className="p-1 hover:bg-white/20 rounded"><ChevronLeft className="w-3 h-3" /></button> {/* Double arrow visual placeholder */}
-                        </div>
-                        <h3 className="text-lg font-bold">{monthName}</h3>
-                        <div className="flex gap-2">
-                            <button onClick={nextMonth} className="p-1 hover:bg-white/20 rounded"><ChevronRight className="w-3 h-3" /></button>
-                            <button onClick={nextMonth} className="p-1 hover:bg-white/20 rounded"><ChevronRight className="w-5 h-5" /></button>
-                        </div>
-                    </div>
-
-                    <div className="p-6">
-                        <div className="grid grid-cols-7 mb-4 text-center">
-                            {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(day => (
-                                <div key={day} className="text-xs font-bold text-gray-400 py-2 border-b border-gray-100">{day}</div>
-                            ))}
-                        </div>
-                        <div className="grid grid-cols-7 gap-2 text-center">
-                            {days.map((day, index) => (
-                                <div key={index}
-                                    onClick={() => day && setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}
-                                    className={clsx(
-                                        "h-14 flex items-center justify-center rounded-lg text-sm transition-all relative cursor-pointer",
-                                        !day ? "invisible" : "hover:bg-gray-50",
-                                        day && isSelected(day) ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 hover:bg-indigo-700" : "text-gray-700",
-                                        day && isToday(day) && !isSelected(day) ? "bg-orange-50 text-orange-600 border border-orange-100 font-bold" : ""
-                                    )}
-                                >
-                                    {day}
-                                    {/* Placeholder for dot indicators if we had data mapping */}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Details Right */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-full min-h-[400px]">
-                    <div className="p-6 border-b border-gray-100 bg-gray-50/50">
-                        <h3 className="font-bold text-gray-800 text-lg">Select a date</h3>
-                    </div>
-
-                    {/* Conditional rendering for details contents could go here. For now, matching the screenshot empty state */}
-                    <div className="flex-1 p-8 flex flex-col items-center justify-center text-center border-2 border-dashed border-blue-100 m-4 rounded-xl bg-blue-50/30">
-                        <div className="w-16 h-16 bg-blue-100 text-blue-500 rounded-2xl flex items-center justify-center mb-4 shadow-sm">
-                            <CalendarIcon className="w-8 h-8" />
-                        </div>
-                        <h4 className="text-lg font-bold text-gray-800 mb-2">Select a Date</h4>
-                        <p className="text-sm text-gray-500 max-w-[200px]">Click on any date in the calendar to view scheduled follow-ups</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 const Leads = () => {
     const [leads, setLeads] = useState([]);
@@ -542,6 +506,12 @@ const Leads = () => {
     const [priorityFilter, setPriorityFilter] = useState('All Priorities');
     const [assigneeFilter, setAssigneeFilter] = useState('All Assignees');
     const [assignees, setAssignees] = useState([]);
+    const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
+    const [followUpLead, setFollowUpLead] = useState(null);
+    const [previousFollowUp, setPreviousFollowUp] = useState(null);
+
+    const [isLogCallModalOpen, setIsLogCallModalOpen] = useState(false);
+    const [logCallLead, setLogCallLead] = useState(null);
 
     useEffect(() => {
         setAssignees(getAssignees());
@@ -554,11 +524,13 @@ const Leads = () => {
         }
     };
 
+    const fetchLeads = async () => {
+        const data = await getLeads();
+        setLeads(data);
+        return data; // Return data for chaining
+    };
+
     useEffect(() => {
-        const fetchLeads = async () => {
-            const data = await getLeads();
-            setLeads(data);
-        };
         fetchLeads();
     }, []);
 
@@ -582,6 +554,15 @@ const Leads = () => {
         }
     }
 
+    const [isOverdueModalOpen, setIsOverdueModalOpen] = useState(false);
+
+    const overdueLeads = leads.filter(l =>
+        (l.followUps || []).some(f => {
+            if (f.status === 'completed') return false;
+            const d = new Date(f.scheduled_at);
+            return !isNaN(d.getTime()) && d < new Date();
+        })
+    );
     const handleEdit = (lead) => {
         setEditingLead(lead);
         setIsViewMode(false);
@@ -690,7 +671,11 @@ const Leads = () => {
         qualified: leads.filter(l => l.qualified).length,
         converted: leads.filter(l => l.status === 'Converted').length,
         conversionLink: leads.length > 0 ? ((leads.filter(l => l.status === 'Converted').length / leads.length) * 100).toFixed(1) : 0,
-        overdue: 0 // Mock value logic could be added
+        overdue: leads.filter(l => (l.followUps || []).some(f => {
+            if (f.status === 'completed') return false;
+            const d = new Date(f.scheduled_at);
+            return !isNaN(d.getTime()) && d < new Date();
+        })).length
     };
 
     const filteredLeads = leads.filter(l => {
@@ -736,8 +721,67 @@ const Leads = () => {
                 <StatCard title="Qualified Leads" value={stats.qualified} icon={CheckCircle2} color="bg-green-500" />
                 <StatCard title="Converted" value={stats.converted} icon={CheckSquare} color="bg-emerald-500" />
                 <StatCard title="Conversion Rate" value={`${stats.conversionLink}%`} icon={Clock} color="bg-blue-500" />
-                <StatCard title="Overdue Follow-ups" value={stats.overdue} icon={AlertCircle} color="bg-orange-500" />
+
+                {/* Overdue Follow-ups Card */}
+                <div className={`p-6 rounded-xl border shadow-sm flex flex-col justify-between h-32 hover:shadow-md transition-shadow relative overflow-hidden group ${overdueLeads.length > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'}`}>
+                    {overdueLeads.length > 0 && <span className="absolute top-3 right-3 w-3 h-3 bg-red-600 rounded-full animate-pulse ring-4 ring-red-100"></span>}
+                    <div className={`p-3 rounded-lg w-fit ${overdueLeads.length > 0 ? 'bg-red-500' : 'bg-orange-500'}`}>
+                        <Clock className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <p className={`text-sm font-medium ${overdueLeads.length > 0 ? 'text-red-700' : 'text-gray-500'}`}>Overdue Follow-ups</p>
+                        <h3 className={`text-2xl font-bold ${overdueLeads.length > 0 ? 'text-red-800' : 'text-gray-800'}`}>{overdueLeads.length}</h3>
+                        {overdueLeads.length > 0 && (
+                            <button onClick={() => setIsOverdueModalOpen(true)} className="text-[10px] text-red-600 font-bold uppercase tracking-wider flex items-center gap-1 mt-1 hover:underline">
+                                <AlertCircle className="w-3 h-3" /> Click to view &rarr;
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
+
+            {/* Overdue Alert Section */}
+            {overdueLeads.length > 0 && (
+                <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in-up">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-white rounded-full text-orange-500 shadow-sm mt-1">
+                            <AlertCircle className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-orange-800 text-lg flex items-center gap-2">
+                                {overdueLeads.length} Lead{overdueLeads.length !== 1 ? 's' : ''} with Overdue Follow-ups!
+                            </h4>
+                            <div className="flex flex-col gap-1 mt-1">
+                                {overdueLeads.slice(0, 2).map(l => {
+                                    const due = l.followUps.find(f => f.status !== 'completed' && new Date(f.scheduled_at) < new Date());
+                                    return (
+                                        <p key={l.id} className="text-sm text-orange-700">
+                                            <span className="font-mono font-bold">{l.id}</span> - {l.firstName} {l.lastName}
+                                            <span className="text-orange-600 opacity-80 text-xs ml-2">(Due: {new Date(due?.scheduled_at).toLocaleDateString()})</span>
+                                        </p>
+                                    );
+                                })}
+                                {overdueLeads.length > 2 && <p className="text-xs text-orange-600 font-medium mt-1">...and {overdueLeads.length - 2} more</p>}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex gap-3 self-end md:self-center">
+                        <button onClick={() => {
+                            // Refresh logic could be here
+                            const fetchLeads = async () => {
+                                const data = await getLeads();
+                                setLeads(data);
+                            };
+                            fetchLeads();
+                        }} className="px-4 py-2 bg-white border border-orange-200 text-orange-700 rounded-lg hover:bg-orange-100 text-sm font-medium shadow-sm transition flex items-center gap-2">
+                            <CalendarIcon className="w-4 h-4" /> Refresh
+                        </button>
+                        <button onClick={() => setIsOverdueModalOpen(true)} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium shadow-md shadow-orange-200 transition">
+                            View All ({overdueLeads.length})
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div className="relative flex-1 w-full md:max-w-xs">
@@ -851,6 +895,7 @@ const Leads = () => {
                                         <td className="px-4 py-3 text-gray-500 text-xs">{lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : '-'}</td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => { setFollowUpLead(lead); setIsFollowUpModalOpen(true); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded" title="Set Follow-up"><CalendarIcon className="w-4 h-4" /></button>
                                                 <button onClick={() => handleView(lead)} className="p-1.5 text-gray-500 hover:bg-gray-100 rounded" title="View Details"><Eye className="w-4 h-4" /></button>
                                                 <button onClick={() => handleEdit(lead)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded" title="Edit"><Edit2 className="w-4 h-4" /></button>
                                                 <button onClick={() => handleDelete(lead.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Delete"><Trash2 className="w-4 h-4" /></button>
@@ -865,16 +910,21 @@ const Leads = () => {
             )}
             {/* Placeholders for Kanban and Calendar views */}
             {viewMode === 'kanban' && <KanbanView leads={filteredLeads} onView={handleView} />}
-            {viewMode === 'calendar' && <CalendarView leads={filteredLeads} onView={handleView} />}
+            {viewMode === 'calendar' && <FollowUpCalendar />}
 
-            {isViewMode ? (
+            {isViewMode && editingLead ? (
                 <ViewLeadModal
                     isOpen={isFormOpen}
                     onClose={() => setIsFormOpen(false)}
                     lead={editingLead}
-                    onEdit={(lead) => {
-                        setIsViewMode(false);
-                        // Keeping isFormOpen=true, just switching mode
+                    onEdit={handleEdit}
+                    onSetFollowUp={(lead) => {
+                        setFollowUpLead(lead);
+                        setIsFollowUpModalOpen(true);
+                    }}
+                    onLogCall={(lead) => {
+                        setLogCallLead(lead);
+                        setIsLogCallModalOpen(true);
                     }}
                 />
             ) : (
@@ -887,6 +937,48 @@ const Leads = () => {
                     onAddAssignee={handleAddAssignee}
                 />
             )}
+            <SetFollowUpModal
+                isOpen={isFollowUpModalOpen}
+                onClose={() => {
+                    setIsFollowUpModalOpen(false);
+                    setPreviousFollowUp(null);
+                }}
+                lead={followUpLead}
+                previousFollowUp={previousFollowUp}
+                onSave={async () => {
+                    const data = await fetchLeads();
+                    setPreviousFollowUp(null);
+                    // Update the currently viewed lead if it matches
+                    if (editingLead) {
+                        const updated = data.find(l => l.id === editingLead.id);
+                        if (updated) setEditingLead(updated);
+                    }
+                }}
+            />
+            <OverdueModal
+                isOpen={isOverdueModalOpen}
+                onClose={() => setIsOverdueModalOpen(false)}
+                overdueLeads={overdueLeads}
+                onReschedule={(lead, followUp) => {
+                    setFollowUpLead(lead);
+                    setPreviousFollowUp(followUp);
+                    setIsFollowUpModalOpen(true);
+                }}
+                onView={handleView}
+            />
+            <LogCallModal
+                isOpen={isLogCallModalOpen}
+                onClose={() => setIsLogCallModalOpen(false)}
+                lead={logCallLead}
+                onSave={async () => {
+                    const data = await fetchLeads();
+                    // Update the currently viewed lead if it matches
+                    if (editingLead) {
+                        const updated = data.find(l => l.id === editingLead.id);
+                        if (updated) setEditingLead(updated);
+                    }
+                }}
+            />
         </div>
     );
 };

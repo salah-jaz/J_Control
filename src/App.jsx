@@ -1,12 +1,14 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import ProtectedRoute from "./components/ProtectedRoute";
-import Layout from "./components/Layout";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Customers from "./pages/Customers";
-import Invoices from "./pages/Invoices";
-import Leads from "./pages/Leads";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Layout from './components/Layout';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Customers from './pages/Customers';
+import Invoices from './pages/Invoices';
+import Leads from './pages/Leads';
+import Reports from './pages/Reports';
+import FollowUpCalendar from './pages/FollowUpCalendar';
 import Income from "./pages/Income";
 import BankAccounts from "./pages/BankAccounts";
 import Expense from "./pages/Expense";
@@ -69,22 +71,21 @@ function App() {
                 </Layout>
               }
             />
-            <Route
-              path="/expense"
-              element={
-                <Layout title="Expense">
-                  <Expense />
-                </Layout>
-              }
-            />
-            <Route
-              path="/transaction"
-              element={
-                <Layout title="Transaction">
-                  <Transaction />
-                </Layout>
-              }
-            />
+              <Route path="/expense" element={
+              <Layout title="Expense">
+                <Expense />
+              </Layout>
+            } />
+            <Route path="/transaction" element={
+              <Layout title="Transaction">
+                <Transaction />
+              </Layout>
+            } />
+            <Route path="/reports" element={
+              <Layout title="Reports">
+                <Reports />
+              </Layout>
+            } />
             <Route
               path="/settings"
               element={

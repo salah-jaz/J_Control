@@ -20,4 +20,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('leads', LeadController::class);
     Route::apiResource('customers', CustomerController::class);
     Route::apiResource('invoices', InvoiceController::class);
+    Route::apiResource('follow-ups', \App\Http\Controllers\FollowUpController::class);
+    Route::apiResource('call-logs', \App\Http\Controllers\CallLogController::class);
 });
