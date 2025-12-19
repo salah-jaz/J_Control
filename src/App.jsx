@@ -14,6 +14,7 @@ import BankAccounts from "./pages/BankAccounts";
 import Expense from "./pages/Expense";
 import Transaction from "./pages/Transaction";
 import Settings from "./pages/Settings";
+import User from "./pages/User";
 
 function App() {
   return (
@@ -94,6 +95,12 @@ function App() {
                 </Layout>
               }
             />
+            <Route path="/user" element={
+              <Layout title="User">
+                <User />
+              </Layout>
+            } />
+            
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
