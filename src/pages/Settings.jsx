@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Building2, Wallet, User, Shield, Bell } from "lucide-react";
-
-const STORAGE_KEY = "app_settings";
+import api from "../api/axios";
+import toast from "react-hot-toast";
 
 const defaultSettings = {
   company: {
@@ -36,18 +36,47 @@ const defaultSettings = {
 export default function Settings() {
   const [tab, setTab] = useState("company");
   const [settings, setSettings] = useState(defaultSettings);
+  const [loading, setLoading] = useState(true);
 
   /* LOAD */
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved) setSettings(saved);
+    const fetchSettings = async () => {
+      try {
+        const response = await api.get('/settings');
+        // Merge with defaultSettings to ensure all keys exist if backend response is partial
+        // or just use response.data if we trust it. 
+        // Backend returns the full structure created in index() if missing.
+        if (response.data) {
+          setSettings(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to load settings", error);
+        toast.error("Failed to load settings");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSettings();
   }, []);
 
   /* SAVE */
-  const saveSettings = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    alert("Settings saved successfully");
+  const saveSettings = async () => {
+    try {
+      await api.post('/settings', settings);
+      toast.success("Settings saved successfully");
+    } catch (error) {
+      console.error("Failed to save settings", error);
+      toast.error("Failed to save settings");
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 font-sans text-slate-800">
@@ -74,47 +103,47 @@ export default function Settings() {
           {tab === "company" && (
             <Section title="Company Settings">
               <Input label="Company Name" value={settings.company.name}
-                onChange={v => setSettings({...settings, company:{...settings.company, name:v}})} />
+                onChange={v => setSettings({ ...settings, company: { ...settings.company, name: v } })} />
               <Input label="Email" value={settings.company.email}
-                onChange={v => setSettings({...settings, company:{...settings.company, email:v}})} />
+                onChange={v => setSettings({ ...settings, company: { ...settings.company, email: v } })} />
               <Input label="Phone" value={settings.company.phone}
-                onChange={v => setSettings({...settings, company:{...settings.company, phone:v}})} />
+                onChange={v => setSettings({ ...settings, company: { ...settings.company, phone: v } })} />
               <Input label="GST Number" value={settings.company.gst}
-                onChange={v => setSettings({...settings, company:{...settings.company, gst:v}})} />
+                onChange={v => setSettings({ ...settings, company: { ...settings.company, gst: v } })} />
               <Textarea label="Address" value={settings.company.address}
-                onChange={v => setSettings({...settings, company:{...settings.company, address:v}})} />
+                onChange={v => setSettings({ ...settings, company: { ...settings.company, address: v } })} />
             </Section>
           )}
 
           {tab === "finance" && (
             <Section title="Finance Settings">
               <Select label="Currency" value={settings.finance.currency}
-                options={["INR","USD","EUR"]}
-                onChange={v => setSettings({...settings, finance:{...settings.finance, currency:v}})} />
+                options={["INR", "USD", "EUR"]}
+                onChange={v => setSettings({ ...settings, finance: { ...settings.finance, currency: v } })} />
               <Select label="GST Enabled" value={settings.finance.gstEnabled}
-                options={["Yes","No"]}
-                onChange={v => setSettings({...settings, finance:{...settings.finance, gstEnabled:v}})} />
+                options={["Yes", "No"]}
+                onChange={v => setSettings({ ...settings, finance: { ...settings.finance, gstEnabled: v } })} />
               <Input label="GST %" value={settings.finance.gstPercent}
-                onChange={v => setSettings({...settings, finance:{...settings.finance, gstPercent:v}})} />
+                onChange={v => setSettings({ ...settings, finance: { ...settings.finance, gstPercent: v } })} />
               <Select label="Financial Year Start"
                 value={settings.finance.fyStart}
-                options={["January","April"]}
-                onChange={v => setSettings({...settings, finance:{...settings.finance, fyStart:v}})} />
+                options={["January", "April"]}
+                onChange={v => setSettings({ ...settings, finance: { ...settings.finance, fyStart: v } })} />
             </Section>
           )}
 
           {tab === "preferences" && (
             <Section title="User Preferences">
               <Select label="Theme" value={settings.preferences.theme}
-                options={["Light","Dark"]}
-                onChange={v => setSettings({...settings, preferences:{...settings.preferences, theme:v}})} />
+                options={["Light", "Dark"]}
+                onChange={v => setSettings({ ...settings, preferences: { ...settings.preferences, theme: v } })} />
               <Select label="Language" value={settings.preferences.language}
-                options={["English","Tamil"]}
-                onChange={v => setSettings({...settings, preferences:{...settings.preferences, language:v}})} />
+                options={["English", "Tamil"]}
+                onChange={v => setSettings({ ...settings, preferences: { ...settings.preferences, language: v } })} />
               <Select label="Date Format"
                 value={settings.preferences.dateFormat}
-                options={["DD/MM/YYYY","MM/DD/YYYY"]}
-                onChange={v => setSettings({...settings, preferences:{...settings.preferences, dateFormat:v}})} />
+                options={["DD/MM/YYYY", "MM/DD/YYYY"]}
+                onChange={v => setSettings({ ...settings, preferences: { ...settings.preferences, dateFormat: v } })} />
             </Section>
           )}
 
@@ -122,11 +151,11 @@ export default function Settings() {
             <Section title="Security">
               <Select label="Two Factor Authentication"
                 value={settings.security.twoFactor}
-                options={["Yes","No"]}
-                onChange={v => setSettings({...settings, security:{...settings.security, twoFactor:v}})} />
+                options={["Yes", "No"]}
+                onChange={v => setSettings({ ...settings, security: { ...settings.security, twoFactor: v } })} />
               <Input label="Auto Logout (minutes)"
                 value={settings.security.autoLogout}
-                onChange={v => setSettings({...settings, security:{...settings.security, autoLogout:v}})} />
+                onChange={v => setSettings({ ...settings, security: { ...settings.security, autoLogout: v } })} />
             </Section>
           )}
 
@@ -134,13 +163,13 @@ export default function Settings() {
             <Section title="Notifications">
               <Checkbox label="Email Notifications"
                 checked={settings.notifications.email}
-                onChange={v => setSettings({...settings, notifications:{...settings.notifications, email:v}})} />
+                onChange={v => setSettings({ ...settings, notifications: { ...settings.notifications, email: v } })} />
               <Checkbox label="SMS Notifications"
                 checked={settings.notifications.sms}
-                onChange={v => setSettings({...settings, notifications:{...settings.notifications, sms:v}})} />
+                onChange={v => setSettings({ ...settings, notifications: { ...settings.notifications, sms: v } })} />
               <Checkbox label="Push Notifications"
                 checked={settings.notifications.push}
-                onChange={v => setSettings({...settings, notifications:{...settings.notifications, push:v}})} />
+                onChange={v => setSettings({ ...settings, notifications: { ...settings.notifications, push: v } })} />
             </Section>
           )}
 

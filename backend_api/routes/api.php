@@ -28,7 +28,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('expenses', \App\Http\Controllers\ExpenseController::class);
     Route::apiResource('bank-accounts', \App\Http\Controllers\BankAccountController::class);
     Route::apiResource('transactions', \App\Http\Controllers\TransactionController::class);
+    Route::apiResource('users', \App\Http\Controllers\UserController::class);
     Route::get('/dashboard-stats', [\App\Http\Controllers\DashboardController::class, 'stats']);
+
+    // Settings Routes
+    Route::get('/settings', [\App\Http\Controllers\SettingController::class, 'index']);
+    Route::post('/settings', [\App\Http\Controllers\SettingController::class, 'update']);
 
     // Reports Routes
     Route::get('/reports/summary', [\App\Http\Controllers\ReportsController::class, 'summary']);
