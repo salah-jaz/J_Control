@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class SettingController extends Controller
 {
@@ -60,5 +61,20 @@ class SettingController extends Controller
         $settings->save();
 
         return response()->json($settings);
+    }
+
+    public function uploadLogo(Request $request)
+    {
+        $request->validate([
+            'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        if ($request->hasFile('logo')) {
+            $path = $request->file('logo')->store('logos', 'public');
+            $url = asset('storage/' . $path);
+            return response()->json(['url' => $url, 'path' => $path]);
+        }
+
+        return response()->json(['error' => 'No file uploaded'], 400);
     }
 }

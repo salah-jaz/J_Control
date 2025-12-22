@@ -75,6 +75,23 @@ export const getInvoices = async () => {
 
 export const saveInvoice = async (invoice) => {
     try {
+        if (invoice instanceof FormData) {
+            const id = invoice.get('id');
+            // If ID exists and assumes it is backend ID (not generic INV- logic for FD)
+            if (id) {
+                invoice.append('_method', 'PUT');
+                const response = await api.post(`/invoices/${id}`, invoice, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                return response.data;
+            } else {
+                const response = await api.post('/invoices', invoice, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                return response.data;
+            }
+        }
+
         if (invoice.id && !invoice.id.toString().startsWith('INV-')) {
             const response = await api.put(`/invoices/${invoice.id}`, invoice);
             return response.data;
@@ -352,5 +369,15 @@ export const deleteUser = async (id) => {
     } catch (error) {
         console.error("Failed to delete user:", error);
         return false;
+    }
+};
+
+export const getSettings = async () => {
+    try {
+        const response = await api.get('/settings');
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch settings:", error);
+        return null;
     }
 };

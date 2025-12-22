@@ -9,7 +9,7 @@ class InvoiceController extends Controller
 {
     public function index()
     {
-        return Invoice::orderBy('created_at', 'desc')->get();
+        return Invoice::with('items')->orderBy('created_at', 'desc')->get();
     }
 
     public function store(Request $request)
@@ -18,21 +18,44 @@ class InvoiceController extends Controller
             'client_name' => 'required',
             'client_id' => 'nullable',
             'date' => 'required|date',
-            'amount' => 'required|numeric',
             'status' => 'required',
             'gst' => 'nullable|numeric',
-            'discount' => 'nullable|numeric'
+            'discount' => 'nullable|numeric',
+            'bank_account_id' => 'nullable',
+            'gpay_number' => 'nullable|string',
+            'qr_code' => 'nullable|file|mimes:jpg,jpeg,png',
+            'items' => 'nullable|array',
+            'items.*.service_name' => 'required|string',
+            'items.*.payment_status' => 'nullable|string',
+            'items.*.amount' => 'required|numeric',
         ]);
 
-        $amount = $validated['amount'];
+        $items = $validated['items'] ?? [];
+        // Calculate subtotal from items
+        $amount = collect($items)->sum('amount');
+        
         $gst = $validated['gst'] ?? 0;
         $discount = $validated['discount'] ?? 0;
-        $validated['grand_total'] = max(0, $amount + ($amount * ($gst / 100)) - $discount);
+        $grand_total = max(0, $amount + ($amount * ($gst / 100)) - $discount);
 
-        $invoice = Invoice::create($validated);
+        $data = $validated;
+        $data['amount'] = $amount;
+        $data['grand_total'] = $grand_total;
+
+        if ($request->hasFile('qr_code')) {
+            $path = $request->file('qr_code')->store('qr_codes', 'public');
+            $data['qr_code'] = $path;
+        }
+
+        $invoice = Invoice::create($data);
+
+        foreach ($items as $item) {
+            $invoice->items()->create($item);
+        }
+
         $this->syncIncome($invoice);
 
-        return $invoice;
+        return $invoice->load('items');
     }
 
     public function update(Request $request, Invoice $invoice)
@@ -41,21 +64,47 @@ class InvoiceController extends Controller
              'client_name' => 'required',
             'client_id' => 'nullable',
             'date' => 'required|date',
-            'amount' => 'required|numeric',
             'status' => 'required',
             'gst' => 'nullable|numeric',
-            'discount' => 'nullable|numeric'
+            'discount' => 'nullable|numeric',
+            'bank_account_id' => 'nullable',
+            'gpay_number' => 'nullable|string',
+            'qr_code' => 'nullable', // Handle file or keep existing
+            'items' => 'nullable|array',
+            'items.*.service_name' => 'required|string',
+            'items.*.payment_status' => 'nullable|string',
+            'items.*.amount' => 'required|numeric',
         ]);
 
-        $amount = $validated['amount'];
+        $items = $validated['items'] ?? [];
+        $amount = collect($items)->sum('amount');
+        
         $gst = $validated['gst'] ?? 0; 
         $discount = $validated['discount'] ?? 0;
-        $validated['grand_total'] = max(0, $amount + ($amount * ($gst / 100)) - $discount);
+        $grand_total = max(0, $amount + ($amount * ($gst / 100)) - $discount);
 
-        $invoice->update($validated);
+        $data = $validated;
+        $data['amount'] = $amount;
+        $data['grand_total'] = $grand_total;
+
+        if ($request->hasFile('qr_code')) {
+            $path = $request->file('qr_code')->store('qr_codes', 'public');
+            $data['qr_code'] = $path;
+        } else {
+            unset($data['qr_code']);
+        }
+
+        $invoice->update($data);
+
+        // Sync items
+        $invoice->items()->delete();
+        foreach ($items as $item) {
+            $invoice->items()->create($item);
+        }
+
         $this->syncIncome($invoice);
 
-        return $invoice;
+        return $invoice->load('items');
     }
 
     public function destroy(Invoice $invoice)

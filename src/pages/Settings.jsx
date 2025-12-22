@@ -10,6 +10,7 @@ const defaultSettings = {
     phone: "",
     address: "",
     gst: "",
+    logo: "",
   },
   finance: {
     currency: "INR",
@@ -70,6 +71,37 @@ export default function Settings() {
     }
   };
 
+  /* LOGO UPLOAD */
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    try {
+      // Show loading toast or state if needed, but toast.promise is nice if available. 
+      // Using simple toast for now.
+      const response = await api.post('/settings/upload-logo', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setSettings({
+        ...settings,
+        company: {
+          ...settings.company,
+          logo: response.data.url
+        }
+      });
+      toast.success("Logo uploaded successfully");
+    } catch (error) {
+      console.error("Failed to upload logo", error);
+      toast.error("Failed to upload logo");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -102,6 +134,33 @@ export default function Settings() {
         <div className="bg-white rounded-xl border shadow-sm p-6 md:col-span-3">
           {tab === "company" && (
             <Section title="Company Settings">
+              <div className="md:col-span-2 flex items-center gap-6 mb-4">
+                <div className="h-24 w-24 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
+                  {settings.company.logo ? (
+                    <img src={settings.company.logo} alt="Company Logo" className="h-full w-full object-contain" />
+                  ) : (
+                    <Building2 className="text-slate-300" size={32} />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Company Logo</label>
+                  <label className="inline-block">
+                    <span className="sr-only">Choose profile photo</span>
+                    <input type="file" onChange={handleLogoUpload} accept="image/*"
+                      className="block w-full text-sm text-slate-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-indigo-50 file:text-indigo-700
+                        hover:file:bg-indigo-100
+                        cursor-pointer
+                      "
+                    />
+                  </label>
+                  <p className="text-xs text-slate-500 mt-2">Recommended: 200x200px (PNG/JPG)</p>
+                </div>
+              </div>
+
               <Input label="Company Name" value={settings.company.name}
                 onChange={v => setSettings({ ...settings, company: { ...settings.company, name: v } })} />
               <Input label="Email" value={settings.company.email}
