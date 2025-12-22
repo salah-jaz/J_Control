@@ -80,8 +80,12 @@ const ClientManagement = () => {
     );
 
     return (
-        <div className="space-y-6 animate-fadeIn">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="p-8 max-w-[1600px] mx-auto animate-fade-in space-y-8">
+            <div>
+                <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Client Management</h1>
+                <p className="text-slate-500 mt-1 text-lg">Manage your client companies and their business details.</p>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
                 <div className="relative flex-1 max-w-md w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <input
@@ -89,28 +93,28 @@ const ClientManagement = () => {
                         placeholder="Search client companies..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="input pl-10"
+                        className="input pl-10 h-11"
                     />
                 </div>
                 <button
                     onClick={handleAddNew}
-                    className="btn-primary flex items-center gap-2 whitespace-nowrap"
+                    className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30 h-11"
                 >
                     <Plus className="h-5 w-5" />
                     Add Client
                 </button>
             </div>
 
-            <div className="card overflow-hidden p-0">
+            <div className="card p-0 overflow-hidden min-h-[500px]">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50 border-b border-gray-100">
+                        <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                             <tr>
-                                <th className="px-6 py-4 font-bold text-gray-600">Company Name</th>
-                                <th className="px-6 py-4 font-bold text-gray-600">Contact Person</th>
-                                <th className="px-6 py-4 font-bold text-gray-600">Location</th>
-                                <th className="px-6 py-4 font-bold text-gray-600">Tax Info</th>
-                                <th className="px-6 py-4 font-bold text-gray-600 text-right">Actions</th>
+                                <th className="px-6 py-4">Company Name</th>
+                                <th className="px-6 py-4">Contact Person</th>
+                                <th className="px-6 py-4">Location</th>
+                                <th className="px-6 py-4">Tax Info</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -170,14 +174,14 @@ const ClientManagement = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => handleView(client)} className="p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all" title="View">
+                                        <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => handleView(client)} className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all" title="View">
                                                 <Eye className="h-4 w-4" />
                                             </button>
-                                            <button onClick={() => handleEdit(client)} className="p-2 text-gray-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all" title="Edit">
+                                            <button onClick={() => handleEdit(client)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Edit">
                                                 <Edit2 className="h-4 w-4" />
                                             </button>
-                                            <button onClick={() => handleDelete(client.id)} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                                            <button onClick={() => handleDelete(client.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Delete">
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
                                         </div>
