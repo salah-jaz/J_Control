@@ -93,13 +93,13 @@ const InvoiceView = ({ isOpen, onClose, invoice }) => {
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
 
                 {/* Header Actions */}
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 print:hidden">
-                    <h3 className="text-lg font-bold text-gray-800">Invoice Preview</h3>
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white print:hidden">
+                    <h3 className="text-lg font-bold text-slate-800 tracking-tight">Invoice Preview</h3>
                     <div className="flex gap-2">
-                        <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                        <button onClick={handlePrint} className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30 py-2 text-sm">
                             <Printer className="w-4 h-4" /> Print
                         </button>
-                        <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">
+                        <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
                             <X className="w-5 h-5" />
                         </button>
                     </div>
@@ -120,7 +120,7 @@ const InvoiceView = ({ isOpen, onClose, invoice }) => {
                                         className="h-16 w-auto object-contain mb-4"
                                     />
                                 )}
-                                <h1 className="text-2xl font-bold text-indigo-700 mb-2">{companySettings?.name || 'Company Name'}</h1>
+                                <h1 className="text-2xl font-bold text-brand-600 mb-2">{companySettings?.name || 'Company Name'}</h1>
                                 <div className="text-sm text-gray-600 space-y-1">
                                     <p>{companySettings?.address}</p>
                                     <p>{companySettings?.email}</p>
@@ -285,8 +285,8 @@ const InvoiceView = ({ isOpen, onClose, invoice }) => {
                         </div>
 
                         {/* Bottom: Company Contacts */}
-                        <div className="border-t-2 border-indigo-500 pt-6 mt-12 text-center">
-                            <p className="text-indigo-900 font-bold text-lg">Thank you for your business!</p>
+                        <div className="border-t-2 border-brand-500 pt-6 mt-12 text-center">
+                            <p className="text-brand-600 font-bold text-lg italic">Thank you for your business!</p>
                             <div className="flex justify-center gap-6 mt-2 text-sm text-gray-500">
                                 {companySettings?.phone && (
                                     <span className="flex items-center gap-1">
