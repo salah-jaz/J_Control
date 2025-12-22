@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Calendar } from 'lucide-react';
+import { X, Calendar, Clock, PhoneCall, CheckCircle, ChevronRight } from 'lucide-react';
 import { saveFollowUp, saveCallLog } from '../services/db';
+import toast from 'react-hot-toast';
+import clsx from 'clsx';
 
 const LogCallModal = ({ isOpen, onClose, lead, onSave }) => {
     const [callNotes, setCallNotes] = useState('');
@@ -60,6 +62,10 @@ const LogCallModal = ({ isOpen, onClose, lead, onSave }) => {
 
     const handleSubmit = async (e, shouldSaveFollowUp) => {
         e.preventDefault();
+        if (!callNotes) {
+            toast.error("Call notes are required");
+            return;
+        }
         setLoading(true);
         try {
             // 1. Save Call Log
@@ -81,145 +87,173 @@ const LogCallModal = ({ isOpen, onClose, lead, onSave }) => {
                 });
             }
 
+            toast.success("Call activity logged successfully");
             onSave && onSave();
             onClose();
         } catch (error) {
             console.error(error);
-            alert('Failed to log call');
+            toast.error('Failed to log call activity');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                <div className="fixed inset-0 transition-opacity" aria-hidden="true" onClick={onClose}>
-                    <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                            <PhoneCall className="text-brand-600" size={24} />
+                            Log Call Activity
+                        </h3>
+                        <p className="text-sm text-slate-500 mt-1">Record discussion for {lead?.first_name} {lead?.last_name}.</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+                        <X size={20} />
+                    </button>
                 </div>
 
-                <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-                <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full">
-                    <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
-                            <div>
-                                <h3 className="text-lg font-medium leading-6 text-gray-900">Log Call & Set Follow-up</h3>
-                                <p className="text-xs text-gray-500 mt-1">Record what was discussed and schedule next steps</p>
-                            </div>
-                            <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-                                <X className="h-6 w-6" />
-                            </button>
+                <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                    {/* Call Details Section */}
+                    <div className="space-y-4">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                            Activity Details
+                        </h4>
+                        <div>
+                            <label className="label">Call Notes <span className="text-red-500">*</span></label>
+                            <textarea
+                                required
+                                rows="3"
+                                className="input min-h-[100px]"
+                                placeholder="Summary of the conversation..."
+                                value={callNotes}
+                                onChange={e => setCallNotes(e.target.value)}
+                            ></textarea>
                         </div>
 
-                        <form id="log-call-form" onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Call Notes *</label>
-                                <textarea
-                                    required
-                                    rows="3"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                    placeholder="e.g., Client said they need to discuss with their team..."
-                                    value={callNotes}
-                                    onChange={e => setCallNotes(e.target.value)}
-                                ></textarea>
+                                <label className="label">Call Outcome</label>
+                                <select
+                                    className="input"
+                                    value={callOutcome}
+                                    onChange={e => setCallOutcome(e.target.value)}
+                                >
+                                    <option value="">Select outcome</option>
+                                    <option value="Connected">Connected</option>
+                                    <option value="Left Voicemail">Left Voicemail</option>
+                                    <option value="No Answer">No Answer</option>
+                                    <option value="Interested">Interested</option>
+                                    <option value="Not Interested">Not Interested</option>
+                                    <option value="Busy">Busy</option>
+                                </select>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Call Outcome</label>
-                                    <select
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
-                                        value={callOutcome}
-                                        onChange={e => setCallOutcome(e.target.value)}
-                                    >
-                                        <option value="">Select outcome</option>
-                                        <option value="Connected">Connected</option>
-                                        <option value="Left Voicemail">Left Voicemail</option>
-                                        <option value="No Answer">No Answer</option>
-                                        <option value="Wrong Number">Wrong Number</option>
-                                        <option value="Busy">Busy</option>
-                                        <option value="Interested">Interested</option>
-                                        <option value="Not Interested">Not Interested</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                            <div>
+                                <label className="label">Duration (minutes)</label>
+                                <div className="relative">
+                                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                     <input
                                         type="number"
                                         min="0"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                        className="input !pl-10"
                                         placeholder="e.g. 15"
                                         value={duration}
                                         onChange={e => setDuration(e.target.value)}
                                     />
                                 </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <div className="border-t border-gray-100 pt-4 mt-4">
-                                <label className="block text-sm font-medium text-gray-900 mb-3">Set Follow-up (Optional)</label>
+                    {/* Follow-up Section */}
+                    <div className="pt-6 border-t border-gray-100">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">
+                            Schedule Next Step
+                        </h4>
 
-                                <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-500 mb-2 uppercase">Quick Select</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            <button type="button" onClick={() => handleQuickSelect('today')} className="px-3 py-1.5 border border-gray-300 rounded bg-white text-xs font-medium text-gray-700 hover:bg-gray-50">Today</button>
-                                            <button type="button" onClick={() => handleQuickSelect('tomorrow')} className="px-3 py-1.5 border border-gray-300 rounded bg-white text-xs font-medium text-gray-700 hover:bg-gray-50">Tomorrow</button>
-                                            <button type="button" onClick={() => handleQuickSelect('nextMonday')} className="px-3 py-1.5 border border-gray-300 rounded bg-white text-xs font-medium text-gray-700 hover:bg-gray-50">Next Monday</button>
-                                            <button type="button" onClick={() => handleQuickSelect('nextWeek')} className="px-3 py-1.5 border border-gray-300 rounded bg-white text-xs font-medium text-gray-700 hover:bg-gray-50">Next Week</button>
-                                            <button type="button" onClick={() => handleQuickSelect('clear')} className="px-3 py-1.5 border border-red-200 rounded bg-white text-xs font-medium text-red-600 hover:bg-red-50 ml-auto">Clear</button>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Date & Time</label>
-                                        <input
-                                            type="datetime-local"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                            value={scheduledAt}
-                                            onChange={e => setScheduledAt(e.target.value)}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Note</label>
-                                        <input
-                                            type="text"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                            placeholder="e.g. Client requested callback..."
-                                            value={followUpNotes}
-                                            onChange={e => setFollowUpNotes(e.target.value)}
-                                        />
-                                    </div>
+                        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-6">
+                            <div>
+                                <label className="label text-xs !mb-3">Quick Schedule</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {['today', 'tomorrow', 'nextMonday', 'nextWeek'].map((t) => (
+                                        <button
+                                            key={t}
+                                            type="button"
+                                            onClick={() => handleQuickSelect(t)}
+                                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:border-brand-500 hover:text-brand-600 transition-all shadow-sm"
+                                        >
+                                            {t.replace(/([A-Z])/g, ' $1').trim()}
+                                        </button>
+                                    ))}
+                                    <button type="button" onClick={() => handleQuickSelect('clear')} className="px-4 py-2 bg-red-50 border border-red-100 rounded-xl text-xs font-bold text-red-600 hover:bg-red-100 transition-all shadow-sm ml-auto">
+                                        Clear
+                                    </button>
                                 </div>
                             </div>
-                        </form>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="label">Next Follow-up Date</label>
+                                    <input
+                                        type="datetime-local"
+                                        className="input"
+                                        value={scheduledAt}
+                                        onChange={e => setScheduledAt(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="label">Follow-up Goal</label>
+                                    <input
+                                        type="text"
+                                        className="input"
+                                        placeholder="Goal for next call..."
+                                        value={followUpNotes}
+                                        onChange={e => setFollowUpNotes(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-2">
-                        <button
-                            type="button"
-                            onClick={(e) => handleSubmit(e, true)}
-                            disabled={loading || !scheduledAt}
-                            className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm ${!scheduledAt ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                            {loading && scheduledAt ? 'Saving...' : 'Log Call + Set Follow-up'}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={(e) => handleSubmit(e, false)}
-                            disabled={loading}
-                            className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm"
-                        >
-                            {loading && !scheduledAt ? 'Saving...' : 'Log Call Only'}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm"
-                        >
-                            Cancel
-                        </button>
-                    </div>
+                </div>
+
+                <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex flex-col sm:flex-row-reverse gap-3 flex-shrink-0">
+                    <button
+                        type="button"
+                        onClick={(e) => handleSubmit(e, true)}
+                        disabled={loading || !scheduledAt}
+                        className={clsx(
+                            "btn-primary flex items-center justify-center gap-2",
+                            (!scheduledAt || loading) && "opacity-50 cursor-not-allowed"
+                        )}
+                    >
+                        {loading && scheduledAt ? 'Processing...' : (
+                            <>
+                                <CheckCircle size={18} />
+                                Log & Schedule
+                            </>
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(e) => handleSubmit(e, false)}
+                        disabled={loading}
+                        className="btn-secondary !bg-white flex items-center justify-center gap-2"
+                    >
+                        {loading && !scheduledAt ? 'Processing...' : (
+                            <>
+                                <PhoneCall size={18} />
+                                Log Call Only
+                            </>
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="btn-secondary !border-transparent !bg-transparent text-slate-400 hover:text-slate-600 sm:mr-auto"
+                    >
+                        Cancel
+                    </button>
                 </div>
             </div>
         </div>

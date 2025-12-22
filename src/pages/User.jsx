@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Eye, Edit2, Trash2 } from "lucide-react";
+import { Eye, Edit2, Trash2, UserPlus, Search, X, Shield, Mail, Phone, UserCheck } from "lucide-react";
 import { getUsers, saveUser, deleteUser } from "../services/db";
 import toast from "react-hot-toast";
+import clsx from "clsx";
 
 const emptyForm = {
   name: "",
@@ -96,98 +97,176 @@ export default function Users() {
     }
   };
 
-  const inputClass = (f) => `w-full p-2 border rounded outline-none ${errors[f] ? "border-red-500" : "border-gray-300"}`;
-  const Req = () => <span className="text-red-500 ml-1">*</span>;
+  const inputClass = (f) => `input ${errors[f] ? "border-red-500 focus:border-red-500 focus:ring-red-200" : ""}`;
+  const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
   return (
-    <div className="p-6 space-y-6 font-sans animate-fadeIn">
+    <div className="p-6 lg:p-10 w-full mx-auto animate-fade-in space-y-8 overflow-hidden">
       {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold">Users</h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">User Management</h1>
+          <p className="text-slate-500 mt-1 text-lg">Manage team members and their access permissions.</p>
+        </div>
         <button
           onClick={openAdd}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md shadow-indigo-200"
+          className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
         >
-          + Add User
+          <UserPlus size={20} />
+          Add User
         </button>
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-xl shadow overflow-x-auto border border-gray-200">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-gray-50/50 text-xs text-gray-500 uppercase border-b border-gray-100">
-            <tr>
-              <th className="p-4 font-semibold">Name</th>
-              <th className="p-4 font-semibold">Email</th>
-              <th className="p-4 font-semibold">Role</th>
-              <th className="p-4 font-semibold">Status</th>
-              <th className="p-4 text-center font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {loading ? (
-              <tr><td colSpan="5" className="p-8 text-center text-gray-500">Loading users...</td></tr>
-            ) : data.length === 0 ? (
+      <div className="card p-0 overflow-hidden min-h-[400px]">
+        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <h3 className="font-bold text-slate-800">Team Members</h3>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input type="text" placeholder="Search users..." className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all" />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
-                <td colSpan="5" className="p-8 text-center text-gray-400">
-                  No users found
-                </td>
+                <th className="px-6 py-4">Name</th>
+                <th className="px-6 py-4">Email & Phone</th>
+                <th className="px-6 py-4">Role</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
-            ) : (
-              data.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="p-4 font-medium text-gray-900">{item.name}</td>
-                  <td className="p-4 text-gray-600">{item.email}</td>
-                  <td className="p-4 text-gray-600">{item.role}</td>
-                  <td className="p-4">
-                    <span
-                      className={`px-2 py-1 rounded text-xs ${item.status === "Active"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                        }`}
-                    >
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-center">
-                    <div className="flex justify-center gap-3">
-                      <button className="text-blue-600 hover:text-blue-800 transition"
-                        onClick={() => openViewModal(item)} title="View">
-                        <Eye size={18} />
-                      </button>
-                      <button className="text-yellow-600 hover:text-yellow-800 transition"
-                        onClick={() => openEdit(item)} title="Edit">
-                        <Edit2 size={18} />
-                      </button>
-                      <button className="text-red-600 hover:text-red-800 transition"
-                        onClick={() => handleDelete(item.id)} title="Delete">
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {loading ? (
+                <tr><td colSpan="5" className="p-12 text-center text-slate-400 italic">Loading users...</td></tr>
+              ) : data.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="p-12 text-center text-slate-400 italic">
+                    No users found
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                data.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-lg">
+                          {item.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900">{item.name}</p>
+                          <p className="text-xs text-slate-500">{item.department || "No Dept."}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-slate-600 text-xs">
+                          <Mail size={12} className="text-slate-400" /> {item.email}
+                        </div>
+                        {item.phone && (
+                          <div className="flex items-center gap-2 text-slate-600 text-xs">
+                            <Phone size={12} className="text-slate-400" /> {item.phone}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 text-slate-600 text-xs font-semibold w-fit border border-gray-200">
+                        <Shield size={12} />
+                        {item.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={clsx(
+                          "px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide border",
+                          item.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-red-50 text-red-700 border-red-100"
+                        )}
+                      >
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <button className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                          onClick={() => openViewModal(item)} title="View">
+                          <Eye size={18} />
+                        </button>
+                        <button className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                          onClick={() => openEdit(item)} title="Edit">
+                          <Edit2 size={18} />
+                        </button>
+                        <button className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          onClick={() => handleDelete(item.id)} title="Delete">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* VIEW MODAL */}
       {openView && viewItem && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm p-4">
-          <div className="bg-white max-w-xl w-full rounded-xl p-8 shadow-2xl">
-            <h2 className="text-xl font-bold mb-6 text-gray-800">User Details</h2>
-            <div className="grid grid-cols-2 gap-6 text-sm">
-              <div><p className="text-gray-400 text-xs uppercase">Name</p><p className="font-semibold">{viewItem.name}</p></div>
-              <div><p className="text-gray-400 text-xs uppercase">Email</p><p className="font-semibold">{viewItem.email}</p></div>
-              <div><p className="text-gray-400 text-xs uppercase">Phone</p><p className="font-semibold">{viewItem.phone || "-"}</p></div>
-              <div><p className="text-gray-400 text-xs uppercase">Role</p><p className="font-semibold">{viewItem.role}</p></div>
-              <div><p className="text-gray-400 text-xs uppercase">Department</p><p className="font-semibold">{viewItem.department || "-"}</p></div>
-              <div><p className="text-gray-400 text-xs uppercase">Status</p><p className="font-semibold">{viewItem.status}</p></div>
-              <div className="col-span-2"><p className="text-gray-400 text-xs uppercase">Notes</p><p className="font-semibold whitespace-pre-wrap">{viewItem.notes || "-"}</p></div>
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white max-w-xl w-full rounded-2xl shadow-2xl animate-slide-up overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">User Profile</h2>
+              <button onClick={() => setOpenView(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+                <X size={20} />
+              </button>
             </div>
-            <div className="text-right mt-6">
-              <button onClick={() => setOpenView(false)} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition">Close</button>
+
+            <div className="p-8">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-20 h-20 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 text-3xl font-bold border-4 border-white shadow-lg">
+                  {viewItem.name.charAt(0)}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900">{viewItem.name}</h3>
+                  <p className="text-slate-500 font-medium">{viewItem.role} • {viewItem.department || "No Department"}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Contact Email</p>
+                  <div className="flex items-center gap-2 font-semibold text-slate-800">
+                    <Mail size={16} className="text-brand-500" />
+                    {viewItem.email}
+                  </div>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Phone Number</p>
+                  <div className="flex items-center gap-2 font-semibold text-slate-800">
+                    <Phone size={16} className="text-brand-500" />
+                    {viewItem.phone || "Not Provided"}
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Account Status</p>
+                  <div className="flex items-center gap-2 font-semibold text-slate-800">
+                    <UserCheck size={16} className={viewItem.status === "Active" ? "text-emerald-500" : "text-red-500"} />
+                    {viewItem.status}
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 col-span-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Notes</p>
+                  <p className="text-sm text-slate-600 italic whitespace-pre-wrap">{viewItem.notes || "No additional notes."}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end">
+              <button onClick={() => setOpenView(false)} className="btn-secondary">Close Profile</button>
             </div>
           </div>
         </div>
@@ -195,15 +274,23 @@ export default function Users() {
 
       {/* FORM MODAL */}
       {openForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm p-4">
-          <div className="bg-white w-full max-w-2xl rounded-xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-6 text-gray-800">
-              {form.id ? "Edit User" : "Add New User"}
-            </h2>
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto animate-slide-up flex flex-col">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                  {form.id ? "Edit User" : "Add New User"}
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">Fill in the user's account details.</p>
+              </div>
+              <button onClick={() => setOpenForm(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+                <X size={20} />
+              </button>
+            </div>
 
-            <div className="grid md:grid-cols-2 gap-5">
+            <div className="p-8 grid md:grid-cols-2 gap-6">
               <label className="block">
-                <span className="text-sm font-medium text-gray-700 mb-1 block">Name <Req /></span>
+                <span className="label">Name <Req /></span>
                 <input
                   className={inputClass("name")}
                   value={form.name}
@@ -211,11 +298,11 @@ export default function Users() {
                     setForm({ ...form, name: e.target.value })
                   }
                 />
-                {errors.name && <span className="text-xs text-red-500">{errors.name}</span>}
+                {errors.name && <span className="text-xs text-red-500 mt-1 block">{errors.name}</span>}
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-gray-700 mb-1 block">Email <Req /></span>
+                <span className="label">Email <Req /></span>
                 <input
                   className={inputClass("email")}
                   value={form.email}
@@ -223,11 +310,11 @@ export default function Users() {
                     setForm({ ...form, email: e.target.value })
                   }
                 />
-                {errors.email && <span className="text-xs text-red-500">{errors.email}</span>}
+                {errors.email && <span className="text-xs text-red-500 mt-1 block">{errors.email}</span>}
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-gray-700 mb-1 block">Phone</span>
+                <span className="label">Phone</span>
                 <input
                   className={inputClass("phone")}
                   value={form.phone}
@@ -238,8 +325,8 @@ export default function Users() {
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-gray-700 mb-1 block">
-                  Password {form.id ? <span className="text-gray-400 font-normal ml-1">(Leave blank to keep current)</span> : <Req />}
+                <span className="label">
+                  Password {form.id ? <span className="text-slate-400 font-normal ml-1 text-xs">(Optional)</span> : <Req />}
                 </span>
                 <input
                   type="password"
@@ -249,12 +336,13 @@ export default function Users() {
                     setForm({ ...form, password: e.target.value })
                   }
                   autoComplete="new-password"
+                  placeholder={form.id ? "Leave blank to keep current" : ""}
                 />
-                {errors.password && <span className="text-xs text-red-500">{errors.password}</span>}
+                {errors.password && <span className="text-xs text-red-500 mt-1 block">{errors.password}</span>}
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-gray-700 mb-1 block">Role <Req /></span>
+                <span className="label">Role <Req /></span>
                 <select
                   className={inputClass("role")}
                   value={form.role}
@@ -266,11 +354,11 @@ export default function Users() {
                   <option>Manager</option>
                   <option>Staff</option>
                 </select>
-                {errors.role && <span className="text-xs text-red-500">{errors.role}</span>}
+                {errors.role && <span className="text-xs text-red-500 mt-1 block">{errors.role}</span>}
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-gray-700 mb-1 block">Department</span>
+                <span className="label">Department</span>
                 <input
                   className={inputClass("department")}
                   value={form.department}
@@ -281,7 +369,7 @@ export default function Users() {
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-gray-700 mb-1 block">Status</span>
+                <span className="label">Status</span>
                 <select
                   className={inputClass("status")}
                   value={form.status}
@@ -295,9 +383,9 @@ export default function Users() {
               </label>
 
               <label className="md:col-span-2 block">
-                <span className="text-sm font-medium text-gray-700 mb-1 block">Notes</span>
+                <span className="label">Notes</span>
                 <textarea
-                  className={`${inputClass("notes")} h-24`}
+                  className={`${inputClass("notes")} min-h-[100px]`}
                   value={form.notes}
                   onChange={(e) =>
                     setForm({ ...form, notes: e.target.value })
@@ -306,16 +394,16 @@ export default function Users() {
               </label>
             </div>
 
-            <div className="flex justify-end gap-3 mt-8">
+            <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-gray-50/50">
               <button
                 onClick={() => setOpenForm(false)}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+                className="btn-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md shadow-indigo-200"
+                className="btn-primary"
               >
                 Save User
               </button>

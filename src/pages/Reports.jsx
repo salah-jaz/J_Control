@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getReportsSummary, getReportDetails, getReportFilters } from "../services/db";
+import { Download, FileText, TrendingUp, TrendingDown, DollarSign, Filter, X } from "lucide-react";
+import clsx from "clsx";
 
 // =====================================
 // Report Types
@@ -8,70 +10,71 @@ const REPORTS = [
   { key: "income", label: "Income Report" },
   { key: "expense", label: "Expense Report" },
   { key: "invoices", label: "Invoices Report" },
-  { key: "pl", label: "Profit & Loss" }, // Basic combined view
-  // { key: "bank", label: "Bank Statement" }, // Not fully implemented yet
-  // { key: "ledger", label: "Customer Ledger" }, // Not fully implemented yet
-  // { key: "monthly", label: "Monthly / Yearly" }, // Not fully implemented yet
+  { key: "pl", label: "Profit & Loss" },
 ];
 
 // =====================================
-// Filters Bar (Sticky)
+// Filters Bar
 // =====================================
 const FiltersBar = ({ filters, setFilters, options }) => (
-  <div className="sticky top-0 z-10 bg-white/90 backdrop-blur rounded-2xl shadow p-5 mb-6">
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
+    <div className="flex items-center gap-2 mb-4 text-slate-800 font-bold">
+      <Filter size={18} className="text-brand-600" />
+      Filter Reports
+    </div>
     <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
       <div>
-        <label className="text-xs font-semibold text-gray-500">FROM</label>
+        <label className="label">Start Date</label>
         <input
           type="date"
-          className="w-full mt-1 border rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500"
+          className="input"
           value={filters.from}
           onChange={(e) => setFilters({ ...filters, from: e.target.value })}
         />
       </div>
       <div>
-        <label className="text-xs font-semibold text-gray-500">TO</label>
+        <label className="label">End Date</label>
         <input
           type="date"
-          className="w-full mt-1 border rounded-xl px-3 py-2"
+          className="input"
           value={filters.to}
           onChange={(e) => setFilters({ ...filters, to: e.target.value })}
         />
       </div>
       <div>
-        <label className="text-xs font-semibold text-gray-500">COMPANY / PARTY</label>
+        <label className="label">Company / Party</label>
         <select
-          className="w-full mt-1 border rounded-xl px-3 py-2"
+          className="input"
           value={filters.company}
           onChange={(e) => setFilters({ ...filters, company: e.target.value })}
         >
-          <option value="">All</option>
+          <option value="">All Companies</option>
           {options.companies.map((c, i) => (
             <option key={i} value={c}>{c}</option>
           ))}
         </select>
       </div>
       <div>
-        <label className="text-xs font-semibold text-gray-500">ACCOUNT</label>
+        <label className="label">Account</label>
         <select
-          className="w-full mt-1 border rounded-xl px-3 py-2"
+          className="input"
           value={filters.account}
           onChange={(e) => setFilters({ ...filters, account: e.target.value })}
         >
-          <option value="">All</option>
+          <option value="">All Accounts</option>
           {options.accounts.map((a, i) => (
             <option key={i} value={a}>{a}</option>
           ))}
         </select>
       </div>
       <div>
-        <label className="text-xs font-semibold text-gray-500">CATEGORY</label>
+        <label className="label">Category</label>
         <select
-          className="w-full mt-1 border rounded-xl px-3 py-2"
+          className="input"
           value={filters.category}
           onChange={(e) => setFilters({ ...filters, category: e.target.value })}
         >
-          <option value="">All</option>
+          <option value="">All Categories</option>
           {options.categories.map((c, i) => (
             <option key={i} value={c}>{c}</option>
           ))}
@@ -86,9 +89,9 @@ const FiltersBar = ({ filters, setFilters, options }) => (
             account: "",
             category: ""
           })}
-          className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-xl transition-colors"
+          className="btn-secondary w-full flex items-center justify-center gap-2"
         >
-          Clear Filters
+          <X size={16} /> Clear
         </button>
       </div>
     </div>
@@ -99,21 +102,28 @@ const FiltersBar = ({ filters, setFilters, options }) => (
 // KPI Summary Cards
 // =====================================
 const SummaryCards = ({ stats }) => (
-  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     {[
-      { label: "Total Income", value: stats.totalIncome, color: "from-green-500 to-emerald-600" },
-      { label: "Total Expense", value: stats.totalExpense, color: "from-red-500 to-rose-600" },
-      { label: "Net Profit", value: stats.netProfit, color: "from-blue-600 to-indigo-600" },
-      // { label: "Closing Balance", value: stats.closingBalance, color: "from-gray-600 to-gray-800" } // Hidden until implemented
+      { label: "Total Income", value: stats.totalIncome, color: "bg-emerald-500", icon: TrendingUp, textColor: "text-emerald-500" },
+      { label: "Total Expense", value: stats.totalExpense, color: "bg-red-500", icon: TrendingDown, textColor: "text-red-500" },
+      { label: "Net Profit", value: stats.netProfit, color: "bg-brand-500", icon: DollarSign, textColor: "text-brand-500" },
     ].map((item, i) => (
       <div
         key={i}
-        className={`rounded-2xl bg-gradient-to-br ${item.color} text-white p-5 shadow`}
+        className="card group hover:border-brand-200 transition-all duration-300 relative overflow-hidden"
       >
-        <p className="text-sm opacity-80">{item.label}</p>
-        <h3 className="text-2xl font-bold mt-2">
-          ₹ {parseFloat(item.value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-        </h3>
+        <div className="relative z-10 flex justify-between items-start">
+          <div>
+            <p className="text-sm font-bold text-slate-500 uppercase tracking-wide mb-1">{item.label}</p>
+            <h3 className="text-3xl font-bold text-slate-800 tracking-tight">
+              ₹ {parseFloat(item.value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </h3>
+          </div>
+          <div className={`p-3 rounded-2xl ${item.color} bg-opacity-10`}>
+            <item.icon className={`w-6 h-6 ${item.textColor}`} />
+          </div>
+        </div>
+        <div className={`absolute bottom-0 left-0 h-1 w-full ${item.color} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left`}></div>
       </div>
     ))}
   </div>
@@ -123,16 +133,17 @@ const SummaryCards = ({ stats }) => (
 // Report Tabs
 // =====================================
 const ReportTabs = ({ active, setActive }) => (
-  <div className="flex flex-wrap gap-2 mb-6">
+  <div className="flex flex-wrap gap-2 mb-6 p-1 bg-white border border-gray-100 rounded-xl w-fit shadow-sm">
     {REPORTS.map((r) => (
       <button
         key={r.key}
         onClick={() => setActive(r)}
-        className={`px-5 py-2 rounded-full text-sm font-medium transition
-          ${active.key === r.key
-            ? "bg-blue-600 text-white shadow"
-            : "bg-gray-100 hover:bg-gray-200"
-          }`}
+        className={clsx(
+          "px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200",
+          active.key === r.key
+            ? "bg-slate-900 text-white shadow-md shadow-slate-200"
+            : "text-slate-500 hover:text-slate-900 hover:bg-gray-50"
+        )}
       >
         {r.label}
       </button>
@@ -144,47 +155,50 @@ const ReportTabs = ({ active, setActive }) => (
 // Report Table
 // =====================================
 const ReportTable = ({ report, data }) => (
-  <div className="bg-white rounded-2xl shadow p-6">
-    <div className="flex justify-between items-center mb-4">
-      <h2 className="text-lg font-semibold">{report.label}</h2>
+  <div className="card p-0 overflow-hidden">
+    <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+      <div className="flex items-center gap-2">
+        <FileText size={20} className="text-slate-400" />
+        <h2 className="text-lg font-bold text-slate-800 tracking-tight">{report.label} Details</h2>
+      </div>
       <div className="flex gap-2">
-        <button className="px-4 py-2 text-sm rounded-xl border hover:bg-gray-100">
-          Export PDF
+        <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-600 transition-colors shadow-sm">
+          <Download size={16} /> Export PDF
         </button>
-        <button className="px-4 py-2 text-sm rounded-xl border hover:bg-gray-100">
-          Export Excel
+        <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-600 transition-colors shadow-sm">
+          <Download size={16} /> Export Excel
         </button>
       </div>
     </div>
 
     <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
-        <thead className="bg-gray-100">
+        <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
           <tr>
-            <th className="p-3 text-left">Date</th>
-            <th className="p-3 text-left">Description</th>
-            <th className="p-3 text-right">Debit</th>
-            <th className="p-3 text-right">Credit</th>
-            {/* <th className="p-3 text-right">Balance</th> // Balance logic needs work */}
+            <th className="px-6 py-4 text-left">Date</th>
+            <th className="px-6 py-4 text-left">Description</th>
+            <th className="px-6 py-4 text-right">Debit</th>
+            <th className="px-6 py-4 text-right">Credit</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-50">
           {data.length === 0 ? (
             <tr>
-              <td colSpan="5" className="p-5 text-center text-gray-500">No records found for the selected period.</td>
+              <td colSpan="4" className="px-6 py-12 text-center text-slate-500 italic">
+                No records found for the selected period.
+              </td>
             </tr>
           ) : (
             data.map((row, index) => (
-              <tr key={index} className="border-b hover:bg-gray-50">
-                <td className="p-3">{row.date}</td>
-                <td className="p-3">{row.description}</td>
-                <td className="p-3 text-right font-mono text-red-600">
+              <tr key={index} className="hover:bg-slate-50/50 transition-colors">
+                <td className="px-6 py-4 font-mono text-slate-600">{row.date}</td>
+                <td className="px-6 py-4 text-slate-800 font-medium">{row.description}</td>
+                <td className="px-6 py-4 text-right font-mono font-medium text-red-600">
                   {row.debit !== '-' ? `₹${parseFloat(row.debit).toLocaleString()}` : '-'}
                 </td>
-                <td className="p-3 text-right font-mono text-green-600">
+                <td className="px-6 py-4 text-right font-mono font-medium text-emerald-600">
                   {row.credit !== '-' ? `₹${parseFloat(row.credit).toLocaleString()}` : '-'}
                 </td>
-                {/* <td className="p-3 text-right font-semibold">₹0</td> */}
               </tr>
             ))
           )}
@@ -241,16 +255,20 @@ const Reports = () => {
   }, [filters, active]);
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6">Reports & Analytics</h1>
+    <div className="p-8 max-w-[1600px] mx-auto animate-fade-in space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Financial Reports</h1>
+        <p className="text-slate-500 mt-1 text-lg">Gain insights into your business performance.</p>
+      </div>
 
       <FiltersBar filters={filters} setFilters={setFilters} options={filterOptions} />
 
       <SummaryCards stats={stats} />
 
-      <ReportTabs active={active} setActive={setActive} />
-
-      <ReportTable report={active} data={reportData} />
+      <div className="space-y-4">
+        <ReportTabs active={active} setActive={setActive} />
+        <ReportTable report={active} data={reportData} />
+      </div>
     </div>
   );
 };
