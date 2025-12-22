@@ -167,45 +167,51 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
 
     // Helper to get input classes based on error state
     const getInputClassName = (fieldName) => `
-        w-full px-4 py-2 border rounded-lg focus:ring-2 outline-none transition-colors
+        input
         ${errors[fieldName]
-            ? 'border-red-500 focus:ring-red-200 focus:border-red-500 bg-red-50'
-            : 'border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-200'}
-        ${readOnly ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}
+            ? '!border-red-500 bg-red-50 focus:!ring-red-200 focus:!border-red-500'
+            : ''}
+        ${readOnly ? 'bg-gray-100 text-slate-500 cursor-not-allowed' : ''}
     `;
 
     // Helper to render error message
     const ErrorMsg = ({ field }) => errors[field] ? (
-        <p className="text-xs text-red-500 mt-1 flex items-center gap-1 animate-fadeIn">
-            <span>•</span> {errors[field]}
+        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1.5 font-medium animate-fadeIn">
+            <span className="w-1 h-1 rounded-full bg-red-500"></span> {errors[field]}
         </p>
     ) : null;
 
     // Helper for Label with Mandatory Mark
     const Label = ({ children, required }) => (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-            {children} {required && <span className="text-red-500">*</span>}
+        <label className="block text-sm font-semibold text-slate-700 mb-2">
+            {children} {required && <span className="text-red-500 ml-1">*</span>}
         </label>
     );
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-100 animate-slide-up">
                 {/* Header */}
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
-                    <h3 className="text-xl font-bold text-gray-800">
-                        {readOnly ? 'View Client Company' : (client ? 'Edit Client Company' : 'Add New Client Company')}
-                    </h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-                        <X className="h-6 w-6" />
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                            {readOnly ? 'Company Details' : (client ? 'Edit Company' : 'New Client Company')}
+                        </h3>
+                        <p className="text-sm text-slate-500 mt-1">
+                            {readOnly ? 'View client and tax information' : 'Fill in the details below to manage client.'}
+                        </p>
+                    </div>
+
+                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+                        <X className="h-5 w-5" />
                     </button>
                 </div>
 
                 {/* Body */}
                 <div className="flex flex-1 overflow-hidden">
                     {/* Sidebar Tabs */}
-                    <div className="w-64 bg-gray-50 border-r border-gray-200 overflow-y-auto hidden md:block">
-                        <nav className="p-4 space-y-2">
+                    <div className="w-64 bg-slate-50 border-r border-gray-100 overflow-y-auto hidden md:block py-6">
+                        <nav className="px-4 space-y-1">
                             {tabs.map(tab => {
                                 // Check if tab has errors
                                 const hasTabErrors = (
@@ -219,16 +225,16 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                     <button
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
-                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                                            ? 'bg-white text-indigo-600 shadow-sm border border-gray-100'
-                                            : 'text-gray-600 hover:bg-gray-100'
+                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === tab.id
+                                            ? 'bg-white text-brand-700 shadow-sm ring-1 ring-gray-200/50'
+                                            : 'text-slate-500 hover:bg-white/50 hover:text-slate-900'
                                             }`}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <tab.icon className={`h-5 w-5 ${hasTabErrors ? 'text-red-500' : ''}`} />
+                                            <tab.icon className={`h-[18px] w-[18px] ${hasTabErrors ? 'text-red-500' : (activeTab === tab.id ? 'text-brand-600' : 'text-slate-400')}`} />
                                             {tab.label}
                                         </div>
-                                        {hasTabErrors && <span className="h-2 w-2 rounded-full bg-red-500"></span>}
+                                        {hasTabErrors && <span className="h-1.5 w-1.5 rounded-full bg-red-500 shadow-sm"></span>}
                                     </button>
                                 );
                             })}
@@ -242,19 +248,22 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                             <select
                                 value={activeTab}
                                 onChange={(e) => setActiveTab(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                className="input"
                             >
                                 {tabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
                             </select>
                         </div>
 
-                        <form id="client-form" onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
+                        <form id="client-form" onSubmit={handleSubmit} className="space-y-8 max-w-3xl mx-auto">
                             <fieldset disabled={readOnly} className="contents">
 
                                 {activeTab === 'basic' && (
                                     <div className="space-y-6 animate-fadeIn">
-                                        <h4 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">Basic Company Information</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4 mb-2">
+                                            <h4 className="text-lg font-bold text-slate-800">Company Information</h4>
+                                            <p className="text-sm text-slate-500">Legal entity details and branding.</p>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                                             <div className="col-span-2">
                                                 <Label required>Company Name</Label>
                                                 <input
@@ -301,7 +310,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                             </div>
                                             <div className="col-span-2">
                                                 <Label>Company Logo URL</Label>
-                                                <input type="text" name="company_logo" value={formData.company_logo} onChange={handleChange} className={getInputClassName('company_logo')} placeholder="https://..." />
+                                                <input type="text" name="company_logo" value={formData.company_logo} onChange={handleChange} className={getInputClassName('company_logo')} placeholder="https://example.com/logo.png" />
                                             </div>
                                         </div>
                                     </div>
@@ -309,8 +318,11 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
 
                                 {activeTab === 'contact' && (
                                     <div className="space-y-6 animate-fadeIn">
-                                        <h4 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">Contact Details</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4 mb-2">
+                                            <h4 className="text-lg font-bold text-slate-800">Contact Details</h4>
+                                            <p className="text-sm text-slate-500">Primary point of contact for this client.</p>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                                             <div>
                                                 <Label required>Contact Person Name</Label>
                                                 <input type="text" name="contact_person_name" value={formData.contact_person_name} onChange={handleChange} className={getInputClassName('contact_person_name')} />
@@ -332,7 +344,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                             </div>
                                             <div className="col-span-2">
                                                 <Label>Website URL</Label>
-                                                <input type="url" name="website_url" value={formData.website_url} onChange={handleChange} className={getInputClassName('website_url')} />
+                                                <input type="url" name="website_url" value={formData.website_url} onChange={handleChange} className={getInputClassName('website_url')} placeholder="https://" />
                                             </div>
                                         </div>
                                     </div>
@@ -340,8 +352,11 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
 
                                 {activeTab === 'address' && (
                                     <div className="space-y-6 animate-fadeIn">
-                                        <h4 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">Address Details</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4 mb-2">
+                                            <h4 className="text-lg font-bold text-slate-800">Address Details</h4>
+                                            <p className="text-sm text-slate-500">Billing and shipping locations.</p>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                                             <div className="col-span-2">
                                                 <Label>Address Line 1</Label>
                                                 <input type="text" name="address_line_1" value={formData.address_line_1} onChange={handleChange} className={getInputClassName('address_line_1')} />
@@ -376,8 +391,11 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
 
                                 {activeTab === 'tax' && (
                                     <div className="space-y-6 animate-fadeIn">
-                                        <h4 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">Tax & Compliance</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4 mb-2">
+                                            <h4 className="text-lg font-bold text-slate-800">Tax & Compliance</h4>
+                                            <p className="text-sm text-slate-500">GST, PAN, and other regulatory details.</p>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                                             <div>
                                                 <Label required>GST Registration Type</Label>
                                                 <select name="gst_registration_type" value={formData.gst_registration_type} onChange={handleChange} className={getInputClassName('gst_registration_type')}>
@@ -437,8 +455,11 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
 
                                 {activeTab === 'bank' && (
                                     <div className="space-y-6 animate-fadeIn">
-                                        <h4 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">Bank Details</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4 mb-2">
+                                            <h4 className="text-lg font-bold text-slate-800">Bank Details</h4>
+                                            <p className="text-sm text-slate-500">For invoice generation and payments.</p>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                                             <div className="col-span-2">
                                                 <Label>Bank Name</Label>
                                                 <input type="text" name="bank_name" value={formData.bank_name} onChange={handleChange} className={getInputClassName('bank_name')} />
@@ -472,26 +493,32 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-gray-200 flex justify-end gap-3 bg-gray-50 flex-shrink-0">
-                    <button onClick={onClose} className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
-                        {readOnly ? 'Close' : 'Cancel'}
-                    </button>
-                    {!readOnly && (
-                        <button
-                            form="client-form"
-                            type="submit"
-                            disabled={Object.keys(errors).length > 0}
-                            className={`flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white rounded-lg shadow-md transition-colors
-                                ${Object.keys(errors).length > 0 ? 'bg-indigo-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'}`}
-                        >
-                            <Save className="h-4 w-4" />
-                            Save Client
+                <div className="p-6 border-t border-gray-100 flex justify-between gap-3 bg-white flex-shrink-0">
+                    <div className="text-xs text-gray-500 italic mt-2">
+                        {!readOnly && <span className="text-red-500">* Required fields</span>}
+                    </div>
+                    <div className="flex gap-4">
+                        <button onClick={onClose} className="btn-secondary">
+                            {readOnly ? 'Close' : 'Cancel'}
                         </button>
-                    )}
+                        {!readOnly && (
+                            <button
+                                form="client-form"
+                                type="submit"
+                                disabled={Object.keys(errors).length > 0}
+                                className={`btn-primary flex items-center gap-2
+                                    ${Object.keys(errors).length > 0 ? 'opacity-50 cursor-not-allowed shadow-none' : ''}`}
+                            >
+                                <Save className="h-4 w-4" />
+                                Save Client
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
+
 
 export default ClientForm;

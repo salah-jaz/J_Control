@@ -1,27 +1,59 @@
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from 'react-router-dom'; // Assuming react-router-dom for useLocation
+import { Bell } from 'lucide-react'; // Assuming lucide-react for Bell icon
+
+// Helper function to get page title based on path
+const getPageTitle = (pathname) => {
+    switch (pathname) {
+        case '/':
+            return 'Dashboard';
+        case '/settings':
+            return 'Settings';
+        case '/users':
+            return 'Users Management';
+        // Add more cases as needed
+        default:
+            // Capitalize the first letter and replace hyphens with spaces for other paths
+            const pathSegment = pathname.split('/').pop();
+            return pathSegment ? pathSegment.charAt(0).toUpperCase() + pathSegment.slice(1).replace(/-/g, ' ') : 'Page';
+    }
+};
 
 const Layout = ({ children, title }) => {
     const { user } = useAuth();
+    const location = useLocation(); // Initialize useLocation hook
 
     return (
-        <div className="min-h-screen bg-gray-50 flex">
+        <div className="min-h-screen bg-[#F3F4F6] font-sans">
             <Sidebar />
-            <div className="flex-1 ml-64 flex flex-col min-w-0">
-                <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-8 sticky top-0 z-10 shadow-sm/50">
-                    <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
-                    <div className="flex items-center gap-4">
-                        <div className="text-sm text-right hidden sm:block">
-                            <p className="font-medium text-gray-900">{user?.name}</p>
-                            <p className="text-gray-500 text-xs uppercase tracking-wider">{user?.role}</p>
-                        </div>
-                        <div className="h-9 w-9 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold border border-indigo-200 shadow-sm">
-                            {user?.name?.charAt(0)}
+            <div className="ml-64 flex flex-col min-h-screen transition-all duration-300">
+                {/* Header */}
+                <header className="bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-gray-100/50 px-8 py-4 flex justify-between items-center shadow-sm">
+                    <h2 className="text-2xl font-bold text-slate-800 tracking-tight">
+                        {getPageTitle(location.pathname)}
+                    </h2>
+                    <div className="flex items-center gap-6">
+                        <button className="relative p-2 text-slate-400 hover:text-brand-600 transition-colors rounded-full hover:bg-brand-50">
+                            <Bell className="h-5 w-5" />
+                            <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
+                        </button>
+                        <div className="h-8 w-px bg-gray-200"></div>
+                        <div className="flex items-center gap-3 pl-2">
+                            <div className="text-right hidden md:block">
+                                <p className="text-sm font-bold text-slate-800">{user?.name || 'Admin User'}</p>
+                                <p className="text-xs text-slate-500 font-medium">Administrator</p>
+                            </div>
+                            <div className="h-10 w-10 bg-gradient-to-br from-brand-100 to-brand-50 rounded-full flex items-center justify-center text-brand-700 font-bold border-2 border-white shadow-md ring-1 ring-gray-100">
+                                {user?.name?.charAt(0) || 'A'}
+                            </div>
                         </div>
                     </div>
                 </header>
-                <main className="flex-1 p-8 overflow-y-auto">
-                    {children}
+                <main className="flex-1 overflow-y-auto overflow-x-hidden pb-12">
+                    <div className="max-w-full">
+                        {children}
+                    </div>
                 </main>
             </div>
         </div>

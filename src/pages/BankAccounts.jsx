@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Plus, Eye, Edit2, Trash2, X } from "lucide-react";
+import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Search } from "lucide-react";
 import toast from "react-hot-toast";
 import { getBankAccounts, createBankAccount, updateBankAccount, deleteBankAccount } from "../services/bankAccountService";
+import clsx from "clsx";
 
 const emptyForm = {
   bankName: "",
@@ -47,8 +48,6 @@ export default function BankAccounts() {
       console.error("Failed to load bank accounts", e);
     }
   };
-
-
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -128,156 +127,151 @@ export default function BankAccounts() {
       type={type}
       value={form[name]}
       onChange={(e) => setForm({ ...form, [name]: e.target.value })}
-      className={`input ${errors[name] ? "border-red-500" : ""}`}
+      className={`input ${errors[name] ? "border-red-500 focus:border-red-500 focus:ring-red-200" : ""}`}
     />
   );
 
-  const Req = () => <span className="text-red-500 ml-1">*</span>;
+  const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
   return (
-    <div className="p-6 space-y-6 font-sans">
+    <div className="p-6 lg:p-10 w-full mx-auto animate-fade-in space-y-8 overflow-hidden">
       {/* HEADER */}
-      <div className="flex justify-between">
-        <h1 className="text-2xl font-semibold">Bank Accounts</h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Bank Accounts</h1>
+          <p className="text-slate-500 mt-1 text-lg">Manage your banking and payment channels.</p>
+        </div>
         <button
           onClick={openAdd}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+          className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
         >
-          + Add Bank
+          <Plus size={20} />
+          Add Account
         </button>
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-xl shadow border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50/50 text-xs text-gray-500 uppercase border-b border-gray-1006">
-            <tr>
-              <th className="p-4 text-left">Bank</th>
-              <th className="p-4 text-left">Account</th>
-              <th className="p-4 text-left">Type</th>
-              <th className="p-4 text-left">Status</th>
-              <th className="p-4 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.length === 0 ? (
+      <div className="card p-0 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <h3 className="font-bold text-slate-800">Accounts</h3>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input type="text" placeholder="Search accounts..." className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all" />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
-                <td colSpan="5" className="p-10 text-center text-gray-400">
-                  No bank accounts found
-                </td>
+                <th className="px-6 py-4">Bank</th>
+                <th className="px-6 py-4">Account Holder</th>
+                <th className="px-6 py-4">Type</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
-            ) : (
-              data.map((item, i) => (
-                <tr key={i} className="border-t hover:bg-gray-50">
-                  <td className="p-4 font-medium">{item.bankName}</td>
-                  <td className="p-4">{item.accountName}</td>
-                  <td className="p-4">{item.accountType}</td>
-                  <td className="p-4">
-                    <span
-                      className={`badge ${item.status === "Active" ? "badge-green" : "badge-gray"
-                        }`}
-                    >
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex justify-center gap-3">
-                      {/* VIEW */}
-                      <button
-                        onClick={() => openViewModal(item)}
-                        title="View"
-                        className="p-2 rounded-lg text-sky-600 hover:bg-sky-50 transition"
-                      >
-                        <Eye size={18} />
-                      </button>
-
-                      {/* EDIT */}
-                      <button
-                        onClick={() => openEdit(item)}
-                        title="Edit"
-                        className="p-2 rounded-lg text-indigo-600 hover:bg-indigo-50 transition"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-
-                      {/* DELETE */}
-                      <button
-                        onClick={() => deleteBankaccounts(item.id)}
-                        title="Delete"
-                        className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {data.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="p-12 text-center text-slate-400 italic">
+                    No bank accounts found
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                data.map((item, i) => (
+                  <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+                          <Building2 size={20} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900">{item.bankName}</p>
+                          <p className="text-slate-500 text-xs font-mono">{item.accountNumber}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-slate-700">{item.accountName}</td>
+                    <td className="px-6 py-4 text-slate-600">{item.accountType}</td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={clsx(
+                          "px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide border",
+                          item.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-red-50 text-red-700 border-red-100"
+                        )}
+                      >
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => openViewModal(item)}
+                          title="View"
+                          className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <button
+                          onClick={() => openEdit(item)}
+                          title="Edit"
+                          className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                        <button
+                          onClick={() => deleteBankaccounts(item.id)}
+                          title="Delete"
+                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* VIEW MODAL */}
       {openView && viewItem && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-2xl rounded-xl p-6 shadow-xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold">Bank Account Details</h2>
-              <button
-                onClick={() => setOpenView(false)}
-                className="p-2 rounded hover:bg-gray-100"
-              >
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl animate-slide-up overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Account Details</h2>
+              <button onClick={() => setOpenView(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <b>Bank Name:</b> {viewItem.bankName}
-              </div>
-              <div>
-                <b>Account Name:</b> {viewItem.accountName}
-              </div>
-              <div>
-                <b>Nick Name:</b> {viewItem.nickName || "-"}
-              </div>
-              <div>
-                <b>Account Type:</b> {viewItem.accountType}
-              </div>
-
-              <div>
-                <b>Account No:</b> {viewItem.accountNumber}
-              </div>
-              <div>
-                <b>IFSC:</b> {viewItem.ifsc}
-              </div>
-              <div>
-                <b>Branch:</b> {viewItem.branch || "-"}
-              </div>
-              <div>
-                <b>MICR:</b> {viewItem.micr || "-"}
-              </div>
-              <div>
-                <b>SWIFT:</b> {viewItem.swift || "-"}
+            <div className="p-8 grid grid-cols-2 gap-x-8 gap-y-6">
+              <div className="col-span-2 flex items-center gap-4 p-4 bg-brand-50 rounded-xl border border-brand-100 mb-2">
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-brand-600 shadow-sm">
+                  <CreditCard size={24} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-brand-600 uppercase tracking-wide">Current Balance</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {viewItem.currency} {parseFloat(viewItem.openingBalance || 0).toLocaleString()}
+                    <span className="text-sm font-normal text-slate-500 ml-2">(Opening)</span>
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <b>Status:</b> {viewItem.status}
-              </div>
-              <div>
-                <b>Currency:</b> {viewItem.currency}
-              </div>
-              <div>
-                <b>Opening Balance:</b> {viewItem.openingBalance || "-"}
-              </div>
-              <div>
-                <b>Opening Date:</b> {viewItem.openingDate || "-"}
-              </div>
-
-              <div className="col-span-2">
-                <b>Notes:</b>
-                <p className="mt-1 text-gray-600">{viewItem.notes || "-"}</p>
-              </div>
+              {Object.entries(viewItem).filter(([k]) => !['id', 'created_at', 'updated_at', 'currency', 'openingBalance'].includes(k)).map(([k, v]) => (
+                <div key={k} className="flex flex-col">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">
+                    {k.replace(/([A-Z])/g, ' $1').trim()}
+                  </p>
+                  <p className="font-medium text-slate-800 break-words">{v || <span className="text-slate-400 italic">None</span>}</p>
+                </div>
+              ))}
+            </div>
+            <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end">
+              <button onClick={() => setOpenView(false)} className="btn-secondary">Close Details</button>
             </div>
           </div>
         </div>
@@ -285,22 +279,30 @@ export default function BankAccounts() {
 
       {/* FORM MODAL */}
       {openForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-4xl rounded-xl p-6">
-            <h2 className="text-xl font-bold mb-4">
-              {editId ? "Edit Bank Account" : "Add Bank Account"}
-            </h2>
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                  {editId ? "Edit Bank Account" : "Add Bank Account"}
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">Configure your bank or payment details.</p>
+              </div>
+              <button onClick={() => setOpenForm(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+                <X size={20} />
+              </button>
+            </div>
 
             {/* TABS */}
-            <div className="flex border-b mb-6">
+            <div className="flex px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto hide-scrollbar flex-shrink-0">
               {tabs.map((t, i) => (
                 <button
                   key={i}
                   onClick={() => setActiveTab(i)}
-                  className={`px-4 py-2 font-semibold ${activeTab === i
-                    ? "border-b-2 border-indigo-600 text-indigo-600"
-                    : "text-gray-500"
-                    }`}
+                  className={clsx(
+                    "px-6 py-4 text-sm font-bold uppercase tracking-wide border-b-2 transition-all whitespace-nowrap",
+                    activeTab === i ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
+                  )}
                 >
                   {t}
                 </button>
@@ -308,97 +310,118 @@ export default function BankAccounts() {
             </div>
 
             {/* TAB CONTENT */}
-            {activeTab === 0 && (
-              <div className="grid grid-cols-2 gap-5 text-sm font-semibold">
-                <label>
-                  Bank Name
-                  <Req />
-                  {input("bankName")}
-                </label>
-                <label>
-                  Account Holder Name
-                  <Req />
-                  {input("accountName")}
-                </label>
-                <label>Nick Name{input("nickName")}</label>
-                <label>
-                  Account Type
-                  <select
-                    className="input"
-                    value={form.accountType}
-                    onChange={(e) =>
-                      setForm({ ...form, accountType: e.target.value })
-                    }
-                  >
-                    <option>Savings</option>
-                    <option>Current</option>
-                  </select>
-                </label>
+            <div className="flex-1 overflow-y-auto p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {activeTab === 0 && (
+                  <>
+                    <div>
+                      <label className="label">
+                        Bank Name
+                        <Req />
+                      </label>
+                      {input("bankName")}
+                    </div>
+                    <div>
+                      <label className="label">
+                        Account Holder Name
+                        <Req />
+                      </label>
+                      {input("accountName")}
+                    </div>
+                    <div>
+                      <label className="label">Nick Name</label>
+                      {input("nickName")}
+                    </div>
+                    <div>
+                      <label className="label">
+                        Account Type
+                      </label>
+                      <select
+                        className="input"
+                        value={form.accountType}
+                        onChange={(e) =>
+                          setForm({ ...form, accountType: e.target.value })
+                        }
+                      >
+                        <option>Savings</option>
+                        <option>Current</option>
+                        <option>Overdraft</option>
+                        <option>Loan</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {activeTab === 1 && (
+                  <>
+                    <div>
+                      <label className="label">
+                        Account Number
+                        <Req />
+                      </label>
+                      {input("accountNumber")}
+                    </div>
+                    <div>
+                      <label className="label">
+                        IFSC Code
+                        <Req />
+                      </label>
+                      {input("ifsc")}
+                    </div>
+                    <div><label className="label">Branch</label>{input("branch")}</div>
+                    <div><label className="label">MICR Code</label>{input("micr")}</div>
+                    <div><label className="label">SWIFT Code</label>{input("swift")}</div>
+                  </>
+                )}
+
+                {activeTab === 2 && (
+                  <>
+                    <div>
+                      <label className="label">
+                        Opening Balance
+                      </label>
+                      {input("openingBalance", "number")}
+                    </div>
+                    <div><label className="label">Currency</label>{input("currency")}</div>
+                    <div>
+                      <label className="label">
+                        Status
+                      </label>
+                      <select
+                        className="input"
+                        value={form.status}
+                        onChange={(e) =>
+                          setForm({ ...form, status: e.target.value })
+                        }
+                      >
+                        <option>Active</option>
+                        <option>Inactive</option>
+                      </select>
+                    </div>
+                    <div><label className="label">Opening Date</label>{input("openingDate", "date")}</div>
+                  </>
+                )}
+
+                {activeTab === 3 && (
+                  <div className="md:col-span-2">
+                    <textarea
+                      className="input h-32 w-full"
+                      placeholder="Internal notes about this account..."
+                      value={form.notes}
+                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                    />
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
-            {activeTab === 1 && (
-              <div className="grid grid-cols-2 gap-5 text-sm font-semibold">
-                <label>
-                  Account Number
-                  <Req />
-                  {input("accountNumber")}
-                </label>
-                <label>
-                  IFSC Code
-                  <Req />
-                  {input("ifsc")}
-                </label>
-                <label>Branch{input("branch")}</label>
-                <label>MICR Code{input("micr")}</label>
-                <label>SWIFT Code{input("swift")}</label>
-              </div>
-            )}
-
-            {activeTab === 2 && (
-              <div className="grid grid-cols-2 gap-5 text-sm font-semibold">
-                <label>
-                  Opening Balance{input("openingBalance", "number")}
-                </label>
-                <label>Currency{input("currency")}</label>
-                <label>
-                  Status
-                  <select
-                    className="input"
-                    value={form.status}
-                    onChange={(e) =>
-                      setForm({ ...form, status: e.target.value })
-                    }
-                  >
-                    <option>Active</option>
-                    <option>Inactive</option>
-                  </select>
-                </label>
-                <label>Opening Date{input("openingDate", "date")}</label>
-              </div>
-            )}
-
-            {activeTab === 3 && (
-              <textarea
-                className="input h-28 w-full"
-                placeholder="Internal notes"
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              />
-            )}
-
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setOpenForm(false)}
-                className="px-6 py-2 text-gray-500 font-semibold"
-              >
-                Cancel
-              </button>
+            <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-white flex-shrink-0">
+              <button onClick={() => setOpenForm(false)} className="btn-secondary">Cancel</button>
               <button
                 onClick={saveAccount}
-                className="bg-indigo-600 text-white px-8 py-2 rounded-lg font-bold shadow-md hover:bg-indigo-700 transition-all"
+                className="btn-primary"
               >
-                Save
+                Save Account
               </button>
             </div>
           </div>

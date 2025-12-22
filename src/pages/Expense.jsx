@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Eye, Edit2, Trash2 } from "lucide-react";
+import { Eye, Edit2, Trash2, Plus, Download, Search, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { getExpenses, createExpense, updateExpense, deleteExpense } from "../services/expenseService";
 import { getBankAccounts } from "../services/bankAccountService";
-
+import clsx from "clsx";
 
 const emptyForm = {
   vendor: "",
@@ -156,94 +156,131 @@ export default function Expenses() {
   };
 
   const inputClass = (f) =>
-    `input ${errors[f] ? "border-red-500" : ""}`;
-  const Req = () => <span className="text-red-500 ml-1">*</span>;
+    `input ${errors[f] ? "border-red-500 focus:border-red-500 focus:ring-red-200" : ""}`;
+  const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
   return (
-    <div className="p-6 space-y-6 font-sans">
+    <div className="p-6 lg:p-10 w-full mx-auto animate-fade-in space-y-8 overflow-hidden">
       {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold">Expense</h1>
-        <button
-          onClick={openAdd}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-semibold"
-        >
-          + Add Expense
-        </button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Expense Tracking</h1>
+          <p className="text-slate-500 mt-1 text-lg">Monitor and control your business spending.</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={openAdd}
+            className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
+          >
+            <Plus size={20} />
+            Add Expense
+          </button>
+        </div>
       </div>
 
       {/* TABLE */}
-      <div className="bg-white rounded-xl shadow overflow-x-auto border border-gray-200">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50/50 text-xs text-gray-500 uppercase border-b border-gray-100">
-            <tr>
-              <th className="p-4 text-left font-semibold">Vendor</th>
-              <th className="p-4 text-left font-semibold">Expense Type</th>
-              <th className="p-4 text-left font-semibold">Amount</th>
-              <th className="p-4 text-left font-semibold">Method</th>
-              <th className="p-4 text-left font-semibold">Date</th>
-              <th className="p-4 text-center font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {data.length === 0 ? (
+      <div className="card p-0 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <h3 className="font-bold text-slate-800">Recent Expenses</h3>
+          <div className="flex gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all" />
+            </div>
+            <button className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors">
+              <Download size={18} />
+            </button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
-                <td colSpan="6" className="p-10 text-center text-gray-500">
-                  No expense records found
-                </td>
+                <th className="px-6 py-4">Vendor</th>
+                <th className="px-6 py-4">Expense Type</th>
+                <th className="px-6 py-4 text-right">Amount</th>
+                <th className="px-6 py-4">Method</th>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
-            ) : (
-              data.map((item, i) => (
-                <tr key={i} className="hover:bg-gray-50">
-                  <td className="p-4">{item.vendor}</td>
-                  <td className="p-4">{item.expenseType}</td>
-                  <td className="p-4 font-bold">₹{item.amount}</td>
-                  <td className="p-4">{item.method}</td>
-                  <td className="p-4">{item.paidDate}</td>
-                  <td className="p-4 text-center">
-                    <div className="flex justify-center gap-3">
-                      <button
-                        onClick={() => openViewModal(item)}
-                        className="p-2 text-sky-600 hover:bg-sky-50 rounded"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      <button
-                        onClick={() => openEdit(item)}
-                        className="p-2 text-indigo-600 hover:bg-indigo-50 rounded"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {data.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-slate-500 italic">
+                    No expense records found
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                data.map((item, i) => (
+                  <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-4 font-medium text-slate-900">{item.vendor}</td>
+                    <td className="px-6 py-4 text-slate-600">{item.expenseType}</td>
+                    <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
+                      ₹{parseFloat(item.amount).toLocaleString('en-IN')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
+                        {item.method}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-slate-600 font-mono text-xs">{item.paidDate}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => openViewModal(item)}
+                          title="View"
+                          className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <button
+                          onClick={() => openEdit(item)}
+                          title="Edit"
+                          className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          title="Delete"
+                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* VIEW MODAL */}
       {openView && viewItem && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white max-w-2xl w-full rounded-xl p-8 shadow-2xl">
-            <h2 className="text-xl font-bold mb-6">Expense Details</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-sm">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl animate-slide-up overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Expense Details</h2>
+              <button onClick={() => setOpenView(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-8 grid grid-cols-2 gap-x-8 gap-y-6">
               {Object.entries(viewItem).map(([k, v]) => (
-                <div key={k}>
-                  <p className="text-gray-400 uppercase text-xs">{k}</p>
-                  <p className="font-semibold">{v || "-"}</p>
+                <div key={k} className="flex flex-col">
+                  <p className="text-xs font-bold text-brand-600 uppercase tracking-wider mb-1">
+                    {k.replace(/([A-Z])/g, ' $1').trim()}
+                  </p>
+                  <p className="font-medium text-slate-800 break-words">{v || <span className="text-slate-400 italic">None</span>}</p>
                 </div>
               ))}
             </div>
-            <div className="text-right mt-6">
-              <button onClick={() => setOpenView(false)}>Close</button>
+            <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end">
+              <button onClick={() => setOpenView(false)} className="btn-secondary">Close Details</button>
             </div>
           </div>
         </div>
@@ -251,22 +288,30 @@ export default function Expenses() {
 
       {/* FORM MODAL */}
       {openForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-5xl rounded-xl p-8 shadow-2xl max-h-[90vh] flex flex-col">
-            <h2 className="text-xl font-bold mb-4">
-              {editId ? "Edit Expense" : "Add Expense"}
-            </h2>
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                  {editId ? "Edit Expense" : "New Expense Entry"}
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">Record the details of this expenditure.</p>
+              </div>
+              <button onClick={() => setOpenForm(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+                <X size={20} />
+              </button>
+            </div>
 
             {/* TABS */}
-            <div className="flex gap-1 border-b mb-6">
+            <div className="flex px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto hide-scrollbar flex-shrink-0">
               {["basic", "payment", "tax", "internal"].map((t) => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`px-6 py-2 text-sm font-semibold uppercase rounded-t-lg ${tab === t
-                    ? "bg-indigo-600 text-white"
-                    : "text-gray-400 hover:text-gray-600"
-                    }`}
+                  className={clsx(
+                    "px-6 py-4 text-sm font-bold uppercase tracking-wide border-b-2 transition-all whitespace-nowrap",
+                    tab === t ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
+                  )}
                 >
                   {t}
                 </button>
@@ -274,295 +319,335 @@ export default function Expenses() {
             </div>
 
             {/* TAB CONTENT */}
-            <div className="grid md:grid-cols-2 gap-5 overflow-y-auto p-4">
-              {/* BASIC */}
-              {tab === "basic" && (
-                <>
-                  <label>
-                    Vendor <Req />
-                    <input
-                      className={inputClass("vendor")}
-                      value={form.vendor}
-                      onChange={(e) =>
-                        setForm({ ...form, vendor: e.target.value })
-                      }
-                    />
-                  </label>
-
-                  <label>
-                    Expense Type <Req />
-                    <input
-                      className={inputClass("expenseType")}
-                      value={form.expenseType}
-                      onChange={(e) =>
-                        setForm({ ...form, expenseType: e.target.value })
-                      }
-                    />
-                  </label>
-
-                  <label>
-                    Project / Purpose
-                    <input
-                      className="input"
-                      value={form.project}
-                      onChange={(e) =>
-                        setForm({ ...form, project: e.target.value })
-                      }
-                    />
-                  </label>
-
-                  <label>
-                    Category
-                    <input
-                      className="input"
-                      value={form.category}
-                      onChange={(e) =>
-                        setForm({ ...form, category: e.target.value })
-                      }
-                    />
-                  </label>
-
-                  <label>
-                    Bill / Invoice No
-                    <input
-                      className="input"
-                      value={form.billNo}
-                      onChange={(e) =>
-                        setForm({ ...form, billNo: e.target.value })
-                      }
-                    />
-                  </label>
-
-                  <label>
-                    Base Amount (₹) <Req />
-                    <input
-                      type="number"
-                      className={inputClass("amount")}
-                      value={form.amount}
-                      onChange={(e) =>
-                        setForm({ ...form, amount: e.target.value })
-                      }
-                    />
-                  </label>
-                </>
-              )}
-
-              {/* PAYMENT */}
-              {tab === "payment" && (
-                <>
-                  <label>
-                    Payment Method <Req />
-                    <select
-                      className={inputClass("method")}
-                      value={form.method}
-                      onChange={(e) =>
-                        setForm({ ...form, method: e.target.value })
-                      }
-                    >
-                      <option value="">Select Method</option>
-                      <option>Bank Transfer</option>
-                      <option>UPI</option>
-                      <option>Cash</option>
-                      <option>Cheque</option>
-                    </select>
-                  </label>
-
-                  <label>
-                    Transaction / UTR ID
-                    <input
-                      className={inputClass("transactionId")}
-                      value={form.transactionId}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          transactionId: e.target.value,
-                        })
-                      }
-                    />
-                  </label>
-
-                  <label>
-                    Bank / Wallet
-                    <select
-                      className="input"
-                      value={form.bank}
-                      onChange={(e) =>
-                        setForm({ ...form, bank: e.target.value })
-                      }
-                    >
-                      <option value="">Select Bank / Wallet</option>
-                      {bankAccounts.map((b) => (
-                        <option key={b.id} value={`${b.bankName} - ${b.accountNumber}`}>
-                          {b.bankName} - {b.accountNumber}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label>
-                    Paid Date <Req />
-                    <input
-                      type="date"
-                      className={inputClass("paidDate")}
-                      value={form.paidDate}
-                      onChange={(e) =>
-                        setForm({ ...form, paidDate: e.target.value })
-                      }
-                    />
-                  </label>
-
-                  <label>
-                    Status
-                    <select
-                      className="input"
-                      value={form.status}
-                      onChange={(e) =>
-                        setForm({ ...form, status: e.target.value })
-                      }
-                    >
-                      <option>Paid</option>
-                      <option>Pending</option>
-                    </select>
-                  </label>
-                </>
-              )}
-
-              {/* TAX */}
-              {tab === "tax" && (
-                <>
-                  <label>
-                    Apply GST?
-                    <select
-                      className="input"
-                      value={form.gstApplied}
-                      onChange={(e) =>
-                        setForm({ ...form, gstApplied: e.target.value })
-                      }
-                    >
-                      <option>No</option>
-                      <option>Yes</option>
-                    </select>
-                  </label>
-
-                  {form.gstApplied === "Yes" && (
-                    <>
-                      <label>
-                        GST %
-                        <input
-                          type="number"
-                          className="input"
-                          value={form.gstPercent}
-                          onChange={(e) =>
-                            setForm({
-                              ...form,
-                              gstPercent: e.target.value,
-                            })
-                          }
-                        />
+            <div className="flex-1 overflow-y-auto p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* BASIC */}
+                {tab === "basic" && (
+                  <>
+                    <div>
+                      <label className="label">
+                        Vendor <Req />
                       </label>
+                      <input
+                        className={inputClass("vendor")}
+                        placeholder="e.g. AWS, Office Depot"
+                        value={form.vendor}
+                        onChange={(e) =>
+                          setForm({ ...form, vendor: e.target.value })
+                        }
+                      />
+                    </div>
 
-                      <label>
-                        Vendor GSTIN
-                        <input
-                          className="input"
-                          value={form.vendorGstin}
-                          onChange={(e) =>
-                            setForm({
-                              ...form,
-                              vendorGstin: e.target.value,
-                            })
-                          }
-                        />
+                    <div>
+                      <label className="label">
+                        Expense Type <Req />
                       </label>
+                      <input
+                        className={inputClass("expenseType")}
+                        placeholder="e.g. Software, Office Supplies"
+                        value={form.expenseType}
+                        onChange={(e) =>
+                          setForm({ ...form, expenseType: e.target.value })
+                        }
+                      />
+                    </div>
 
-                      <label>
-                        ITC Eligible
-                        <select
-                          className="input"
-                          value={form.itcEligible}
-                          onChange={(e) =>
-                            setForm({
-                              ...form,
-                              itcEligible: e.target.value,
-                            })
-                          }
-                        >
-                          <option>No</option>
-                          <option>Yes</option>
-                        </select>
+                    <div>
+                      <label className="label">
+                        Project / Purpose
                       </label>
+                      <input
+                        className="input"
+                        value={form.project}
+                        onChange={(e) =>
+                          setForm({ ...form, project: e.target.value })
+                        }
+                      />
+                    </div>
 
-                      <div className="md:col-span-2 grid grid-cols-2 gap-4 p-4 bg-gray-50 border rounded-lg">
+                    <div>
+                      <label className="label">
+                        Category
+                      </label>
+                      <input
+                        className="input"
+                        value={form.category}
+                        onChange={(e) =>
+                          setForm({ ...form, category: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Bill / Invoice No
+                      </label>
+                      <input
+                        className="input"
+                        value={form.billNo}
+                        onChange={(e) =>
+                          setForm({ ...form, billNo: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Base Amount (₹) <Req />
+                      </label>
+                      <input
+                        type="number"
+                        className={inputClass("amount")}
+                        value={form.amount}
+                        onChange={(e) =>
+                          setForm({ ...form, amount: e.target.value })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* PAYMENT */}
+                {tab === "payment" && (
+                  <>
+                    <div>
+                      <label className="label">
+                        Payment Method <Req />
+                      </label>
+                      <select
+                        className={inputClass("method")}
+                        value={form.method}
+                        onChange={(e) =>
+                          setForm({ ...form, method: e.target.value })
+                        }
+                      >
+                        <option value="">Select Method</option>
+                        <option>Bank Transfer</option>
+                        <option>UPI</option>
+                        <option>Cash</option>
+                        <option>Cheque</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Transaction / UTR ID
+                      </label>
+                      <input
+                        className={inputClass("transactionId")}
+                        value={form.transactionId}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            transactionId: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Bank / Wallet
+                      </label>
+                      <select
+                        className="input"
+                        value={form.bank}
+                        onChange={(e) =>
+                          setForm({ ...form, bank: e.target.value })
+                        }
+                      >
+                        <option value="">Select Bank / Wallet</option>
+                        {bankAccounts.map((b) => (
+                          <option key={b.id} value={`${b.bankName} - ${b.accountNumber}`}>
+                            {b.bankName} - {b.accountNumber}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Paid Date <Req />
+                      </label>
+                      <input
+                        type="date"
+                        className={inputClass("paidDate")}
+                        value={form.paidDate}
+                        onChange={(e) =>
+                          setForm({ ...form, paidDate: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Status
+                      </label>
+                      <select
+                        className="input"
+                        value={form.status}
+                        onChange={(e) =>
+                          setForm({ ...form, status: e.target.value })
+                        }
+                      >
+                        <option>Paid</option>
+                        <option>Pending</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* TAX */}
+                {tab === "tax" && (
+                  <>
+                    <div>
+                      <label className="label">
+                        Apply GST?
+                      </label>
+                      <select
+                        className="input"
+                        value={form.gstApplied}
+                        onChange={(e) =>
+                          setForm({ ...form, gstApplied: e.target.value })
+                        }
+                      >
+                        <option>No</option>
+                        <option>Yes</option>
+                      </select>
+                    </div>
+
+                    {form.gstApplied === "Yes" && (
+                      <>
                         <div>
-                          <p className="text-xs text-gray-500 font-bold">
-                            GST Amount
-                          </p>
-                          <p className="text-lg font-bold">
-                            ₹{form.gstAmount || "0.00"}
-                          </p>
+                          <label className="label">
+                            GST %
+                          </label>
+                          <input
+                            type="number"
+                            className="input"
+                            value={form.gstPercent}
+                            onChange={(e) =>
+                              setForm({
+                                ...form,
+                                gstPercent: e.target.value,
+                              })
+                            }
+                          />
                         </div>
+
                         <div>
-                          <p className="text-xs text-gray-500 font-bold">
-                            Net Total
-                          </p>
-                          <p className="text-lg font-bold text-indigo-600">
-                            ₹{form.netAmount || "0.00"}
-                          </p>
+                          <label className="label">
+                            Vendor GSTIN
+                          </label>
+                          <input
+                            className="input"
+                            value={form.vendorGstin}
+                            onChange={(e) =>
+                              setForm({
+                                ...form,
+                                vendorGstin: e.target.value,
+                              })
+                            }
+                          />
                         </div>
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
 
-              {/* INTERNAL */}
-              {tab === "internal" && (
-                <>
-                  <label>
-                    Staff
-                    <input
-                      className="input"
-                      value={form.staff}
-                      onChange={(e) =>
-                        setForm({ ...form, staff: e.target.value })
-                      }
-                    />
-                  </label>
+                        <div>
+                          <label className="label">
+                            ITC Eligible
+                          </label>
+                          <select
+                            className="input"
+                            value={form.itcEligible}
+                            onChange={(e) =>
+                              setForm({
+                                ...form,
+                                itcEligible: e.target.value,
+                              })
+                            }
+                          >
+                            <option>No</option>
+                            <option>Yes</option>
+                          </select>
+                        </div>
 
-                  <label>
-                    Department
-                    <input
-                      className="input"
-                      value={form.department}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          department: e.target.value,
-                        })
-                      }
-                    />
-                  </label>
+                        <div className="md:col-span-2 grid grid-cols-2 gap-4 p-6 bg-brand-50 rounded-2xl border border-brand-100">
+                          <div>
+                            <p className="text-xs text-brand-600 font-bold uppercase tracking-wide">
+                              GST Amount
+                            </p>
+                            <p className="text-2xl font-bold text-slate-800">
+                              ₹{form.gstAmount || "0.00"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-brand-600 font-bold uppercase tracking-wide">
+                              Net Total
+                            </p>
+                            <p className="text-2xl font-bold text-brand-700">
+                              ₹{form.netAmount || "0.00"}
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
 
-                  <label className="md:col-span-2">
-                    Notes
-                    <textarea
-                      className="input h-32"
-                      value={form.notes}
-                      onChange={(e) =>
-                        setForm({ ...form, notes: e.target.value })
-                      }
-                    />
-                  </label>
-                </>
-              )}
+                {/* INTERNAL */}
+                {tab === "internal" && (
+                  <>
+                    <div>
+                      <label className="label">
+                        Staff
+                      </label>
+                      <input
+                        className="input"
+                        value={form.staff}
+                        onChange={(e) =>
+                          setForm({ ...form, staff: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Department
+                      </label>
+                      <input
+                        className="input"
+                        value={form.department}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            department: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="label">
+                        Notes
+                      </label>
+                      <textarea
+                        className="input min-h-[120px]"
+                        value={form.notes}
+                        onChange={(e) =>
+                          setForm({ ...form, notes: e.target.value })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* FOOTER */}
-            <div className="flex justify-end gap-3 mt-6 border-t pt-4">
-              <button onClick={() => setOpenForm(false)}>Cancel</button>
+            <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-white flex-shrink-0">
+              <button onClick={() => setOpenForm(false)} className="btn-secondary">Cancel</button>
               <button
                 onClick={handleSave}
-                className="bg-indigo-600 text-white px-8 py-2 rounded-lg"
+                className="btn-primary"
               >
                 Save Expense
               </button>
