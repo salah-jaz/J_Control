@@ -194,12 +194,12 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
 
                 {/* Header */}
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
                     <div>
-                        <h3 className="text-xl font-bold text-gray-800">{invoice ? 'Edit Invoice' : 'Create New Invoice'}</h3>
-                        <p className="text-sm text-gray-500 mt-1">Fill in the details below</p>
+                        <h3 className="text-xl font-bold text-slate-900 tracking-tight">{invoice ? 'Edit Invoice' : 'Create New Invoice'}</h3>
+                        <p className="text-sm text-slate-500 mt-1">Fill in the details below</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600">
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -210,7 +210,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                         onClick={() => setActiveTab('basic')}
                         className={clsx(
                             "px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
-                            activeTab === 'basic' ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                            activeTab === 'basic' ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-700"
                         )}
                     >
                         <User className="w-4 h-4" /> Basic Info
@@ -219,7 +219,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                         onClick={() => setActiveTab('services')}
                         className={clsx(
                             "px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
-                            activeTab === 'services' ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                            activeTab === 'services' ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-700"
                         )}
                     >
                         <Layers className="w-4 h-4" /> Service Details
@@ -228,7 +228,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                         onClick={() => setActiveTab('bank')}
                         className={clsx(
                             "px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
-                            activeTab === 'bank' ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                            activeTab === 'bank' ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-700"
                         )}
                     >
                         <Landmark className="w-4 h-4" /> Bank Details
@@ -241,17 +241,17 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                     {activeTab === 'basic' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Invoice ID</label>
-                                <div className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500">
+                                <label className="label">Invoice ID</label>
+                                <div className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-slate-500 font-medium">
                                     {invoice ? `INV-${invoice.id}` : 'Auto Generated'}
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Client</label>
+                                <label className="label">Client</label>
                                 <select
                                     value={formData.clientId}
                                     onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                                    className="input"
                                 >
                                     <option value="">Select a client</option>
                                     {clients.map(c => (
@@ -260,20 +260,20 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                                <label className="label">Date</label>
                                 <input
                                     type="date"
                                     value={formData.date}
                                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                                    className="input"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                <label className="label">Status</label>
                                 <select
                                     value={formData.status}
                                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
+                                    className="input"
                                 >
                                     <option value="Pending">Pending</option>
                                     <option value="Paid">Paid</option>
@@ -348,7 +348,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                             <button
                                 type="button"
                                 onClick={addItem}
-                                className="flex items-center gap-2 text-indigo-600 font-medium hover:text-indigo-800 transition"
+                                className="flex items-center gap-2 text-brand-600 font-bold hover:text-brand-700 transition ml-1"
                             >
                                 <Plus className="w-4 h-4" /> Add Service Detail
                             </button>
@@ -357,7 +357,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                                 <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wide mb-2">Totals</h4>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">GST %</label>
+                                        <label className="label">GST %</label>
                                         <input
                                             type="number"
                                             step="0.01"
@@ -365,19 +365,19 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                                             max="100"
                                             value={formData.gst}
                                             onChange={(e) => setFormData({ ...formData, gst: e.target.value })}
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none"
+                                            className="input"
                                             placeholder="0"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Discount (₹)</label>
+                                        <label className="label">Discount (₹)</label>
                                         <input
                                             type="number"
                                             step="0.01"
                                             min="0"
                                             value={formData.discount}
                                             onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none"
+                                            className="input"
                                             placeholder="0.00"
                                         />
                                     </div>
@@ -390,11 +390,11 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                     {activeTab === 'bank' && (
                         <div className="space-y-6 animate-fade-in">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Bank Account</label>
+                                <label className="label">Bank Account</label>
                                 <select
                                     value={formData.bankAccountId}
                                     onChange={(e) => setFormData({ ...formData, bankAccountId: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                    className="input"
                                 >
                                     <option value="">Select Bank Account</option>
                                     {bankAccounts.map(b => (
@@ -403,17 +403,17 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">GPay Number</label>
+                                <label className="label">GPay Number</label>
                                 <input
                                     type="text"
                                     value={formData.gpayNumber}
                                     onChange={(e) => setFormData({ ...formData, gpayNumber: e.target.value })}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                    className="input"
                                     placeholder="Enter GPay Number"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">QR Upload (Optional)</label>
+                                <label className="label">QR Upload (Optional)</label>
                                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition cursor-pointer relative">
                                     <input
                                         type="file"
@@ -438,24 +438,23 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                     )}
                 </form>
 
-                {/* Footer */}
-                <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+                <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
                     <div>
-                        <p className="text-sm text-gray-500 font-medium">Total Amount</p>
-                        <p className="text-2xl font-bold text-indigo-700">₹ {calculateGrandTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">Total Amount</p>
+                        <p className="text-3xl font-bold text-brand-600">₹ {calculateGrandTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
                     <div className="flex gap-3">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-white hover:shadow-sm font-medium transition"
+                            className="btn-secondary"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSubmit}
                             type="button"
-                            className="px-8 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-lg shadow-indigo-200 transition"
+                            className="btn-primary shadow-lg shadow-brand-500/30"
                         >
                             {invoice ? 'Save Changes' : 'Create Invoice'}
                         </button>
@@ -518,88 +517,102 @@ const Invoices = () => {
     );
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center space-x-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
-                    {['All', 'Paid', 'Pending', 'Overdue'].map(status => (
-                        <button
-                            key={status}
-                            onClick={() => setFilterStatus(status)}
-                            className={clsx(
-                                "px-3 py-1.5 rounded-md text-sm font-medium transition-all",
-                                filterStatus === status
-                                    ? "bg-indigo-50 text-indigo-700 shadow-sm"
-                                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                            )}
-                        >
-                            {status}
-                        </button>
-                    ))}
+        <div className="p-8 max-w-[1600px] mx-auto animate-fade-in space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Invoices</h1>
+                    <p className="text-slate-500 mt-1 text-lg">Manage your billing and payments.</p>
                 </div>
-
                 <button
                     onClick={() => {
                         setEditingInvoice(null);
                         setIsFormOpen(true);
                     }}
-                    className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md shadow-indigo-200 font-medium whitespace-nowrap"
+                    className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
                 >
                     <Plus className="h-5 w-5" />
                     New Invoice
                 </button>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
+                    {['All', 'Paid', 'Pending', 'Overdue'].map(status => (
+                        <button
+                            key={status}
+                            onClick={() => setFilterStatus(status)}
+                            className={clsx(
+                                "px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                                filterStatus === status
+                                    ? "bg-brand-50 text-brand-700 shadow-sm"
+                                    : "text-slate-500 hover:text-slate-700 hover:bg-gray-50"
+                            )}
+                        >
+                            {status}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="card p-0 overflow-hidden min-h-[500px]">
+                <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <h3 className="font-bold text-slate-800">Invoice History</h3>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50/50 text-xs text-gray-500 uppercase border-b border-gray-100">
+                        <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                             <tr>
-                                <th className="px-6 py-4 font-semibold">Invoice ID</th>
-                                <th className="px-6 py-4 font-semibold">Client</th>
-                                <th className="px-6 py-4 font-semibold">Date</th>
-                                <th className="px-6 py-4 font-semibold">Grand Total</th>
-                                <th className="px-6 py-4 font-semibold">Status</th>
-                                <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                                <th className="px-6 py-4">Invoice ID</th>
+                                <th className="px-6 py-4">Client</th>
+                                <th className="px-6 py-4">Date</th>
+                                <th className="px-6 py-4">Grand Total</th>
+                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-gray-50">
                             {filteredInvoices.map((inv) => (
-                                <tr key={inv.id} className="hover:bg-gray-50/50 transition-colors group">
-                                    <td className="px-6 py-4 font-medium text-gray-900">{inv.id}</td>
-                                    <td className="px-6 py-4 text-gray-600">{inv.client_name || inv.clientName}</td>
-                                    <td className="px-6 py-4 text-gray-500">{typeof inv.date === 'string' ? inv.date.split('T')[0] : inv.date}</td>
-                                    <td className="px-6 py-4 font-bold text-gray-900">
+                                <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors group">
+                                    <td className="px-6 py-4 font-bold text-slate-900">#{inv.id}</td>
+                                    <td className="px-6 py-4 text-slate-700 font-medium">{inv.client_name || inv.clientName}</td>
+                                    <td className="px-6 py-4 text-slate-500 font-medium">{typeof inv.date === 'string' ? inv.date.split('T')[0] : inv.date}</td>
+                                    <td className="px-6 py-4 font-bold text-slate-900">
                                         ₹{parseFloat(inv.grand_total || inv.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={clsx(
-                                            "inline-flex px-2 py-1 rounded-full text-xs font-semibold",
-                                            inv.status === 'Paid' ? "bg-green-50 text-green-700 border border-green-200" :
-                                                inv.status === 'Pending' ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                                                    "bg-red-50 text-red-700 border border-red-200"
+                                            "badge",
+                                            inv.status === 'Paid' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                                                inv.status === 'Pending' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                                                    "bg-rose-50 text-rose-700 border-rose-100"
                                         )}>
+                                            <span className={clsx(
+                                                "w-1.5 h-1.5 rounded-full mr-1.5 inline-block",
+                                                inv.status === 'Paid' ? 'bg-emerald-500' :
+                                                    inv.status === 'Pending' ? 'bg-amber-500' : 'bg-rose-500'
+                                            )}></span>
                                             {inv.status}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => handleView(inv)}
-                                                className="text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-md transition-colors"
+                                                className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
                                                 title="View/Print Invoice"
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleEdit(inv)}
-                                                className="text-blue-600 hover:bg-blue-50 p-1.5 rounded-md transition-colors"
+                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                                 title="Edit Invoice"
                                             >
                                                 <Edit2 className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(inv.id)}
-                                                className="text-gray-400 hover:text-red-600 transition-colors p-1 opacity-0 group-hover:opacity-100"
+                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                 title="Delete Invoice"
                                             >
                                                 <Trash2 className="w-4 h-4" />
@@ -610,7 +623,7 @@ const Invoices = () => {
                             ))}
                             {filteredInvoices.length === 0 && (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400 italic font-medium">
                                         No invoices found matching your filter.
                                     </td>
                                 </tr>
