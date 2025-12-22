@@ -34,6 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Settings Routes
     Route::get('/settings', [\App\Http\Controllers\SettingController::class, 'index']);
     Route::post('/settings', [\App\Http\Controllers\SettingController::class, 'update']);
+    Route::post('/settings/upload-logo', [\App\Http\Controllers\SettingController::class, 'uploadLogo']);
 
     // Reports Routes
     Route::get('/reports/summary', [\App\Http\Controllers\ReportsController::class, 'summary']);
