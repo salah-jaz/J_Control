@@ -16,7 +16,7 @@ import {
 import clsx from "clsx";
 import { useAuth } from "../context/AuthContext";
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, setIsOpen }) => {
     const location = useLocation();
     const { logout } = useAuth();
 
@@ -37,7 +37,10 @@ const Sidebar = () => {
     ];
 
     return (
-        <div className="w-64 bg-white h-screen fixed left-0 top-0 flex flex-col z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-gray-100/50">
+        <div className={clsx(
+            "w-64 bg-white h-screen fixed left-0 top-0 flex flex-col z-30 shadow-[4px_0_24px_rgba(0,0,0,0.02)] border-r border-gray-100/50 transition-transform duration-300 lg:translate-x-0",
+            isOpen ? "translate-x-0" : "-translate-x-full"
+        )}>
 
             {/* ===== Logo / Header ===== */}
             <div className="p-8 flex items-center justify-center">
@@ -61,6 +64,7 @@ const Sidebar = () => {
                         <Link
                             key={item.path}
                             to={item.path}
+                            onClick={() => setIsOpen(false)}
                             className={clsx(
                                 "flex items-center gap-3.5 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 group relative overflow-hidden",
                                 isActive

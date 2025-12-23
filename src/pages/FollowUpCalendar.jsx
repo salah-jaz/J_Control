@@ -127,17 +127,24 @@ const FollowUpCalendar = () => {
     );
 
     return (
-        <div className="h-full space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Follow-up Calendar</h1>
+                    <p className="text-slate-500 mt-1 text-base md:text-lg">Manage your tasks and schedule.</p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                 <StatCard title="Overdue" value={stats.overdue} icon={AlertCircle} color="bg-red-50 border-red-100" textColor="text-red-700" />
                 <StatCard title="Today" value={stats.today} icon={CalendarIcon} color="bg-orange-50 border-orange-100" textColor="text-orange-700" />
                 <StatCard title="This Week" value={stats.thisWeek} icon={Clock} color="bg-blue-50 border-blue-100" textColor="text-blue-700" />
                 <StatCard title="Total" value={stats.total} icon={FileText} color="bg-green-50 border-green-100" textColor="text-green-700" />
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-280px)]">
-                <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-                    <div className="p-6 flex justify-between items-center border-b border-gray-100">
+            <div className="flex flex-col lg:flex-row gap-8 min-h-[600px] lg:h-[calc(100vh-320px)]">
+                <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[500px]">
+                    <div className="p-4 md:p-6 flex justify-between items-center border-b border-gray-100">
                         <div className="flex items-center gap-4">
                             <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
                                 {monthNames[currentDate.getMonth()]} <span className="text-slate-400 font-medium">{currentDate.getFullYear()}</span>
@@ -202,12 +209,12 @@ const FollowUpCalendar = () => {
                     </div>
                 </div>
 
-                <div className="w-full lg:w-96 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 bg-gray-50/30">
+                <div className="w-full lg:w-96 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[400px] lg:h-full overflow-hidden">
+                    <div className="p-4 md:p-6 border-b border-gray-100 bg-gray-50/30">
                         <p className="text-xs font-bold text-brand-600 uppercase tracking-wider mb-1">
                             {selectedDate.toLocaleDateString('en-US', { weekday: 'long' })}
                         </p>
-                        <h3 className="text-2xl font-bold text-slate-900 tracking-tight">
+                        <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
                             {selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
                         </h3>
                         <p className="text-sm text-slate-500 mt-2 flex items-center gap-2">
@@ -231,7 +238,7 @@ const FollowUpCalendar = () => {
                                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${f.status === 'completed' ? 'bg-emerald-500' : new Date(f.scheduled_at) < new Date() ? 'bg-red-500' : 'bg-brand-500'}`}></div>
                                         <div className="flex justify-between items-start mb-2 pl-3">
                                             <span className={`text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide border ${f.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                                    'bg-yellow-50 text-yellow-700 border-yellow-100'
+                                                'bg-yellow-50 text-yellow-700 border-yellow-100'
                                                 }`}>
                                                 {f.status}
                                             </span>

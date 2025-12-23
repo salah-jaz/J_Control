@@ -108,18 +108,18 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto animate-fade-in space-y-8">
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
       {/* HEADER */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Settings</h1>
-        <p className="text-slate-500 mt-1 text-lg">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Settings</h1>
+        <p className="text-slate-500 mt-1 text-base md:text-lg">
           Manage your application preferences and configuration.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* SIDEBAR */}
-        <div className="card h-fit p-3 space-y-1">
+        <div className="card h-fit p-3 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible hide-scrollbar sticky top-[72px] z-10 bg-white shadow-sm border border-gray-100">
           <TabButton icon={<Building2 size={18} />} label="Company" id="company" tab={tab} setTab={setTab} />
           <TabButton icon={<Wallet size={18} />} label="Finance" id="finance" tab={tab} setTab={setTab} />
           <TabButton icon={<User size={18} />} label="Preferences" id="preferences" tab={tab} setTab={setTab} />
@@ -132,8 +132,8 @@ export default function Settings() {
           <div className="card min-h-[600px] flex flex-col">
             {tab === "company" && (
               <Section title="Company Settings">
-                <div className="md:col-span-2 flex items-center gap-6 mb-4">
-                  <div className="h-24 w-24 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden">
+                <div className="md:col-span-2 flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-4 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                  <div className="h-24 w-24 rounded-2xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
                     {settings.company.logo ? (
                       <img src={settings.company.logo} alt="Company Logo" className="h-full w-full object-contain" />
                     ) : (
@@ -252,7 +252,7 @@ export default function Settings() {
 const TabButton = ({ icon, label, id, tab, setTab }) => (
   <button
     onClick={() => setTab(id)}
-    className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-bold transition-all
+    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap lg:w-full
       ${tab === id ? "bg-brand-50 text-brand-700 shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
   >
     <span className={tab === id ? "text-brand-600" : "text-slate-400"}>{icon}</span>

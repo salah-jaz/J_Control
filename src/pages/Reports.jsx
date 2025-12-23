@@ -161,18 +161,18 @@ const ReportTable = ({ report, data }) => (
         <FileText size={20} className="text-slate-400" />
         <h2 className="text-lg font-bold text-slate-800 tracking-tight">{report.label} Details</h2>
       </div>
-      <div className="flex gap-2">
-        <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-600 transition-colors shadow-sm">
-          <Download size={16} /> Export PDF
+      <div className="flex flex-col sm:flex-row gap-2">
+        <button className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-600 transition-colors shadow-sm">
+          <Download size={16} /> <span className="sm:hidden lg:inline">PDF</span><span className="hidden sm:inline lg:hidden">PDF</span>
         </button>
-        <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-600 transition-colors shadow-sm">
-          <Download size={16} /> Export Excel
+        <button className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-600 transition-colors shadow-sm">
+          <Download size={16} /> <span className="sm:hidden lg:inline">Excel</span><span className="hidden sm:inline lg:hidden">Excel</span>
         </button>
       </div>
     </div>
 
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-sm">
+    <div className="overflow-x-auto custom-scrollbar">
+      <table className="min-w-[800px] w-full text-sm">
         <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
           <tr>
             <th className="px-6 py-4 text-left">Date</th>
@@ -255,10 +255,10 @@ const Reports = () => {
   }, [filters, active]);
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto animate-fade-in space-y-8">
+    <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Financial Reports</h1>
-        <p className="text-slate-500 mt-1 text-lg">Gain insights into your business performance.</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Financial Reports</h1>
+        <p className="text-slate-500 mt-1 text-base md:text-lg">Gain insights into your business performance.</p>
       </div>
 
       <FiltersBar filters={filters} setFilters={setFilters} options={filterOptions} />

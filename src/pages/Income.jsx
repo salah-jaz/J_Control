@@ -168,40 +168,38 @@ export default function Income() {
   const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto animate-fade-in space-y-8">
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
       {/* HEADER */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Income Records</h1>
-          <p className="text-slate-500 mt-1 text-lg">Track and manage your incoming payments.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Income Records</h1>
+          <p className="text-slate-500 mt-1 text-base md:text-lg">Track and manage your incoming payments.</p>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={openAdd}
-            className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
-          >
-            <Plus size={20} />
-            Add Income
-          </button>
-        </div>
+        <button
+          onClick={openAdd}
+          className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 shadow-lg shadow-brand-500/30"
+        >
+          <Plus size={20} />
+          Add Income
+        </button>
       </div>
 
       {/* TABLE */}
       <div className="card p-0 overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
           <h3 className="font-bold text-slate-800">Recent Transactions</h3>
-          <div className="flex gap-2">
-            <div className="relative">
+          <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+            <div className="relative flex-1 lg:flex-none">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all" />
+              <input type="text" placeholder="Search..." className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 md:w-64 transition-all" />
             </div>
             <button className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors">
               <Download size={18} />
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4">Client</th>
@@ -268,27 +266,27 @@ export default function Income() {
 
       {/* VIEW MODAL */}
       {openView && viewItem && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl animate-slide-up overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Transaction Details</h2>
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
+          <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl animate-slide-up flex flex-col max-h-[95vh] overflow-hidden">
+            <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Transaction Details</h2>
               <button onClick={() => setOpenView(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-8 grid grid-cols-2 gap-x-8 gap-y-6">
+            <div className="p-4 md:p-8 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 overflow-y-auto">
               {Object.entries(viewItem).map(([k, v]) => (
                 <div key={k} className="flex flex-col">
-                  <p className="text-xs font-bold text-brand-600 uppercase tracking-wider mb-1">
+                  <p className="text-[10px] md:text-xs font-bold text-brand-600 uppercase tracking-wider mb-1">
                     {k.replace(/([A-Z])/g, ' $1').trim()}
                   </p>
-                  <p className="font-medium text-slate-800 break-words">{v || <span className="text-slate-400 italic">None</span>}</p>
+                  <p className="text-sm md:text-base font-medium text-slate-800 break-words">{v || <span className="text-slate-400 italic">None</span>}</p>
                 </div>
               ))}
             </div>
 
-            <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end">
+            <div className="p-4 md:p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end">
               <button
                 onClick={() => setOpenView(false)}
                 className="btn-secondary"
@@ -302,14 +300,14 @@ export default function Income() {
 
       {/* FORM MODAL */}
       {openForm && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[95vh] animate-slide-up overflow-hidden">
+            <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
               <div>
-                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
                   {editId ? "Edit Transaction" : "New Income Entry"}
                 </h2>
-                <p className="text-sm text-slate-500 mt-1">Fill in the details for this transaction.</p>
+                <p className="text-xs md:text-sm text-slate-500 mt-1">Fill in the details for this transaction.</p>
               </div>
               <button onClick={() => setOpenForm(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
                 <X size={20} />
@@ -317,13 +315,13 @@ export default function Income() {
             </div>
 
             {/* TABS */}
-            <div className="flex px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto hide-scrollbar flex-shrink-0">
+            <div className="flex px-4 md:px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto custom-scrollbar flex-shrink-0">
               {["basic", "payment", "tax", "internal"].map((t) => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
                   className={clsx(
-                    "px-6 py-4 text-sm font-bold uppercase tracking-wide border-b-2 transition-all whitespace-nowrap",
+                    "px-4 md:px-6 py-3 md:py-4 text-[10px] md:text-sm font-bold uppercase tracking-wide border-b-2 transition-all whitespace-nowrap",
                     tab === t ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
                   )}
                 >
@@ -333,7 +331,7 @@ export default function Income() {
             </div>
 
             {/* FORM CONTENT */}
-            <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex-1 overflow-y-auto p-4 md:p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {tab === "basic" && (
                   <>
@@ -535,20 +533,20 @@ export default function Income() {
                         />
                       </div>
                     )}
-                    <div className="md:col-span-2 grid grid-cols-2 gap-4 mt-2 p-6 bg-brand-50 rounded-2xl border border-brand-100">
+                    <div className="md:col-span-2 grid grid-cols-2 gap-4 mt-2 p-4 md:p-6 bg-brand-50 rounded-2xl border border-brand-100">
                       <div>
-                        <p className="text-xs text-brand-600 font-bold uppercase tracking-wide">
+                        <p className="text-[10px] md:text-xs text-brand-600 font-bold uppercase tracking-wide">
                           GST Amount
                         </p>
-                        <p className="text-2xl font-bold text-slate-800">
+                        <p className="text-lg md:text-2xl font-bold text-slate-800">
                           ₹{form.gstAmount || "0.00"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-brand-600 font-bold uppercase tracking-wide">
+                        <p className="text-[10px] md:text-xs text-brand-600 font-bold uppercase tracking-wide">
                           Net Total
                         </p>
-                        <p className="text-2xl font-bold text-brand-700">
+                        <p className="text-lg md:text-2xl font-bold text-brand-700">
                           ₹{form.netAmount || "0.00"}
                         </p>
                       </div>
@@ -603,7 +601,7 @@ export default function Income() {
             </div>
 
             {/* FOOTER */}
-            <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-white flex-shrink-0">
+            <div className="flex justify-end gap-3 p-4 md:p-6 border-t border-gray-100 bg-white flex-shrink-0">
               <button
                 onClick={() => setOpenForm(false)}
                 className="btn-secondary"
