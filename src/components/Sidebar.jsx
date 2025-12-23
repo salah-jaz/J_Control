@@ -6,6 +6,7 @@ import {
     LogOut,
     Briefcase,
     Wallet,
+    CreditCard,
     Landmark,
     BookOpen,
     FileBarChart2,
@@ -22,12 +23,12 @@ const Sidebar = () => {
 
     const navItems = [
         { label: "Dashboard", path: "/", icon: LayoutDashboard },
-        { label: "Follow-up Calendar", path: "/calendar", icon: BookOpen },
+        // { label: "Follow-up Calendar", path: "/calendar", icon: BookOpen },
         { label: "Client Management", path: "/clients", icon: Building2 },
-        { label: "Customers", path: "/customers", icon: Users },
+        // { label: "Customers", path: "/customers", icon: Users },
         { label: "Lead Management", path: "/leads", icon: Briefcase },
         { label: "Income", path: "/income", icon: Wallet },
-        { label: "Expense", path: "/expense", icon: Wallet },
+        { label: "Expense", path: "/expense", icon: CreditCard },
         { label: "Invoices", path: "/invoices", icon: FileText },
         { label: "Bank Accounts", path: "/banks", icon: Landmark },
         { label: "Transaction", path: "/transaction", icon: BookOpen },
