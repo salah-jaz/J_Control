@@ -162,7 +162,7 @@ export default function Expenses() {
   const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
   return (
-    <div className="p-6 lg:p-10 w-full mx-auto animate-fade-in space-y-8 overflow-hidden">
+    <div className="p-4 md:p-6 lg:p-8 w-full mx-auto animate-fade-in space-y-6 md:space-y-8">
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
@@ -182,24 +182,24 @@ export default function Expenses() {
 
       {/* TABLE */}
       <div className="card p-0 overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
           <h3 className="font-bold text-slate-800">Recent Expenses</h3>
-          <div className="flex gap-2">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all" />
+              <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all" />
             </div>
             <button
               onClick={() => exportToCSV(data, "expense_records")}
-              className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
+              className="hidden sm:flex p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
               title="Export to CSV"
             >
               <Download size={18} />
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4">Vendor</th>
@@ -275,7 +275,7 @@ export default function Expenses() {
               </button>
             </div>
 
-            <div className="p-8 grid grid-cols-2 gap-x-8 gap-y-6">
+            <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 overflow-y-auto max-h-[60vh]">
               {Object.entries(viewItem).map(([k, v]) => (
                 <div key={k} className="flex flex-col">
                   <p className="text-xs font-bold text-brand-600 uppercase tracking-wider mb-1">
@@ -576,7 +576,7 @@ export default function Expenses() {
                           </select>
                         </div>
 
-                        <div className="md:col-span-2 grid grid-cols-2 gap-4 p-6 bg-brand-50 rounded-2xl border border-brand-100">
+                        <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 md:p-6 bg-brand-50 rounded-2xl border border-brand-100">
                           <div>
                             <p className="text-xs text-brand-600 font-bold uppercase tracking-wide">
                               GST Amount

@@ -756,12 +756,12 @@ const Leads = () => {
     };
 
     return (
-        <div className="p-6 lg:p-10 w-full mx-auto space-y-8 animate-fade-in overflow-hidden">
+        <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Lead Pipeline</h1>
-                    <p className="text-slate-500 mt-1 text-lg">Manage and track your potential customers effectively.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Lead Pipeline</h1>
+                    <p className="text-slate-500 mt-1 text-base md:text-lg">Manage and track your potential customers effectively.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
                     <button onClick={() => { setEditingLead(null); setIsFormOpen(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30">
@@ -805,34 +805,35 @@ const Leads = () => {
             )}
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="Total Leads" value={stats.total} icon={Users} color="bg-blue-500" />
-                <StatCard title="New Leads" value={stats.new} icon={Plus} color="bg-brand-500" />
-                <StatCard title="Qualified" value={stats.qualified} icon={CheckCircle2} color="bg-cyan-500" />
-                <StatCard title="Converted" value={stats.converted} icon={CheckSquare} color="bg-emerald-500" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                <StatCard title="Total Leads" value={stats.total} icon={Users} color="bg-blue-600" />
+                <StatCard title="New Leads" value={stats.new} icon={Plus} color="bg-brand-600" />
+                <StatCard title="Qualified" value={stats.qualified} icon={CheckCircle2} color="bg-emerald-600" />
+                <StatCard title="Converted" value={stats.converted} icon={CheckSquare} color="bg-indigo-600" />
             </div>
 
             {/* Main Content Area */}
             <div className="space-y-6">
                 {/* Filters & Actions Bar */}
                 <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
-                    <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full lg:w-96 group">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-brand-500 transition-colors w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="Search leads by name, email, company..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all text-slate-700"
-                            />
-                        </div>
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                        <ViewToggle active={viewMode} onChange={setViewMode} />
+                        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+                            <div className="relative flex-1 sm:w-64">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <input
+                                    type="text"
+                                    placeholder="Search leads..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all shadow-sm"
+                                />
+                            </div>
 
-                        <div className="flex flex-wrap gap-3 w-full lg:w-auto">
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                className="flex-1 lg:flex-none px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-300 min-w-[140px]"
+                                className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
                             >
                                 <option value="All Statuses">All Statuses</option>
                                 <option value="New">New</option>
@@ -847,7 +848,7 @@ const Leads = () => {
                             <select
                                 value={priorityFilter}
                                 onChange={(e) => setPriorityFilter(e.target.value)}
-                                className="flex-1 lg:flex-none px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-300 min-w-[140px]"
+                                className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
                             >
                                 <option value="All Priorities">All Priorities</option>
                                 <option value="Low">Low</option>
@@ -858,7 +859,7 @@ const Leads = () => {
                             <select
                                 value={assigneeFilter}
                                 onChange={(e) => setAssigneeFilter(e.target.value)}
-                                className="flex-1 lg:flex-none px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-300 min-w-[140px]"
+                                className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
                             >
                                 <option value="All Assignees">All Assignees</option>
                                 <option value="Unassigned">Unassigned</option>
@@ -866,13 +867,6 @@ const Leads = () => {
                                     <option key={user} value={user}>{user}</option>
                                 ))}
                             </select>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-center pt-5 border-t border-gray-100">
-                        <ViewToggle active={viewMode} onChange={setViewMode} />
-                        <div className="text-sm font-medium text-slate-500 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 italic">
-                            Tip: Switch to Kanban for visual pipeline management
                         </div>
                     </div>
                 </div>
@@ -885,8 +879,8 @@ const Leads = () => {
                                 Showing {filteredLeads.length} of {leads.length}
                             </span>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                        <div className="overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-sm text-left min-w-[1000px]">
                                 <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                                     <tr>
                                         <th className="px-6 py-4 w-10"><input type="checkbox" className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" /></th>

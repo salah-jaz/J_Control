@@ -144,15 +144,15 @@ const Customers = () => {
     );
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto animate-fade-in space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
+        <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Customers</h1>
-                    <p className="text-slate-500 mt-1 text-lg">Manage your client base and contacts.</p>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Customers</h1>
+                    <p className="text-slate-500 mt-1 text-base md:text-lg">Manage your client base and contacts.</p>
                 </div>
                 <button
                     onClick={() => openModal()}
-                    className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
+                    className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30 w-full sm:w-auto justify-center"
                 >
                     <Plus className="h-5 w-5" />
                     New Customer
@@ -160,21 +160,21 @@ const Customers = () => {
             </div>
 
             <div className="card p-0 overflow-hidden min-h-[500px]">
-                <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/50">
                     <h3 className="font-bold text-slate-800">Customer List</h3>
-                    <div className="relative">
+                    <div className="relative w-full md:w-64">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
                             type="text"
                             placeholder="Search customers..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all"
+                            className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all"
                         />
                     </div>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-sm text-left min-w-[700px]">
                         <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                             <tr>
                                 <th className="px-6 py-4">Company Name</th>
