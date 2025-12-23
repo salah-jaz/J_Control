@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Eye, Edit2, Trash2, Plus, Download, Search, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { exportToCSV } from "../utils/csvExport";
+
 import { getExpenses, createExpense, updateExpense, deleteExpense } from "../services/expenseService";
 import { getBankAccounts } from "../services/bankAccountService";
 import clsx from "clsx";
@@ -180,14 +182,18 @@ export default function Expenses() {
 
       {/* TABLE */}
       <div className="card p-0 overflow-hidden">
-        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col sm:row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
+        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
           <h3 className="font-bold text-slate-800">Recent Expenses</h3>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all" />
             </div>
-            <button className="hidden sm:flex p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors">
+            <button
+              onClick={() => exportToCSV(data, "expense_records")}
+              className="hidden sm:flex p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
+              title="Export to CSV"
+            >
               <Download size={18} />
             </button>
           </div>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check } from "lucide-react";
 import toast from "react-hot-toast";
+import { exportToCSV } from "../utils/csvExport";
+
 import { getIncomes, createIncome, updateIncome, deleteIncome } from "../services/incomeService";
 import { getBankAccounts } from "../services/bankAccountService";
 import { getClients } from "../services/db";
@@ -193,7 +195,11 @@ export default function Income() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input type="text" placeholder="Search..." className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 md:w-64 transition-all" />
             </div>
-            <button className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors">
+            <button
+              onClick={() => exportToCSV(data, "income_records")}
+              className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
+              title="Export to CSV"
+            >
               <Download size={18} />
             </button>
           </div>

@@ -119,7 +119,7 @@ export default function Users() {
 
       {/* TABLE */}
       <div className="card p-0 overflow-hidden min-h-[400px]">
-        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col sm:row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
+        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
           <h3 className="font-bold text-slate-800">Team Members</h3>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
