@@ -11,23 +11,26 @@ class DashboardController extends Controller
     public function stats()
     {
         $totalClients = \App\Models\Client::count();
-        $activeClients = \App\Models\Client::count(); // Assuming all clients are active as there is no status column
+        $activeClients = \App\Models\Client::count();
         $totalInvoices = Invoice::count();
         
-        // Calculate revenue based on grand_total (which is computed)
-        // Since grand_total is an accessor, we can't sum() it directly in SQL easily without raw query or iterating.
-        // For performance on large datasets, raw SQL is better, but for now PHP iteration is fine or DB raw.
-        // Let's use DB raw for correctness and performance.
+        $totalRevenue = Invoice::where('status', 'Paid')->sum('grand_total');
+        $pendingAmount = Invoice::where('status', 'Pending')->sum('grand_total');
         
-        // Formula: amount + (amount * gst / 100) - discount
-        // Now using materialized grand_total column
-        $totalRevenue = Invoice::where('status', 'Paid')
-            ->sum('grand_total');
-
-        $pendingAmount = Invoice::where('status', 'Pending')
-            ->sum('grand_total');
-
         $recentInvoices = Invoice::latest()->take(5)->get();
+
+        // Monthly Revenue (Last 6 months)
+        $monthlyRevenue = Invoice::where('status', 'Paid')
+            ->selectRaw("DATE_FORMAT(date, '%b') as month, sum(grand_total) as revenue")
+            ->groupBy('month')
+            ->orderByRaw("MIN(date) ASC")
+            ->take(6)
+            ->get();
+
+        // Invoice Status Distribution
+        $invoiceStatusCounts = Invoice::selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->get();
 
         return response()->json([
             'totalClients' => $totalClients,
@@ -35,7 +38,9 @@ class DashboardController extends Controller
             'totalInvoices' => $totalInvoices,
             'totalRevenue' => $totalRevenue,
             'pendingAmount' => $pendingAmount,
-            'recentInvoices' => $recentInvoices
+            'recentInvoices' => $recentInvoices,
+            'monthlyRevenue' => $monthlyRevenue,
+            'invoiceStatusCounts' => $invoiceStatusCounts
         ]);
     }
 }
