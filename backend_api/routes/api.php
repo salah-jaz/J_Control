@@ -40,4 +40,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/summary', [\App\Http\Controllers\ReportsController::class, 'summary']);
     Route::get('/reports/details', [\App\Http\Controllers\ReportsController::class, 'details']);
     Route::get('/reports/filters', [\App\Http\Controllers\ReportsController::class, 'filters']);
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
 });

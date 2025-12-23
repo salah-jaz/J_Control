@@ -1,7 +1,9 @@
+import { useState, useRef, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from 'react-router-dom'; // Assuming react-router-dom for useLocation
-import { Bell } from 'lucide-react'; // Assuming lucide-react for Bell icon
+import { Bell, PhoneCall } from 'lucide-react'; // Assuming lucide-react for Bell icon
+import api from '../api/axios';
 
 // Helper function to get page title based on path
 const getPageTitle = (pathname) => {
@@ -23,21 +25,107 @@ const getPageTitle = (pathname) => {
 const Layout = ({ children, title }) => {
     const { user } = useAuth();
     const location = useLocation(); // Initialize useLocation hook
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const notificationRef = useRef(null);
+
+    // Fetch Notifications
+    useEffect(() => {
+        const fetchNotifications = async () => {
+            try {
+                const response = await api.get('/notifications');
+                if (response.data) {
+                    setNotifications(response.data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch notifications", error);
+            }
+        };
+
+        fetchNotifications();
+
+        // Optional: Poll every minute
+        const interval = setInterval(fetchNotifications, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Close notifications when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+                setShowNotifications(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     return (
         <div className="min-h-screen bg-[#F3F4F6] font-sans">
             <Sidebar />
             <div className="ml-64 flex flex-col min-h-screen transition-all duration-300">
                 {/* Header */}
-                <header className="bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-gray-100/50 px-8 py-4 flex justify-between items-center shadow-sm">
+                <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-100/50 px-8 py-4 flex justify-between items-center shadow-sm">
                     <h2 className="text-2xl font-bold text-slate-800 tracking-tight">
                         {getPageTitle(location.pathname)}
                     </h2>
                     <div className="flex items-center gap-6">
-                        <button className="relative p-2 text-slate-400 hover:text-brand-600 transition-colors rounded-full hover:bg-brand-50">
-                            <Bell className="h-5 w-5" />
-                            <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
-                        </button>
+                        <div className="relative" ref={notificationRef}>
+                            <button
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                className={`relative p-2 transition-colors rounded-full hover:bg-brand-50 ${showNotifications ? 'bg-brand-50 text-brand-600' : 'text-slate-400 hover:text-brand-600'}`}
+                            >
+                                <Bell className="h-5 w-5" />
+                                {notifications.length > 0 && (
+                                    <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
+                                )}
+                            </button>
+
+                            {/* Notification Dropdown */}
+                            {showNotifications && (
+                                <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="px-4 py-3 border-b border-gray-100 flex justify-between items-center">
+                                        <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+                                        {notifications.length > 0 && (
+                                            <button
+                                                onClick={() => setNotifications([])}
+                                                className="text-xs text-brand-600 hover:text-brand-700 font-medium hover:underline"
+                                            >
+                                                Mark all read
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="max-h-[300px] overflow-y-auto">
+                                        {notifications.length === 0 ? (
+                                            <div className="px-4 py-8 text-center text-slate-500">
+                                                <Bell className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                                                <p className="text-sm">No new notifications</p>
+                                            </div>
+                                        ) : (
+                                            notifications.map(notif => (
+                                                <div key={notif.id} className="px-4 py-3 hover:bg-slate-50 transition-colors border-b border-gray-50 last:border-0 cursor-pointer group">
+                                                    <div className="flex gap-3">
+                                                        <div className={`mt-1 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${notif.read ? 'bg-slate-100 text-slate-400' : 'bg-brand-100 text-brand-600'}`}>
+                                                            {notif.type === 'Call Reminder' ? <PhoneCall size={14} /> : <Bell size={14} />}
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex justify-between items-start w-full">
+                                                                <p className={`text-sm ${notif.read ? 'text-slate-600' : 'text-slate-800 font-medium group-hover:text-brand-700'}`}>
+                                                                    {notif.message}
+                                                                </p>
+                                                            </div>
+                                                            <p className="text-xs text-slate-400 mt-1">{notif.time}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <div className="h-8 w-px bg-gray-200"></div>
                         <div className="flex items-center gap-3 pl-2">
                             <div className="text-right hidden md:block">

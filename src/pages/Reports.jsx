@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getReportsSummary, getReportDetails, getReportFilters } from "../services/db";
 import { Download, FileText, TrendingUp, TrendingDown, DollarSign, Filter, X } from "lucide-react";
 import clsx from "clsx";
+import { useReactToPrint } from "react-to-print";
+import { exportToCSV } from "../utils/csvExport";
 
 // =====================================
 // Report Types
@@ -154,59 +156,77 @@ const ReportTabs = ({ active, setActive }) => (
 // =====================================
 // Report Table
 // =====================================
-const ReportTable = ({ report, data }) => (
-  <div className="card p-0 overflow-hidden">
-    <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-      <div className="flex items-center gap-2">
-        <FileText size={20} className="text-slate-400" />
-        <h2 className="text-lg font-bold text-slate-800 tracking-tight">{report.label} Details</h2>
-      </div>
-      <div className="flex gap-2">
-        <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-600 transition-colors shadow-sm">
-          <Download size={16} /> Export PDF
-        </button>
-        <button className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-600 transition-colors shadow-sm">
-          <Download size={16} /> Export Excel
-        </button>
-      </div>
-    </div>
+const ReportTable = ({ report, data }) => {
+  const componentRef = useRef();
 
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-sm">
-        <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
-          <tr>
-            <th className="px-6 py-4 text-left">Date</th>
-            <th className="px-6 py-4 text-left">Description</th>
-            <th className="px-6 py-4 text-right">Debit</th>
-            <th className="px-6 py-4 text-right">Credit</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-50">
-          {data.length === 0 ? (
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef, // updated for react-to-print v3+ if applicable, checking package.json shows v3.2.0, which uses `content` or `contentRef`? v3.2 uses `content`. 
+    // Wait, package.json says "^3.2.0". 
+    // Usually it is `content: () => componentRef.current`.
+    content: () => componentRef.current,
+    documentTitle: `${report.label}_Report`,
+  });
+
+  return (
+    <div className="card p-0 overflow-hidden" ref={componentRef}>
+      <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="flex items-center gap-2">
+          <FileText size={20} className="text-slate-400" />
+          <h2 className="text-lg font-bold text-slate-800 tracking-tight">{report.label} Details</h2>
+        </div>
+        <div className="flex gap-2 print:hidden">
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-600 transition-colors shadow-sm"
+          >
+            <Download size={16} /> Export PDF
+          </button>
+          <button
+            onClick={() => exportToCSV(data, `${report.label.replace(/\s+/g, '_')}_Report`)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-600 transition-colors shadow-sm"
+          >
+            <Download size={16} /> Export Excel
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
             <tr>
-              <td colSpan="4" className="px-6 py-12 text-center text-slate-500 italic">
-                No records found for the selected period.
-              </td>
+              <th className="px-6 py-4 text-left">Date</th>
+              <th className="px-6 py-4 text-left">Description</th>
+              <th className="px-6 py-4 text-right">Debit</th>
+              <th className="px-6 py-4 text-right">Credit</th>
             </tr>
-          ) : (
-            data.map((row, index) => (
-              <tr key={index} className="hover:bg-slate-50/50 transition-colors">
-                <td className="px-6 py-4 font-mono text-slate-600">{row.date}</td>
-                <td className="px-6 py-4 text-slate-800 font-medium">{row.description}</td>
-                <td className="px-6 py-4 text-right font-mono font-medium text-red-600">
-                  {row.debit !== '-' ? `₹${parseFloat(row.debit).toLocaleString()}` : '-'}
-                </td>
-                <td className="px-6 py-4 text-right font-mono font-medium text-emerald-600">
-                  {row.credit !== '-' ? `₹${parseFloat(row.credit).toLocaleString()}` : '-'}
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {data.length === 0 ? (
+              <tr>
+                <td colSpan="4" className="px-6 py-12 text-center text-slate-500 italic">
+                  No records found for the selected period.
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              data.map((row, index) => (
+                <tr key={index} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-6 py-4 font-mono text-slate-600">{row.date}</td>
+                  <td className="px-6 py-4 text-slate-800 font-medium">{row.description}</td>
+                  <td className="px-6 py-4 text-right font-mono font-medium text-red-600">
+                    {row.debit !== '-' ? `₹${parseFloat(row.debit).toLocaleString()}` : '-'}
+                  </td>
+                  <td className="px-6 py-4 text-right font-mono font-medium text-emerald-600">
+                    {row.credit !== '-' ? `₹${parseFloat(row.credit).toLocaleString()}` : '-'}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // =====================================
 // Main Reports Page (Premium)

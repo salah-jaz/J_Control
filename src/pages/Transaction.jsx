@@ -1,10 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { getTransactions } from "../services/transactionService";
-import { Search, Download, ArrowUpRight, ArrowDownLeft, Filter } from "lucide-react";
+import { Search, Download, ArrowUpRight, ArrowDownLeft, Filter, X } from "lucide-react";
 import clsx from "clsx";
+import { exportToCSV } from "../utils/csvExport";
 
 export default function Transaction() {
   const [transactions, setTransactions] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    type: "",
+    status: "",
+    startDate: "",
+    endDate: ""
+  });
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     loadTransactions();
@@ -19,6 +28,35 @@ export default function Transaction() {
     }
   };
 
+  const getFilteredTransactions = () => {
+    return transactions.filter(txn => {
+      // 1. Search Term
+      const searchMatch = !searchTerm ||
+        (txn.party && txn.party.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (txn.reference && txn.reference.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (txn.transactionId && txn.transactionId.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      // 2. Type Filter
+      const typeMatch = !filters.type || txn.type === filters.type;
+
+      // 3. Status Filter
+      const statusMatch = !filters.status || txn.status === filters.status;
+
+      // 4. Date Range
+      let dateMatch = true;
+      if (filters.startDate) {
+        dateMatch = dateMatch && new Date(txn.date) >= new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        dateMatch = dateMatch && new Date(txn.date) <= new Date(filters.endDate);
+      }
+
+      return searchMatch && typeMatch && statusMatch && dateMatch;
+    });
+  };
+
+  const filteredTransactions = getFilteredTransactions();
+
   return (
     <div className="p-8 max-w-[1600px] mx-auto animate-fade-in space-y-8">
       {/* PAGE HEADER */}
@@ -28,16 +66,85 @@ export default function Transaction() {
           <p className="text-slate-500 mt-1 text-lg">History of all financial movements.</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn-secondary flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={clsx(
+              "btn-secondary flex items-center gap-2",
+              showFilters && "bg-slate-100 ring-2 ring-slate-200"
+            )}
+          >
             <Filter size={18} />
             Filter
           </button>
-          <button className="btn-secondary flex items-center gap-2">
+          <button
+            onClick={() => exportToCSV(filteredTransactions, "transactions_export")}
+            className="btn-secondary flex items-center gap-2"
+          >
             <Download size={18} />
             Export
           </button>
         </div>
       </div>
+
+      {/* FILTER PANEL */}
+      {showFilters && (
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-slide-up">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              <Filter size={16} className="text-brand-600" />
+              Filter Transactions
+            </h3>
+            <button onClick={() => setFilters({ type: "", status: "", startDate: "", endDate: "" })} className="text-sm text-brand-600 font-bold hover:underline">
+              Reset Filters
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="label">Type</label>
+              <select
+                className="input"
+                value={filters.type}
+                onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+              >
+                <option value="">All</option>
+                <option value="Income">Income</option>
+                <option value="Expense">Expense</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Status</label>
+              <select
+                className="input"
+                value={filters.status}
+                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+              >
+                <option value="">All</option>
+                <option value="Paid">Paid</option>
+                <option value="Received">Received</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Start Date</label>
+              <input
+                type="date"
+                className="input"
+                value={filters.startDate}
+                onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label">End Date</label>
+              <input
+                type="date"
+                className="input"
+                value={filters.endDate}
+                onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TRANSACTION TABLE */}
       <div className="card p-0 overflow-hidden min-h-[500px]">
@@ -45,7 +152,13 @@ export default function Transaction() {
           <h3 className="font-bold text-slate-800">Transaction History</h3>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all"
+            />
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -64,14 +177,14 @@ export default function Transaction() {
             </thead>
 
             <tbody className="divide-y divide-gray-50">
-              {transactions.length === 0 ? (
+              {filteredTransactions.length === 0 ? (
                 <tr>
                   <td colSpan="8" className="p-12 text-center text-slate-400 italic">
                     No transactions found
                   </td>
                 </tr>
               ) : (
-                transactions.map((txn, index) => (
+                filteredTransactions.map((txn, index) => (
                   <tr
                     key={index}
                     className="hover:bg-slate-50/50 transition-colors"
