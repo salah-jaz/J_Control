@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { Plus, Search, Edit2, Trash2, Building2, Phone, Mail, MapPin, Eye } from 'lucide-react';
 import { getClients, saveClient, deleteClient } from '../services/db';
 import ClientForm from '../components/ClientForm';
+import { useLocation } from 'react-router-dom';
 
 const ClientManagement = () => {
     const [clients, setClients] = useState([]);
@@ -11,6 +12,19 @@ const ClientManagement = () => {
     const [editingClient, setEditingClient] = useState(null);
     const [isViewMode, setIsViewMode] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+
+    const location = useLocation();
+
+    useEffect(() => {
+        if (location.state && location.state.openForm) {
+            setEditingClient(null);
+            setIsViewMode(false);
+            setIsFormOpen(true);
+
+            // Clear state so it doesn't persist on refresh/reload
+            window.history.replaceState({}, document.title);
+        }
+    }, [location]);
 
     const fetchClients = async () => {
         setIsLoading(true);

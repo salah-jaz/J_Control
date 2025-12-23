@@ -5,6 +5,7 @@ import { getInvoices, getClients, saveInvoice, deleteInvoice, getSettings } from
 import { getBankAccounts } from '../services/bankAccountService';
 import clsx from 'clsx';
 import { useReactToPrint } from 'react-to-print';
+import { useLocation } from 'react-router-dom';
 
 import InvoiceView from '../components/InvoiceView';
 
@@ -472,6 +473,23 @@ const Invoices = () => {
     const [editingInvoice, setEditingInvoice] = useState(null);
     const [viewingInvoice, setViewingInvoice] = useState(null);
     const [filterStatus, setFilterStatus] = useState('All');
+
+    const location = useLocation();
+
+    useEffect(() => {
+        if (location.state) {
+            if (location.state.openForm) {
+                setEditingInvoice(null);
+                setIsFormOpen(true);
+            }
+            if (location.state.initialStatus) {
+                setFilterStatus(location.state.initialStatus);
+            }
+            // Clear state so it doesn't persist on refresh/reload weirdly if we used replace, 
+            // but for now this is fine as one-off actions. Use navigation history replacement if needed.
+            window.history.replaceState({}, document.title);
+        }
+    }, [location]);
 
     useEffect(() => {
         const fetchInvoices = async () => {
