@@ -4,37 +4,41 @@ import { getDashboardStats } from '../services/db';
 import clsx from 'clsx';
 
 const StatCard = ({ title, value, icon: Icon, trend, color, subValue = null, subLabel = null }) => (
-    <div className="card h-40 flex flex-col justify-between group cursor-default relative overflow-hidden">
-        {/* Subtle background gradient based on color */}
-        <div className={clsx("absolute -right-6 -top-6 w-32 h-32 rounded-full opacity-5 group-hover:opacity-10 transition-opacity bg-current", color.replace('bg-', 'text-'))}></div>
+    <div className="card min-h-[190px] h-auto flex flex-col justify-between group cursor-default relative">
+        {/* Isolated background decoration with overflow-hidden */}
+        <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+            <div className={clsx("absolute -right-6 -top-6 w-32 h-32 rounded-full opacity-5 group-hover:opacity-10 transition-opacity bg-current", color.replace('bg-', 'text-'))}></div>
+        </div>
 
-        <div className="flex justify-between items-start z-10">
-            <div>
-                <div className={clsx("inline-flex p-3 rounded-2xl mb-4 transition-transform group-hover:scale-110", color.replace('bg-', 'bg-').replace('500', '50'))}>
+        <div className="flex justify-between items-start z-10 gap-2 mb-4">
+            <div className="min-w-0 flex-1">
+                <div className={clsx("inline-flex p-3 rounded-2xl mb-3 transition-transform group-hover:scale-110", color.replace('bg-', 'bg-').replace('500', '50'))}>
                     <Icon className={clsx("w-6 h-6", color.replace('bg-', 'text-').replace('500', '600'))} />
                 </div>
-                <h3 className="text-3xl font-bold text-slate-900 tracking-tight">{value}</h3>
-                <p className="text-sm font-medium text-slate-500 mt-1">{title}</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight truncate leading-tight" title={value}>
+                    {value}
+                </h3>
+                <p className="text-sm font-medium text-slate-500 mt-1 truncate">{title}</p>
             </div>
 
             {/* Trend indicator */}
             {trend && (
-                <div className={clsx("flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-white shadow-sm border border-gray-100", trend > 0 ? "text-emerald-600" : "text-red-600")}>
+                <div className={clsx("flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-white shadow-sm border border-gray-100 flex-shrink-0 mt-1", trend > 0 ? "text-emerald-600" : "text-red-600")}>
                     {trend > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                     {Math.abs(trend)}%
                 </div>
             )}
         </div>
 
-        <div className="mt-auto z-10">
+        <div className="mt-auto z-10 w-full">
             {subValue && (
-                <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
-                    <span className="text-slate-900 font-bold bg-gray-100 px-1.5 py-0.5 rounded">{subValue}</span>
-                    {subLabel}
+                <div className="flex items-center justify-between gap-2 text-xs font-medium">
+                    <span className="truncate text-slate-400">{subLabel}</span>
+                    <span className="text-slate-900 font-bold bg-gray-100 px-2 py-1 rounded flex-shrink-0">{subValue}</span>
                 </div>
             )}
             {!subValue && (
-                <div className="h-1 w-full bg-gray-50 rounded-full mt-2 overflow-hidden">
+                <div className="h-1.5 w-full bg-gray-50 rounded-full overflow-hidden">
                     <div className={clsx("h-full rounded-full w-2/3 opacity-50", color)}></div>
                 </div>
             )}
@@ -61,11 +65,11 @@ const Dashboard = () => {
     }, []);
 
     return (
-        <div className="p-6 lg:p-10 w-full mx-auto space-y-8 animate-fade-in overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="p-4 md:p-6 lg:p-10 w-full mx-auto space-y-6 md:space-y-8 animate-fade-in">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
                     title="Total Revenue"
-                    value={`$${stats.totalRevenue.toLocaleString()}`}
+                    value={`₹${stats.totalRevenue.toLocaleString('en-IN')}`}
                     icon={DollarSign}
                     trend={12.5}
                     color="bg-emerald-500"
@@ -81,7 +85,7 @@ const Dashboard = () => {
                 />
                 <StatCard
                     title="Pending Invoices"
-                    value={`$${stats.pendingAmount.toLocaleString()}`}
+                    value={`₹${stats.pendingAmount.toLocaleString('en-IN')}`}
                     icon={FileText}
                     trend={-2.4}
                     color="bg-amber-500"
@@ -95,14 +99,14 @@ const Dashboard = () => {
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="card lg:col-span-2">
-                    <div className="flex justify-between items-center mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+                <div className="card lg:col-span-2 px-2 md:px-6">
+                    <div className="flex justify-between items-center mb-6 px-2 md:px-0">
                         <h3 className="text-lg font-bold text-slate-800">Recent Invoices</h3>
                         <button className="text-sm font-medium text-brand-600 hover:text-brand-700">View All</button>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full text-sm text-left min-w-[600px]">
                             <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 rounded-lg">
                                 <tr>
                                     <th className="px-4 py-3 rounded-l-lg">Invoice ID</th>
@@ -118,7 +122,7 @@ const Dashboard = () => {
                                         <td className="px-4 py-4 font-mono font-medium text-brand-600 group-hover:text-brand-700">{inv.id}</td>
                                         <td className="px-4 py-4 font-semibold text-slate-700">{inv.client_name}</td>
                                         <td className="px-4 py-4 text-slate-500">{inv.date}</td>
-                                        <td className="px-4 py-4 font-bold text-slate-900">${inv.amount.toLocaleString()}</td>
+                                        <td className="px-4 py-4 font-bold text-slate-900">₹{inv.amount.toLocaleString('en-IN')}</td>
                                         <td className="px-4 py-4">
                                             <span className={clsx(
                                                 "badge",
@@ -141,7 +145,7 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-slate-900 rounded-2xl shadow-xl p-8 text-white text-center flex flex-col items-center justify-center relative overflow-hidden h-full min-h-[300px]">
+                <div className="bg-slate-900 rounded-2xl shadow-xl p-6 md:p-8 text-white text-center flex flex-col items-center justify-center relative overflow-hidden h-full min-h-[250px] md:min-h-[300px]">
                     {/* Abstract Shapes */}
                     <div className="absolute top-0 right-0 w-64 h-64 bg-slate-800/50 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-600/20 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none"></div>
