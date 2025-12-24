@@ -11,6 +11,8 @@ const defaultSettings = {
     address: "",
     gst: "",
     logo: "",
+    tagline: "",
+    terms: "",
   },
   finance: {
     currency: "INR",
@@ -170,6 +172,10 @@ export default function Settings() {
                   onChange={v => setSettings({ ...settings, company: { ...settings.company, gst: v } })} />
                 <Textarea label="Address" value={settings.company.address}
                   onChange={v => setSettings({ ...settings, company: { ...settings.company, address: v } })} />
+                <Input label="Company Tagline" value={settings.company.tagline}
+                  onChange={v => setSettings({ ...settings, company: { ...settings.company, tagline: v } })} />
+                <Textarea label="Terms & Conditions" value={settings.company.terms}
+                  onChange={v => setSettings({ ...settings, company: { ...settings.company, terms: v } })} />
               </Section>
             )}
 
