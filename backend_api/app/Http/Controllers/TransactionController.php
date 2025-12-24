@@ -14,7 +14,7 @@ class TransactionController extends Controller
         $data = $transactions->map(function($txn) {
             $party = '';
             if ($txn->related_type === 'App\Models\Income' && $txn->related) {
-                $party = $txn->related->customer;
+                $party = $txn->related->client;
             } elseif ($txn->related_type === 'App\Models\Expense' && $txn->related) {
                 $party = $txn->related->vendor;
             }
