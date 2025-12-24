@@ -35,6 +35,7 @@ export default function BankAccounts() {
   const [editId, setEditId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     loadData();
@@ -133,6 +134,14 @@ export default function BankAccounts() {
 
   const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
+  const filteredData = data.filter((item) =>
+    Object.values(item).some(
+      (val) =>
+        val &&
+        val.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  );
+
   return (
     <div className="p-6 lg:p-10 w-full mx-auto animate-fade-in space-y-8 overflow-hidden">
       {/* HEADER */}
@@ -156,7 +165,13 @@ export default function BankAccounts() {
           <h3 className="font-bold text-slate-800">Accounts</h3>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input type="text" placeholder="Search accounts..." className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all" />
+            <input
+              type="text"
+              placeholder="Search accounts..."
+              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -171,14 +186,14 @@ export default function BankAccounts() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {data.length === 0 ? (
+              {filteredData.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="p-12 text-center text-slate-400 italic">
                     No bank accounts found
                   </td>
                 </tr>
               ) : (
-                data.map((item, i) => (
+                filteredData.map((item, i) => (
                   <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -239,7 +254,7 @@ export default function BankAccounts() {
       {/* VIEW MODAL */}
       {openView && viewItem && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl animate-slide-up overflow-hidden">
+          <div className="bg-white max-w-xl w-full rounded-2xl shadow-2xl animate-slide-up overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h2 className="text-xl font-bold text-slate-900 tracking-tight">Account Details</h2>
               <button onClick={() => setOpenView(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
@@ -247,9 +262,9 @@ export default function BankAccounts() {
               </button>
             </div>
 
-            <div className="p-8 grid grid-cols-2 gap-x-8 gap-y-6">
-              <div className="col-span-2 flex items-center gap-4 p-4 bg-brand-50 rounded-xl border border-brand-100 mb-2">
-                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-brand-600 shadow-sm">
+            <div className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 overflow-y-auto max-h-[80vh]">
+              <div className="col-span-1 sm:col-span-2 flex items-center gap-4 p-4 bg-brand-50 rounded-xl border border-brand-100 mb-2">
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-brand-600 shadow-sm shrink-0">
                   <CreditCard size={24} />
                 </div>
                 <div>
@@ -265,7 +280,7 @@ export default function BankAccounts() {
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">
                     {k.replace(/([A-Z])/g, ' $1').trim()}
                   </p>
-                  <p className="font-medium text-slate-800 break-words">{v || <span className="text-slate-400 italic">None</span>}</p>
+                  <p className="text-sm font-medium text-slate-800 break-words">{v || <span className="text-slate-400 italic">None</span>}</p>
                 </div>
               ))}
             </div>
