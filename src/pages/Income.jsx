@@ -31,6 +31,24 @@ const emptyForm = {
   staff: "",
   department: "",
   notes: "",
+
+  // New fields
+  description: "",
+  referenceNumber: "",
+  invoiceDate: "",
+  dueDate: "",
+  recurring: "No",
+  frequency: "",
+  clientEmail: "",
+  clientPhone: "",
+  paymentTerms: "",
+  discountApplied: "No",
+  discountAmount: "",
+  lateFee: "",
+  collectionStatus: "Collected",
+  followUpDate: "",
+  commission: "",
+  taxCategory: "",
 };
 
 export default function Income() {
@@ -422,6 +440,77 @@ export default function Income() {
                         }
                       />
                     </div>
+
+                    <div>
+                      <label className="label">
+                        Description
+                      </label>
+                      <textarea
+                        className="input min-h-[80px]"
+                        placeholder="Detailed description of the income"
+                        value={form.description}
+                        onChange={(e) =>
+                          setForm({ ...form, description: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Reference Number
+                      </label>
+                      <input
+                        className="input"
+                        placeholder="Internal reference or PO number"
+                        value={form.referenceNumber}
+                        onChange={(e) =>
+                          setForm({ ...form, referenceNumber: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Invoice Date
+                      </label>
+                      <input
+                        type="date"
+                        className="input"
+                        value={form.invoiceDate}
+                        onChange={(e) =>
+                          setForm({ ...form, invoiceDate: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Client Email
+                      </label>
+                      <input
+                        type="email"
+                        className="input"
+                        placeholder="client@example.com"
+                        value={form.clientEmail}
+                        onChange={(e) =>
+                          setForm({ ...form, clientEmail: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Client Phone
+                      </label>
+                      <input
+                        className="input"
+                        placeholder="+91-9876543210"
+                        value={form.clientPhone}
+                        onChange={(e) =>
+                          setForm({ ...form, clientPhone: e.target.value })
+                        }
+                      />
+                    </div>
                   </>
                 )}
 
@@ -504,6 +593,71 @@ export default function Income() {
                         <option>Pending</option>
                       </select>
                     </div>
+
+                    <div>
+                      <label className="label">
+                        Due Date
+                      </label>
+                      <input
+                        type="date"
+                        className="input"
+                        value={form.dueDate}
+                        onChange={(e) =>
+                          setForm({ ...form, dueDate: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Recurring Income
+                      </label>
+                      <select
+                        className="input"
+                        value={form.recurring}
+                        onChange={(e) =>
+                          setForm({ ...form, recurring: e.target.value })
+                        }
+                      >
+                        <option>No</option>
+                        <option>Yes</option>
+                      </select>
+                    </div>
+
+                    {form.recurring === "Yes" && (
+                      <div>
+                        <label className="label">
+                          Frequency
+                        </label>
+                        <select
+                          className="input"
+                          value={form.frequency}
+                          onChange={(e) =>
+                            setForm({ ...form, frequency: e.target.value })
+                          }
+                        >
+                          <option value="">Select Frequency</option>
+                          <option>Monthly</option>
+                          <option>Quarterly</option>
+                          <option>Yearly</option>
+                          <option>Weekly</option>
+                        </select>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="label">
+                        Payment Terms
+                      </label>
+                      <input
+                        className="input"
+                        placeholder="e.g. Net 30, Due on Receipt"
+                        value={form.paymentTerms}
+                        onChange={(e) =>
+                          setForm({ ...form, paymentTerms: e.target.value })
+                        }
+                      />
+                    </div>
                   </>
                 )}
 
@@ -539,6 +693,72 @@ export default function Income() {
                         />
                       </div>
                     )}
+
+                    <div>
+                      <label className="label">
+                        Tax Category
+                      </label>
+                      <select
+                        className="input"
+                        value={form.taxCategory}
+                        onChange={(e) =>
+                          setForm({ ...form, taxCategory: e.target.value })
+                        }
+                      >
+                        <option value="">Select Category</option>
+                        <option>CGST/SGST</option>
+                        <option>IGST</option>
+                        <option>Exempt</option>
+                        <option>Zero Rated</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Discount Applied
+                      </label>
+                      <select
+                        className="input"
+                        value={form.discountApplied}
+                        onChange={(e) =>
+                          setForm({ ...form, discountApplied: e.target.value })
+                        }
+                      >
+                        <option>No</option>
+                        <option>Yes</option>
+                      </select>
+                    </div>
+
+                    {form.discountApplied === "Yes" && (
+                      <div>
+                        <label className="label">
+                          Discount Amount (₹)
+                        </label>
+                        <input
+                          type="number"
+                          className="input"
+                          value={form.discountAmount}
+                          onChange={(e) =>
+                            setForm({ ...form, discountAmount: e.target.value })
+                          }
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="label">
+                        Late Fee (₹)
+                      </label>
+                      <input
+                        type="number"
+                        className="input"
+                        placeholder="If applicable"
+                        value={form.lateFee}
+                        onChange={(e) =>
+                          setForm({ ...form, lateFee: e.target.value })
+                        }
+                      />
+                    </div>
                     <div className="md:col-span-2 grid grid-cols-2 gap-4 mt-2 p-4 md:p-6 bg-brand-50 rounded-2xl border border-brand-100">
                       <div>
                         <p className="text-[10px] md:text-xs text-brand-600 font-bold uppercase tracking-wide">
@@ -598,6 +818,53 @@ export default function Income() {
                         value={form.notes}
                         onChange={(e) =>
                           setForm({ ...form, notes: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Collection Status
+                      </label>
+                      <select
+                        className="input"
+                        value={form.collectionStatus}
+                        onChange={(e) =>
+                          setForm({ ...form, collectionStatus: e.target.value })
+                        }
+                      >
+                        <option>Collected</option>
+                        <option>Overdue</option>
+                        <option>Partially Paid</option>
+                        <option>Written Off</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Follow-up Date
+                      </label>
+                      <input
+                        type="date"
+                        className="input"
+                        value={form.followUpDate}
+                        onChange={(e) =>
+                          setForm({ ...form, followUpDate: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Commission (₹)
+                      </label>
+                      <input
+                        type="number"
+                        className="input"
+                        placeholder="If applicable"
+                        value={form.commission}
+                        onChange={(e) =>
+                          setForm({ ...form, commission: e.target.value })
                         }
                       />
                     </div>

@@ -32,6 +32,23 @@ const emptyForm = {
   staff: "",
   department: "",
   notes: "",
+
+  // New fields
+  description: "",
+  location: "",
+  referenceNumber: "",
+  dueDate: "",
+  recurring: "No",
+  frequency: "",
+  taxCategory: "",
+  approvalStatus: "Pending",
+  approvedBy: "",
+  approvalDate: "",
+  tags: "",
+  priority: "Medium",
+  reimbursementStatus: "Not Applicable",
+  vendorEmail: "",
+  vendorPhone: "",
 };
 
 export default function Expenses() {
@@ -410,6 +427,77 @@ export default function Expenses() {
                         }
                       />
                     </div>
+
+                    <div>
+                      <label className="label">
+                        Description
+                      </label>
+                      <textarea
+                        className="input min-h-[80px]"
+                        placeholder="Detailed description of the expense"
+                        value={form.description}
+                        onChange={(e) =>
+                          setForm({ ...form, description: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Location
+                      </label>
+                      <input
+                        className="input"
+                        placeholder="e.g. Office, Online, Mumbai"
+                        value={form.location}
+                        onChange={(e) =>
+                          setForm({ ...form, location: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Reference Number
+                      </label>
+                      <input
+                        className="input"
+                        placeholder="Internal reference or PO number"
+                        value={form.referenceNumber}
+                        onChange={(e) =>
+                          setForm({ ...form, referenceNumber: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Vendor Email
+                      </label>
+                      <input
+                        type="email"
+                        className="input"
+                        placeholder="vendor@example.com"
+                        value={form.vendorEmail}
+                        onChange={(e) =>
+                          setForm({ ...form, vendorEmail: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Vendor Phone
+                      </label>
+                      <input
+                        className="input"
+                        placeholder="+91-9876543210"
+                        value={form.vendorPhone}
+                        onChange={(e) =>
+                          setForm({ ...form, vendorPhone: e.target.value })
+                        }
+                      />
+                    </div>
                   </>
                 )}
 
@@ -500,6 +588,57 @@ export default function Expenses() {
                         <option>Pending</option>
                       </select>
                     </div>
+
+                    <div>
+                      <label className="label">
+                        Due Date
+                      </label>
+                      <input
+                        type="date"
+                        className="input"
+                        value={form.dueDate}
+                        onChange={(e) =>
+                          setForm({ ...form, dueDate: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Recurring Expense
+                      </label>
+                      <select
+                        className="input"
+                        value={form.recurring}
+                        onChange={(e) =>
+                          setForm({ ...form, recurring: e.target.value })
+                        }
+                      >
+                        <option>No</option>
+                        <option>Yes</option>
+                      </select>
+                    </div>
+
+                    {form.recurring === "Yes" && (
+                      <div>
+                        <label className="label">
+                          Frequency
+                        </label>
+                        <select
+                          className="input"
+                          value={form.frequency}
+                          onChange={(e) =>
+                            setForm({ ...form, frequency: e.target.value })
+                          }
+                        >
+                          <option value="">Select Frequency</option>
+                          <option>Monthly</option>
+                          <option>Quarterly</option>
+                          <option>Yearly</option>
+                          <option>Weekly</option>
+                        </select>
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -576,6 +715,25 @@ export default function Expenses() {
                           </select>
                         </div>
 
+                        <div>
+                          <label className="label">
+                            Tax Category
+                          </label>
+                          <select
+                            className="input"
+                            value={form.taxCategory}
+                            onChange={(e) =>
+                              setForm({ ...form, taxCategory: e.target.value })
+                            }
+                          >
+                            <option value="">Select Category</option>
+                            <option>CGST/SGST</option>
+                            <option>IGST</option>
+                            <option>Exempt</option>
+                            <option>Zero Rated</option>
+                          </select>
+                        </div>
+
                         <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 md:p-6 bg-brand-50 rounded-2xl border border-brand-100">
                           <div>
                             <p className="text-xs text-brand-600 font-bold uppercase tracking-wide">
@@ -642,6 +800,99 @@ export default function Expenses() {
                           setForm({ ...form, notes: e.target.value })
                         }
                       />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Approval Status
+                      </label>
+                      <select
+                        className="input"
+                        value={form.approvalStatus}
+                        onChange={(e) =>
+                          setForm({ ...form, approvalStatus: e.target.value })
+                        }
+                      >
+                        <option>Pending</option>
+                        <option>Approved</option>
+                        <option>Rejected</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Approved By
+                      </label>
+                      <input
+                        className="input"
+                        placeholder="Approver's name"
+                        value={form.approvedBy}
+                        onChange={(e) =>
+                          setForm({ ...form, approvedBy: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Approval Date
+                      </label>
+                      <input
+                        type="date"
+                        className="input"
+                        value={form.approvalDate}
+                        onChange={(e) =>
+                          setForm({ ...form, approvalDate: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Tags
+                      </label>
+                      <input
+                        className="input"
+                        placeholder="e.g. urgent, travel, software"
+                        value={form.tags}
+                        onChange={(e) =>
+                          setForm({ ...form, tags: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Priority
+                      </label>
+                      <select
+                        className="input"
+                        value={form.priority}
+                        onChange={(e) =>
+                          setForm({ ...form, priority: e.target.value })
+                        }
+                      >
+                        <option>Low</option>
+                        <option>Medium</option>
+                        <option>High</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="label">
+                        Reimbursement Status
+                      </label>
+                      <select
+                        className="input"
+                        value={form.reimbursementStatus}
+                        onChange={(e) =>
+                          setForm({ ...form, reimbursementStatus: e.target.value })
+                        }
+                      >
+                        <option>Not Applicable</option>
+                        <option>Pending</option>
+                        <option>Reimbursed</option>
+                      </select>
                     </div>
                   </>
                 )}
