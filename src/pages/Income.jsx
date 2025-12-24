@@ -65,6 +65,7 @@ export default function Income() {
 
   const [editId, setEditId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   /* LOAD */
   useEffect(() => {
@@ -188,6 +189,15 @@ export default function Income() {
 
   const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
+  /* FILTER DATA */
+  const filteredData = data.filter((item) =>
+    Object.values(item).some(
+      (val) =>
+        val &&
+        val.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  );
+
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
       {/* HEADER */}
@@ -212,10 +222,16 @@ export default function Income() {
           <div className="flex flex-wrap gap-2 w-full lg:w-auto">
             <div className="relative flex-1 lg:flex-none">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input type="text" placeholder="Search..." className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 md:w-64 transition-all" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 md:w-64 transition-all"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
             <button
-              onClick={() => exportToCSV(data, "income_records")}
+              onClick={() => exportToCSV(filteredData, "income_records")}
               className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
               title="Export to CSV"
             >
@@ -236,14 +252,14 @@ export default function Income() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {data.length === 0 ? (
+              {filteredData.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-12 text-center text-slate-500 italic">
                     No income records found
                   </td>
                 </tr>
               ) : (
-                data.map((item, i) => (
+                filteredData.map((item, i) => (
                   <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-6 py-4 font-medium text-slate-900">{item.client}</td>
                     <td className="px-6 py-4 text-slate-600">{item.source}</td>

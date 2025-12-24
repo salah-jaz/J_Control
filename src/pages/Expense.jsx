@@ -64,6 +64,7 @@ export default function Expenses() {
 
   const [editId, setEditId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     loadData();
@@ -179,6 +180,14 @@ export default function Expenses() {
     `input ${errors[f] ? "border-red-500 focus:border-red-500 focus:ring-red-200" : ""}`;
   const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
+  const filteredData = data.filter((item) =>
+    Object.values(item).some(
+      (val) =>
+        val &&
+        val.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  );
+
   return (
     <div className="p-4 md:p-6 lg:p-8 w-full mx-auto animate-fade-in space-y-6 md:space-y-8">
       {/* HEADER */}
@@ -205,10 +214,16 @@ export default function Expenses() {
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input type="text" placeholder="Search..." className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all" />
+              <input
+                type="text"
+                placeholder="Search..."
+                className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
             <button
-              onClick={() => exportToCSV(data, "expense_records")}
+              onClick={() => exportToCSV(filteredData, "expense_records")}
               className="hidden sm:flex p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
               title="Export to CSV"
             >
@@ -229,14 +244,14 @@ export default function Expenses() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {data.length === 0 ? (
+              {filteredData.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-12 text-center text-slate-500 italic">
                     No expense records found
                   </td>
                 </tr>
               ) : (
-                data.map((item, i) => (
+                filteredData.map((item, i) => (
                   <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-6 py-4 font-medium text-slate-900">{item.vendor}</td>
                     <td className="px-6 py-4 text-slate-600">{item.expenseType}</td>

@@ -22,6 +22,7 @@ export default function Users() {
   const [openView, setOpenView] = useState(false);
   const [viewItem, setViewItem] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   /* LOAD */
   const fetchData = async () => {
@@ -100,6 +101,14 @@ export default function Users() {
   const inputClass = (f) => `input ${errors[f] ? "border-red-500 focus:border-red-500 focus:ring-red-200" : ""}`;
   const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
+  const filteredData = data.filter((item) =>
+    Object.values(item).some(
+      (val) =>
+        val &&
+        val.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  );
+
   return (
     <div className="p-4 md:p-6 lg:p-8 w-full mx-auto animate-fade-in space-y-6 md:space-y-8">
       {/* HEADER */}
@@ -123,7 +132,13 @@ export default function Users() {
           <h3 className="font-bold text-slate-800">Team Members</h3>
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input type="text" placeholder="Search users..." className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all" />
+            <input
+              type="text"
+              placeholder="Search users..."
+              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
         </div>
         <div className="overflow-x-auto custom-scrollbar">
@@ -140,14 +155,14 @@ export default function Users() {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr><td colSpan="5" className="p-12 text-center text-slate-400 italic">Loading users...</td></tr>
-              ) : data.length === 0 ? (
+              ) : filteredData.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="p-12 text-center text-slate-400 italic">
                     No users found
                   </td>
                 </tr>
               ) : (
-                data.map((item) => (
+                filteredData.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
