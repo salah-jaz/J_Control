@@ -255,13 +255,12 @@ export default function BankAccounts() {
                 <div>
                   <p className="text-xs font-bold text-brand-600 uppercase tracking-wide">Current Balance</p>
                   <p className="text-2xl font-bold text-slate-900">
-                    {viewItem.currency} {parseFloat(viewItem.openingBalance || 0).toLocaleString()}
-                    <span className="text-sm font-normal text-slate-500 ml-2">(Opening)</span>
+                    {viewItem.currency} {parseFloat(viewItem.currentBalance || viewItem.openingBalance || 0).toLocaleString()}
                   </p>
                 </div>
               </div>
 
-              {Object.entries(viewItem).filter(([k]) => !['id', 'created_at', 'updated_at', 'currency', 'openingBalance'].includes(k)).map(([k, v]) => (
+              {Object.entries(viewItem).filter(([k]) => !['id', 'created_at', 'updated_at', 'currency', 'openingBalance', 'currentBalance'].includes(k)).map(([k, v]) => (
                 <div key={k} className="flex flex-col">
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">
                     {k.replace(/([A-Z])/g, ' $1').trim()}

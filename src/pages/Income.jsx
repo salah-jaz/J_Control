@@ -20,6 +20,7 @@ const emptyForm = {
   method: "",
   transactionId: "",
   bank: "",
+  bankAccountId: null,
   receivedDate: "",
   status: "Received",
 
@@ -553,9 +554,11 @@ export default function Income() {
                       <select
                         className="input"
                         value={form.bank}
-                        onChange={(e) =>
-                          setForm({ ...form, bank: e.target.value })
-                        }
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const bankObj = bankAccounts.find(b => `${b.bankName} - ${b.accountNumber}` === val);
+                          setForm({ ...form, bank: val, bankAccountId: bankObj ? bankObj.id : null });
+                        }}
                       >
                         <option value="">Select Bank / Wallet</option>
                         {bankAccounts.map((b) => (

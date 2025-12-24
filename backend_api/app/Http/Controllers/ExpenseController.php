@@ -20,6 +20,7 @@ class ExpenseController extends Controller
             'expense_type' => 'required|string',
             'amount' => 'required|numeric',
             'method' => 'required|string',
+            'bank_account_id' => 'nullable|exists:bank_accounts,id',
             'paid_date' => 'required|date',
             'status' => 'required|string',
             'transaction_id' => 'nullable|required_unless:method,Cash',
@@ -37,9 +38,33 @@ class ExpenseController extends Controller
             'staff' => 'nullable|string',
             'department' => 'nullable|string',
             'notes' => 'nullable|string',
+            'description' => 'nullable|string',
+            'location' => 'nullable|string',
+            'reference_number' => 'nullable|string',
+            'due_date' => 'nullable|date',
+            'recurring' => 'nullable|string',
+            'frequency' => 'nullable|string',
+            'tax_category' => 'nullable|string',
+            'approval_status' => 'nullable|string',
+            'approved_by' => 'nullable|string',
+            'approval_date' => 'nullable|date',
+            'tags' => 'nullable|string',
+            'priority' => 'nullable|string',
+            'reimbursement_status' => 'nullable|string',
+            'vendor_email' => 'nullable|string|email',
+            'vendor_phone' => 'nullable|string',
         ]);
 
         $expense = Expense::create($validated);
+
+        // Update Bank Balance (Decrease)
+        if ($expense->bank_account_id) {
+            $bank = \App\Models\BankAccount::find($expense->bank_account_id);
+            if ($bank) {
+                $bank->current_balance -= $expense->amount;
+                $bank->save();
+            }
+        }
 
         // Auto-create transaction
         \App\Models\Transaction::create([
@@ -63,12 +88,17 @@ class ExpenseController extends Controller
     public function update(Request $request, $id)
     {
         $expense = Expense::findOrFail($id);
+        
+        // Capture old values for balance adjustment
+        $oldAmount = $expense->amount;
+        $oldBankId = $expense->bank_account_id;
 
         $validated = $request->validate([
             'vendor' => 'required|string',
             'expense_type' => 'required|string',
             'amount' => 'required|numeric',
             'method' => 'required|string',
+            'bank_account_id' => 'nullable|exists:bank_accounts,id',
             'paid_date' => 'required|date',
             'status' => 'required|string',
             'transaction_id' => 'nullable|required_unless:method,Cash',
@@ -86,9 +116,40 @@ class ExpenseController extends Controller
             'staff' => 'nullable|string',
             'department' => 'nullable|string',
             'notes' => 'nullable|string',
+            'description' => 'nullable|string',
+            'location' => 'nullable|string',
+            'reference_number' => 'nullable|string',
+            'due_date' => 'nullable|date',
+            'recurring' => 'nullable|string',
+            'frequency' => 'nullable|string',
+            'tax_category' => 'nullable|string',
+            'approval_status' => 'nullable|string',
+            'approved_by' => 'nullable|string',
+            'approval_date' => 'nullable|date',
+            'tags' => 'nullable|string',
+            'priority' => 'nullable|string',
+            'reimbursement_status' => 'nullable|string',
+            'vendor_email' => 'nullable|string|email',
+            'vendor_phone' => 'nullable|string',
         ]);
 
         $expense->update($validated);
+
+        // Update Bank Balance (Revert Old, Apply New)
+        if ($oldBankId) {
+             $oldBank = \App\Models\BankAccount::find($oldBankId);
+             if ($oldBank) {
+                 $oldBank->current_balance += $oldAmount;
+                 $oldBank->save();
+             }
+        }
+        if ($expense->bank_account_id) {
+             $newBank = \App\Models\BankAccount::find($expense->bank_account_id);
+             if ($newBank) {
+                 $newBank->current_balance -= $expense->amount;
+                 $newBank->save();
+             }
+        }
 
         // Auto-update transaction
         $transaction = \App\Models\Transaction::where('related_id', $expense->id)
@@ -115,6 +176,15 @@ class ExpenseController extends Controller
     public function destroy($id)
     {
         $expense = Expense::findOrFail($id);
+
+        // Revert Bank Balance (Increase)
+        if ($expense->bank_account_id) {
+            $bank = \App\Models\BankAccount::find($expense->bank_account_id);
+            if ($bank) {
+                $bank->current_balance += $expense->amount;
+                $bank->save();
+            }
+        }
 
         // Auto-delete transaction
         \App\Models\Transaction::where('related_id', $expense->id)

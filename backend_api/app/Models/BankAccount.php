@@ -20,6 +20,7 @@ class BankAccount extends Model
         'micr_code',
         'swift_code',
         'opening_balance',
+        'current_balance',
         'currency',
         'status',
         'opening_date',

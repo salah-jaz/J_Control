@@ -14,6 +14,7 @@ const toFrontend = (data) => ({
     micr: data.micr_code,
     swift: data.swift_code,
     openingBalance: data.opening_balance,
+    currentBalance: data.current_balance,
     currency: data.currency,
     status: data.status,
     openingDate: data.opening_date,
