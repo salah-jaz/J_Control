@@ -31,7 +31,13 @@ class BankAccountController extends Controller
             'status' => 'nullable|string',
             'opening_date' => 'nullable|date',
             'notes' => 'nullable|string',
+            'qr_code' => 'nullable|image|max:5120',
         ]);
+
+        if ($request->hasFile('qr_code')) {
+            $path = $request->file('qr_code')->store('bank_qr_codes', 'public');
+            $validated['qr_code'] = $path;
+        }
 
         return BankAccount::create($validated);
     }
@@ -60,7 +66,17 @@ class BankAccountController extends Controller
             'status' => 'nullable|string',
             'opening_date' => 'nullable|date',
             'notes' => 'nullable|string',
+            'qr_code' => 'nullable|image|max:5120',
         ]);
+
+        if ($request->hasFile('qr_code')) {
+            // Delete old QR if exists
+            if ($bankAccount->qr_code && \Illuminate\Support\Facades\Storage::disk('public')->exists($bankAccount->qr_code)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($bankAccount->qr_code);
+            }
+            $path = $request->file('qr_code')->store('bank_qr_codes', 'public');
+            $validated['qr_code'] = $path;
+        }
 
         $bankAccount->update($validated);
         return $bankAccount;
