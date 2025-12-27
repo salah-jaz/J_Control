@@ -25,4 +25,5 @@ class BankAccount extends Model
         'status',
         'opening_date',
         'notes',
+        'qr_code',
     ];}

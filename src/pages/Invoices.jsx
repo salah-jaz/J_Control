@@ -3,16 +3,20 @@ import { Plus, Search, Filter, Download, Trash2, Edit2, Upload, FileText, Landma
 import toast from 'react-hot-toast';
 import { getInvoices, getClients, saveInvoice, deleteInvoice, getSettings } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
+import { getProducts } from '../services/productService';
 import clsx from 'clsx';
 import { useReactToPrint } from 'react-to-print';
 import { useLocation } from 'react-router-dom';
 
 import InvoiceView from '../components/InvoiceView';
+import SearchableSelect from '../components/SearchableSelect';
+import QuickProductForm from '../components/QuickProductForm';
 
 
 const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
     const [clients, setClients] = useState([]);
     const [bankAccounts, setBankAccounts] = useState([]);
+    const [products, setProducts] = useState([]);
     const [activeTab, setActiveTab] = useState('basic'); // basic, services, bank
 
     // Form State
@@ -32,15 +36,20 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
     const [qrCodeFile, setQrCodeFile] = useState(null);
     const [qrCodePreview, setQrCodePreview] = useState(null);
 
+    // Quick Add Product State
+    const [quickForm, setQuickForm] = useState({ isOpen: false, rowIndex: null, query: '' });
+
     // Load Initial Data
     useEffect(() => {
         const loadData = async () => {
-            const [clientsData, banksData] = await Promise.all([
+            const [clientsData, banksData, productsData] = await Promise.all([
                 getClients(),
-                getBankAccounts()
+                getBankAccounts(),
+                getProducts()
             ]);
             setClients(clientsData);
             setBankAccounts(banksData);
+            setProducts(productsData);
         };
         loadData();
     }, []);
@@ -119,6 +128,14 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
     const handleItemChange = (index, field, value) => {
         const newItems = [...items];
         newItems[index][field] = value;
+
+        if (field === 'serviceName') {
+            const product = products.find(p => p.name === value);
+            if (product) {
+                newItems[index].amount = product.price;
+            }
+        }
+
         setItems(newItems);
     };
 
@@ -138,6 +155,18 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
         if (file) {
             setQrCodeFile(file);
             setQrCodePreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleQuickAddSuccess = (newProduct) => {
+        setProducts(prev => [newProduct, ...prev]);
+
+        if (quickForm.rowIndex !== null) {
+            // Update items directly to ensure price is set immediately
+            const newItems = [...items];
+            newItems[quickForm.rowIndex].serviceName = newProduct.name;
+            newItems[quickForm.rowIndex].amount = newProduct.price; // Set price immediately
+            setItems(newItems);
         }
     };
 
@@ -303,19 +332,34 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                                             <tr key={index}>
                                                 <td className="px-4 py-2 text-center text-gray-500">{item.sNo}</td>
                                                 <td className="px-4 py-2">
-                                                    <input
-                                                        type="text"
-                                                        value={item.serviceName}
-                                                        onChange={(e) => handleItemChange(index, 'serviceName', e.target.value)}
-                                                        className="w-full px-2 py-1 border border-gray-200 rounded focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                                                        placeholder="Service Name"
-                                                    />
+                                                    <div className="flex gap-2">
+                                                        <SearchableSelect
+                                                            options={products.map(p => ({
+                                                                value: p.name,
+                                                                label: p.name,
+                                                                subLabel: `₹ ${parseFloat(p.price).toLocaleString()}`
+                                                            }))}
+                                                            value={item.serviceName}
+                                                            onChange={(val) => handleItemChange(index, 'serviceName', val)}
+                                                            placeholder="Select Service"
+                                                            creatable={true}
+                                                            className="flex-1"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setQuickForm({ isOpen: true, rowIndex: index, query: item.serviceName })}
+                                                            className="p-2 bg-brand-50 text-brand-600 rounded-lg hover:bg-brand-100 transition-colors border border-brand-200"
+                                                            title="Add New Service"
+                                                        >
+                                                            <Plus className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     <select
                                                         value={item.paymentStatus}
                                                         onChange={(e) => handleItemChange(index, 'paymentStatus', e.target.value)}
-                                                        className="w-full px-2 py-1 border border-gray-200 rounded focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                                        className="input"
                                                     >
                                                         <option value="Pending">Pending</option>
                                                         <option value="Paid">Paid</option>
@@ -326,7 +370,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                                                         type="number"
                                                         value={item.amount}
                                                         onChange={(e) => handleItemChange(index, 'amount', e.target.value)}
-                                                        className="w-full px-2 py-1 border border-gray-200 rounded focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                                        className="input"
                                                         placeholder="0.00"
                                                     />
                                                 </td>
@@ -394,7 +438,24 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                                 <label className="label">Bank Account</label>
                                 <select
                                     value={formData.bankAccountId}
-                                    onChange={(e) => setFormData({ ...formData, bankAccountId: e.target.value })}
+                                    onChange={(e) => {
+                                        const bankId = e.target.value;
+                                        setFormData({ ...formData, bankAccountId: bankId });
+
+                                        // Auto-preview bank QR if no specific file uploaded
+                                        if (!qrCodeFile) {
+                                            const selectedBank = bankAccounts.find(b => b.id == bankId);
+                                            if (selectedBank && selectedBank.qrCode) {
+                                                const API_BASE_URL = 'http://localhost:8000';
+                                                const url = selectedBank.qrCode.startsWith('http')
+                                                    ? selectedBank.qrCode
+                                                    : `${API_BASE_URL}/storage/${selectedBank.qrCode}`;
+                                                setQrCodePreview(url);
+                                            } else {
+                                                setQrCodePreview(null);
+                                            }
+                                        }
+                                    }}
                                     className="input"
                                 >
                                     <option value="">Select Bank Account</option>
@@ -424,12 +485,14 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                                     />
                                     <div className="flex flex-col items-center justify-center text-gray-400">
                                         <Upload className="w-8 h-8 mb-2" />
-                                        <p className="text-sm font-medium">Click to upload QR Code</p>
-                                        <p className="text-xs">PNG, JPG up to 5MB</p>
+                                        <p className="text-sm font-medium">Click to upload Custom QR</p>
+                                        <p className="text-xs">Overrides Bank Default</p>
                                     </div>
                                     {qrCodePreview && (
                                         <div className="mt-4">
-                                            <p className="text-xs text-green-600 font-medium mb-2">Preview:</p>
+                                            <p className="text-xs text-green-600 font-medium mb-2">
+                                                {qrCodeFile ? "New File Selected:" : "Preview (Bank / Existing):"}
+                                            </p>
                                             <img src={qrCodePreview} alt="QR Preview" className="mx-auto h-32 object-contain border border-gray-200 rounded-lg p-1 bg-white" />
                                         </div>
                                     )}
@@ -461,6 +524,13 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                         </button>
                     </div>
                 </div>
+
+                <QuickProductForm
+                    isOpen={quickForm.isOpen}
+                    onClose={() => setQuickForm({ ...quickForm, isOpen: false })}
+                    onSuccess={handleQuickAddSuccess}
+                    initialName={quickForm.query}
+                />
             </div>
         </div>
     );

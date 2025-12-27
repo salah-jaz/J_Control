@@ -16,6 +16,7 @@ import Transaction from "./pages/Transaction";
 import { Toaster } from 'react-hot-toast';
 import Settings from "./pages/Settings";
 import User from "./pages/User";
+import Products from "./pages/Products";
 
 function App() {
   return (
@@ -47,6 +48,14 @@ function App() {
               element={
                 <Layout title="Client Management">
                   <ClientManagement />
+                </Layout>
+              }
+            />
+            <Route
+              path="/products"
+              element={
+                <Layout title="Products & Services">
+                  <Products />
                 </Layout>
               }
             />
@@ -102,7 +111,7 @@ function App() {
                 <User />
               </Layout>
             } />
-            
+
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

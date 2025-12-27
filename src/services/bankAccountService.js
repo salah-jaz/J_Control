@@ -19,6 +19,7 @@ const toFrontend = (data) => ({
     status: data.status,
     openingDate: data.opening_date,
     notes: data.notes,
+    qrCode: data.qr_code,
     createdAt: data.created_at,
 });
 
@@ -48,12 +49,37 @@ export const getBankAccounts = async () => {
 };
 
 export const createBankAccount = async (account) => {
-    const response = await api.post("/bank-accounts", toBackend(account));
+    const data = toBackend(account);
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+        if (data[key] !== null) formData.append(key, data[key]);
+    });
+    if (account.qrCodeFile) {
+        formData.append('qr_code', account.qrCodeFile);
+    }
+    // Handle Method Spoofing if needed, but for POST it's fine.
+
+    const response = await api.post("/bank-accounts", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+    });
     return toFrontend(response.data);
 };
 
 export const updateBankAccount = async (id, account) => {
-    const response = await api.put(`/bank-accounts/${id}`, toBackend(account));
+    const data = toBackend(account);
+    const formData = new FormData();
+    Object.keys(data).forEach(key => {
+        if (data[key] !== null) formData.append(key, data[key]);
+    });
+    if (account.qrCodeFile) {
+        formData.append('qr_code', account.qrCodeFile);
+    }
+    // Laravel PUT with FormData usually requires _method: PUT
+    formData.append('_method', 'PUT');
+
+    const response = await api.post(`/bank-accounts/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+    });
     return toFrontend(response.data);
 };
 

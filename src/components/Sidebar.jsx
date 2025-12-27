@@ -13,6 +13,7 @@ import {
     Building2,
     User,
     Settings,
+    Package,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "../context/AuthContext";
@@ -27,6 +28,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         { label: "Client Management", path: "/clients", icon: Building2 },
         // { label: "Customers", path: "/customers", icon: Users },
         { label: "Lead Management", path: "/leads", icon: Briefcase },
+        { label: "Products & Services", path: "/products", icon: Package },
         { label: "Income", path: "/income", icon: Wallet },
         { label: "Expense", path: "/expense", icon: CreditCard },
         { label: "Invoices", path: "/invoices", icon: FileText },

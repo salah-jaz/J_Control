@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Search } from "lucide-react";
+import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Search, Upload, Image } from "lucide-react";
 import toast from "react-hot-toast";
 import { getBankAccounts, createBankAccount, updateBankAccount, deleteBankAccount } from "../services/bankAccountService";
 import clsx from "clsx";
@@ -22,9 +22,10 @@ const emptyForm = {
   openingDate: "",
 
   notes: "",
+  qrCodeFile: null,
 };
 
-const tabs = ["Basic Info", "Bank Details", "Balance & Status", "Notes"];
+const tabs = ["Basic Info", "Bank Details", "Balance & Status", "QR Code", "Notes"];
 
 export default function BankAccounts() {
   const [data, setData] = useState([]);
@@ -36,6 +37,7 @@ export default function BankAccounts() {
   const [viewItem, setViewItem] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [qrPreview, setQrPreview] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -54,6 +56,7 @@ export default function BankAccounts() {
     setForm(emptyForm);
     setErrors({});
     setEditId(null);
+    setQrPreview(null);
     setActiveTab(0);
     setOpenForm(true);
   };
@@ -63,6 +66,14 @@ export default function BankAccounts() {
     setEditId(item.id);
     setErrors({});
     setActiveTab(0);
+
+    if (item.qrCode) {
+      const API_BASE_URL = 'http://localhost:8000';
+      setQrPreview(item.qrCode.startsWith('http') ? item.qrCode : `${API_BASE_URL}/storage/${item.qrCode}`);
+    } else {
+      setQrPreview(null);
+    }
+
     setOpenForm(true);
   };
 
@@ -141,6 +152,14 @@ export default function BankAccounts() {
         val.toString().toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setForm({ ...form, qrCodeFile: file });
+      setQrPreview(URL.createObjectURL(file));
+    }
+  };
 
   return (
     <div className="p-6 lg:p-10 w-full mx-auto animate-fade-in space-y-8 overflow-hidden">
@@ -283,6 +302,19 @@ export default function BankAccounts() {
                   <p className="text-sm font-medium text-slate-800 break-words">{v || <span className="text-slate-400 italic">None</span>}</p>
                 </div>
               ))}
+
+              {viewItem.qrCode && (
+                <div className="col-span-1 sm:col-span-2 mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">QR Code</p>
+                  <div className="w-48 h-48 border border-gray-200 rounded-xl p-2 bg-white shadow-sm flex items-center justify-center">
+                    <img
+                      src={viewItem.qrCode.startsWith('http') ? viewItem.qrCode : `http://localhost:8000/storage/${viewItem.qrCode}`}
+                      alt="QR Code"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end">
               <button onClick={() => setOpenView(false)} className="btn-secondary">Close Details</button>
@@ -417,6 +449,34 @@ export default function BankAccounts() {
                 )}
 
                 {activeTab === 3 && (
+                  <div className="md:col-span-2">
+                    <label className="label">Start QR Code Upload</label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition cursor-pointer relative flex flex-col items-center justify-center min-h-[300px]">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      />
+                      {qrPreview ? (
+                        <div className="relative">
+                          <img src={qrPreview} alt="QR Preview" className="max-h-64 object-contain rounded-lg border border-gray-200 shadow-sm" />
+                          <p className="mt-4 text-sm text-green-600 font-bold bg-green-50 px-3 py-1 rounded-full inline-block">Image Selected</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-400">
+                          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-400">
+                            <Upload size={32} />
+                          </div>
+                          <p className="text-lg font-bold text-slate-700">Click to upload QR Code</p>
+                          <p className="text-sm mt-1">PNG, JPG up to 5MB</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 4 && (
                   <div className="md:col-span-2">
                     <textarea
                       className="input h-32 w-full"
