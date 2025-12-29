@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Eye, Edit2, Trash2, X, Package, Search, ShoppingBag } from "lucide-react";
+import { Plus, Eye, Edit2, Trash2, X, Package, Search, ShoppingBag, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 import { getProducts, createProduct, updateProduct, deleteProduct } from "../services/productService";
 import clsx from "clsx";
@@ -10,6 +10,23 @@ const emptyForm = {
     type: "Service",
     description: "",
     status: "Active",
+    start_date: "",
+    end_date: "",
+    enable_alert: false,
+};
+
+const isAlertActive = (item) => {
+    if (!item.enable_alert || !item.end_date) return false;
+    const endDate = new Date(item.end_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+
+    const diffTime = endDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Alert if within 7 days (including overdue)
+    return diffDays <= 7;
 };
 
 const tabs = ["Basic Info", "Details"];
@@ -188,7 +205,17 @@ export default function Products() {
                                                     {item.type === 'Product' ? <Package size={20} /> : <ShoppingBag size={20} />}
                                                 </div>
                                                 <div>
-                                                    <p className="font-bold text-slate-900">{item.name}</p>
+                                                    <p className="font-bold text-slate-900 flex items-center gap-2">
+                                                        {item.name}
+                                                        {isAlertActive(item) && (
+                                                            <div className="relative group/alert">
+                                                                <AlertTriangle size={16} className="text-orange-500 animate-pulse" />
+                                                                <div className="absolute left-1/2 -top-8 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover/alert:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                                                    Expiring Soon
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </p>
                                                     <p className="text-slate-500 text-xs truncate max-w-[200px]">{item.description}</p>
                                                 </div>
                                             </div>
@@ -282,8 +309,24 @@ export default function Products() {
                                 <p>{viewItem.type}</p>
                             </div>
                             <div>
-                                <label className="label">Status</label>
                                 <p>{viewItem.status}</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="label">Start Date</label>
+                                    <p>{viewItem.start_date || "N/A"}</p>
+                                </div>
+                                <div>
+                                    <label className="label">End Date</label>
+                                    <p className="flex items-center gap-2">
+                                        {viewItem.end_date || "N/A"}
+                                        {viewItem.enable_alert && viewItem.end_date && (
+                                            <span className="text-xs text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 flex items-center gap-1">
+                                                <AlertTriangle size={12} /> Alert Enabled
+                                            </span>
+                                        )}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                         <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end">
@@ -354,6 +397,30 @@ export default function Products() {
                                     <option>Active</option>
                                     <option>Inactive</option>
                                 </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <label className="label">Start Date</label>
+                                    {input("start_date", "date")}
+                                </div>
+                                <div>
+                                    <label className="label">End Date</label>
+                                    {input("end_date", "date")}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="enable_alert"
+                                    checked={form.enable_alert}
+                                    onChange={(e) => setForm({ ...form, enable_alert: e.target.checked })}
+                                    className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                                />
+                                <label htmlFor="enable_alert" className="text-sm font-medium text-slate-700">
+                                    Enable Alert (1 week before end date)
+                                </label>
                             </div>
                         </div>
 

@@ -25,7 +25,11 @@ class ProductController extends Controller
             'price' => 'required|numeric',
             'type' => 'nullable|string',
             'status' => 'nullable|string',
-            'description' => 'nullable|string'
+            'status' => 'nullable|string',
+            'description' => 'nullable|string',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'enable_alert' => 'boolean'
         ]);
 
         $product = Product::create($validated);
@@ -45,7 +49,11 @@ class ProductController extends Controller
             'price' => 'required|numeric',
             'type' => 'nullable|string',
             'status' => 'nullable|string',
-            'description' => 'nullable|string'
+            'status' => 'nullable|string',
+            'description' => 'nullable|string',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'enable_alert' => 'boolean'
         ]);
 
         $product->update($validated);

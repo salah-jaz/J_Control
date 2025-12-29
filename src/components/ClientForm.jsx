@@ -128,6 +128,11 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
         if (readOnly) return;
         const { name, value } = e.target;
 
+        // Restrict mobile_number and account_number to integers only
+        if (['mobile_number', 'account_number'].includes(name)) {
+            if (value && !/^\d*$/.test(value)) return;
+        }
+
         let updatedData = { ...formData, [name]: value };
 
         // Conditional Logic: Unregistered -> Clear GST Number

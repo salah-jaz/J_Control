@@ -71,8 +71,13 @@ const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssigne
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-slate-700 mb-2">Phone</label>
-                                <input type="tel" className="input"
-                                    value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                                <input type="text" className="input"
+                                    value={formData.phone} onChange={e => {
+                                        const val = e.target.value;
+                                        if (val === '' || /^\d+$/.test(val)) {
+                                            setFormData({ ...formData, phone: val });
+                                        }
+                                    }} />
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-slate-700 mb-2">Company</label>
