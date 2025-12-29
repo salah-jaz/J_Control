@@ -18,7 +18,7 @@ import {
 import clsx from "clsx";
 import { useAuth } from "../context/AuthContext";
 
-const Sidebar = ({ isOpen, setIsOpen }) => {
+const Sidebar = ({ isOpen, setIsOpen, alertCount = 0 }) => {
     const location = useLocation();
     const { logout } = useAuth();
 
@@ -86,7 +86,13 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                                         : "text-slate-400 group-hover:text-slate-600"
                                 )}
                             />
-                            <span className="relative z-10">{item.label}</span>
+                            <span className="relative z-10 flex-1">{item.label}</span>
+                            {/* Alert Badge */}
+                            {item.path === '/products' && alertCount > 0 && (
+                                <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-pulse">
+                                    {alertCount}
+                                </span>
+                            )}
                         </Link>
                     );
                 })}

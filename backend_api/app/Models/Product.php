@@ -14,6 +14,9 @@ class Product extends Model
         'description',
         'price',
         'type',
-        'status'
+        'status',
+        'start_date',
+        'end_date',
+        'enable_alert'
     ];
 }

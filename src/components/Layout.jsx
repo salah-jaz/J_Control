@@ -2,8 +2,23 @@ import { useState, useRef, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from 'react-router-dom';
-import { Bell, PhoneCall, Menu, X } from 'lucide-react';
+import { Bell, PhoneCall, Menu, X, AlertTriangle, Package } from 'lucide-react';
 import api from '../api/axios';
+import { getProducts } from '../services/productService';
+
+const isAlertActive = (item) => {
+    if (!item.enable_alert || !item.end_date) return false;
+    const endDate = new Date(item.end_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+
+    const diffTime = endDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    // Alert if within 7 days (including overdue)
+    return diffDays <= 7;
+};
 
 // Helper function to get page title based on path
 const getPageTitle = (pathname) => {
@@ -32,6 +47,7 @@ const Layout = ({ children }) => {
     // Notifications State (HEAD)
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([]);
+    const [productAlerts, setProductAlerts] = useState([]);
     const notificationRef = useRef(null);
 
     // Close sidebar on route change (Incoming)
@@ -52,10 +68,24 @@ const Layout = ({ children }) => {
             }
         };
 
+        const fetchProductAlerts = async () => {
+            try {
+                const products = await getProducts();
+                const alerts = products.filter(isAlertActive);
+                setProductAlerts(alerts);
+            } catch (error) {
+                console.error("Failed to fetch products for alerts", error);
+            }
+        };
+
         fetchNotifications();
+        fetchProductAlerts();
 
         // Optional: Poll every minute
-        const interval = setInterval(fetchNotifications, 60000);
+        const interval = setInterval(() => {
+            fetchNotifications();
+            fetchProductAlerts();
+        }, 60000);
         return () => clearInterval(interval);
     }, []);
 
@@ -82,7 +112,7 @@ const Layout = ({ children }) => {
                 />
             )}
 
-            <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+            <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} alertCount={productAlerts.length} />
 
             <div className={`flex flex-col min-h-screen transition-all duration-300 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-64'}`}>
                 {/* Header */}
@@ -106,7 +136,7 @@ const Layout = ({ children }) => {
                                 className={`relative p-2 transition-colors rounded-full hover:bg-brand-50 ${showNotifications ? 'bg-brand-50 text-brand-600' : 'text-slate-400 hover:text-brand-600'}`}
                             >
                                 <Bell className="h-5 w-5" />
-                                {notifications.length > 0 && (
+                                {(notifications.length > 0 || productAlerts.length > 0) && (
                                     <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
                                 )}
                             </button>
@@ -126,7 +156,26 @@ const Layout = ({ children }) => {
                                         )}
                                     </div>
                                     <div className="max-h-[300px] overflow-y-auto">
-                                        {notifications.length === 0 ? (
+                                        {/* Product Alerts */}
+                                        {productAlerts.map(item => (
+                                            <div key={`prod-${item.id}`} className="px-4 py-3 hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-0 cursor-pointer group bg-orange-50/30">
+                                                <div className="flex gap-3">
+                                                    <div className="mt-1 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 bg-orange-100 text-orange-600">
+                                                        <AlertTriangle size={14} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex justify-between items-start w-full">
+                                                            <p className="text-sm text-slate-800 font-medium group-hover:text-orange-700">
+                                                                Product Alert: {item.name}
+                                                            </p>
+                                                        </div>
+                                                        <p className="text-xs text-orange-500 mt-1 font-medium">Expires: {item.end_date}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                        {notifications.length === 0 && productAlerts.length === 0 ? (
                                             <div className="px-4 py-8 text-center text-slate-500">
                                                 <Bell className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                                                 <p className="text-sm">No new notifications</p>
