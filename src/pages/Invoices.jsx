@@ -8,7 +8,7 @@ import clsx from 'clsx';
 import { useReactToPrint } from 'react-to-print';
 import { useLocation } from 'react-router-dom';
 
-import InvoiceView from '../components/InvoiceView';
+import InvoiceView from '../components/InvoiceViewer';
 import SearchableSelect from '../components/SearchableSelect';
 import QuickProductForm from '../components/QuickProductForm';
 

@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Printer, X, Phone, Mail, MapPin } from 'lucide-react';
+import TemplateSwitcher from './TemplateSwitcher';
 import { getClients, getSettings } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
 import clsx from 'clsx';
 import { useReactToPrint } from 'react-to-print';
 
-const InvoiceView = ({ isOpen, onClose, invoice }) => {
+const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChange }) => {
     const [clients, setClients] = useState([]);
     const [bankAccounts, setBankAccounts] = useState([]);
     const [companySettings, setCompanySettings] = useState(null);
@@ -102,6 +103,7 @@ const InvoiceView = ({ isOpen, onClose, invoice }) => {
                 <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white print:hidden">
                     <h3 className="text-lg font-bold text-slate-800 tracking-tight">Invoice Preview</h3>
                     <div className="flex gap-2">
+                        <TemplateSwitcher activeTemplate={activeTemplate} onTemplateChange={onTemplateChange} />
                         <button
                             type="button"
                             onClick={handlePrint}
