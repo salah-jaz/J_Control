@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Printer, X } from 'lucide-react';
+import TemplateSwitcher from './TemplateSwitcher';
 import { getClients, getSettings } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
 import clsx from 'clsx';
 import { useReactToPrint } from 'react-to-print';
 
-const InvoiceView = ({ isOpen, onClose, invoice }) => {
+const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChange }) => {
     const [clients, setClients] = useState([]);
     const [bankAccounts, setBankAccounts] = useState([]);
     const [companySettings, setCompanySettings] = useState(null);
@@ -114,24 +115,24 @@ const InvoiceView = ({ isOpen, onClose, invoice }) => {
 
         .invoice-a4 {
             width: 210mm;
-            height: 296.5mm; /* Fixed A4 Height */
+            min-height: 296.5mm; /* Fixed A4 Height -> Min Height */
             background-color: white;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
             position: relative;
             box-sizing: border-box;
-            overflow: hidden; 
+            overflow: visible; 
         }
 
         /* Print Override */
         @media print {
             html, body {
-                height: 100%;
+                height: auto !important;
                 width: 100%;
                 margin: 0 !important;
                 padding: 0 !important;
-                overflow: hidden; /* Prevent scrollbars in print */
+                overflow: visible !important;
             }
             
             .invoice-a4 {
@@ -139,8 +140,8 @@ const InvoiceView = ({ isOpen, onClose, invoice }) => {
                 box-shadow: none !important;
                 /* Match screen rules explicitly */
                 width: 210mm;
-                height: 296.5mm;
-                overflow: hidden;
+                min-height: 296.5mm;
+                overflow: visible;
                 /* Remove absolute positioning to keep flow identical to screen */
                 position: relative; 
                 left: 0;
@@ -170,12 +171,13 @@ const InvoiceView = ({ isOpen, onClose, invoice }) => {
             <style>{pageStyles}</style>
 
             {/* Modal Container */}
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden animate-fade-in-up print:shadow-none print:w-full print:max-w-none print:max-h-none print:h-full print:rounded-none print:overflow-visible">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden animate-fade-in-up print:shadow-none print:w-full print:max-w-none print:max-h-none print:h-auto print:rounded-none print:overflow-visible">
 
                 {/* Header Actions */}
                 <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white print:hidden shrink-0">
                     <h3 className="text-lg font-bold text-slate-800 tracking-tight">Invoice Preview</h3>
                     <div className="flex gap-2">
+                        <TemplateSwitcher activeTemplate={activeTemplate} onTemplateChange={onTemplateChange} />
                         <button
                             type="button"
                             onClick={handlePrint}
@@ -190,7 +192,7 @@ const InvoiceView = ({ isOpen, onClose, invoice }) => {
                 </div>
 
                 {/* Printable Content Scroll Area */}
-                <div className="flex-1 overflow-auto bg-gray-100 print:bg-white print:overflow-visible print:h-full">
+                <div className="flex-1 overflow-auto bg-gray-100 print:bg-white print:overflow-visible print:h-auto">
 
                     {/* The A4 Paper */}
                     <div ref={componentRef} className="invoice-a4">
@@ -285,7 +287,10 @@ const InvoiceView = ({ isOpen, onClose, invoice }) => {
                                 <tbody>
                                     {(items.length > 0 ? items : [{ service_name: 'Service', amount: invoice.amount, quantity: 1 }]).map((item, index) => (
                                         <tr key={index} className="border-b border-slate-100 text-sm">
-                                            <td className="py-4 px-6 font-semibold text-slate-700 print:text-black">{item.service_name || item.serviceName}</td>
+                                            <td className="py-4 px-6 font-semibold text-slate-700 print:text-black">
+                                                <div className="text-sm font-bold">{item.service_name || item.serviceName}</div>
+                                                {item.description && <div className="text-[10px] text-gray-500 font-medium mt-1 leading-relaxed opacity-80 max-w-[280px]">{item.description}</div>}
+                                            </td>
                                             <td className="py-4 px-4 text-center font-medium text-slate-600 print:text-black">
                                                 ₹ {parseFloat(item.rate || (item.amount / (item.quantity || 1))).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </td>
