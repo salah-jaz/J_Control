@@ -14,6 +14,7 @@ const toFrontend = (data) => ({
     method: data.method,
     transactionId: data.transaction_id,
     bank: data.bank,
+    bankAccountId: data.bank_account_id,
     receivedDate: data.received_date,
     status: data.status,
     gstApplied: data.gst_applied,

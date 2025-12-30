@@ -21,7 +21,7 @@ class ExpenseController extends Controller
             'amount' => 'required|numeric',
             'method' => 'required|string',
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
-            'paid_date' => 'required|date',
+            'paid_date' => 'nullable|date',
             'status' => 'required|string',
             'transaction_id' => 'nullable|required_unless:method,Cash',
             'bill_no' => 'nullable|string',
@@ -57,8 +57,8 @@ class ExpenseController extends Controller
 
         $expense = Expense::create($validated);
 
-        // Update Bank Balance (Decrease)
-        if ($expense->bank_account_id) {
+        // Update Bank Balance (Decrease) ONLY if NOT Pending
+        if ($expense->bank_account_id && $expense->status !== 'Pending') {
             $bank = \App\Models\BankAccount::find($expense->bank_account_id);
             if ($bank) {
                 $bank->current_balance -= $expense->amount;
@@ -89,8 +89,9 @@ class ExpenseController extends Controller
     {
         $expense = Expense::findOrFail($id);
         
-        // Capture old values for balance adjustment
-        $oldAmount = $expense->amount;
+        // Capture old values for effective balance adjustment
+        // If old status was Pending, effective amount was 0.
+        $oldEffectiveAmount = ($expense->status === 'Pending') ? 0 : $expense->amount;
         $oldBankId = $expense->bank_account_id;
 
         $validated = $request->validate([
@@ -99,7 +100,7 @@ class ExpenseController extends Controller
             'amount' => 'required|numeric',
             'method' => 'required|string',
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
-            'paid_date' => 'required|date',
+            'paid_date' => 'nullable|date',
             'status' => 'required|string',
             'transaction_id' => 'nullable|required_unless:method,Cash',
             'bill_no' => 'nullable|string',
@@ -135,20 +136,49 @@ class ExpenseController extends Controller
 
         $expense->update($validated);
 
-        // Update Bank Balance (Revert Old, Apply New)
-        if ($oldBankId) {
-             $oldBank = \App\Models\BankAccount::find($oldBankId);
-             if ($oldBank) {
-                 $oldBank->current_balance += $oldAmount;
-                 $oldBank->save();
-             }
-        }
-        if ($expense->bank_account_id) {
-             $newBank = \App\Models\BankAccount::find($expense->bank_account_id);
-             if ($newBank) {
-                 $newBank->current_balance -= $expense->amount;
-                 $newBank->save();
-             }
+        // Determine new effective amount
+        $newEffectiveAmount = ($expense->status === 'Pending') ? 0 : $expense->amount;
+        $newBankId = $expense->bank_account_id;
+
+        // Handle Bank Balance Logic
+        if ($oldBankId === $newBankId) {
+            // Same bank (or both null)
+            if ($oldBankId) {
+                // For expense, balance decreases, so we subtract (New - Old). 
+                // Wait. 
+                // Old: 100 paid (bal -100). New: 150 paid (bal -150). Net change: -50.
+                // Formula: bal -= (New - Old). 
+                // Let's verify. 
+                // Old: 0 (Pending). New: 100 (Paid). Change: 100. bal -= 100. Correct.
+                // Old: 100 (Paid). New: 0 (Pending). Change: -100. bal -= -100 => bal += 100. Correct.
+                
+                $netChange = $newEffectiveAmount - $oldEffectiveAmount;
+                if ($netChange != 0) {
+                    $bank = \App\Models\BankAccount::find($oldBankId);
+                    if ($bank) {
+                        $bank->current_balance -= $netChange;
+                        $bank->save();
+                    }
+                }
+            }
+        } else {
+            // Bank changed
+            // Revert old effective (Add back to old bank)
+            if ($oldBankId && $oldEffectiveAmount != 0) {
+                $oldBank = \App\Models\BankAccount::find($oldBankId);
+                if ($oldBank) {
+                    $oldBank->current_balance += $oldEffectiveAmount;
+                    $oldBank->save();
+                }
+            }
+            // Apply new effective (Subtract from new bank)
+            if ($newBankId && $newEffectiveAmount != 0) {
+                $newBank = \App\Models\BankAccount::find($newBankId);
+                if ($newBank) {
+                    $newBank->current_balance -= $newEffectiveAmount;
+                    $newBank->save();
+                }
+            }
         }
 
         // Auto-update transaction
@@ -177,8 +207,8 @@ class ExpenseController extends Controller
     {
         $expense = Expense::findOrFail($id);
 
-        // Revert Bank Balance (Increase)
-        if ($expense->bank_account_id) {
+        // Revert Bank Balance (Increase) ONLY if NOT Pending
+        if ($expense->bank_account_id && $expense->status !== 'Pending') {
             $bank = \App\Models\BankAccount::find($expense->bank_account_id);
             if ($bank) {
                 $bank->current_balance += $expense->amount;
