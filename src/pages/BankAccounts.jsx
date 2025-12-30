@@ -17,6 +17,7 @@ const emptyForm = {
   swift: "",
 
   openingBalance: "",
+  currentBalance: "", // Add currentBalance to emptyForm
   currency: "INR",
   status: "Active",
   openingDate: "",
@@ -199,6 +200,8 @@ export default function BankAccounts() {
               <tr>
                 <th className="px-6 py-4">Bank</th>
                 <th className="px-6 py-4">Account Holder</th>
+                <th className="px-6 py-4">Account Number</th>
+                <th className="px-6 py-4">Current Balance</th>
                 <th className="px-6 py-4">Type</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
@@ -207,7 +210,7 @@ export default function BankAccounts() {
             <tbody className="divide-y divide-gray-50">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="p-12 text-center text-slate-400 italic">
+                  <td colSpan="7" className="p-12 text-center text-slate-400 italic">
                     No bank accounts found
                   </td>
                 </tr>
@@ -221,11 +224,14 @@ export default function BankAccounts() {
                         </div>
                         <div>
                           <p className="font-bold text-slate-900">{item.bankName}</p>
-                          <p className="text-slate-500 text-xs font-mono">{item.accountNumber}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-700">{item.accountName}</td>
+                    <td className="px-6 py-4 font-mono text-slate-600">{item.accountNumber}</td>
+                    <td className="px-6 py-4 font-bold text-slate-900">
+                      {item.currency} {parseFloat(item.currentBalance || item.openingBalance || 0).toLocaleString()}
+                    </td>
                     <td className="px-6 py-4 text-slate-600">{item.accountType}</td>
                     <td className="px-6 py-4">
                       <span
@@ -426,7 +432,33 @@ export default function BankAccounts() {
                       <label className="label">
                         Opening Balance
                       </label>
-                      {input("openingBalance", "number")}
+                      <input
+                        type="number"
+                        value={form.openingBalance}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setForm((prev) => {
+                            const newer = { ...prev, openingBalance: val };
+                            if (editId) {
+                              const original = data.find((d) => d.id === editId);
+                              if (original) {
+                                const diff = (parseFloat(val) || 0) - (parseFloat(original.openingBalance) || 0);
+                                newer.currentBalance = ((parseFloat(original.currentBalance) || 0) + diff).toFixed(2);
+                              }
+                            } else {
+                              newer.currentBalance = val;
+                            }
+                            return newer;
+                          });
+                        }}
+                        className={`input ${errors.openingBalance ? "border-red-500 focus:border-red-500 focus:ring-red-200" : ""}`}
+                      />
+                    </div>
+                    <div>
+                      <label className="label">
+                        Current Balance
+                      </label>
+                      {input("currentBalance", "number")}
                     </div>
                     <div><label className="label">Currency</label>{input("currency")}</div>
                     <div>

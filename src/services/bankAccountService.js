@@ -37,6 +37,7 @@ const toBackend = (data) => ({
     micr_code: clean(data.micr),
     swift_code: clean(data.swift),
     opening_balance: clean(data.openingBalance),
+    current_balance: clean(data.currentBalance),
     currency: clean(data.currency),
     status: clean(data.status),
     opening_date: clean(data.openingDate),
