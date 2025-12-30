@@ -144,7 +144,11 @@ export default function Income() {
     if (!form.source) e.source = "Income source is required";
     if (!form.amount) e.amount = "Amount is required";
     if (!form.method) e.method = "Payment method is required";
-    if (!form.receivedDate) e.receivedDate = "Received date is required";
+
+    if (form.status !== "Pending" && !form.receivedDate) {
+      e.receivedDate = "Received date is required";
+    }
+
     if (!form.status) e.status = "Status is required";
 
     if (form.method !== "Cash" && !form.transactionId) {
@@ -586,7 +590,7 @@ export default function Income() {
                     </div>
                     <div>
                       <label className="label">
-                        Received Date <Req />
+                        Received Date {form.status !== "Pending" && <Req />}
                       </label>
                       <input
                         type="date"

@@ -139,7 +139,10 @@ export default function Expenses() {
     if (!form.expenseType) e.expenseType = "Expense type is required";
     if (!form.amount) e.amount = "Amount is required";
     if (!form.method) e.method = "Payment method is required";
-    if (!form.paidDate) e.paidDate = "Paid date is required";
+
+    if (form.status !== "Pending" && !form.paidDate) {
+      e.paidDate = "Paid date is required";
+    }
     if (form.method !== "Cash" && !form.transactionId) {
       e.transactionId = "Transaction ID is required for non-cash payments";
     }
@@ -579,7 +582,7 @@ export default function Expenses() {
 
                     <div>
                       <label className="label">
-                        Paid Date <Req />
+                        Paid Date {form.status !== "Pending" && <Req />}
                       </label>
                       <input
                         type="date"

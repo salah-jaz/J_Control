@@ -21,7 +21,7 @@ class IncomeController extends Controller
             'amount' => 'required|numeric',
             'method' => 'required|string',
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
-            'received_date' => 'required|date',
+            'received_date' => 'nullable|date',
             'status' => 'required|string',
             'transaction_id' => 'nullable|required_unless:method,Cash',
             'invoice_no' => 'nullable|string',
@@ -56,8 +56,8 @@ class IncomeController extends Controller
 
         $income = \App\Models\Income::create($validated);
 
-        // Update Bank Balance (Increase)
-        if ($income->bank_account_id) {
+        // Update Bank Balance (Increase) ONLY if NOT Pending
+        if ($income->bank_account_id && $income->status !== 'Pending') {
             $bank = \App\Models\BankAccount::find($income->bank_account_id);
             if ($bank) {
                 $bank->current_balance += $income->amount;
@@ -88,8 +88,9 @@ class IncomeController extends Controller
     {
         $income = \App\Models\Income::findOrFail($id);
         
-        // Capture old values for balance adjustment
-        $oldAmount = $income->amount;
+        // Capture old values for effective balance adjustment
+        // If old status was Pending, effective amount was 0.
+        $oldEffectiveAmount = ($income->status === 'Pending') ? 0 : $income->amount;
         $oldBankId = $income->bank_account_id;
 
         $validated = $request->validate([
@@ -98,7 +99,7 @@ class IncomeController extends Controller
             'amount' => 'required|numeric',
             'method' => 'required|string',
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
-            'received_date' => 'required|date',
+            'received_date' => 'nullable|date',
             'status' => 'required|string',
             'transaction_id' => 'nullable|required_unless:method,Cash',
             'invoice_no' => 'nullable|string',
@@ -132,21 +133,42 @@ class IncomeController extends Controller
         ]);
 
         $income->update($validated);
+        
+        // Determine new effective amount
+        $newEffectiveAmount = ($income->status === 'Pending') ? 0 : $income->amount;
+        $newBankId = $income->bank_account_id;
 
-        // Update Bank Balance (Revert Old, Apply New)
-        if ($oldBankId) {
-             $oldBank = \App\Models\BankAccount::find($oldBankId);
-             if ($oldBank) {
-                 $oldBank->current_balance -= $oldAmount;
-                 $oldBank->save();
-             }
-        }
-        if ($income->bank_account_id) {
-             $newBank = \App\Models\BankAccount::find($income->bank_account_id);
-             if ($newBank) {
-                 $newBank->current_balance += $income->amount;
-                 $newBank->save();
-             }
+        // Handle Bank Balance Logic
+        if ($oldBankId === $newBankId) {
+            // Same bank (or both null)
+            if ($oldBankId) {
+                $netChange = $newEffectiveAmount - $oldEffectiveAmount;
+                if ($netChange != 0) {
+                    $bank = \App\Models\BankAccount::find($oldBankId);
+                    if ($bank) {
+                        $bank->current_balance += $netChange;
+                        $bank->save();
+                    }
+                }
+            }
+        } else {
+            // Bank changed
+            // Revert old effective from old bank
+            if ($oldBankId && $oldEffectiveAmount != 0) {
+                $oldBank = \App\Models\BankAccount::find($oldBankId);
+                if ($oldBank) {
+                    $oldBank->current_balance -= $oldEffectiveAmount;
+                    $oldBank->save();
+                }
+            }
+            // Apply new effective to new bank
+            if ($newBankId && $newEffectiveAmount != 0) {
+                $newBank = \App\Models\BankAccount::find($newBankId);
+                if ($newBank) {
+                    $newBank->current_balance += $newEffectiveAmount;
+                    $newBank->save();
+                }
+            }
         }
 
         // Auto-update transaction
@@ -175,8 +197,8 @@ class IncomeController extends Controller
     {
         $income = \App\Models\Income::findOrFail($id);
         
-        // Revert Bank Balance (Decrease)
-        if ($income->bank_account_id) {
+        // Revert Bank Balance (Decrease) ONLY if NOT Pending
+        if ($income->bank_account_id && $income->status !== 'Pending') {
             $bank = \App\Models\BankAccount::find($income->bank_account_id);
             if ($bank) {
                 $bank->current_balance -= $income->amount;
