@@ -39,6 +39,9 @@ class BankAccountController extends Controller
             $validated['qr_code'] = $path;
         }
 
+        // Initialize current_balance with opening_balance
+        $validated['current_balance'] = $validated['opening_balance'] ?? 0;
+
         return BankAccount::create($validated);
     }
 
@@ -62,6 +65,7 @@ class BankAccountController extends Controller
             'micr_code' => 'nullable|string',
             'swift_code' => 'nullable|string',
             'opening_balance' => 'nullable|numeric',
+            'current_balance' => 'nullable|numeric',
             'currency' => 'nullable|string',
             'status' => 'nullable|string',
             'opening_date' => 'nullable|date',
