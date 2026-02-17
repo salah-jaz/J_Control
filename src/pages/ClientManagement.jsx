@@ -1,9 +1,24 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Search, Edit2, Trash2, Building2, Phone, Mail, MapPin, Eye } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Building2, Phone, Mail, MapPin, Eye, Users, CheckCircle, Receipt, FileText } from 'lucide-react';
 import { getClients, saveClient, deleteClient } from '../services/db';
 import ClientForm from '../components/ClientForm';
 import { useLocation } from 'react-router-dom';
+
+const SummaryCard = ({ title, description, value, icon: Icon, iconBgClass, iconColorClass }) => (
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide">{title}</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{value}</p>
+                <p className="text-xs text-slate-400 mt-1.5">{description}</p>
+            </div>
+            <div className={`flex-shrink-0 p-3 rounded-xl shadow-sm border ${iconBgClass} ${iconColorClass}`}>
+                <Icon className="w-6 h-6" />
+            </div>
+        </div>
+    </div>
+);
 
 const ClientManagement = () => {
     const [clients, setClients] = useState([]);
@@ -52,7 +67,11 @@ const ClientManagement = () => {
             toast.success("Client saved successfully");
         } catch (error) {
             console.error("Failed to save client", error);
-            toast.error("Failed to save client. Please try again.");
+            const data = error.response?.data;
+            const message = data?.message
+                || (data?.errors && Object.values(data.errors).flat()[0])
+                || "Failed to save client. Please try again.";
+            toast.error(typeof message === 'string' ? message : "Failed to save client. Please try again.");
         }
     };
 
@@ -87,11 +106,17 @@ const ClientManagement = () => {
         setIsFormOpen(true);
     };
 
-    const filteredClients = clients.filter(c =>
-        c.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.contact_person_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        false
-    );
+    const filteredClients = clients.filter(c => {
+        const displayName = (c.company_name || c.client_name || '').toLowerCase();
+        return displayName.includes(searchTerm.toLowerCase()) ||
+            c.contact_person_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            false;
+    });
+
+    const totalClients = clients.length;
+    const activeClients = clients.length;
+    const gstClients = clients.filter(c => c.gst_number && String(c.gst_number).trim()).length;
+    const nonGstClients = totalClients - gstClients;
 
     return (
         <div className="p-8 max-w-[1600px] mx-auto animate-fade-in space-y-8">
@@ -99,6 +124,42 @@ const ClientManagement = () => {
                 <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Client Management</h1>
                 <p className="text-slate-500 mt-1 text-lg">Manage your client companies and their business details.</p>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <SummaryCard
+                    title="Total Clients"
+                    description="Total number of clients"
+                    value={totalClients}
+                    icon={Users}
+                    iconBgClass="bg-blue-50 border-blue-100"
+                    iconColorClass="text-blue-600"
+                />
+                <SummaryCard
+                    title="Active Clients"
+                    description="Number of active clients"
+                    value={activeClients}
+                    icon={CheckCircle}
+                    iconBgClass="bg-emerald-50 border-emerald-100"
+                    iconColorClass="text-emerald-600"
+                />
+                <SummaryCard
+                    title="GST Clients"
+                    description="Clients with GST Number"
+                    value={gstClients}
+                    icon={Receipt}
+                    iconBgClass="bg-purple-50 border-purple-100"
+                    iconColorClass="text-purple-600"
+                />
+                <SummaryCard
+                    title="Non GST Clients"
+                    description="Clients without GST Number"
+                    value={nonGstClients}
+                    icon={FileText}
+                    iconBgClass="bg-amber-50 border-amber-100"
+                    iconColorClass="text-amber-600"
+                />
+            </div>
+
             <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
                 <div className="relative flex-1 max-w-md w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -124,7 +185,7 @@ const ClientManagement = () => {
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                             <tr>
-                                <th className="px-6 py-4">Company Name</th>
+                                <th className="px-6 py-4">Client / Company</th>
                                 <th className="px-6 py-4">Contact Person</th>
                                 <th className="px-6 py-4">Location</th>
                                 <th className="px-6 py-4">Tax Info</th>
@@ -144,13 +205,13 @@ const ClientManagement = () => {
                                         <div className="flex items-center gap-3">
                                             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-brand-50 to-brand-100 text-brand-600 flex items-center justify-center shadow-sm">
                                                 {client.company_logo ? (
-                                                    <img src={client.company_logo} alt={client.company_name} className="h-10 w-10 rounded-xl object-cover" />
+                                                    <img src={client.company_logo} alt={client.company_name || client.client_name} className="h-10 w-10 rounded-xl object-cover" />
                                                 ) : (
                                                     <Building2 className="h-5 w-5" />
                                                 )}
                                             </div>
                                             <div>
-                                                <div className="font-bold text-slate-800">{client.company_name}</div>
+                                                <div className="font-bold text-slate-800">{client.company_name || client.client_name || '—'}</div>
                                                 {client.website_url && (
                                                     <a href={client.website_url} target="_blank" rel="noreferrer" className="text-xs text-brand-500 hover:text-brand-700 font-medium">
                                                         {client.website_url.replace(/^https?:\/\//, '')}

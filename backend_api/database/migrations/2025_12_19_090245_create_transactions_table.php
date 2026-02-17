@@ -16,7 +16,7 @@ return new class extends Migration
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->string('type'); // 'Income' or 'Expense'
-            $table->date('date');
+            $table->date('date')->nullable();
             $table->decimal('amount', 15, 2);
             $table->string('currency')->default('INR');
             $table->string('category')->nullable();

@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('method');
             $table->string('transaction_id')->nullable();
             $table->string('bank')->nullable();
-            $table->date('received_date');
+            $table->date('received_date')->nullable();
             $table->string('status');
             $table->string('gst_applied')->default('No');
             $table->decimal('gst_percent', 5, 2)->nullable();

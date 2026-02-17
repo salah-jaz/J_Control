@@ -194,7 +194,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                             <div className="max-w-[400px]">
                                 <h3 className="text-[#e11d24] font-bold text-xs uppercase mb-4 italic tracking-widest">INVOICE TO:</h3>
                                 <h2 className="text-3xl font-black text-[#1d1d1d] mb-3 leading-none">
-                                    {client ? (client.company_name || client.name) : 'JAZ'}
+                                    {client ? (client.company_name || client.client_name || client.name) : 'JAZ'}
                                 </h2>
                                 <p className="text-[12px] text-slate-400 font-bold mb-6 uppercase tracking-tight">{client?.role || 'MANAGING DIRECTOR, COMPANY LTD.'}</p>
                                 <div className="text-[11px] space-y-2 font-bold text-slate-500">

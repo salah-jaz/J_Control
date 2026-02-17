@@ -177,7 +177,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                                 <div className="p-4 border border-gray-100 rounded-lg bg-gray-50/50 print:bg-transparent print:border-0 print:p-0">
                                     <h3 className="text-slate-500 text-[10px] font-bold uppercase mb-2 tracking-widest border-b border-gray-200 pb-1 w-20">Invoice To</h3>
                                     <div className="text-slate-800 mt-2">
-                                        <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-1.5 leading-none">{client ? client.company_name : 'JOHN SMITH'}</h2>
+                                        <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-1.5 leading-none">{client ? (client.company_name || client.client_name) : 'JOHN SMITH'}</h2>
                                         <p className="text-xs text-slate-500 mb-1 leading-relaxed max-w-[220px] font-medium">{client?.address || '123 Street, Town/City, County'}</p>
                                         <p className="text-xs text-slate-800 font-bold mt-2.5">Phone: <span className="font-semibold text-slate-500">{client?.mobile_number || '+55 12345678'}</span></p>
                                     </div>

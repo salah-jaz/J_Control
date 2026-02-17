@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Users, Plus, Upload, Download, Search, LayoutList, Kanban, Calendar,
-    MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X
+    MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X, ArrowRight
 } from 'lucide-react';
 import { getLeads, saveLead, deleteLead, getAssignees, saveAssignee } from '../services/db';
 import clsx from 'clsx';
@@ -479,6 +479,43 @@ const StatCard = ({ title, value, icon: Icon, color }) => (
     </div>
 );
 
+const OverdueFollowUpsCard = ({ count, onClick, hasOverdue }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className={clsx(
+            "card group h-36 flex flex-col justify-between p-6 text-left bg-amber-50/70 border-amber-200 shadow-sm transition-all relative",
+            hasOverdue ? "hover:border-amber-300/60 hover:shadow-md" : "cursor-default"
+        )}
+    >
+        {hasOverdue && (
+            <span className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm animate-pulse" title="Overdue follow-ups exist" />
+        )}
+        <div className="flex justify-between items-start">
+            <div className="p-3.5 rounded-xl bg-amber-100 border border-amber-200">
+                <Clock className="w-6 h-6 text-amber-600" />
+            </div>
+            <div className="text-right">
+                <p className="text-sm font-medium text-slate-600 mb-1">Overdue Follow-ups</p>
+                <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{count}</h3>
+            </div>
+        </div>
+        <div className="flex flex-col gap-1 mt-4">
+            <p className="text-xs text-slate-500">
+                {hasOverdue ? 'Number of leads with overdue follow-up date' : 'No overdue follow-ups'}
+            </p>
+            {hasOverdue && (
+                <span className="text-xs font-semibold text-amber-600 group-hover:text-amber-700 flex items-center gap-1">
+                    Click to view <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+            )}
+        </div>
+        <div className="w-full bg-amber-100/80 h-1.5 rounded-full mt-2 overflow-hidden">
+            <div className="h-full rounded-full bg-amber-400 opacity-40" style={{ width: hasOverdue ? '70%' : '0%' }}></div>
+        </div>
+    </button>
+);
+
 const ViewToggle = ({ active, onChange }) => (
     <div className="flex bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
         {[
@@ -629,14 +666,18 @@ const Leads = () => {
     }
 
     const [isOverdueModalOpen, setIsOverdueModalOpen] = useState(false);
+    const [filterByOverdue, setFilterByOverdue] = useState(false);
 
-    const overdueLeads = leads.filter(l =>
-        (l.followUps || []).some(f => {
+    // Overdue: follow-up date < today AND lead status is NOT Lost, Converted, or Closed
+    const EXCLUDED_OVERDUE_STATUSES = ['Lost', 'Converted', 'Closed'];
+    const overdueLeads = leads.filter(l => {
+        if (EXCLUDED_OVERDUE_STATUSES.includes(l.status)) return false;
+        return (l.followUps || []).some(f => {
             if (f.status === 'completed') return false;
             const d = new Date(f.scheduled_at);
             return !isNaN(d.getTime()) && d < new Date();
-        })
-    );
+        });
+    });
 
     const handleEdit = (lead) => {
         setEditingLead(lead);
@@ -739,7 +780,8 @@ const Leads = () => {
         event.target.value = null; // Reset input
     };
 
-    const filteredLeads = leads.filter(lead => {
+    const baseLeadsForFilter = filterByOverdue ? overdueLeads : leads;
+    const filteredLeads = baseLeadsForFilter.filter(lead => {
         const matchesSearch =
             (lead.firstName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
             (lead.lastName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -810,15 +852,42 @@ const Leads = () => {
             )}
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
                 <StatCard title="Total Leads" value={stats.total} icon={Users} color="bg-blue-600" />
                 <StatCard title="New Leads" value={stats.new} icon={Plus} color="bg-brand-600" />
                 <StatCard title="Qualified" value={stats.qualified} icon={CheckCircle2} color="bg-emerald-600" />
                 <StatCard title="Converted" value={stats.converted} icon={CheckSquare} color="bg-indigo-600" />
+                <OverdueFollowUpsCard
+                    count={overdueLeads.length}
+                    hasOverdue={overdueLeads.length > 0}
+                    onClick={() => {
+                        if (overdueLeads.length > 0) {
+                            setFilterByOverdue(true);
+                            setViewMode('list');
+                            setIsOverdueModalOpen(true);
+                        }
+                    }}
+                />
             </div>
 
             {/* Main Content Area */}
             <div className="space-y-6">
+                {/* Overdue filter active indicator */}
+                {filterByOverdue && (
+                    <div className="flex items-center justify-between gap-3 flex-wrap bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 shadow-sm">
+                        <p className="text-sm font-medium text-amber-800">
+                            Showing <span className="font-bold">{overdueLeads.length} overdue</span> follow-up lead{overdueLeads.length !== 1 ? 's' : ''} only.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setFilterByOverdue(false)}
+                            className="text-sm font-semibold text-amber-700 hover:text-amber-900 underline"
+                        >
+                            Clear filter
+                        </button>
+                    </div>
+                )}
+
                 {/* Filters & Actions Bar */}
                 <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
                     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">

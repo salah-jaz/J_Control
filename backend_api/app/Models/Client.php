@@ -10,13 +10,16 @@ class Client extends Model
     use HasFactory;
 
     protected $fillable = [
+        'client_name',
         'company_name',
         'company_logo',
+        'company_type',
         'default_currency',
         'financial_year',
         'primary_contact_name',
         'contact_person_name',
         'mobile_number',
+        'secondary_mobile_number',
         'email_address',
         'website_url',
         'address_line_1',
@@ -38,4 +41,10 @@ class Client extends Model
         'ifsc_code',
         'upi_id',
         'cheque_print_name',
-    ];}
+        'bank_details',
+    ];
+
+    protected $casts = [
+        'bank_details' => 'array',
+    ];
+}

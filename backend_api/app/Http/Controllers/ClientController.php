@@ -26,16 +26,28 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'company_name' => 'required|string|max:255',
-            'contact_person_name' => 'nullable|string|max:255', // Made nullable as per common flow but user said "Add/Edit", usually name is required
-            'email_address' => 'nullable|email',
-            // Add other validations as needed
+        // Normalize empty strings to null for optional fields so nullable|email passes
+        $request->merge([
+            'email_address' => strlen(trim((string) ($request->input('email_address') ?? ''))) > 0 ? $request->input('email_address') : null,
         ]);
 
-        // We use $request->all() to capture all fields including optional ones
-        // In a real app, stronger validation is recommended for all fields
-        $client = Client::create($request->all());
+        $validatedData = $request->validate([
+            'client_name' => 'nullable|string|max:255',
+            'company_name' => 'nullable|string|max:255',
+            'contact_person_name' => 'nullable|string|max:255',
+            'email_address' => 'nullable|email',
+        ]);
+        if (!strlen(trim((string) ($request->input('client_name') ?? ''))) && !strlen(trim((string) ($request->input('company_name') ?? '')))) {
+            return response()->json(['message' => 'Please enter Client Name or Company Name'], 422);
+        }
+
+        $payload = $request->all();
+        unset($payload['id']);
+        // Ensure NOT NULL columns never get null (DB may have company_name as NOT NULL)
+        if (array_key_exists('company_name', $payload) && $payload['company_name'] === null) {
+            $payload['company_name'] = '';
+        }
+        $client = Client::create($payload);
 
         return response()->json($client, 201);
     }
@@ -60,11 +72,26 @@ class ClientController extends Controller
      */
     public function update(Request $request, Client $client)
     {
-         $validatedData = $request->validate([
-            'company_name' => 'required|string|max:255',
+        $request->merge([
+            'email_address' => strlen(trim((string) ($request->input('email_address') ?? ''))) > 0 ? $request->input('email_address') : null,
         ]);
 
-        $client->update($request->all());
+        $validatedData = $request->validate([
+            'client_name' => 'nullable|string|max:255',
+            'company_name' => 'nullable|string|max:255',
+            'contact_person_name' => 'nullable|string|max:255',
+            'email_address' => 'nullable|email',
+        ]);
+        if (!strlen(trim((string) ($request->input('client_name') ?? ''))) && !strlen(trim((string) ($request->input('company_name') ?? '')))) {
+            return response()->json(['message' => 'Please enter Client Name or Company Name'], 422);
+        }
+
+        $payload = $request->except(['id']);
+        // DB has company_name as NOT NULL — ensure we never send null on update
+        if (array_key_exists('company_name', $payload) && $payload['company_name'] === null) {
+            $payload['company_name'] = '';
+        }
+        $client->update($payload);
 
         return response()->json($client);
     }

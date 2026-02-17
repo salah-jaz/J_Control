@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check } from "lucide-react";
+import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark } from "lucide-react";
 import toast from "react-hot-toast";
 import { exportToCSV } from "../utils/csvExport";
 
@@ -17,23 +17,16 @@ const emptyForm = {
   amount: "",
   currency: "INR",
 
-  method: "",
+  method: "Other",
   transactionId: "",
   bank: "",
   bankAccountId: null,
   receivedDate: "",
   status: "Received",
 
-  gstApplied: "No",
-  gstPercent: "18",
-  gstAmount: "",
-  netAmount: "",
-
   staff: "",
   department: "",
   notes: "",
-
-  // New fields
   description: "",
   referenceNumber: "",
   invoiceDate: "",
@@ -43,13 +36,20 @@ const emptyForm = {
   clientEmail: "",
   clientPhone: "",
   paymentTerms: "",
-  discountApplied: "No",
-  discountAmount: "",
-  lateFee: "",
   collectionStatus: "Collected",
   followUpDate: "",
   commission: "",
   taxCategory: "",
+
+  // Financial Summary
+  autoCalculateAmount: true,
+  discount: "",
+  taxAmount: "",
+  initialDepositEnabled: false,
+  initialDepositAmount: "",
+  initialDepositBankId: null,
+  initialDepositBankName: "",
+  extraInstallments: [],
 };
 
 export default function Income() {
@@ -66,6 +66,8 @@ export default function Income() {
   const [editId, setEditId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [bankModalOpen, setBankModalOpen] = useState(false);
+  const [bankModalFor, setBankModalFor] = useState(null);
 
   /* LOAD */
   useEffect(() => {
@@ -85,26 +87,14 @@ export default function Income() {
     }
   };
 
-  /* AUTO-CALCULATE TAX */
-  useEffect(() => {
-    const baseAmount = parseFloat(form.amount) || 0;
-    if (form.gstApplied === "Yes") {
-      const percent = parseFloat(form.gstPercent) || 0;
-      const calculatedGst = (baseAmount * percent) / 100;
-      const total = baseAmount + calculatedGst;
-      setForm((prev) => ({
-        ...prev,
-        gstAmount: calculatedGst.toFixed(2),
-        netAmount: total.toFixed(2),
-      }));
-    } else {
-      setForm((prev) => ({
-        ...prev,
-        gstAmount: "0",
-        netAmount: baseAmount.toFixed(2),
-      }));
-    }
-  }, [form.amount, form.gstApplied, form.gstPercent]);
+  const subtotal = parseFloat(form.amount) || 0;
+  const discountVal = parseFloat(form.discount) || 0;
+  const taxVal = parseFloat(form.taxAmount) || 0;
+  const totalAmount = subtotal - discountVal + taxVal;
+  const initialDeposit = form.initialDepositEnabled ? (parseFloat(form.initialDepositAmount) || 0) : 0;
+  const sumInstallments = (form.extraInstallments || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+  const balanceDue = totalAmount - initialDeposit - sumInstallments;
+  const isSavedRecord = !!editId;
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -114,8 +104,26 @@ export default function Income() {
     setOpenForm(true);
   };
 
+  const getBankDisplayName = (bankId) => {
+    const b = bankAccounts.find((x) => x.id === bankId);
+    return b ? `${b.bankName} - ${b.accountNumber}` : "";
+  };
+
   const openEdit = (item) => {
-    setForm(item);
+    const extra = Array.isArray(item.extraInstallments) ? item.extraInstallments : [];
+    const hasInitial = item.initialDepositAmount != null && item.initialDepositAmount !== "" && parseFloat(item.initialDepositAmount) > 0;
+    const loaded = {
+      ...emptyForm,
+      ...item,
+      discount: item.discountAmount != null && item.discountAmount !== "" ? String(item.discountAmount) : "",
+      taxAmount: item.gstAmount != null && item.gstAmount !== "" ? String(item.gstAmount) : "",
+      extraInstallments: extra.map((i) => ({ ...i, bankName: i.bankName || getBankDisplayName(i.bankAccountId) })),
+      initialDepositEnabled: !!hasInitial,
+      initialDepositAmount: hasInitial ? String(item.initialDepositAmount) : "",
+      initialDepositBankId: item.initialDepositBankId || null,
+      initialDepositBankName: item.initialDepositBankName || getBankDisplayName(item.initialDepositBankId),
+    };
+    setForm(loaded);
     setErrors({});
     setEditId(item.id);
     setTab("basic");
@@ -142,26 +150,12 @@ export default function Income() {
     const e = {};
     if (!form.client) e.client = "Client is required";
     if (!form.source) e.source = "Income source is required";
-    if (!form.amount) e.amount = "Amount is required";
-    if (!form.method) e.method = "Payment method is required";
-
-    if (form.status !== "Pending" && !form.receivedDate) {
-      e.receivedDate = "Received date is required";
-    }
-
-    if (!form.status) e.status = "Status is required";
-
-    if (form.method !== "Cash" && !form.transactionId) {
-      e.transactionId = "Transaction ID is required for non-cash payments";
-    }
-
+    if (!form.amount) e.amount = "Subtotal (Amount) is required";
     if (Object.keys(e).length > 0) {
       setErrors(e);
-      const firstError = Object.values(e)[0];
-      toast.error(Object.keys(e).length > 1 ? `Please fix validation errors. ${firstError}` : firstError);
+      toast.error(Object.values(e)[0]);
       return false;
     }
-
     return true;
   };
 
@@ -361,16 +355,21 @@ export default function Income() {
 
             {/* TABS */}
             <div className="flex px-4 md:px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto custom-scrollbar flex-shrink-0">
-              {["basic", "payment", "tax", "internal"].map((t) => (
+              {[
+                { id: "basic", label: "Basic" },
+                { id: "financial", label: "Financial Summary" },
+                { id: "installments", label: "Extra Installments" },
+                { id: "internal", label: "Internal" },
+              ].map(({ id, label }) => (
                 <button
-                  key={t}
-                  onClick={() => setTab(t)}
+                  key={id}
+                  onClick={() => setTab(id)}
                   className={clsx(
                     "px-4 md:px-6 py-3 md:py-4 text-[10px] md:text-sm font-bold uppercase tracking-wide border-b-2 transition-all whitespace-nowrap",
-                    tab === t ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
+                    tab === id ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
                   )}
                 >
-                  {t}
+                  {label}
                 </button>
               ))}
             </div>
@@ -393,8 +392,8 @@ export default function Income() {
                       >
                         <option value="">Select Client</option>
                         {clients.map((c) => (
-                          <option key={c.id} value={c.company_name}>
-                            {c.company_name}
+                          <option key={c.id} value={c.company_name || c.client_name}>
+                            {c.company_name || c.client_name}
                           </option>
                         ))}
                       </select>
@@ -450,11 +449,13 @@ export default function Income() {
                     </div>
                     <div>
                       <label className="label">
-                        Base Amount (₹) <Req />
+                        Subtotal (₹) <Req />
                       </label>
                       <input
                         type="number"
+                        step="0.01"
                         className={inputClass("amount")}
+                        placeholder="0.00"
                         value={form.amount}
                         onChange={(e) =>
                           setForm({ ...form, amount: e.target.value })
@@ -535,272 +536,186 @@ export default function Income() {
                   </>
                 )}
 
-                {tab === "payment" && (
-                  <>
-                    <div>
-                      <label className="label">
-                        Payment Method <Req />
-                      </label>
-                      <select
-                        className={inputClass("method")}
-                        value={form.method}
-                        onChange={(e) =>
-                          setForm({ ...form, method: e.target.value })
-                        }
-                      >
-                        <option value="">Select Method</option>
-                        <option>Bank Transfer</option>
-                        <option>UPI</option>
-                        <option>Cash</option>
-                        <option>Cheque</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label">
-                        Transaction / UTR ID
-                      </label>
-                      <input
-                        className={inputClass("transactionId")}
-                        value={form.transactionId}
-                        onChange={(e) =>
-                          setForm({ ...form, transactionId: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">
-                        Bank / Wallet Name
-                      </label>
-                      <select
-                        className="input"
-                        value={form.bank}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          const bankObj = bankAccounts.find(b => `${b.bankName} - ${b.accountNumber}` === val);
-                          setForm({ ...form, bank: val, bankAccountId: bankObj ? bankObj.id : null });
-                        }}
-                      >
-                        <option value="">Select Bank / Wallet</option>
-                        {bankAccounts.map((b) => (
-                          <option key={b.id} value={`${b.bankName} - ${b.accountNumber}`}>
-                            {b.bankName} - {b.accountNumber}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label">
-                        Received Date {form.status !== "Pending" && <Req />}
-                      </label>
-                      <input
-                        type="date"
-                        className={inputClass("receivedDate")}
-                        value={form.receivedDate}
-                        onChange={(e) =>
-                          setForm({ ...form, receivedDate: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">
-                        Payment Status <Req />
-                      </label>
-                      <select
-                        className={inputClass("status")}
-                        value={form.status}
-                        onChange={(e) =>
-                          setForm({ ...form, status: e.target.value })
-                        }
-                      >
-                        <option>Received</option>
-                        <option>Pending</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="label">
-                        Due Date
-                      </label>
-                      <input
-                        type="date"
-                        className="input"
-                        value={form.dueDate}
-                        onChange={(e) =>
-                          setForm({ ...form, dueDate: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label">
-                        Recurring Income
-                      </label>
-                      <select
-                        className="input"
-                        value={form.recurring}
-                        onChange={(e) =>
-                          setForm({ ...form, recurring: e.target.value })
-                        }
-                      >
-                        <option>No</option>
-                        <option>Yes</option>
-                      </select>
-                    </div>
-
-                    {form.recurring === "Yes" && (
-                      <div>
-                        <label className="label">
-                          Frequency
-                        </label>
-                        <select
-                          className="input"
-                          value={form.frequency}
-                          onChange={(e) =>
-                            setForm({ ...form, frequency: e.target.value })
-                          }
-                        >
-                          <option value="">Select Frequency</option>
-                          <option>Monthly</option>
-                          <option>Quarterly</option>
-                          <option>Yearly</option>
-                          <option>Weekly</option>
-                        </select>
+                {tab === "financial" && (
+                  <div className="md:col-span-2 space-y-6">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                      <h3 className="text-base font-bold text-slate-800 mb-4">Financial Summary</h3>
+                      <div className="flex items-center gap-2 mb-4">
+                        <input
+                          type="checkbox"
+                          id="autoCalc"
+                          checked={form.autoCalculateAmount}
+                          onChange={(e) => setForm({ ...form, autoCalculateAmount: e.target.checked })}
+                          className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                        />
+                        <label htmlFor="autoCalc" className="text-sm font-medium text-slate-700">Auto-calculate Amount</label>
                       </div>
-                    )}
-
-                    <div>
-                      <label className="label">
-                        Payment Terms
-                      </label>
-                      <input
-                        className="input"
-                        placeholder="e.g. Net 30, Due on Receipt"
-                        value={form.paymentTerms}
-                        onChange={(e) =>
-                          setForm({ ...form, paymentTerms: e.target.value })
-                        }
-                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="label">Subtotal (₹)</label>
+                          <input type="text" readOnly className="input bg-gray-50" value={form.amount ? `₹${Number(form.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "₹0.00"} />
+                        </div>
+                        <div>
+                          <label className="label">Discount (₹)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="input"
+                            placeholder="0.00"
+                            value={form.discount}
+                            onChange={(e) => setForm({ ...form, discount: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="label">Tax Amount (₹)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="input"
+                            placeholder="0.00"
+                            value={form.taxAmount}
+                            onChange={(e) => setForm({ ...form, taxAmount: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="label">Total Amount (₹)</label>
+                          <input type="text" readOnly className="input bg-brand-50 font-bold" value={`₹${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`} />
+                        </div>
+                      </div>
+                      <div className="mt-6 pt-4 border-t border-gray-100">
+                        <div className="flex items-center gap-2 mb-4">
+                          <input
+                            type="checkbox"
+                            id="initialDeposit"
+                            checked={form.initialDepositEnabled}
+                            onChange={(e) => setForm({ ...form, initialDepositEnabled: e.target.checked, initialDepositAmount: e.target.checked ? form.initialDepositAmount : "", initialDepositBankId: e.target.checked ? form.initialDepositBankId : null, initialDepositBankName: e.target.checked ? form.initialDepositBankName : "" })}
+                            className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                          />
+                          <label htmlFor="initialDeposit" className="text-sm font-medium text-slate-700">Initial Deposit</label>
+                        </div>
+                        {form.initialDepositEnabled && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="label">Initial Deposit Amount (₹)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                readOnly={isSavedRecord}
+                                className="input"
+                                placeholder="0.00"
+                                value={form.initialDepositAmount}
+                                onChange={(e) => setForm({ ...form, initialDepositAmount: e.target.value })}
+                              />
+                            </div>
+                            <div>
+                              <label className="label">Bank Account</label>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => { setBankModalFor("initial"); setBankModalOpen(true); }}
+                                  disabled={isSavedRecord}
+                                  className="btn-secondary flex-1"
+                                >
+                                  {form.initialDepositBankName || "Select Bank"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div className="mt-4">
+                          <label className="label">Balance Due (₹)</label>
+                          <input type="text" readOnly className="input bg-amber-50 font-bold text-slate-800" value={`₹${Math.max(0, balanceDue).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`} />
+                        </div>
+                      </div>
                     </div>
-                  </>
+                  </div>
                 )}
 
-                {tab === "tax" && (
-                  <>
-                    <div>
-                      <label className="label">
-                        Apply GST?
-                      </label>
-                      <select
-                        className="input"
-                        value={form.gstApplied}
-                        onChange={(e) =>
-                          setForm({ ...form, gstApplied: e.target.value })
-                        }
-                      >
-                        <option>No</option>
-                        <option>Yes</option>
-                      </select>
-                    </div>
-                    {form.gstApplied === "Yes" && (
-                      <div>
-                        <label className="label">
-                          GST Percent (%)
-                        </label>
-                        <input
-                          type="number"
-                          className="input"
-                          value={form.gstPercent}
-                          onChange={(e) =>
-                            setForm({ ...form, gstPercent: e.target.value })
-                          }
-                        />
+                {tab === "installments" && (
+                  <div className="md:col-span-2 space-y-6">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-base font-bold text-slate-800">Extra Installments (Split Payments)</h3>
+                        <button type="button" onClick={() => setForm({ ...form, extraInstallments: [...(form.extraInstallments || []), { date: "", amount: "", bankAccountId: null, bankName: "", note: "" }] })} className="btn-primary flex items-center gap-2">
+                          <Plus className="w-4 h-4" /> Add Payment
+                        </button>
                       </div>
-                    )}
-
-                    <div>
-                      <label className="label">
-                        Tax Category
-                      </label>
-                      <select
-                        className="input"
-                        value={form.taxCategory}
-                        onChange={(e) =>
-                          setForm({ ...form, taxCategory: e.target.value })
-                        }
-                      >
-                        <option value="">Select Category</option>
-                        <option>CGST/SGST</option>
-                        <option>IGST</option>
-                        <option>Exempt</option>
-                        <option>Zero Rated</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="label">
-                        Discount Applied
-                      </label>
-                      <select
-                        className="input"
-                        value={form.discountApplied}
-                        onChange={(e) =>
-                          setForm({ ...form, discountApplied: e.target.value })
-                        }
-                      >
-                        <option>No</option>
-                        <option>Yes</option>
-                      </select>
-                    </div>
-
-                    {form.discountApplied === "Yes" && (
-                      <div>
-                        <label className="label">
-                          Discount Amount (₹)
-                        </label>
-                        <input
-                          type="number"
-                          className="input"
-                          value={form.discountAmount}
-                          onChange={(e) =>
-                            setForm({ ...form, discountAmount: e.target.value })
-                          }
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="label">
-                        Late Fee (₹)
-                      </label>
-                      <input
-                        type="number"
-                        className="input"
-                        placeholder="If applicable"
-                        value={form.lateFee}
-                        onChange={(e) =>
-                          setForm({ ...form, lateFee: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="md:col-span-2 grid grid-cols-2 gap-4 mt-2 p-4 md:p-6 bg-brand-50 rounded-2xl border border-brand-100">
-                      <div>
-                        <p className="text-[10px] md:text-xs text-brand-600 font-bold uppercase tracking-wide">
-                          GST Amount
-                        </p>
-                        <p className="text-lg md:text-2xl font-bold text-slate-800">
-                          ₹{form.gstAmount || "0.00"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] md:text-xs text-brand-600 font-bold uppercase tracking-wide">
-                          Net Total
-                        </p>
-                        <p className="text-lg md:text-2xl font-bold text-brand-700">
-                          ₹{form.netAmount || "0.00"}
-                        </p>
+                      <p className="text-sm text-slate-500 mb-4">Track multiple income payments. {isSavedRecord && "Saved payments are read-only; you can only add new ones."}</p>
+                      <div className="space-y-4">
+                        {(form.extraInstallments || []).length === 0 ? (
+                          <p className="text-sm text-slate-400 py-6 text-center">No payments added yet. Click &quot;+ Add Payment&quot; to add one.</p>
+                        ) : (
+                          (form.extraInstallments || []).map((row, idx) => (
+                            <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 items-end">
+                              <div className="md:col-span-2">
+                                <label className="label text-xs">Date</label>
+                                <input
+                                  type="date"
+                                  readOnly={isSavedRecord}
+                                  className="input"
+                                  value={row.date}
+                                  onChange={(e) => {
+                                    const next = [...(form.extraInstallments || [])];
+                                    next[idx] = { ...next[idx], date: e.target.value };
+                                    setForm({ ...form, extraInstallments: next });
+                                  }}
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <label className="label text-xs">Amount (₹)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  readOnly={isSavedRecord}
+                                  className="input"
+                                  placeholder="0.00"
+                                  value={row.amount}
+                                  onChange={(e) => {
+                                    const next = [...(form.extraInstallments || [])];
+                                    next[idx] = { ...next[idx], amount: e.target.value };
+                                    setForm({ ...form, extraInstallments: next });
+                                  }}
+                                />
+                              </div>
+                              <div className="md:col-span-3">
+                                <label className="label text-xs">Bank Account</label>
+                                <button
+                                  type="button"
+                                  disabled={isSavedRecord}
+                                  onClick={() => { setBankModalFor({ type: "installment", index: idx }); setBankModalOpen(true); }}
+                                  className="input w-full text-left truncate bg-white"
+                                >
+                                  {row.bankName || "Select Bank"}
+                                </button>
+                              </div>
+                              <div className="md:col-span-3">
+                                <label className="label text-xs">Note</label>
+                                <input
+                                  type="text"
+                                  readOnly={isSavedRecord}
+                                  className="input"
+                                  placeholder="Optional"
+                                  value={row.note}
+                                  onChange={(e) => {
+                                    const next = [...(form.extraInstallments || [])];
+                                    next[idx] = { ...next[idx], note: e.target.value };
+                                    setForm({ ...form, extraInstallments: next });
+                                  }}
+                                />
+                              </div>
+                              <div className="md:col-span-2 flex justify-end">
+                                {!isSavedRecord && (
+                                  <button type="button" onClick={() => setForm({ ...form, extraInstallments: (form.extraInstallments || []).filter((_, i) => i !== idx) })} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
 
                 {tab === "internal" && (
@@ -895,6 +810,48 @@ export default function Income() {
                 )}
               </div>
             </div>
+
+            {/* Select Bank Account Modal */}
+            {bankModalOpen && (
+              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-slate-800">Select Bank Account</h3>
+                    <button type="button" onClick={() => { setBankModalOpen(false); setBankModalFor(null); }} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="overflow-y-auto p-4 space-y-2">
+                    {bankAccounts.length === 0 ? (
+                      <p className="text-sm text-slate-500">No bank accounts found. Add one in Bank Accounts.</p>
+                    ) : (
+                      bankAccounts.map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => {
+                            const name = `${b.bankName} - ${b.accountNumber}`;
+                            if (bankModalFor === "initial") {
+                              setForm((prev) => ({ ...prev, initialDepositBankId: b.id, initialDepositBankName: name }));
+                            } else if (bankModalFor && bankModalFor.type === "installment" && typeof bankModalFor.index === "number") {
+                              const next = [...(form.extraInstallments || [])];
+                              next[bankModalFor.index] = { ...next[bankModalFor.index], bankAccountId: b.id, bankName: name };
+                              setForm((prev) => ({ ...prev, extraInstallments: next }));
+                            }
+                            setBankModalOpen(false);
+                            setBankModalFor(null);
+                          }}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50/50 text-left transition-colors"
+                        >
+                          <Landmark className="w-5 h-5 text-brand-600" />
+                          <span className="font-medium text-slate-800">{b.bankName} - {b.accountNumber}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* FOOTER */}
             <div className="flex justify-end gap-3 p-4 md:p-6 border-t border-gray-100 bg-white flex-shrink-0">

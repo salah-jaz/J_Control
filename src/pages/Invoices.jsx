@@ -188,7 +188,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
         const data = new FormData();
         if (invoice?.id) data.append('id', invoice.id);
         data.append('client_id', formData.clientId);
-        data.append('client_name', client ? client.company_name : '');
+        data.append('client_name', client ? (client.company_name || client.client_name) : '');
         data.append('date', formData.date);
         data.append('status', formData.status);
         data.append('gst', formData.gst);
@@ -285,7 +285,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
                                 >
                                     <option value="">Select a client</option>
                                     {clients.map(c => (
-                                        <option key={c.id} value={c.id}>{c.company_name}</option>
+                                        <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
                                     ))}
                                 </select>
                             </div>

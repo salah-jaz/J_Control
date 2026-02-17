@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('method');
             $table->string('transaction_id')->nullable();
             $table->string('bank')->nullable();
-            $table->date('paid_date');
+            $table->date('paid_date')->nullable();
             $table->string('status')->default('Paid');
             $table->string('gst_applied')->default('No');
             $table->decimal('gst_percent', 5, 2)->nullable();

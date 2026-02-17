@@ -15,18 +15,11 @@ return new class extends Migration
      */
     public function up()
     {
-        DB::statement('ALTER TABLE incomes MODIFY COLUMN received_date DATE NULL');
-        DB::statement('ALTER TABLE expenses MODIFY COLUMN paid_date DATE NULL');
+        // Handled in create table migrations
     }
-
-    /**
-     * Reverse the migrations.
-     *
-     * @return void
-     */
+    
     public function down()
     {
-        DB::statement('ALTER TABLE incomes MODIFY COLUMN received_date DATE NOT NULL');
-        DB::statement('ALTER TABLE expenses MODIFY COLUMN paid_date DATE NOT NULL');
+        // Handled in create table migrations
     }
 };

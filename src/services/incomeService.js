@@ -3,7 +3,7 @@ import api from "../api/axios";
 
 // Helper to transform API data to Frontend format
 const toFrontend = (data) => ({
-    id: data.id, // Ensure ID is included
+    id: data.id,
     client: data.client,
     source: data.source,
     project: data.project,
@@ -40,6 +40,16 @@ const toFrontend = (data) => ({
     followUpDate: data.follow_up_date,
     commission: data.commission,
     taxCategory: data.tax_category,
+    initialDepositAmount: data.initial_deposit_amount,
+    initialDepositBankId: data.initial_deposit_bank_id,
+    initialDepositBankName: data.initial_deposit_bank_name,
+    extraInstallments: Array.isArray(data.extra_installments) ? data.extra_installments.map((i) => ({
+        date: i.date,
+        amount: i.amount,
+        bankAccountId: i.bank_account_id,
+        bankName: i.bank_name || "",
+        note: i.note || "",
+    })) : [],
     createdAt: data.created_at,
 });
 
@@ -64,8 +74,8 @@ const toBackend = (data) => ({
     status: clean(data.status),
     gst_applied: clean(data.gstApplied),
     gst_percent: clean(data.gstPercent),
-    gst_amount: clean(data.gstAmount),
-    net_amount: clean(data.netAmount),
+    gst_amount: data.taxAmount != null && data.taxAmount !== "" ? parseFloat(data.taxAmount) : null,
+    net_amount: (parseFloat(data.amount) || 0) - (parseFloat(data.discount) || 0) + (parseFloat(data.taxAmount) || 0),
     staff: clean(data.staff),
     department: clean(data.department),
     notes: clean(data.notes),
@@ -79,12 +89,21 @@ const toBackend = (data) => ({
     client_phone: clean(data.clientPhone),
     payment_terms: clean(data.paymentTerms),
     discount_applied: clean(data.discountApplied),
-    discount_amount: clean(data.discountAmount),
+    discount_amount: data.discount != null && data.discount !== "" ? parseFloat(data.discount) : null,
     late_fee: clean(data.lateFee),
     collection_status: clean(data.collectionStatus),
     follow_up_date: clean(data.followUpDate),
     commission: clean(data.commission),
     tax_category: clean(data.taxCategory),
+    initial_deposit_amount: data.initialDepositAmount != null && data.initialDepositAmount !== "" ? parseFloat(data.initialDepositAmount) : null,
+    initial_deposit_bank_id: data.initialDepositBankId || null,
+    extra_installments: Array.isArray(data.extraInstallments) ? data.extraInstallments.map(({ date, amount, bankAccountId, bankName, note }) => ({
+        date: date || null,
+        amount: amount != null && amount !== "" ? parseFloat(amount) : null,
+        bank_account_id: bankAccountId || null,
+        bank_name: bankName || "",
+        note: note || "",
+    })) : null,
 });
 
 export const getIncomes = async () => {

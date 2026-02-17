@@ -15,15 +15,24 @@ class IncomeController extends Controller
 
     public function store(Request $request)
     {
+        // Normalize empty strings to null for optional fields (avoids email/date validation failures)
+        $request->merge([
+            'client_email' => $request->filled('client_email') ? $request->input('client_email') : null,
+            'invoice_date' => $request->filled('invoice_date') ? $request->input('invoice_date') : null,
+            'due_date' => $request->filled('due_date') ? $request->input('due_date') : null,
+            'received_date' => $request->filled('received_date') ? $request->input('received_date') : null,
+            'follow_up_date' => $request->filled('follow_up_date') ? $request->input('follow_up_date') : null,
+        ]);
+
         $validated = $request->validate([
             'client' => 'required|string',
             'source' => 'required|string',
             'amount' => 'required|numeric',
-            'method' => 'required|string',
+            'method' => 'nullable|string',
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
             'received_date' => 'nullable|date',
-            'status' => 'required|string',
-            'transaction_id' => 'nullable|required_unless:method,Cash',
+            'status' => 'nullable|string',
+            'transaction_id' => 'nullable|string',
             'invoice_no' => 'nullable|string',
             'project' => 'nullable|string',
             'category' => 'nullable|string',
@@ -52,9 +61,28 @@ class IncomeController extends Controller
             'follow_up_date' => 'nullable|date',
             'commission' => 'nullable|numeric',
             'tax_category' => 'nullable|string',
+            'initial_deposit_amount' => 'nullable|numeric',
+            'initial_deposit_bank_id' => 'nullable|exists:bank_accounts,id',
+            'extra_installments' => 'nullable|array',
+            'extra_installments.*.date' => 'sometimes|nullable|date',
+            'extra_installments.*.amount' => 'sometimes|nullable|numeric',
+            'extra_installments.*.bank_account_id' => 'sometimes|nullable|exists:bank_accounts,id',
+            'extra_installments.*.bank_name' => 'sometimes|nullable|string',
+            'extra_installments.*.note' => 'sometimes|nullable|string',
         ]);
 
-        $income = \App\Models\Income::create($validated);
+        $validated['method'] = $validated['method'] ?? 'Other';
+        $validated['status'] = $validated['status'] ?? 'Received';
+        // NOT NULL columns — ensure we never pass null (form no longer sends these)
+        $validated['gst_applied'] = $validated['gst_applied'] ?? 'No';
+        $validated['discount_applied'] = $validated['discount_applied'] ?? 'No';
+        $validated['recurring'] = $validated['recurring'] ?? 'No';
+
+        // Only pass keys that exist on the Income model to avoid DB errors
+        $fillable = (new \App\Models\Income)->getFillable();
+        $payload = array_intersect_key($validated, array_flip($fillable));
+
+        $income = \App\Models\Income::create($payload);
 
         // Update Bank Balance (Increase) ONLY if NOT Pending
         if ($income->bank_account_id && $income->status !== 'Pending') {
@@ -65,10 +93,10 @@ class IncomeController extends Controller
             }
         }
 
-        // Auto-create transaction
+        // Auto-create transaction (use today when received_date is null)
         \App\Models\Transaction::create([
             'type' => 'Income',
-            'date' => $income->received_date,
+            'date' => $income->received_date ?? now()->toDateString(),
             'amount' => $income->amount,
             'currency' => $income->currency ?? 'INR',
             'category' => $income->category,
@@ -97,11 +125,11 @@ class IncomeController extends Controller
             'client' => 'required|string',
             'source' => 'required|string',
             'amount' => 'required|numeric',
-            'method' => 'required|string',
+            'method' => 'nullable|string',
             'bank_account_id' => 'nullable|exists:bank_accounts,id',
             'received_date' => 'nullable|date',
-            'status' => 'required|string',
-            'transaction_id' => 'nullable|required_unless:method,Cash',
+            'status' => 'nullable|string',
+            'transaction_id' => 'nullable|string',
             'invoice_no' => 'nullable|string',
             'project' => 'nullable|string',
             'category' => 'nullable|string',
@@ -130,6 +158,14 @@ class IncomeController extends Controller
             'follow_up_date' => 'nullable|date',
             'commission' => 'nullable|numeric',
             'tax_category' => 'nullable|string',
+            'initial_deposit_amount' => 'nullable|numeric',
+            'initial_deposit_bank_id' => 'nullable|exists:bank_accounts,id',
+            'extra_installments' => 'nullable|array',
+            'extra_installments.*.date' => 'nullable|date',
+            'extra_installments.*.amount' => 'nullable|numeric',
+            'extra_installments.*.bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'extra_installments.*.bank_name' => 'nullable|string',
+            'extra_installments.*.note' => 'nullable|string',
         ]);
 
         $income->update($validated);

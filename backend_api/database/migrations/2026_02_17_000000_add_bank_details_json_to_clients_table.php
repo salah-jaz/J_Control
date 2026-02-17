@@ -4,18 +4,19 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-use Illuminate\Support\Facades\DB;
-
 return new class extends Migration
 {
     /**
      * Run the migrations.
+     * Store multiple bank entries per client as JSON.
      *
      * @return void
      */
     public function up()
     {
-        // Handled in create table migration
+        Schema::table('clients', function (Blueprint $table) {
+            $table->json('bank_details')->nullable()->after('cheque_print_name');
+        });
     }
 
     /**
@@ -25,6 +26,8 @@ return new class extends Migration
      */
     public function down()
     {
-        // Handled in create table migration
+        Schema::table('clients', function (Blueprint $table) {
+            $table->dropColumn('bank_details');
+        });
     }
 };
