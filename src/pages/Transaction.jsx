@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { getTransactions } from "../services/transactionService";
-import { Search, Download, ArrowUpRight, ArrowDownLeft, Filter, X } from "lucide-react";
+import { getTransactions, getTransaction } from "../services/transactionService";
+import { Search, Download, ArrowUpRight, ArrowDownLeft, Filter, X, Eye } from "lucide-react";
 import clsx from "clsx";
 import { exportToCSV } from "../utils/csvExport";
 
@@ -14,10 +14,42 @@ export default function Transaction() {
     endDate: ""
   });
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewTransactionId, setViewTransactionId] = useState(null);
+  const [viewDetail, setViewDetail] = useState(null);
+  const [viewLoading, setViewLoading] = useState(false);
 
   useEffect(() => {
     loadTransactions();
   }, []);
+
+  const openViewModal = (item) => {
+    console.log("View clicked:", item);
+    if (!item || !item.id) {
+      console.error("Transaction id missing");
+      return;
+    }
+    setViewDetail(null);
+    setViewTransactionId(item.id);
+    setViewModalOpen(true);
+  };
+
+  useEffect(() => {
+    if (!viewModalOpen || !viewTransactionId) return;
+
+    console.log("Fetching transaction:", viewTransactionId);
+    setViewLoading(true);
+    getTransaction(viewTransactionId)
+      .then((res) => {
+        console.log("Transaction response:", res.data);
+        setViewDetail(res.data);
+      })
+      .catch((err) => {
+        console.error("Fetch error:", err);
+        setViewDetail(null);
+      })
+      .finally(() => setViewLoading(false));
+  }, [viewModalOpen, viewTransactionId]);
 
   const loadTransactions = async () => {
     try {
@@ -32,9 +64,10 @@ export default function Transaction() {
     return transactions.filter(txn => {
       // 1. Search Term
       const searchMatch = !searchTerm ||
+        (String(txn.id).includes(searchTerm)) ||
         (txn.party && txn.party.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (txn.reference && txn.reference.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (txn.transactionId && txn.transactionId.toLowerCase().includes(searchTerm.toLowerCase()));
+        (txn.reference && txn.reference && String(txn.reference).toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (txn.transactionId && String(txn.transactionId).toLowerCase().includes(searchTerm.toLowerCase()));
 
       // 2. Type Filter
       const typeMatch = !filters.type || txn.type === filters.type;
@@ -165,7 +198,7 @@ export default function Transaction() {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4">Txn ID</th>
+                <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">Type</th>
                 <th className="px-6 py-4">Date</th>
                 <th className="px-6 py-4">Reference</th>
@@ -173,24 +206,25 @@ export default function Transaction() {
                 <th className="px-6 py-4 text-right">Amount</th>
                 <th className="px-6 py-4">Payment</th>
                 <th className="px-6 py-4 text-right">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-gray-50">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="p-12 text-center text-slate-400 italic">
+                  <td colSpan="9" className="p-12 text-center text-slate-400 italic">
                     No transactions found
                   </td>
                 </tr>
               ) : (
-                filteredTransactions.map((txn, index) => (
+                filteredTransactions.map((txn) => (
                   <tr
-                    key={index}
+                    key={txn.id}
                     className="hover:bg-slate-50/50 transition-colors"
                   >
-                    <td className="px-6 py-4 font-mono text-xs text-slate-500">
-                      {txn.transactionId || `#${index + 1}`}
+                    <td className="px-6 py-4 font-mono text-xs text-slate-600 font-semibold">
+                      {txn.id}
                     </td>
                     <td className="px-6 py-4">
                       <span className={clsx(
@@ -215,6 +249,16 @@ export default function Transaction() {
                         {txn.status}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => openViewModal(txn)}
+                        className="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                        title="View"
+                      >
+                        <Eye size={18} />
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -222,6 +266,69 @@ export default function Transaction() {
           </table>
         </div>
       </div>
+
+      {/* Transaction Details Modal - loaded by transaction.id */}
+      {viewModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-slate-800">Transaction Details</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewModalOpen(false);
+                  setViewTransactionId(null);
+                  setViewDetail(null);
+                }}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-6 space-y-4">
+              {viewLoading ? (
+                <p className="text-slate-500 text-center py-8">Loading...</p>
+              ) : viewDetail ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="text-slate-500">Transaction ID</div>
+                    <div className="font-semibold text-slate-800">{viewDetail.id}</div>
+                    <div className="text-slate-500">Amount</div>
+                    <div className="font-bold text-slate-900">₹ {parseFloat(viewDetail.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+                    <div className="text-slate-500">Bank Name</div>
+                    <div className="font-medium text-slate-800">{viewDetail.bankName || viewDetail.bank || "-"}</div>
+                    <div className="text-slate-500">Client</div>
+                    <div className="font-medium text-slate-800">{viewDetail.party || "-"}</div>
+                    <div className="text-slate-500">Date</div>
+                    <div className="font-medium text-slate-800">{viewDetail.date || "-"}</div>
+                    <div className="text-slate-500">Type</div>
+                    <div>
+                      <span className={clsx(
+                        "px-2 py-0.5 rounded text-xs font-bold uppercase",
+                        viewDetail.type === "Income" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                      )}>
+                        {viewDetail.type}
+                      </span>
+                    </div>
+                    <div className="text-slate-500">Method</div>
+                    <div className="font-medium text-slate-800">{viewDetail.method || "-"}</div>
+                    <div className="text-slate-500">Status</div>
+                    <div className="font-medium text-slate-800">{viewDetail.status || "-"}</div>
+                    <div className="text-slate-500">Reference</div>
+                    <div className="font-mono text-xs text-slate-700">{viewDetail.reference || "-"}</div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500 text-sm mb-1">Description</div>
+                    <p className="text-slate-800 text-sm">{viewDetail.description || "-"}</p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-slate-500 text-center py-8">Could not load transaction.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

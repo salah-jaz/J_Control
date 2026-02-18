@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark } from "lucide-react";
 import toast from "react-hot-toast";
 import { exportToCSV } from "../utils/csvExport";
 
 import { getIncomes, createIncome, updateIncome, deleteIncome } from "../services/incomeService";
+import { getTransactions, getTransaction } from "../services/transactionService";
 import { getBankAccounts } from "../services/bankAccountService";
 import { getClients } from "../services/db";
 import clsx from "clsx";
@@ -63,21 +64,45 @@ export default function Income() {
   const [openForm, setOpenForm] = useState(false);
   const [openView, setOpenView] = useState(false);
 
+  const [transactions, setTransactions] = useState([]);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewTransactionId, setViewTransactionId] = useState(null);
+  const [viewDetail, setViewDetail] = useState(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
   const [editId, setEditId] = useState(null);
+  /** When editing, number of extra installments that came from server (read-only). New rows after this are editable. */
+  const [savedExtraInstallmentsCount, setSavedExtraInstallmentsCount] = useState(0);
   const [viewItem, setViewItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [bankModalFor, setBankModalFor] = useState(null);
+  /** Set when save is blocked by bank validation; used to switch tab and focus first invalid bank field. */
+  const [firstInvalidBankKey, setFirstInvalidBankKey] = useState(null);
+  const firstInvalidBankRef = useRef(null);
 
   /* LOAD */
   useEffect(() => {
     loadData();
   }, []);
 
+  /* Auto-focus first invalid bank field when save is blocked by bank validation */
+  useEffect(() => {
+    if (!firstInvalidBankKey) return;
+    const timer = setTimeout(() => {
+      if (firstInvalidBankRef.current) {
+        firstInvalidBankRef.current.focus();
+      }
+      setFirstInvalidBankKey(null);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [firstInvalidBankKey]);
+
   const loadData = async () => {
     try {
-      const records = await getIncomes();
+      const [records, txns] = await Promise.all([getIncomes(), getTransactions()]);
       setData(records);
+      setTransactions(txns || []);
       const banks = await getBankAccounts();
       setBankAccounts(banks);
       const clientsData = await getClients();
@@ -100,6 +125,8 @@ export default function Income() {
     setForm(emptyForm);
     setErrors({});
     setEditId(null);
+    setSavedExtraInstallmentsCount(0);
+    setFirstInvalidBankKey(null);
     setTab("basic");
     setOpenForm(true);
   };
@@ -126,14 +153,31 @@ export default function Income() {
     setForm(loaded);
     setErrors({});
     setEditId(item.id);
+    setSavedExtraInstallmentsCount(extra.length);
+    setFirstInvalidBankKey(null);
     setTab("basic");
     setOpenForm(true);
   };
 
   const openViewModal = (item) => {
-    setViewItem(item);
-    setOpenView(true);
+    console.log("View clicked:", item);
+    if (!item?.id) {
+      console.error("Transaction id missing");
+      return;
+    }
+    setViewDetail(null);
+    setViewTransactionId(item.id);
+    setViewModalOpen(true);
   };
+
+  useEffect(() => {
+    if (!viewModalOpen || !viewTransactionId) return;
+    setViewLoading(true);
+    getTransaction(viewTransactionId)
+      .then((res) => setViewDetail(res.data))
+      .catch(console.error)
+      .finally(() => setViewLoading(false));
+  }, [viewModalOpen, viewTransactionId]);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this income record?")) return;
@@ -151,11 +195,41 @@ export default function Income() {
     if (!form.client) e.client = "Client is required";
     if (!form.source) e.source = "Income source is required";
     if (!form.amount) e.amount = "Subtotal (Amount) is required";
+
+    // Initial Deposit: if enabled and amount > 0, bank is required
+    const initialAmt = parseFloat(form.initialDepositAmount) || 0;
+    if (form.initialDepositEnabled && initialAmt > 0 && !form.initialDepositBankId) {
+      e.initialDepositBank = "Please select bank account for initial deposit";
+    }
+
+    // Extra Installments: if amount > 0, bank is required for that row
+    (form.extraInstallments || []).forEach((row, idx) => {
+      const amt = parseFloat(row.amount) || 0;
+      if (amt > 0 && !row.bankAccountId) {
+        e[`installmentBank_${idx}`] = "Please select bank account for installment payment";
+      }
+    });
+
     if (Object.keys(e).length > 0) {
       setErrors(e);
-      toast.error(Object.values(e)[0]);
+      const bankMsg = e.initialDepositBank || (() => {
+        const k = Object.keys(e).find((key) => key.startsWith("installmentBank_"));
+        return k ? e[k] : null;
+      })();
+      toast.error(bankMsg || e.client || e.source || e.amount || Object.values(e)[0]);
+      if (e.initialDepositBank) {
+        setFirstInvalidBankKey("initialDepositBank");
+        setTab("summary");
+      } else {
+        const firstIdx = (form.extraInstallments || []).findIndex((_, i) => e[`installmentBank_${i}`]);
+        if (firstIdx >= 0) {
+          setFirstInvalidBankKey(`installmentBank_${firstIdx}`);
+          setTab("installments");
+        }
+      }
       return false;
     }
+    setFirstInvalidBankKey(null);
     return true;
   };
 
@@ -196,6 +270,20 @@ export default function Income() {
     )
   );
 
+  /* Income-type transactions for table; View uses txn.id -> GET /transactions/{id} */
+  const filteredTransactions = transactions.filter((txn) => {
+    if (txn.type !== "Income") return false;
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (txn.id != null && String(txn.id).toLowerCase().includes(q)) ||
+      (txn.party && txn.party.toLowerCase().includes(q)) ||
+      (txn.amount != null && String(txn.amount).includes(q)) ||
+      (txn.bankName && txn.bankName.toLowerCase().includes(q)) ||
+      (txn.reference && String(txn.reference).toLowerCase().includes(q))
+    );
+  });
+
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
       {/* HEADER */}
@@ -229,7 +317,7 @@ export default function Income() {
               />
             </div>
             <button
-              onClick={() => exportToCSV(filteredData, "income_records")}
+              onClick={() => exportToCSV(filteredTransactions, "income_transactions")}
               className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
               title="Export to CSV"
             >
@@ -241,69 +329,132 @@ export default function Income() {
           <table className="w-full text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
+                <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">Client</th>
-                <th className="px-6 py-4">Source</th>
                 <th className="px-6 py-4 text-right">Amount</th>
                 <th className="px-6 py-4">Method</th>
                 <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Bank</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredData.length === 0 ? (
+              {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-slate-500 italic">
-                    No income records found
+                  <td colSpan="7" className="px-6 py-12 text-center text-slate-500 italic">
+                    No income transactions found
                   </td>
                 </tr>
               ) : (
-                filteredData.map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-6 py-4 font-medium text-slate-900">{item.client}</td>
-                    <td className="px-6 py-4 text-slate-600">{item.source}</td>
-                    <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
-                      ₹{parseFloat(item.amount).toLocaleString('en-IN')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
-                        {item.method}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600 font-mono text-xs">{item.receivedDate}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => openViewModal(item)}
-                          title="View"
-                          className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                        >
-                          <Eye size={18} />
-                        </button>
-                        <button
-                          onClick={() => openEdit(item)}
-                          title="Edit"
-                          className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                          <Edit2 size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          title="Delete"
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                filteredTransactions.map((txn) => {
+                  console.log("Row txn:", txn);
+                  const income = txn.relatedId ? data.find((i) => i.id === txn.relatedId) : null;
+                  return (
+                    <tr key={txn.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">{txn.id}</td>
+                      <td className="px-6 py-4 font-medium text-slate-900">{txn.party || "-"}</td>
+                      <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
+                        ₹{parseFloat(txn.amount || 0).toLocaleString("en-IN")}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
+                          {txn.method || "-"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 font-mono text-xs">{txn.date || "-"}</td>
+                      <td className="px-6 py-4 text-slate-600 text-xs">{txn.bankName || txn.bank || "-"}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => openViewModal(txn)}
+                            title="View"
+                            className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          {income && (
+                            <>
+                              <button
+                                onClick={() => openEdit(income)}
+                                title="Edit"
+                                className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                              >
+                                <Edit2 size={18} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(txn.relatedId)}
+                                title="Delete"
+                                className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* VIEW MODAL */}
+      {/* Transaction Details Modal - GET /transactions/{id} */}
+      {viewModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
+          <div className="bg-white max-w-lg w-full rounded-2xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
+            <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Transaction Details</h2>
+              <button
+                onClick={() => {
+                  setViewModalOpen(false);
+                  setViewTransactionId(null);
+                  setViewDetail(null);
+                }}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-4 md:p-6 overflow-y-auto">
+              {viewLoading ? (
+                <p className="text-slate-500 text-center py-8">Loading...</p>
+              ) : viewDetail ? (
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="text-slate-500">Transaction ID</div>
+                  <div className="font-semibold text-slate-800">{viewDetail.id}</div>
+                  <div className="text-slate-500">Amount</div>
+                  <div className="font-bold text-slate-900">₹ {parseFloat(viewDetail.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+                  <div className="text-slate-500">Bank Name</div>
+                  <div className="font-medium text-slate-800">{viewDetail.bankName || viewDetail.bank || "-"}</div>
+                  <div className="text-slate-500">Client</div>
+                  <div className="font-medium text-slate-800">{viewDetail.party || "-"}</div>
+                  <div className="text-slate-500">Date</div>
+                  <div className="font-medium text-slate-800">{viewDetail.date || "-"}</div>
+                  <div className="text-slate-500">Method</div>
+                  <div className="font-medium text-slate-800">{viewDetail.method || "-"}</div>
+                  <div className="text-slate-500">Status</div>
+                  <div className="font-medium text-slate-800">{viewDetail.status || "-"}</div>
+                  <div className="text-slate-500">Reference</div>
+                  <div className="font-mono text-xs text-slate-700">{viewDetail.reference || "-"}</div>
+                </div>
+              ) : (
+                <p className="text-slate-500 text-center py-8">Could not load transaction.</p>
+              )}
+              {viewDetail?.description && (
+                <div className="mt-4">
+                  <div className="text-slate-500 text-sm mb-1">Description</div>
+                  <p className="text-slate-800 text-sm">{viewDetail.description}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Legacy VIEW MODAL (income key-value) - kept if needed elsewhere */}
       {openView && viewItem && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
           <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl animate-slide-up flex flex-col max-h-[95vh] overflow-hidden">
@@ -611,14 +762,18 @@ export default function Income() {
                               <label className="label">Bank Account</label>
                               <div className="flex gap-2">
                                 <button
+                                  ref={firstInvalidBankKey === "initialDepositBank" ? firstInvalidBankRef : null}
                                   type="button"
                                   onClick={() => { setBankModalFor("initial"); setBankModalOpen(true); }}
                                   disabled={isSavedRecord}
-                                  className="btn-secondary flex-1"
+                                  className={clsx("btn-secondary flex-1", errors.initialDepositBank && "border-red-500 focus:border-red-500 focus:ring-red-200")}
                                 >
                                   {form.initialDepositBankName || "Select Bank"}
                                 </button>
                               </div>
+                              {errors.initialDepositBank && (
+                                <p className="text-sm text-red-500 mt-1">{errors.initialDepositBank}</p>
+                              )}
                             </div>
                           </div>
                         )}
@@ -645,13 +800,15 @@ export default function Income() {
                         {(form.extraInstallments || []).length === 0 ? (
                           <p className="text-sm text-slate-400 py-6 text-center">No payments added yet. Click &quot;+ Add Payment&quot; to add one.</p>
                         ) : (
-                          (form.extraInstallments || []).map((row, idx) => (
+                          (form.extraInstallments || []).map((row, idx) => {
+                            const rowIsSaved = isSavedRecord && idx < savedExtraInstallmentsCount;
+                            return (
                             <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 items-end">
                               <div className="md:col-span-2">
                                 <label className="label text-xs">Date</label>
                                 <input
                                   type="date"
-                                  readOnly={isSavedRecord}
+                                  readOnly={rowIsSaved}
                                   className="input"
                                   value={row.date}
                                   onChange={(e) => {
@@ -666,7 +823,7 @@ export default function Income() {
                                 <input
                                   type="number"
                                   step="0.01"
-                                  readOnly={isSavedRecord}
+                                  readOnly={rowIsSaved}
                                   className="input"
                                   placeholder="0.00"
                                   value={row.amount}
@@ -680,19 +837,23 @@ export default function Income() {
                               <div className="md:col-span-3">
                                 <label className="label text-xs">Bank Account</label>
                                 <button
+                                  ref={firstInvalidBankKey === `installmentBank_${idx}` ? firstInvalidBankRef : null}
                                   type="button"
-                                  disabled={isSavedRecord}
+                                  disabled={rowIsSaved}
                                   onClick={() => { setBankModalFor({ type: "installment", index: idx }); setBankModalOpen(true); }}
-                                  className="input w-full text-left truncate bg-white"
+                                  className={clsx("input w-full text-left truncate bg-white", errors[`installmentBank_${idx}`] && "border-red-500 focus:border-red-500 focus:ring-red-200")}
                                 >
                                   {row.bankName || "Select Bank"}
                                 </button>
+                                {errors[`installmentBank_${idx}`] && (
+                                  <p className="text-sm text-red-500 mt-1">{errors[`installmentBank_${idx}`]}</p>
+                                )}
                               </div>
                               <div className="md:col-span-3">
                                 <label className="label text-xs">Note</label>
                                 <input
                                   type="text"
-                                  readOnly={isSavedRecord}
+                                  readOnly={rowIsSaved}
                                   className="input"
                                   placeholder="Optional"
                                   value={row.note}
@@ -704,14 +865,15 @@ export default function Income() {
                                 />
                               </div>
                               <div className="md:col-span-2 flex justify-end">
-                                {!isSavedRecord && (
+                                {!rowIsSaved && (
                                   <button type="button" onClick={() => setForm({ ...form, extraInstallments: (form.extraInstallments || []).filter((_, i) => i !== idx) })} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 )}
                               </div>
                             </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
                     </div>
@@ -833,10 +995,21 @@ export default function Income() {
                             const name = `${b.bankName} - ${b.accountNumber}`;
                             if (bankModalFor === "initial") {
                               setForm((prev) => ({ ...prev, initialDepositBankId: b.id, initialDepositBankName: name }));
+                              setErrors((prev) => {
+                                const next = { ...prev };
+                                delete next.initialDepositBank;
+                                return next;
+                              });
                             } else if (bankModalFor && bankModalFor.type === "installment" && typeof bankModalFor.index === "number") {
+                              const idx = bankModalFor.index;
                               const next = [...(form.extraInstallments || [])];
-                              next[bankModalFor.index] = { ...next[bankModalFor.index], bankAccountId: b.id, bankName: name };
+                              next[idx] = { ...next[idx], bankAccountId: b.id, bankName: name };
                               setForm((prev) => ({ ...prev, extraInstallments: next }));
+                              setErrors((prev) => {
+                                const nextErr = { ...prev };
+                                delete nextErr[`installmentBank_${idx}`];
+                                return nextErr;
+                              });
                             }
                             setBankModalOpen(false);
                             setBankModalFor(null);

@@ -7,6 +7,115 @@ use Illuminate\Http\Request;
 
 class IncomeController extends Controller
 {
+    /**
+     * Get paid amount = initial_deposit_amount + sum(extra_installments amounts).
+     */
+    private static function getPaidAmount(float $totalAmount, ?float $initialDeposit, array $extraInstallments): float
+    {
+        $sum = (float) ($initialDeposit ?? 0);
+        foreach ($extraInstallments ?? [] as $row) {
+            $sum += (float) ($row['amount'] ?? 0);
+        }
+        return round($sum, 2);
+    }
+
+    /**
+     * Get status from total vs paid: Unpaid | Partially Paid | Fully Paid.
+     */
+    private static function getIncomeStatus(float $totalAmount, float $paidAmount): string
+    {
+        if ($paidAmount <= 0) {
+            return 'Unpaid';
+        }
+        if ($paidAmount >= round($totalAmount, 2)) {
+            return 'Fully Paid';
+        }
+        return 'Partially Paid';
+    }
+
+    /**
+     * Build list of payments (amount, bank_account_id, date) from initial deposit + extra installments.
+     */
+    private static function getPaymentEntries(?float $initialDeposit, ?int $initialDepositBankId, ?string $receivedDate, array $extraInstallments): array
+    {
+        $entries = [];
+        $baseDate = $receivedDate ?: now()->toDateString();
+
+        if ($initialDeposit > 0 && $initialDepositBankId) {
+            $entries[] = [
+                'amount' => (float) $initialDeposit,
+                'bank_account_id' => (int) $initialDepositBankId,
+                'date' => $baseDate,
+            ];
+        }
+
+        foreach ($extraInstallments ?? [] as $row) {
+            $amt = (float) ($row['amount'] ?? 0);
+            $bankId = isset($row['bank_account_id']) ? (int) $row['bank_account_id'] : null;
+            if ($amt > 0 && $bankId) {
+                $entries[] = [
+                    'amount' => $amt,
+                    'bank_account_id' => $bankId,
+                    'date' => !empty($row['date']) ? $row['date'] : $baseDate,
+                ];
+            }
+        }
+
+        return $entries;
+    }
+
+    /**
+     * Create transactions and credit bank balances for the given payment entries (Income).
+     */
+    private static function applyIncomePayments(\App\Models\Income $income, array $paymentEntries): void
+    {
+        foreach ($paymentEntries as $entry) {
+            $bank = \App\Models\BankAccount::find($entry['bank_account_id']);
+            if (!$bank) {
+                continue;
+            }
+            $bank->current_balance += $entry['amount'];
+            $bank->save();
+
+            \App\Models\Transaction::create([
+                'type' => 'Income',
+                'date' => $entry['date'],
+                'amount' => $entry['amount'],
+                'currency' => $income->currency ?? 'INR',
+                'category' => $income->category,
+                'method' => $income->method,
+                'bank' => $bank->bank_name ?? $bank->nick_name,
+                'bank_account_id' => $bank->id,
+                'reference_id' => $income->transaction_id,
+                'description' => $income->notes ?? "Income from {$income->client}",
+                'status' => $income->status,
+                'related_id' => $income->id,
+                'related_type' => \App\Models\Income::class,
+            ]);
+        }
+    }
+
+    /**
+     * Reverse transactions and debit bank balances for an income (by its related transactions).
+     */
+    private static function reverseIncomePayments(\App\Models\Income $income): void
+    {
+        $transactions = \App\Models\Transaction::where('related_id', $income->id)
+            ->where('related_type', \App\Models\Income::class)
+            ->get();
+
+        foreach ($transactions as $tx) {
+            if ($tx->bank_account_id) {
+                $bank = \App\Models\BankAccount::find($tx->bank_account_id);
+                if ($bank) {
+                    $bank->current_balance -= $tx->amount;
+                    $bank->save();
+                }
+            }
+            $tx->delete();
+        }
+    }
+
     public function index()
     {
         $incomes = \App\Models\Income::latest()->get();
@@ -82,32 +191,20 @@ class IncomeController extends Controller
         $fillable = (new \App\Models\Income)->getFillable();
         $payload = array_intersect_key($validated, array_flip($fillable));
 
+        $totalAmount = (float) $payload['amount'];
+        $initialDeposit = isset($payload['initial_deposit_amount']) ? (float) $payload['initial_deposit_amount'] : null;
+        $initialDepositBankId = $payload['initial_deposit_bank_id'] ?? null;
+        $extraInstallments = $payload['extra_installments'] ?? [];
+        $receivedDate = $payload['received_date'] ?? null;
+
+        $paidAmount = self::getPaidAmount($totalAmount, $initialDeposit, $extraInstallments);
+        $status = self::getIncomeStatus($totalAmount, $paidAmount);
+        $payload['status'] = $status;
+
         $income = \App\Models\Income::create($payload);
 
-        // Update Bank Balance (Increase) ONLY if NOT Pending
-        if ($income->bank_account_id && $income->status !== 'Pending') {
-            $bank = \App\Models\BankAccount::find($income->bank_account_id);
-            if ($bank) {
-                $bank->current_balance += $income->amount;
-                $bank->save();
-            }
-        }
-
-        // Auto-create transaction (use today when received_date is null)
-        \App\Models\Transaction::create([
-            'type' => 'Income',
-            'date' => $income->received_date ?? now()->toDateString(),
-            'amount' => $income->amount,
-            'currency' => $income->currency ?? 'INR',
-            'category' => $income->category,
-            'method' => $income->method,
-            'bank' => $income->bank,
-            'reference_id' => $income->transaction_id,
-            'description' => $income->notes ?? "Income from {$income->client}",
-            'status' => $income->status,
-            'related_id' => $income->id,
-            'related_type' => \App\Models\Income::class,
-        ]);
+        $paymentEntries = self::getPaymentEntries($initialDeposit, $initialDepositBankId, $receivedDate, $extraInstallments);
+        self::applyIncomePayments($income, $paymentEntries);
 
         return response()->json($income, 201);
     }
@@ -115,11 +212,6 @@ class IncomeController extends Controller
     public function update(Request $request, $id)
     {
         $income = \App\Models\Income::findOrFail($id);
-        
-        // Capture old values for effective balance adjustment
-        // If old status was Pending, effective amount was 0.
-        $oldEffectiveAmount = ($income->status === 'Pending') ? 0 : $income->amount;
-        $oldBankId = $income->bank_account_id;
 
         $validated = $request->validate([
             'client' => 'required|string',
@@ -168,63 +260,22 @@ class IncomeController extends Controller
             'extra_installments.*.note' => 'nullable|string',
         ]);
 
+        // Reverse existing payments (transactions + bank balances)
+        self::reverseIncomePayments($income);
+
+        $totalAmount = (float) $validated['amount'];
+        $initialDeposit = isset($validated['initial_deposit_amount']) ? (float) $validated['initial_deposit_amount'] : null;
+        $initialDepositBankId = $validated['initial_deposit_bank_id'] ?? null;
+        $extraInstallments = $validated['extra_installments'] ?? [];
+        $receivedDate = $validated['received_date'] ?? null;
+
+        $paidAmount = self::getPaidAmount($totalAmount, $initialDeposit, $extraInstallments);
+        $validated['status'] = self::getIncomeStatus($totalAmount, $paidAmount);
+
         $income->update($validated);
-        
-        // Determine new effective amount
-        $newEffectiveAmount = ($income->status === 'Pending') ? 0 : $income->amount;
-        $newBankId = $income->bank_account_id;
 
-        // Handle Bank Balance Logic
-        if ($oldBankId === $newBankId) {
-            // Same bank (or both null)
-            if ($oldBankId) {
-                $netChange = $newEffectiveAmount - $oldEffectiveAmount;
-                if ($netChange != 0) {
-                    $bank = \App\Models\BankAccount::find($oldBankId);
-                    if ($bank) {
-                        $bank->current_balance += $netChange;
-                        $bank->save();
-                    }
-                }
-            }
-        } else {
-            // Bank changed
-            // Revert old effective from old bank
-            if ($oldBankId && $oldEffectiveAmount != 0) {
-                $oldBank = \App\Models\BankAccount::find($oldBankId);
-                if ($oldBank) {
-                    $oldBank->current_balance -= $oldEffectiveAmount;
-                    $oldBank->save();
-                }
-            }
-            // Apply new effective to new bank
-            if ($newBankId && $newEffectiveAmount != 0) {
-                $newBank = \App\Models\BankAccount::find($newBankId);
-                if ($newBank) {
-                    $newBank->current_balance += $newEffectiveAmount;
-                    $newBank->save();
-                }
-            }
-        }
-
-        // Auto-update transaction
-        $transaction = \App\Models\Transaction::where('related_id', $income->id)
-            ->where('related_type', \App\Models\Income::class)
-            ->first();
-
-        if ($transaction) {
-            $transaction->update([
-                'date' => $income->received_date,
-                'amount' => $income->amount,
-                'currency' => $income->currency ?? 'INR',
-                'category' => $income->category,
-                'method' => $income->method,
-                'bank' => $income->bank,
-                'reference_id' => $income->transaction_id,
-                'description' => $income->notes ?? "Income from {$income->client}",
-                'status' => $income->status,
-            ]);
-        }
+        $paymentEntries = self::getPaymentEntries($initialDeposit, $initialDepositBankId, $receivedDate, $extraInstallments);
+        self::applyIncomePayments($income, $paymentEntries);
 
         return response()->json($income);
     }
@@ -232,23 +283,8 @@ class IncomeController extends Controller
     public function destroy($id)
     {
         $income = \App\Models\Income::findOrFail($id);
-        
-        // Revert Bank Balance (Decrease) ONLY if NOT Pending
-        if ($income->bank_account_id && $income->status !== 'Pending') {
-            $bank = \App\Models\BankAccount::find($income->bank_account_id);
-            if ($bank) {
-                $bank->current_balance -= $income->amount;
-                $bank->save();
-            }
-        }
-        
-        // Auto-delete transaction
-        \App\Models\Transaction::where('related_id', $income->id)
-            ->where('related_type', \App\Models\Income::class)
-            ->delete();
-
+        self::reverseIncomePayments($income);
         $income->delete();
-
         return response()->json(null, 204);
     }
 }
