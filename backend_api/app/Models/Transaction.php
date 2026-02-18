@@ -23,6 +23,7 @@ class Transaction extends Model
         'status',
         'related_id',
         'related_type',
+        'invoice_id',
     ];
 
     public function related()

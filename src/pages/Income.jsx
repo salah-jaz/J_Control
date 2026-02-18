@@ -506,7 +506,12 @@ export default function Income() {
                       <td className="px-6 py-4 text-slate-600 font-mono text-xs">{txn.date || "-"}</td>
                       <td className="px-6 py-4 text-slate-600 text-xs">{txn.bankName || txn.bank || "-"}</td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          {income?.invoice_id && (
+                            <span className="px-2 py-1 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-xs font-semibold" title="Created from Invoice">
+                              Invoice Linked
+                            </span>
+                          )}
                           <button
                             onClick={() => openViewModal(txn)}
                             title="View"
@@ -514,7 +519,7 @@ export default function Income() {
                           >
                             <Eye size={18} />
                           </button>
-                          {income && (
+                          {income && !income.invoice_id && (
                             <>
                               <button
                                 onClick={() => openEdit(income)}

@@ -241,6 +241,9 @@ class IncomeController extends Controller
     public function update(Request $request, $id)
     {
         $income = \App\Models\Income::findOrFail($id);
+        if ($income->invoice_id) {
+            return response()->json(['message' => 'This income record was created from an Invoice and cannot be edited here. Edit the Invoice instead.'], 403);
+        }
 
         $validated = $request->validate([
             'client' => 'required|string',
@@ -312,6 +315,9 @@ class IncomeController extends Controller
     public function destroy($id)
     {
         $income = \App\Models\Income::findOrFail($id);
+        if ($income->invoice_id) {
+            return response()->json(['message' => 'This income record was created from an Invoice and cannot be deleted here. Delete or edit the Invoice instead.'], 403);
+        }
         self::reverseIncomePayments($income);
         $income->delete();
         return response()->json(null, 204);

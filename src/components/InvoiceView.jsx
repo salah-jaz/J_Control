@@ -46,48 +46,35 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
 
     const items = invoice.items || [];
     const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0) || parseFloat(invoice.amount) || 0;
-    const gst = invoice.gst || 0;
-    const discount = invoice.discount || 0;
+    const gst = parseFloat(invoice.gst) || 0;
+    const discount = parseFloat(invoice.discount) || 0;
     const gstAmount = subtotal * (gst / 100);
     const grandTotal = Math.max(0, subtotal + gstAmount - discount);
 
-    // Logic for Paid/Pending Calculation
-    // If Invoice Status is 'Paid', then Paid = GrandTotal, Pending = 0.
-    // If Invoice Status is 'Pending' or 'Overdue', we calculate based on individual item status.
-    // However, if the Invoice Status is forced to 'Pending' but some items are 'Paid', we should reflect that.
-
+    const hasFinance = invoice.initial_deposit_enabled || (invoice.extra_installments && invoice.extra_installments.length > 0);
+    const initialDeposit = hasFinance ? (parseFloat(invoice.initial_deposit_amount) || 0) : 0;
+    const installmentsSum = (invoice.extra_installments || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
     let paidAmount = 0;
+    let balanceAmount = grandTotal;
 
-    // Calculate total of items marked as 'Paid'
-    const itemsPaidTotal = items
-        .filter(item => item.payment_status === 'Paid')
-        .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-
-    // Calculate total of items marked as 'Pending'
-    const itemsPendingTotal = items
-        .filter(item => item.payment_status !== 'Paid')
-        .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-
-    // If the main invoice status is explicitly 'Paid', we treat everything as paid.
-    if (invoice.status === 'Paid') {
-        paidAmount = grandTotal;
+    if (hasFinance) {
+        paidAmount = Math.min(initialDeposit + installmentsSum, grandTotal);
+        balanceAmount = Math.max(0, grandTotal - paidAmount);
     } else {
-        // Otherwise, we base it on the item statuses.
-        // We need to apply the GST and Discount proportionally to the Paid Amount.
-
-        if (subtotal > 0) {
-            const ratio = itemsPaidTotal / subtotal;
-            paidAmount = itemsPaidTotal + (gstAmount * ratio) - (discount * ratio);
+        if (invoice.status === 'Paid') {
+            paidAmount = grandTotal;
+            balanceAmount = 0;
         } else {
-            paidAmount = 0;
+            const itemsPaidTotal = items
+                .filter(item => item.payment_status === 'Paid')
+                .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+            if (subtotal > 0) {
+                const ratio = itemsPaidTotal / subtotal;
+                paidAmount = Math.min(grandTotal, Math.max(0, itemsPaidTotal + (gstAmount * ratio) - (discount * ratio)));
+            }
+            balanceAmount = Math.max(0, grandTotal - paidAmount);
         }
     }
-
-    // Floating point safety
-    paidAmount = Math.max(0, paidAmount);
-    paidAmount = Math.min(paidAmount, grandTotal);
-
-    const balanceAmount = grandTotal - paidAmount;
 
     // QR Code URL Construction
     // QR Code URL Construction
@@ -228,7 +215,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                                 <div className="text-right pt-4">
                                     <h1 className="text-2xl md:text-4xl font-black text-[#ea580c] tracking-widest italic leading-none">INVOICE</h1>
                                     <div className="text-white text-[9px] md:text-[11px] mt-1 md:mt-2 space-y-0.5">
-                                        <p><span className="font-bold ">Invoice Id:  {invoice.id}</span></p>
+                                        <p><span className="font-bold ">Invoice Id:  {invoice.invoice_number || invoice.id}</span></p>
                                         <p><span className="font-bold ">{new Date(invoice.date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span></p>
                                     </div>
                                 </div>
@@ -341,6 +328,22 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                                         </div>
                                     </div>
                                     <div className="mt-4 space-y-1 px-2">
+                                        {hasFinance && (
+                                            <>
+                                                {initialDeposit > 0 && (
+                                                    <div className="flex justify-between text-[10px] font-bold text-slate-600 print:text-black">
+                                                        <span>INITIAL DEPOSIT:</span>
+                                                        <span>₹ {initialDeposit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                                    </div>
+                                                )}
+                                                {(invoice.extra_installments || []).length > 0 && (
+                                                    <div className="flex justify-between text-[10px] font-bold text-slate-600 print:text-black">
+                                                        <span>INSTALLMENTS:</span>
+                                                        <span>₹ {installmentsSum.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
                                         <div className="flex justify-between text-[10px] font-bold text-green-600 print:text-green-800">
                                             <span>PAID AMOUNT:</span>
                                             <span>₹ {paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
@@ -359,9 +362,10 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                                 <div>
                                     <h4 className="text-xs font-bold text-slate-800 mb-3 border-b-2 border-[#ea580c] pb-1 w-fit pr-4 print:text-black">Bank Details:</h4>
                                     <div className="text-[11px] space-y-1.5 font-medium text-slate-600 print:text-black">
-                                        <div className="flex"><span className="w-20 font-bold">Account No:</span> <span>{bank?.accountNumber || '1234 5678 910'}</span></div>
-                                        <div className="flex"><span className="w-20 font-bold">Acc Name:</span> <span>{bank?.accountName || 'Jhon Doe.'}</span></div>
-                                        <div className="flex"><span className="w-20 font-bold">IFSC:</span> <span>{bank?.ifsc || 'XYZ'}</span></div>
+                                        <div className="flex"><span className="w-20 font-bold">Bank:</span> <span>{invoice.bank_name || bank?.bankName || '—'}</span></div>
+                                        <div className="flex"><span className="w-20 font-bold">Account No:</span> <span>{invoice.account_number || bank?.accountNumber || '—'}</span></div>
+                                        <div className="flex"><span className="w-20 font-bold">Acc Name:</span> <span>{bank?.accountName || '—'}</span></div>
+                                        <div className="flex"><span className="w-20 font-bold">IFSC:</span> <span>{bank?.ifsc || '—'}</span></div>
                                         {invoice.gpay_number && <div className="flex"><span className="w-20 font-bold">GPay:</span> <span>{invoice.gpay_number}</span></div>}
                                     </div>
                                 </div>

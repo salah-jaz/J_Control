@@ -10,6 +10,7 @@ class Income extends Model
     use HasFactory;
 
     protected $fillable = [
+        'invoice_id',
         'client',
         'source',
         'project',
@@ -54,4 +55,9 @@ class Income extends Model
     protected $casts = [
         'extra_installments' => 'array',
     ];
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
+    }
 }

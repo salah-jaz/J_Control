@@ -27,6 +27,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('notes/{lead_note}', [LeadNoteController::class, 'destroy']);
     Route::apiResource('customers', CustomerController::class);
     Route::apiResource('clients', ClientController::class);
+    Route::get('invoices/next-number', [InvoiceController::class, 'nextInvoiceNumber']);
+    Route::get('invoices/summary', [InvoiceController::class, 'summary']);
     Route::apiResource('invoices', InvoiceController::class);
     Route::get('quotations', [QuotationController::class, 'index']);
     Route::post('quotations', [QuotationController::class, 'store']);
@@ -41,7 +43,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('income-categories', [\App\Http\Controllers\IncomeCategoryController::class, 'index']);
     Route::post('income-categories', [\App\Http\Controllers\IncomeCategoryController::class, 'store']);
     Route::delete('income-categories/{id}', [\App\Http\Controllers\IncomeCategoryController::class, 'destroy']);
+    Route::get('expenses/summary', [\App\Http\Controllers\ExpenseController::class, 'summary']);
     Route::apiResource('expenses', \App\Http\Controllers\ExpenseController::class);
+    Route::get('expense-categories', [\App\Http\Controllers\ExpenseCategoryController::class, 'index']);
+    Route::post('expense-categories', [\App\Http\Controllers\ExpenseCategoryController::class, 'store']);
+    Route::delete('expense-categories/{id}', [\App\Http\Controllers\ExpenseCategoryController::class, 'destroy']);
     Route::apiResource('bank-accounts', \App\Http\Controllers\BankAccountController::class);
     Route::apiResource('transactions', \App\Http\Controllers\TransactionController::class);
     Route::apiResource('users', \App\Http\Controllers\UserController::class);
