@@ -13,8 +13,12 @@ class TransactionController extends Controller
 
         $data = $transactions->map(function ($txn) {
             $party = '';
+            $incomeStatus = null;
+            $invoiceNo = null;
             if ($txn->related_type === 'App\Models\Income' && $txn->related) {
                 $party = $txn->related->client;
+                $incomeStatus = $txn->related->status;
+                $invoiceNo = $txn->related->invoice_no;
             } elseif ($txn->related_type === 'App\Models\Expense' && $txn->related) {
                 $party = $txn->related->vendor;
             }
@@ -22,6 +26,8 @@ class TransactionController extends Controller
             $bankName = $txn->bankAccount
                 ? ($txn->bankAccount->bank_name . ' - ' . $txn->bankAccount->account_number)
                 : ($txn->bank ?? null);
+
+            $filterStatus = $incomeStatus === 'Fully Paid' ? 'Paid' : ($incomeStatus === 'Partially Paid' ? 'Partial' : ($incomeStatus === 'Unpaid' ? 'Unpaid' : null));
 
             return [
                 'id' => (int) $txn->id,
@@ -40,6 +46,8 @@ class TransactionController extends Controller
                 'description' => $txn->description,
                 'status' => $txn->status,
                 'party' => $party,
+                'incomeStatus' => $filterStatus,
+                'invoiceNo' => $invoiceNo,
             ];
         });
 

@@ -122,6 +122,35 @@ class IncomeController extends Controller
         return response()->json($incomes);
     }
 
+    /**
+     * GET /incomes/summary - dashboard aggregates.
+     */
+    public function summary()
+    {
+        $incomes = \App\Models\Income::all();
+        $totalIncome = 0;
+        $totalReceived = 0;
+
+        foreach ($incomes as $income) {
+            $amount = (float) $income->amount;
+            $totalIncome += $amount;
+            $paid = self::getPaidAmount(
+                $amount,
+                $income->initial_deposit_amount ? (float) $income->initial_deposit_amount : null,
+                $income->extra_installments ?? []
+            );
+            $totalReceived += $paid;
+        }
+
+        $totalBalance = round($totalIncome - $totalReceived, 2);
+        return response()->json([
+            'totalIncome' => round($totalIncome, 2),
+            'totalReceived' => round($totalReceived, 2),
+            'totalBalance' => $totalBalance,
+            'totalCount' => $incomes->count(),
+        ]);
+    }
+
     public function store(Request $request)
     {
         // Normalize empty strings to null for optional fields (avoids email/date validation failures)

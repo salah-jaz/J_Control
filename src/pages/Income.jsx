@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark } from "lucide-react";
+import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark, Wallet, TrendingUp, AlertCircle, Receipt } from "lucide-react";
 import toast from "react-hot-toast";
 import { exportToCSV } from "../utils/csvExport";
 
-import { getIncomes, createIncome, updateIncome, deleteIncome } from "../services/incomeService";
+import { getIncomes, createIncome, updateIncome, deleteIncome, getIncomeSummary } from "../services/incomeService";
 import { getTransactions, getTransaction } from "../services/transactionService";
 import { getBankAccounts } from "../services/bankAccountService";
+import { getIncomeCategories, createIncomeCategory, deleteIncomeCategory } from "../services/incomeCategoryService";
 import { getClients } from "../services/db";
 import clsx from "clsx";
 
@@ -81,6 +82,18 @@ export default function Income() {
   const [firstInvalidBankKey, setFirstInvalidBankKey] = useState(null);
   const firstInvalidBankRef = useRef(null);
 
+  const [incomeCategories, setIncomeCategories] = useState([]);
+  const [addCategoryModalOpen, setAddCategoryModalOpen] = useState(false);
+  const [manageCategoriesModalOpen, setManageCategoriesModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [addCategorySaving, setAddCategorySaving] = useState(false);
+
+  const [incomeSummary, setIncomeSummary] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [bankFilter, setBankFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("All");
+
   /* LOAD */
   useEffect(() => {
     loadData();
@@ -100,9 +113,16 @@ export default function Income() {
 
   const loadData = async () => {
     try {
-      const [records, txns] = await Promise.all([getIncomes(), getTransactions()]);
+      const [records, txns, categories, summary] = await Promise.all([
+        getIncomes(),
+        getTransactions(),
+        getIncomeCategories().catch(() => []),
+        getIncomeSummary().catch(() => null),
+      ]);
       setData(records);
       setTransactions(txns || []);
+      setIncomeCategories(categories || []);
+      setIncomeSummary(summary);
       const banks = await getBankAccounts();
       setBankAccounts(banks);
       const clientsData = await getClients();
@@ -193,7 +213,6 @@ export default function Income() {
   const validate = () => {
     const e = {};
     if (!form.client) e.client = "Client is required";
-    if (!form.source) e.source = "Income source is required";
     if (!form.amount) e.amount = "Subtotal (Amount) is required";
 
     // Initial Deposit: if enabled and amount > 0, bank is required
@@ -209,6 +228,11 @@ export default function Income() {
         e[`installmentBank_${idx}`] = "Please select bank account for installment payment";
       }
     });
+
+    // Category optional; if entered, must be from dropdown
+    if (form.category && !incomeCategories.some((c) => c.name === form.category)) {
+      e.category = "Please select a category from the list";
+    }
 
     if (Object.keys(e).length > 0) {
       setErrors(e);
@@ -261,6 +285,39 @@ export default function Income() {
 
   const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
+  const StatCard = ({ title, value, icon: Icon, color }) => (
+    <div className="card hover:border-brand-200/50 group h-36 flex flex-col justify-between p-6">
+      <div className="flex justify-between items-start">
+        <div className={`p-3.5 rounded-xl ${color}`}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
+          <h3 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">{value}</h3>
+        </div>
+      </div>
+      <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
+        <div className={`h-full rounded-full ${color} opacity-30`} style={{ width: "70%" }} />
+      </div>
+    </div>
+  );
+
+  const isDateInRange = (dateStr, range) => {
+    if (!dateStr || range === "All") return true;
+    const d = new Date(dateStr);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    if (range === "Today") return d >= todayStart && d < new Date(todayStart.getTime() + 86400000);
+    if (range === "This Week") return d >= weekStart;
+    if (range === "This Month") return d >= monthStart;
+    if (range === "This Year") return d >= yearStart;
+    return true;
+  };
+
   /* FILTER DATA */
   const filteredData = data.filter((item) =>
     Object.values(item).some(
@@ -270,18 +327,26 @@ export default function Income() {
     )
   );
 
-  /* Income-type transactions for table; View uses txn.id -> GET /transactions/{id} */
+  /* Income-type transactions for table; apply search + status, category, bank, date filters */
   const filteredTransactions = transactions.filter((txn) => {
     if (txn.type !== "Income") return false;
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      (txn.id != null && String(txn.id).toLowerCase().includes(q)) ||
-      (txn.party && txn.party.toLowerCase().includes(q)) ||
-      (txn.amount != null && String(txn.amount).includes(q)) ||
-      (txn.bankName && txn.bankName.toLowerCase().includes(q)) ||
-      (txn.reference && String(txn.reference).toLowerCase().includes(q))
-    );
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      const match =
+        (txn.id != null && String(txn.id).toLowerCase().includes(q)) ||
+        (txn.party && txn.party.toLowerCase().includes(q)) ||
+        (txn.reference && String(txn.reference || "").toLowerCase().includes(q)) ||
+        (txn.category && String(txn.category).toLowerCase().includes(q)) ||
+        (txn.invoiceNo && String(txn.invoiceNo).toLowerCase().includes(q)) ||
+        (txn.bankName && txn.bankName.toLowerCase().includes(q)) ||
+        (txn.amount != null && String(txn.amount).includes(q));
+      if (!match) return false;
+    }
+    if (statusFilter !== "All" && txn.incomeStatus !== statusFilter) return false;
+    if (categoryFilter && txn.category !== categoryFilter) return false;
+    if (bankFilter && txn.bankAccountId != null && txn.bankAccountId !== Number(bankFilter)) return false;
+    if (!isDateInRange(txn.date, dateFilter)) return false;
+    return true;
   });
 
   return (
@@ -301,21 +366,99 @@ export default function Income() {
         </button>
       </div>
 
+      {/* SUMMARY CARDS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <StatCard
+          title="Total Income"
+          value={incomeSummary != null ? `₹${Number(incomeSummary.totalIncome || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
+          icon={Wallet}
+          color="bg-slate-600"
+        />
+        <StatCard
+          title="Amount Received"
+          value={incomeSummary != null ? `₹${Number(incomeSummary.totalReceived || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
+          icon={TrendingUp}
+          color="bg-emerald-600"
+        />
+        <StatCard
+          title="Balance Due"
+          value={incomeSummary != null ? `₹${Number(incomeSummary.totalBalance || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
+          icon={AlertCircle}
+          color="bg-amber-600"
+        />
+        <StatCard
+          title="Total Transactions"
+          value={incomeSummary != null ? String(incomeSummary.totalCount ?? 0) : "—"}
+          icon={Receipt}
+          color="bg-blue-600"
+        />
+      </div>
+
+      {/* SEARCH & FILTERS */}
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search income..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all shadow-sm"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[120px]"
+          >
+            <option value="All">All</option>
+            <option value="Paid">Paid</option>
+            <option value="Partial">Partial</option>
+            <option value="Unpaid">Unpaid</option>
+          </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
+          >
+            <option value="">All Categories</option>
+            {incomeCategories.map((c) => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+          <select
+            value={bankFilter}
+            onChange={(e) => setBankFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[160px]"
+          >
+            <option value="">All Banks</option>
+            {bankAccounts.map((b) => (
+              <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>
+            ))}
+          </select>
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[120px]"
+          >
+            <option value="All">All Time</option>
+            <option value="Today">Today</option>
+            <option value="This Week">This Week</option>
+            <option value="This Month">This Month</option>
+            <option value="This Year">This Year</option>
+          </select>
+        </div>
+      </div>
+
       {/* TABLE */}
       <div className="card p-0 overflow-hidden">
         <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
           <h3 className="font-bold text-slate-800">Recent Transactions</h3>
           <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-            <div className="relative flex-1 lg:flex-none">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 md:w-64 transition-all"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg self-center">
+              Showing {filteredTransactions.length} of {transactions.filter((t) => t.type === "Income").length}
+            </span>
             <button
               onClick={() => exportToCSV(filteredTransactions, "income_transactions")}
               className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
@@ -347,7 +490,6 @@ export default function Income() {
                 </tr>
               ) : (
                 filteredTransactions.map((txn) => {
-                  console.log("Row txn:", txn);
                   const income = txn.relatedId ? data.find((i) => i.id === txn.relatedId) : null;
                   return (
                     <tr key={txn.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -551,7 +693,7 @@ export default function Income() {
                     </div>
                     <div>
                       <label className="label">
-                        Income Source <Req />
+                        Income Source
                       </label>
                       <input
                         className={inputClass("source")}
@@ -575,16 +717,43 @@ export default function Income() {
                       />
                     </div>
                     <div>
-                      <label className="label">
-                        Category
-                      </label>
-                      <input
-                        className="input"
-                        value={form.category}
-                        onChange={(e) =>
-                          setForm({ ...form, category: e.target.value })
-                        }
-                      />
+                      <label className="label">Category</label>
+                      <div className="flex gap-2">
+                        <select
+                          className={clsx("input flex-1", errors.category && "border-red-500 focus:border-red-500 focus:ring-red-200")}
+                          value={form.category}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "__add__") {
+                              setAddCategoryModalOpen(true);
+                              return;
+                            }
+                            if (v === "__manage__") {
+                              setManageCategoriesModalOpen(true);
+                              return;
+                            }
+                            setForm({ ...form, category: v });
+                          }}
+                        >
+                          <option value="">Select Category</option>
+                          {incomeCategories.map((c) => (
+                            <option key={c.id} value={c.name}>
+                              {c.name}
+                            </option>
+                          ))}
+                          <option value="__add__">— Add New Category —</option>
+                          <option value="__manage__">— Manage Categories —</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setAddCategoryModalOpen(true)}
+                          className="btn-primary whitespace-nowrap flex items-center gap-1"
+                          title="Add category"
+                        >
+                          <Plus className="w-4 h-4" /> Add
+                        </button>
+                      </div>
+                      {errors.category && <p className="text-sm text-red-500 mt-1">{errors.category}</p>}
                     </div>
                     <div>
                       <label className="label">
@@ -1019,6 +1188,103 @@ export default function Income() {
                           <Landmark className="w-5 h-5 text-brand-600" />
                           <span className="font-medium text-slate-800">{b.bankName} - {b.accountNumber}</span>
                         </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Add New Category Modal */}
+            {addCategoryModalOpen && (
+              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col">
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-slate-800">Add New Category</h3>
+                    <button type="button" onClick={() => { setAddCategoryModalOpen(false); setNewCategoryName(""); }} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    <div>
+                      <label className="label">Category name</label>
+                      <input
+                        type="text"
+                        className="input"
+                        placeholder="Enter category name"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="p-4 border-t border-gray-100 flex justify-end gap-2">
+                    <button type="button" onClick={() => { setAddCategoryModalOpen(false); setNewCategoryName(""); }} className="btn-secondary">Cancel</button>
+                    <button
+                      type="button"
+                      disabled={!newCategoryName.trim() || addCategorySaving}
+                      className="btn-primary"
+                      onClick={async () => {
+                        const name = newCategoryName.trim();
+                        if (!name) return;
+                        setAddCategorySaving(true);
+                        try {
+                          const created = await createIncomeCategory(name);
+                          const list = await getIncomeCategories();
+                          setIncomeCategories(list);
+                          setForm((prev) => ({ ...prev, category: created.name }));
+                          setAddCategoryModalOpen(false);
+                          setNewCategoryName("");
+                          toast.success("Category added");
+                        } catch (e) {
+                          toast.error(e.response?.data?.message || "Failed to add category");
+                        } finally {
+                          setAddCategorySaving(false);
+                        }
+                      }}
+                    >
+                      {addCategorySaving ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Manage Categories Modal */}
+            {manageCategoriesModalOpen && (
+              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-slate-800">Manage Categories</h3>
+                    <button type="button" onClick={() => setManageCategoriesModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="overflow-y-auto p-4 space-y-2">
+                    {incomeCategories.length === 0 ? (
+                      <p className="text-sm text-slate-500">No categories yet. Add one from the dropdown.</p>
+                    ) : (
+                      incomeCategories.map((c) => (
+                        <div key={c.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/50">
+                          <span className="font-medium text-slate-800">{c.name}</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await deleteIncomeCategory(c.id);
+                                const list = await getIncomeCategories();
+                                setIncomeCategories(list);
+                                if (form.category === c.name) setForm((prev) => ({ ...prev, category: "" }));
+                                toast.success("Category removed");
+                              } catch (e) {
+                                toast.error(e.response?.data?.message || "Failed to delete");
+                              }
+                            }}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       ))
                     )}
                   </div>

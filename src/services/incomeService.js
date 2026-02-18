@@ -111,6 +111,12 @@ export const getIncomes = async () => {
     return response.data.map(toFrontend);
 };
 
+/** GET /incomes/summary - dashboard totals */
+export const getIncomeSummary = async () => {
+    const response = await api.get("/incomes/summary");
+    return response.data;
+};
+
 export const createIncome = async (income) => {
     const response = await api.post("/incomes", toBackend(income));
     return toFrontend(response.data);

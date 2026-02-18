@@ -24,7 +24,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('invoices', InvoiceController::class);
     Route::apiResource('follow-ups', \App\Http\Controllers\FollowUpController::class);
     Route::apiResource('call-logs', \App\Http\Controllers\CallLogController::class);
+    Route::get('incomes/summary', [\App\Http\Controllers\IncomeController::class, 'summary']);
     Route::apiResource('incomes', \App\Http\Controllers\IncomeController::class);
+    Route::get('income-categories', [\App\Http\Controllers\IncomeCategoryController::class, 'index']);
+    Route::post('income-categories', [\App\Http\Controllers\IncomeCategoryController::class, 'store']);
+    Route::delete('income-categories/{id}', [\App\Http\Controllers\IncomeCategoryController::class, 'destroy']);
     Route::apiResource('expenses', \App\Http\Controllers\ExpenseController::class);
     Route::apiResource('bank-accounts', \App\Http\Controllers\BankAccountController::class);
     Route::apiResource('transactions', \App\Http\Controllers\TransactionController::class);
