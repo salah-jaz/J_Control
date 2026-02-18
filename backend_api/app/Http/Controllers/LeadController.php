@@ -9,7 +9,10 @@ class LeadController extends Controller
 {
     public function index()
     {
-        return Lead::with(['followUps', 'callLogs'])->orderBy('created_at', 'desc')->get();
+        return Lead::with(['followUps', 'callLogs', 'leadNotes' => fn ($q) => $q->latest()->limit(1)])
+            ->withCount('leadNotes')
+            ->orderBy('created_at', 'desc')
+            ->get();
     }
 
     public function store(Request $request)

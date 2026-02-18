@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Users, Plus, Upload, Download, Search, LayoutList, Kanban, Calendar,
-    MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X, ArrowRight
+    MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X, ArrowRight, FileText, StickyNote
 } from 'lucide-react';
-import { getLeads, saveLead, deleteLead, getAssignees, saveAssignee } from '../services/db';
+import { getLeads, saveLead, deleteLead, getAssignees, saveAssignee, getLeadNotes, createLeadNote, updateLeadNote, deleteLeadNote } from '../services/db';
 import clsx from 'clsx';
 import SetFollowUpModal from '../components/SetFollowUpModal';
 import LogCallModal from '../components/LogCallModal';
@@ -276,7 +276,154 @@ const OverdueModal = ({ isOpen, onClose, overdueLeads, onReschedule, onView }) =
     );
 };
 
+const NOTE_TYPES = ['General Note', 'Call Note', 'Follow-up Note', 'Meeting Note', 'Important'];
+
+const AddNoteModal = ({ isOpen, onClose, leadId, existingNote, onSaved }) => {
+    const [note, setNote] = useState('');
+    const [noteType, setNoteType] = useState('General Note');
+    const [followUpDate, setFollowUpDate] = useState('');
+    const [reminder, setReminder] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    const isEdit = !!existingNote;
+
+    useEffect(() => {
+        if (isOpen) {
+            if (existingNote) {
+                setNote(existingNote.note || '');
+                setNoteType(existingNote.noteType || 'General Note');
+                setFollowUpDate(existingNote.followUpDate ? existingNote.followUpDate.slice(0, 10) : '');
+                setReminder(!!existingNote.reminder);
+            } else {
+                setNote('');
+                setNoteType('General Note');
+                setFollowUpDate('');
+                setReminder(false);
+            }
+            setError('');
+        }
+    }, [isOpen, existingNote, isEdit]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        const trimmed = (note || '').trim();
+        if (!trimmed) {
+            setError('Note is required.');
+            return;
+        }
+        setSaving(true);
+        try {
+            if (isEdit) {
+                await updateLeadNote(existingNote.id, {
+                    note: trimmed,
+                    noteType,
+                    followUpDate: followUpDate || null,
+                    reminder,
+                });
+            } else {
+                await createLeadNote(leadId, {
+                    note: trimmed,
+                    noteType,
+                    followUpDate: followUpDate || null,
+                    reminder,
+                });
+            }
+            onSaved?.();
+            onClose();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to save note.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-slide-up">
+                <div className="p-6 border-b border-gray-100">
+                    <h3 className="text-xl font-bold text-slate-900">{isEdit ? 'Edit Note' : 'Add Note'}</h3>
+                    <p className="text-sm text-slate-500 mt-1">{(isEdit ? 'Update' : 'Add')} a note for this lead.</p>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{error}</p>}
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Note <span className="text-red-500">*</span></label>
+                        <textarea
+                            rows={4}
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            className="input resize-none w-full"
+                            placeholder="Enter note..."
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Note Type</label>
+                        <select
+                            value={noteType}
+                            onChange={(e) => setNoteType(e.target.value)}
+                            className="input w-full"
+                        >
+                            {NOTE_TYPES.map((t) => (
+                                <option key={t} value={t}>{t}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Follow-up Date (optional)</label>
+                        <input
+                            type="date"
+                            value={followUpDate}
+                            onChange={(e) => setFollowUpDate(e.target.value)}
+                            className="input w-full"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <input
+                            type="checkbox"
+                            id="reminder"
+                            checked={reminder}
+                            onChange={(e) => setReminder(e.target.checked)}
+                            className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                        />
+                        <label htmlFor="reminder" className="text-sm font-medium text-slate-700 cursor-pointer">Reminder</label>
+                    </div>
+                    <div className="pt-2 flex justify-end gap-3 border-t border-gray-100">
+                        <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
+                        <button type="submit" disabled={saving} className="btn-primary">
+                            {saving ? 'Saving...' : 'Save Note'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall }) => {
+    const [activeTab, setActiveTab] = useState('activity');
+    const [notes, setNotes] = useState([]);
+    const [notesLoading, setNotesLoading] = useState(false);
+    const [addNoteOpen, setAddNoteOpen] = useState(false);
+    const [editingNote, setEditingNote] = useState(null);
+    const [viewingNote, setViewingNote] = useState(null);
+
+    useEffect(() => {
+        if (isOpen && lead?.id) {
+            setNotesLoading(true);
+            getLeadNotes(lead.id).then((data) => {
+                setNotes(data);
+                setNotesLoading(false);
+            }).catch(() => setNotesLoading(false));
+        } else {
+            setNotes([]);
+        }
+    }, [isOpen, lead?.id]);
+
     if (!isOpen || !lead) return null;
 
     // Helper for timeline items
@@ -288,16 +435,19 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall
             {/* Icon/Dot */}
             <div className={`absolute left-0 top-1 h-7 w-7 rounded-full border-2 flex items-center justify-center bg-white z-10 
                 ${act.type === 'call_log' ? 'border-purple-200 text-purple-600' :
-                    act.type === 'follow_up' ? 'border-brand-200 text-brand-600' : 'border-gray-200 text-slate-400'}`}>
+                    act.type === 'follow_up' ? 'border-brand-200 text-brand-600' :
+                        act.type === 'note' ? 'border-amber-200 text-amber-600' : 'border-gray-200 text-slate-400'}`}>
                 {act.type === 'call_log' ? <Phone size={12} /> :
-                    act.type === 'follow_up' ? <CalendarIcon size={12} /> : <div className="w-2 h-2 rounded-full bg-slate-300" />}
+                    act.type === 'follow_up' ? <CalendarIcon size={12} /> :
+                        act.type === 'note' ? <FileText size={12} /> : <div className="w-2 h-2 rounded-full bg-slate-300" />}
             </div>
 
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
                 <div>
                     <h5 className="text-sm font-bold text-slate-800">
                         {act.type === 'call_log' ? 'Call Logged' :
-                            act.type === 'follow_up' ? 'Follow-up Scheduled' : 'Lead Created'}
+                            act.type === 'follow_up' ? 'Follow-up Scheduled' :
+                                act.type === 'note' ? 'Note Added' : 'Lead Created'}
                     </h5>
                     {act.type === 'call_log' ? (
                         <div className="text-sm text-slate-600 mt-1 bg-purple-50 p-3 rounded-xl border border-purple-100/50">
@@ -312,10 +462,15 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall
                             Follow-up scheduled for <span className="font-semibold text-brand-700">{new Date(act.scheduled_at).toLocaleString()}</span>.
                             {act.notes && <span className="block mt-1 text-xs text-slate-500 italic">Note: {act.notes}</span>}
                         </p>
+                    ) : act.type === 'note' ? (
+                        <p className="text-sm text-slate-600 mt-1 bg-amber-50 p-3 rounded-xl border border-amber-100/50">
+                            "{act.note}"
+                            <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase tracking-wide">By {act.createdBy || 'Admin'}</p>
+                        </p>
                     ) : (
                         <p className="text-sm text-slate-500 mt-1">Lead was created in the system</p>
                     )}
-                    <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase tracking-wide">By: Default Admin</p>
+                    {act.type !== 'note' && <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase tracking-wide">By: Default Admin</p>}
                 </div>
                 <span className="text-xs text-slate-400 whitespace-nowrap bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
                     {act.date.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
@@ -325,8 +480,9 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall
     );
 
     const activities = [
-        ...(lead.followUps || []).map(f => ({ ...f, type: 'follow_up', date: new Date(f.created_at) })),
-        ...(lead.callLogs || []).map(c => ({ ...c, type: 'call_log', date: new Date(c.created_at) }))
+        ...(lead.followUps || []).map(f => ({ ...f, type: 'follow_up', date: new Date(f.created_at || f.createdAt) })),
+        ...(lead.callLogs || []).map(c => ({ ...c, type: 'call_log', date: new Date(c.created_at || c.createdAt) })),
+        ...notes.map(n => ({ type: 'note', note: n.note, createdBy: n.createdBy, date: new Date(n.created_at || n.createdAt) }))
     ].sort((a, b) => b.date - a.date);
 
     return (
@@ -427,21 +583,125 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall
                             </div>
                         </div>
 
-                        {/* Main Content */}
-                        <div className="flex-1 p-6 lg:p-8 bg-white">
-                            <h4 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                                <Clock className="text-brand-500" size={20} /> Activity Timeline
-                            </h4>
-                            <div className="space-y-6">
-                                {activities.map((act, i) => (
-                                    <TimelineItem key={`${act.type}-${i}`} act={act} />
-                                ))}
-
-                                <TimelineItem act={{ type: 'created', date: new Date(lead.createdAt || Date.now()) }} />
+                        {/* Main Content - Tabs: Activity | Notes */}
+                        <div className="flex-1 flex flex-col bg-white min-h-0">
+                            <div className="flex border-b border-gray-100 px-6 lg:px-8 pt-4 gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('activity')}
+                                    className={clsx(
+                                        "pb-3 px-4 text-sm font-bold border-b-2 transition-colors -mb-px",
+                                        activeTab === 'activity'
+                                            ? "border-brand-500 text-brand-700"
+                                            : "border-transparent text-slate-500 hover:text-slate-700"
+                                    )}
+                                >
+                                    <Clock className="inline w-4 h-4 mr-2 align-middle text-current" /> Activity
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('notes')}
+                                    className={clsx(
+                                        "pb-3 px-4 text-sm font-bold border-b-2 transition-colors -mb-px",
+                                        activeTab === 'notes'
+                                            ? "border-brand-500 text-brand-700"
+                                            : "border-transparent text-slate-500 hover:text-slate-700"
+                                    )}
+                                >
+                                    <FileText className="inline w-4 h-4 mr-2 align-middle text-current" /> Notes {notes.length > 0 && <span className="text-slate-400 font-normal">({notes.length})</span>}
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+                                {activeTab === 'activity' && (
+                                    <div className="space-y-6">
+                                        {activities.map((act, i) => (
+                                            <TimelineItem key={`${act.type}-${i}`} act={act} />
+                                        ))}
+                                        <TimelineItem act={{ type: 'created', date: new Date(lead.createdAt || lead.created_at || Date.now()) }} />
+                                    </div>
+                                )}
+                                {activeTab === 'notes' && (
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Notes Log</h4>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setEditingNote(null); setAddNoteOpen(true); }}
+                                                className="px-4 py-2 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-brand-700 shadow-sm flex items-center gap-2"
+                                            >
+                                                <Plus className="w-4 h-4" /> Add Note
+                                            </button>
+                                        </div>
+                                        {notesLoading ? (
+                                            <p className="text-sm text-slate-500 py-8 text-center">Loading notes...</p>
+                                        ) : notes.length === 0 ? (
+                                            <div className="rounded-2xl border border-gray-100 bg-gray-50/50 p-8 text-center">
+                                                <StickyNote className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                                                <p className="text-slate-500 font-medium">No notes yet</p>
+                                                <p className="text-sm text-slate-400 mt-1">Add a note to track activities for this lead.</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAddNoteOpen(true)}
+                                                    className="mt-4 px-4 py-2 bg-brand-600 text-white text-sm font-semibold rounded-xl hover:bg-brand-700"
+                                                >
+                                                    Add Note
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-0">
+                                                {notes.map((n) => (
+                                                    <div key={n.id} className="relative pl-8 pb-6 group last:pb-0 border-b border-gray-100 last:border-0">
+                                                        <div className="absolute left-3.5 top-3.5 bottom-0 w-0.5 bg-gray-100 group-last:hidden" />
+                                                        <div className="absolute left-0 top-1 h-7 w-7 rounded-full border-2 border-amber-200 text-amber-600 flex items-center justify-center bg-white z-10">
+                                                            <FileText size={12} />
+                                                        </div>
+                                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1">
+                                                            <div className="flex-1 min-w-0">
+                                                                <h5 className="text-sm font-bold text-slate-800">{n.noteType}</h5>
+                                                                <p className="text-sm text-slate-600 mt-1 line-clamp-2">{n.note}</p>
+                                                                {n.followUpDate && (
+                                                                    <p className="text-xs text-brand-600 mt-1 font-medium">Follow-up: {new Date(n.followUpDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                                                                )}
+                                                                <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-wide">By {n.createdBy || 'Admin'}</p>
+                                                                <p className="text-[10px] text-slate-400">{new Date(n.created_at || n.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-1 mt-2 sm:mt-0">
+                                                                <button type="button" onClick={() => setViewingNote(n)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-lg transition-colors" title="View full note"><Eye className="w-4 h-4" /></button>
+                                                                <button type="button" onClick={() => { setEditingNote(n); setAddNoteOpen(true); }} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit"><Edit2 className="w-4 h-4" /></button>
+                                                                <button type="button" onClick={() => { if (window.confirm('Delete this note?')) { deleteLeadNote(n.id).then(() => getLeadNotes(lead.id).then(setNotes)); } }} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
+
+                {/* View full note modal */}
+                {viewingNote && (
+                    <div className="fixed inset-0 bg-slate-900/60 z-[55] flex items-center justify-center p-4" onClick={() => setViewingNote(null)}>
+                        <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-slide-up" onClick={(e) => e.stopPropagation()}>
+                            <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">{viewingNote.noteType}</h4>
+                            <p className="text-slate-700 whitespace-pre-wrap">{viewingNote.note}</p>
+                            {viewingNote.followUpDate && <p className="text-sm text-brand-600 mt-2">Follow-up: {new Date(viewingNote.followUpDate).toLocaleDateString()}</p>}
+                            <p className="text-xs text-slate-400 mt-4">By {viewingNote.createdBy || 'Admin'} · {new Date(viewingNote.created_at || viewingNote.createdAt).toLocaleString()}</p>
+                            <button type="button" onClick={() => setViewingNote(null)} className="mt-4 btn-secondary">Close</button>
+                        </div>
+                    </div>
+                )}
+
+                <AddNoteModal
+                    isOpen={addNoteOpen}
+                    onClose={() => { setAddNoteOpen(false); setEditingNote(null); }}
+                    leadId={lead.id}
+                    existingNote={editingNote}
+                    onSaved={() => getLeadNotes(lead.id).then(setNotes)}
+                />
 
                 <div className="p-6 border-t border-gray-100 flex justify-between gap-3 bg-white flex-shrink-0 z-10">
                     <div className="flex gap-3">
@@ -591,6 +851,13 @@ const KanbanView = ({ leads, onView }) => {
                                     </p>
 
                                     {lead.company && <p className="text-xs text-slate-600 mb-2 truncate flex items-center gap-1.5"><Building2 size={10} className="text-slate-400" /> {lead.company}</p>}
+
+                                    {(lead.notesCount ?? 0) > 0 && (
+                                        <div className="text-xs mb-2">
+                                            <span className="text-amber-600 font-medium flex items-center gap-1"><FileText size={10} /> Notes ({lead.notesCount})</span>
+                                            {lead.lastNote?.note && <p className="text-slate-400 italic truncate mt-0.5" title={lead.lastNote.note}>{lead.lastNote.note}</p>}
+                                        </div>
+                                    )}
 
                                     <div className="flex justify-between items-center text-xs text-slate-400 mt-3 pt-3 border-t border-gray-50">
                                         <span className="font-semibold text-slate-500">Score: {lead.score}</span>
@@ -1016,12 +1283,19 @@ const Leads = () => {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-sm">
-                                                    {lead.followUps && lead.followUps.length > 0 ? (
-                                                        <span className="text-xs text-slate-600 flex items-center gap-1">
-                                                            <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
-                                                            {new Date(lead.followUps.sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at))[0].scheduled_at).toLocaleDateString()}
-                                                        </span>
-                                                    ) : <span className="text-xs text-slate-400 italic">None scheduled</span>}
+                                                    <div className="flex flex-col gap-1">
+                                                        {lead.followUps && lead.followUps.length > 0 ? (
+                                                            <span className="text-xs text-slate-600 flex items-center gap-1">
+                                                                <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
+                                                                {new Date(lead.followUps.sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at))[0].scheduled_at).toLocaleDateString()}
+                                                            </span>
+                                                        ) : <span className="text-xs text-slate-400 italic">None scheduled</span>}
+                                                        {(lead.notesCount ?? 0) > 0 && (
+                                                            <span className="text-xs text-amber-600 flex items-center gap-1">
+                                                                <FileText className="w-3.5 h-3.5" /> Notes ({lead.notesCount})
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

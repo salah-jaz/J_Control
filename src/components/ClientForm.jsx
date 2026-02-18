@@ -8,6 +8,7 @@ const emptyBankForm = () => ({
     account_number: '',
     ifsc_code: '',
     upi_id: '',
+    mobile_number: '',
     cheque_print_name: ''
 });
 
@@ -74,6 +75,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                     account_number: client.account_number || '',
                     ifsc_code: client.ifsc_code || '',
                     upi_id: client.upi_id || '',
+                    mobile_number: client.mobile_number || '',
                     cheque_print_name: client.cheque_print_name || ''
                 }]);
             } else {
@@ -88,7 +90,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                 primary_contact_name: '', contact_person_name: '', mobile_number: '', secondary_mobile_number: '', email_address: '', website_url: '',
                 address_line_1: '', address_line_2: '', city: '', state: '', country: '', pincode: '',
                 gst_registration_type: 'Regular', gst_state_code: '', gst_number: '', pan_number: '', cin_number: '', msme_number: '', tan_number: '',
-                bank_name: '', account_holder_name: '', account_number: '', ifsc_code: '', upi_id: '', cheque_print_name: ''
+                bank_name: '', account_holder_name: '', account_number: '', ifsc_code: '', upi_id: '', mobile_number: '', cheque_print_name: ''
             });
             setBankList([]);
             setBankForm(emptyBankForm());
@@ -192,6 +194,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
             account_number: (bankForm.account_number || '').trim(),
             ifsc_code: (bankForm.ifsc_code || '').trim(),
             upi_id: (bankForm.upi_id || '').trim(),
+            mobile_number: (bankForm.mobile_number || '').trim(),
             cheque_print_name: (bankForm.cheque_print_name || '').trim()
         };
         if (editingBankIndex !== null) {
@@ -214,6 +217,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
             account_number: b.account_number || '',
             ifsc_code: b.ifsc_code || '',
             upi_id: b.upi_id || '',
+            mobile_number: b.mobile_number || '',
             cheque_print_name: b.cheque_print_name || ''
         });
         setEditingBankIndex(index);
@@ -582,6 +586,10 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                                         <input type="text" name="upi_id" value={bankForm.upi_id} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
                                                     </div>
                                                     <div>
+                                                        <Label>Mobile Number</Label>
+                                                        <input type="text" name="mobile_number" value={bankForm.mobile_number} onChange={handleBankFormChange} className="input w-full" placeholder="Mobile Number" />
+                                                    </div>
+                                                    <div>
                                                         <Label>Cheque Print Name</Label>
                                                         <input type="text" name="cheque_print_name" value={bankForm.cheque_print_name} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
                                                     </div>
@@ -604,52 +612,85 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                             </div>
                                         )}
 
-                                        {/* Bank List Table - Bottom Section */}
+                                        {/* Bank List - View: cards with all fields; Edit: table */}
                                         <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                                             <h5 className="text-sm font-bold text-slate-700 uppercase tracking-wide px-5 py-4 bg-slate-50 border-b border-slate-200">Bank List</h5>
-                                            <div className="overflow-x-auto">
-                                                <table className="w-full text-left">
-                                                    <thead>
-                                                        <tr className="bg-slate-100/80 text-slate-600 text-xs font-semibold uppercase tracking-wider">
-                                                            <th className="px-5 py-3">Bank Name</th>
-                                                            <th className="px-5 py-3">Account Number</th>
-                                                            <th className="px-5 py-3">IFSC Code</th>
-                                                            {!readOnly && <th className="px-5 py-3 text-right w-28">Actions</th>}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-slate-100">
-                                                        {bankList.length === 0 ? (
-                                                            <tr>
-                                                                <td colSpan={readOnly ? 3 : 4} className="px-5 py-10 text-center text-slate-500">
-                                                                    <Landmark className="h-10 w-10 mx-auto mb-2 text-slate-300" />
-                                                                    <p className="font-medium">No banks added</p>
-                                                                    {!readOnly && <p className="text-sm mt-1">Use the form above to add bank details.</p>}
-                                                                </td>
+                                            {bankList.length === 0 ? (
+                                                <div className="px-5 py-10 text-center text-slate-500">
+                                                    <Landmark className="h-10 w-10 mx-auto mb-2 text-slate-300" />
+                                                    <p className="font-medium">No banks added</p>
+                                                    {!readOnly && <p className="text-sm mt-1">Use the form above to add bank details.</p>}
+                                                </div>
+                                            ) : readOnly ? (
+                                                <div className="p-5 space-y-4">
+                                                    {bankList.map((row, index) => (
+                                                        <div key={index} className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Bank Name</p>
+                                                                    <p className="font-medium text-slate-800">{row.bank_name || '—'}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Account Holder Name</p>
+                                                                    <p className="font-medium text-slate-800">{row.account_holder_name || '—'}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Account Number</p>
+                                                                    <p className="font-medium text-slate-800">{row.account_number || '—'}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">IFSC Code</p>
+                                                                    <p className="font-medium text-slate-800">{row.ifsc_code || '—'}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Mobile Number</p>
+                                                                    <p className="font-medium text-slate-800">{row.mobile_number || '—'}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">UPI ID</p>
+                                                                    <p className="font-medium text-slate-800">{row.upi_id || '—'}</p>
+                                                                </div>
+                                                                <div className="sm:col-span-2">
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Cheque Print Name</p>
+                                                                    <p className="font-medium text-slate-800">{row.cheque_print_name || '—'}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-left">
+                                                        <thead>
+                                                            <tr className="bg-slate-100/80 text-slate-600 text-xs font-semibold uppercase tracking-wider">
+                                                                <th className="px-5 py-3">Bank Name</th>
+                                                                <th className="px-5 py-3">Account Number</th>
+                                                                <th className="px-5 py-3">IFSC Code</th>
+                                                                <th className="px-5 py-3 text-right w-28">Actions</th>
                                                             </tr>
-                                                        ) : (
-                                                            bankList.map((row, index) => (
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {bankList.map((row, index) => (
                                                                 <tr key={index} className="hover:bg-slate-50/50 transition-colors">
                                                                     <td className="px-5 py-3 font-medium text-slate-800">{row.bank_name || '—'}</td>
                                                                     <td className="px-5 py-3 text-slate-600">{row.account_number || '—'}</td>
                                                                     <td className="px-5 py-3 text-slate-600">{row.ifsc_code || '—'}</td>
-                                                                    {!readOnly && (
-                                                                        <td className="px-5 py-3 text-right">
-                                                                            <div className="flex items-center justify-end gap-1">
-                                                                                <button type="button" onClick={() => handleEditBank(index)} className="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="Edit">
-                                                                                    <Pencil className="h-4 w-4" />
-                                                                                </button>
-                                                                                <button type="button" onClick={() => handleDeleteBank(index)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                                                                                    <Trash2 className="h-4 w-4" />
-                                                                                </button>
-                                                                            </div>
-                                                                        </td>
-                                                                    )}
+                                                                    <td className="px-5 py-3 text-right">
+                                                                        <div className="flex items-center justify-end gap-1">
+                                                                            <button type="button" onClick={() => handleEditBank(index)} className="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="Edit">
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </button>
+                                                                            <button type="button" onClick={() => handleDeleteBank(index)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
                                                                 </tr>
-                                                            ))
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}

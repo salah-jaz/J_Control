@@ -13,6 +13,7 @@ class Client extends Model
         'client_name',
         'company_name',
         'company_logo',
+        'status',
         'company_type',
         'default_currency',
         'financial_year',
