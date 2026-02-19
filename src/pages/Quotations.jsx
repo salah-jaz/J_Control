@@ -16,6 +16,7 @@ import clsx from "clsx";
 import { getQuotations, createQuotation, updateQuotation, deleteQuotation, convertQuotationToInvoice } from "../services/quotationService";
 import { getClients } from "../services/db";
 import QuotationView from "../components/QuotationView";
+import AgreementBuilder from "../components/AgreementBuilder";
 
 const emptyForm = {
   client_id: "",
@@ -33,6 +34,7 @@ const emptyForm = {
   total: 0,
   initial_deposit: "",
   items: [{ item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 }],
+  agreement_content: [],
 };
 
 const STATUS_OPTIONS = ["Draft", "Sent", "Accepted", "Rejected", "Converted"];
@@ -108,6 +110,7 @@ function Quotations() {
       ...emptyForm,
       date: new Date().toISOString().split("T")[0],
       items: [{ item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 }],
+      agreement_content: [],
     });
     setErrors({});
     setEditId(null);
@@ -125,6 +128,13 @@ function Quotations() {
       amount: parseFloat(i.amount) || 0,
     }));
     if (items.length === 0) items.push({ item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 });
+    let agreementContent = [];
+    try {
+      const agr = q.agreement_content;
+      agreementContent = Array.isArray(agr) ? agr : (typeof agr === "string" ? JSON.parse(agr || "[]") : []);
+    } catch {
+      agreementContent = [];
+    }
     setForm({
       client_id: q.client_id || "",
       quotation_no: q.quotation_no || "",
@@ -141,6 +151,7 @@ function Quotations() {
       total: parseFloat(q.total) || 0,
       initial_deposit: q.initial_deposit != null ? q.initial_deposit : "",
       items,
+      agreement_content: agreementContent,
     });
     setErrors({});
     setEditId(q.id);
@@ -246,6 +257,7 @@ function Quotations() {
         tax: parseFloat(i.tax) || 0,
         amount: parseFloat(i.amount) || 0,
       })),
+      agreement_content: Array.isArray(form.agreement_content) ? form.agreement_content : [],
     };
     try {
       if (editId) {
@@ -468,6 +480,7 @@ function Quotations() {
               {[
                 { id: "basic", label: "Basic Info", icon: User },
                 { id: "items", label: "Items / Services", icon: Layers },
+                { id: "agreement", label: "Agreement", icon: FileText },
               ].map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
@@ -694,6 +707,18 @@ function Quotations() {
                       <span>Total</span>
                       <span>₹{totalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {tab === "agreement" && (
+                <div className="max-w-3xl">
+                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h3 className="text-base font-bold text-slate-800 mb-4">Agreement / Document Content</h3>
+                    <AgreementBuilder
+                      value={form.agreement_content || []}
+                      onChange={(v) => setForm({ ...form, agreement_content: v })}
+                    />
                   </div>
                 </div>
               )}

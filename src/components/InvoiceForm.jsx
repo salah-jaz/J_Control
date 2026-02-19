@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, X, User, Layers, Landmark, Wallet } from 'lucide-react';
+import { Plus, Trash2, X, User, Layers, Landmark, Wallet, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { createInvoice, updateInvoice } from '../services/invoiceService';
 import { getClients } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
+import AgreementBuilder from './AgreementBuilder';
 
 const emptyForm = {
   clientId: '',
@@ -40,6 +41,7 @@ const InvoiceForm = ({
   const [activeTab, setActiveTab] = useState('basic');
   const [formData, setFormData] = useState(emptyForm);
   const [items, setItems] = useState([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
+  const [agreementContent, setAgreementContent] = useState([]);
   const [errors, setErrors] = useState({});
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [bankModalFor, setBankModalFor] = useState(null);
@@ -113,10 +115,17 @@ const InvoiceForm = ({
             }))
           : [{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]
       );
+      try {
+        const agr = invoice.agreement_content;
+        setAgreementContent(Array.isArray(agr) ? agr : (typeof agr === 'string' ? JSON.parse(agr || '[]') : []));
+      } catch {
+        setAgreementContent([]);
+      }
       setSavedExtraInstallmentsCount(extra.length);
     } else if (!invoice && isOpen) {
       setFormData(emptyForm);
       setItems([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
+      setAgreementContent([]);
       setSavedExtraInstallmentsCount(0);
     }
     setActiveTab('basic');
@@ -211,6 +220,10 @@ const InvoiceForm = ({
       data.append(`items[${index}][amount]`, item.amount);
     });
 
+    if (agreementContent && agreementContent.length > 0) {
+      data.append('agreement_content', JSON.stringify(agreementContent));
+    }
+
     try {
       if (invoice?.id) {
         data.append('_method', 'PUT');
@@ -252,6 +265,7 @@ const InvoiceForm = ({
             { id: 'basic', label: 'Basic Info', icon: User },
             { id: 'services', label: 'Service Details', icon: Layers },
             { id: 'finance', label: 'Finance', icon: Wallet },
+            { id: 'agreement', label: 'Agreement', icon: FileText },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -714,6 +728,15 @@ const InvoiceForm = ({
                       })
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'agreement' && (
+              <div className="md:col-span-2">
+                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                  <h3 className="text-base font-bold text-slate-800 mb-4">Agreement / Document Content</h3>
+                  <AgreementBuilder value={agreementContent} onChange={setAgreementContent} />
                 </div>
               </div>
             )}

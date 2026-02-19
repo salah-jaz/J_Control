@@ -1,16 +1,31 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Printer, X } from 'lucide-react';
 import TemplateSwitcher from './TemplateSwitcher';
 import { getClients, getSettings } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
 import clsx from 'clsx';
 import { useReactToPrint } from 'react-to-print';
+import { getDefaultTemplate } from '../utils/printTemplateStorage';
+import {
+    buildFullTemplateHtml,
+    resolveTemplateHtmlWithData,
+    buildInvoicePrintData,
+    filterTemplateByPrintConfig,
+    getDefaultPrintConfigKeys,
+    getStoredPrintConfig,
+} from '../config/printTemplateModules';
+import PrintConfigModal from './PrintConfigModal';
+import AgreementContentDisplay from './AgreementContentDisplay';
 
 const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChange }) => {
     const [clients, setClients] = useState([]);
     const [bankAccounts, setBankAccounts] = useState([]);
     const [companySettings, setCompanySettings] = useState(null);
+    const [showPrintConfig, setShowPrintConfig] = useState(false);
+    const [printConfig, setPrintConfig] = useState(null);
     const componentRef = useRef();
+    const pendingPrintRef = useRef(false);
+    const defaultTemplate = useMemo(() => getDefaultTemplate('invoices'), []);
 
     useEffect(() => {
         const loadData = async () => {
@@ -43,6 +58,46 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
 
     const client = clients.find(c => c.id == (invoice.client_id || invoice.clientId));
     const bank = bankAccounts.find(b => b.id == (invoice.bank_account_id || invoice.bankAccountId));
+
+    const getPrintConfigKeys = useCallback(
+        () => printConfig || getStoredPrintConfig('invoices') || getDefaultPrintConfigKeys(),
+        [printConfig]
+    );
+
+    const printHtml = useMemo(() => {
+        if (!defaultTemplate || !companySettings) return null;
+        const keys = getPrintConfigKeys();
+        const filtered = filterTemplateByPrintConfig(defaultTemplate, keys);
+        const html = buildFullTemplateHtml(filtered, 'invoices');
+        const data = buildInvoicePrintData(invoice, companySettings, client, bank);
+        return resolveTemplateHtmlWithData(html, 'invoices', data);
+    }, [defaultTemplate, companySettings, invoice, client, bank, getPrintConfigKeys]);
+
+    const buildPreviewForConfig = useCallback(
+        (selectedKeys) => {
+            if (!defaultTemplate || !companySettings) return '';
+            const filtered = filterTemplateByPrintConfig(defaultTemplate, selectedKeys);
+            const html = buildFullTemplateHtml(filtered, 'invoices');
+            const data = buildInvoicePrintData(invoice, companySettings, client, bank);
+            return resolveTemplateHtmlWithData(html, 'invoices', data);
+        },
+        [defaultTemplate, companySettings, invoice, client, bank]
+    );
+
+    useEffect(() => {
+        if (printConfig && pendingPrintRef.current && componentRef.current) {
+            pendingPrintRef.current = false;
+            const t = setTimeout(() => handlePrint(), 150);
+            return () => clearTimeout(t);
+        }
+    }, [printConfig]);
+
+    const openPrintConfig = () => setShowPrintConfig(true);
+    const onPrintWithConfig = (selectedKeys) => {
+        setPrintConfig(selectedKeys);
+        setShowPrintConfig(false);
+        pendingPrintRef.current = true;
+    };
 
     const items = invoice.items || [];
     const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0) || parseFloat(invoice.amount) || 0;
@@ -167,7 +222,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                         <TemplateSwitcher activeTemplate={activeTemplate} onTemplateChange={onTemplateChange} />
                         <button
                             type="button"
-                            onClick={handlePrint}
+                            onClick={() => (defaultTemplate ? openPrintConfig() : handlePrint())}
                             className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30 py-2 text-sm"
                         >
                             <Printer className="w-4 h-4" /> Print
@@ -183,7 +238,17 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
 
                     {/* The A4 Paper */}
                     <div ref={componentRef} className="invoice-a4">
-
+                        {printHtml ? (
+                            <>
+                            <div className="max-w-[210mm] mx-auto text-slate-800 p-4 print:p-0" dangerouslySetInnerHTML={{ __html: printHtml }} />
+                            {invoice?.agreement_content?.length > 0 && (
+                              <div className="max-w-[210mm] mx-auto px-4 mt-6 print:mt-4">
+                                <AgreementContentDisplay blocks={invoice.agreement_content} className="print:block" />
+                              </div>
+                            )}
+                            </>
+                        ) : (
+                            <>
                         {/* 1. Header with Angles */}
                         <div className="relative h-36 md:h-44 overflow-hidden shrink-0">
                             {/* Navy Background */}
@@ -356,6 +421,12 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                                 </div>
                             </div>
 
+                            {invoice?.agreement_content?.length > 0 && (
+                              <div className="px-10 py-4">
+                                <AgreementContentDisplay blocks={invoice.agreement_content} />
+                              </div>
+                            )}
+
                             {/* Row 2: Bank Details, Contact, Scan to Pay */}
                             <div className={clsx("w-full grid gap-4 border-t border-slate-100 pt-6", qrCodeUrl ? "grid-cols-3" : "grid-cols-2")}>
                                 {/* Bank Details */}
@@ -426,9 +497,20 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                             </div>
                         </div>
 
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
+
+            <PrintConfigModal
+                isOpen={showPrintConfig}
+                onClose={() => setShowPrintConfig(false)}
+                moduleKey="invoices"
+                moduleLabel="Invoice"
+                getPreviewHtml={buildPreviewForConfig}
+                onPrint={onPrintWithConfig}
+            />
         </div>
     );
 };

@@ -14,6 +14,7 @@ import {
     User,
     Settings,
     Package,
+    LayoutTemplate,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "../context/AuthContext";
@@ -37,6 +38,7 @@ const Sidebar = ({ isOpen, setIsOpen, alertCount = 0 }) => {
         { label: "Transaction", path: "/transaction", icon: BookOpen },
         { label: "Reports", path: "/reports", icon: FileBarChart2 },
         { label: "User", path: "/user", icon: User },
+        { label: "Print Templates", path: "/print-templates", icon: LayoutTemplate },
         { label: "Settings", path: "/settings", icon: Settings },
     ];
 
