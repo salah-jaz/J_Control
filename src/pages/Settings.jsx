@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Building2, Wallet, User, Shield, Bell } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Building2, Wallet, User, Shield, Bell, LayoutTemplate } from "lucide-react";
 import api from "../api/axios";
 import toast from "react-hot-toast";
 
@@ -157,6 +158,10 @@ export default function Settings() {
           <TabButton icon={<User size={18} />} label="Preferences" id="preferences" tab={tab} setTab={setTab} />
           <TabButton icon={<Shield size={18} />} label="Security" id="security" tab={tab} setTab={setTab} />
           <TabButton icon={<Bell size={18} />} label="Notifications" id="notifications" tab={tab} setTab={setTab} />
+          <Link to="/print-templates" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap lg:w-full text-slate-500 hover:bg-slate-50 hover:text-slate-700">
+            <LayoutTemplate size={18} className="text-slate-400" />
+            Print Templates
+          </Link>
         </div>
 
         {/* CONTENT */}

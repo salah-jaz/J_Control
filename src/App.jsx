@@ -18,6 +18,8 @@ import { Toaster } from 'react-hot-toast';
 import Settings from "./pages/Settings";
 import User from "./pages/User";
 import Products from "./pages/Products";
+import PrintTemplateBuilder from "./pages/PrintTemplateBuilder";
+import PrintTemplatesList from "./pages/PrintTemplatesList";
 
 function App() {
   return (
@@ -120,6 +122,30 @@ function App() {
                 <User />
               </Layout>
             } />
+            <Route
+              path="/print-templates"
+              element={
+                <Layout title="Print Templates">
+                  <PrintTemplatesList />
+                </Layout>
+              }
+            />
+            <Route
+              path="/print-templates/new"
+              element={
+                <Layout title="New Print Template">
+                  <PrintTemplateBuilder />
+                </Layout>
+              }
+            />
+            <Route
+              path="/print-templates/edit/:id"
+              element={
+                <Layout title="Edit Print Template">
+                  <PrintTemplateBuilder />
+                </Layout>
+              }
+            />
 
           </Route>
 

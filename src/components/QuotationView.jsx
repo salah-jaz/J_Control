@@ -1,7 +1,19 @@
-import { useRef } from "react";
+import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { X, Edit2, Trash2, FileOutput, Download, Printer } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import clsx from "clsx";
+import { getDefaultTemplate } from "../utils/printTemplateStorage";
+import {
+  buildFullTemplateHtml,
+  resolveTemplateHtmlWithData,
+  buildQuotationPrintData,
+  filterTemplateByPrintConfig,
+  getDefaultPrintConfigKeys,
+  getStoredPrintConfig,
+} from "../config/printTemplateModules";
+import { getSettings } from "../services/db";
+import PrintConfigModal from "./PrintConfigModal";
+import AgreementContentDisplay from "./AgreementContentDisplay";
 
 const QuotationView = ({
   isOpen,
@@ -13,14 +25,68 @@ const QuotationView = ({
   onSaved,
 }) => {
   const printRef = useRef();
+  const pendingPrintRef = useRef(false);
+  const [companySettings, setCompanySettings] = useState({});
+  const [showPrintConfig, setShowPrintConfig] = useState(false);
+  const [printConfig, setPrintConfig] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    getSettings().then((data) => setCompanySettings(data?.company || {}));
+  }, [isOpen]);
+
+  const defaultTemplate = useMemo(() => getDefaultTemplate("quotations"), []);
+
+  const getPrintConfigKeys = useCallback(
+    () => printConfig || getStoredPrintConfig("quotations") || getDefaultPrintConfigKeys(),
+    [printConfig]
+  );
+
+  const printHtml = useMemo(() => {
+    if (!quotation || !defaultTemplate) return null;
+    const keys = getPrintConfigKeys();
+    const filtered = filterTemplateByPrintConfig(defaultTemplate, keys);
+    const html = buildFullTemplateHtml(filtered, "quotations");
+    const data = buildQuotationPrintData(quotation, companySettings);
+    return resolveTemplateHtmlWithData(html, "quotations", data);
+  }, [quotation, defaultTemplate, companySettings, getPrintConfigKeys]);
+
+  const buildPreviewForConfig = useCallback(
+    (selectedKeys) => {
+      if (!quotation || !defaultTemplate) return "";
+      const filtered = filterTemplateByPrintConfig(defaultTemplate, selectedKeys);
+      const html = buildFullTemplateHtml(filtered, "quotations");
+      const data = buildQuotationPrintData(quotation, companySettings);
+      return resolveTemplateHtmlWithData(html, "quotations", data);
+    },
+    [quotation, defaultTemplate, companySettings]
+  );
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: quotation?.quotation_no ? `Quotation_${quotation.quotation_no}` : "Quotation",
   });
 
+  useEffect(() => {
+    if (printConfig && pendingPrintRef.current && printRef.current) {
+      pendingPrintRef.current = false;
+      const t = setTimeout(() => {
+        handlePrint();
+      }, 150);
+      return () => clearTimeout(t);
+    }
+  }, [printConfig]);
+
+  const openPrintConfig = () => setShowPrintConfig(true);
+  const onPrintWithConfig = (selectedKeys) => {
+    setPrintConfig(selectedKeys);
+    setShowPrintConfig(false);
+    pendingPrintRef.current = true;
+  };
+
   const handleDownloadPDF = () => {
-    handlePrint();
+    if (defaultTemplate) openPrintConfig();
+    else handlePrint();
   };
 
   if (!isOpen) return null;
@@ -60,8 +126,19 @@ const QuotationView = ({
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-          {/* Printable content */}
-          <div ref={printRef} className="space-y-6 print:block">
+          {/* Printable content: Default Template from Print Templates or fallback layout */}
+          <div ref={printRef} className="print:block">
+            {printHtml ? (
+              <>
+              <div className="max-w-[210mm] mx-auto text-slate-800" dangerouslySetInnerHTML={{ __html: printHtml }} />
+              {quotation?.agreement_content?.length > 0 && (
+                <div className="max-w-[210mm] mx-auto px-4 mt-6">
+                  <AgreementContentDisplay blocks={quotation.agreement_content} />
+                </div>
+              )}
+              </>
+            ) : (
+              <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quotation No</p>
@@ -198,6 +275,14 @@ const QuotationView = ({
                 <p className="text-sm text-slate-700 whitespace-pre-wrap">{quotation.notes}</p>
               </div>
             )}
+
+            {quotation?.agreement_content?.length > 0 && (
+              <div className="mt-6">
+                <AgreementContentDisplay blocks={quotation.agreement_content} />
+              </div>
+            )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -220,13 +305,25 @@ const QuotationView = ({
             <Download size={18} />
             Download PDF
           </button>
-          <button onClick={handlePrint} className="btn-secondary flex items-center gap-2">
+          <button
+            onClick={() => (defaultTemplate ? openPrintConfig() : handlePrint())}
+            className="btn-secondary flex items-center gap-2"
+          >
             <Printer size={18} />
             Print
           </button>
           <button onClick={onClose} className="btn-secondary ml-auto">Close</button>
         </div>
       </div>
+
+      <PrintConfigModal
+        isOpen={showPrintConfig}
+        onClose={() => setShowPrintConfig(false)}
+        moduleKey="quotations"
+        moduleLabel="Quotation"
+        getPreviewHtml={buildPreviewForConfig}
+        onPrint={onPrintWithConfig}
+      />
     </div>
   );
 };
