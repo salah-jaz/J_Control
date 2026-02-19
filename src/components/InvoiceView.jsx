@@ -402,8 +402,10 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                             </div>
 
                             <div className="w-full md:w-1/3 text-center">
-                                <div className="border-b border-slate-300 w-full mb-2 h-12 md:h-16 flex items-end justify-center">
-                                    {/* Placeholder for signature */}
+                                <div className="border-b border-slate-300 w-full mb-2 min-h-[3rem] md:min-h-[4rem] flex items-end justify-center pb-1">
+                                    {companySettings?.signature ? (
+                                        <img src={companySettings.signature} alt="Signature" className="max-h-12 md:max-h-14 w-auto object-contain object-bottom" />
+                                    ) : null}
                                 </div>
                                 <p className="text-[10px] font-black uppercase text-slate-800">Authorised Sign</p>
                             </div>

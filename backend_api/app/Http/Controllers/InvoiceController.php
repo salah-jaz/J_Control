@@ -12,21 +12,15 @@ use Illuminate\Http\Request;
 class InvoiceController extends Controller
 {
     /**
-     * GET next invoice number for display when creating (e.g. INV-2026-001).
+     * GET next invoice number for display when creating (e.g. INV-2026-00001).
+     * Database-agnostic: works with SQLite and MySQL.
      */
     public function nextInvoiceNumber()
     {
+        $seq = $this->getNextInvoiceSequence();
         $year = date('Y');
         $prefix = "INV-{$year}-";
-        $last = Invoice::where('invoice_number', 'like', $prefix . '%')
-            ->orderByRaw('CAST(SUBSTRING_INDEX(invoice_number, "-", -1) AS UNSIGNED) DESC')
-            ->value('invoice_number');
-        $seq = 1;
-        if ($last) {
-            $parts = explode('-', $last);
-            $seq = (int) end($parts) + 1;
-        }
-        return response()->json(['invoice_number' => $prefix . str_pad((string) $seq, 3, '0', STR_PAD_LEFT)]);
+        return response()->json(['invoice_number' => $prefix . str_pad((string) $seq, 5, '0', STR_PAD_LEFT)]);
     }
 
     /**
@@ -150,7 +144,7 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Reverse transactions and debit bank balances for an invoice-linked income.
+     * Reverse transactions for an invoice: refund Income (credit), add back Expense (debit).
      */
     private function reverseInvoicePayments(Invoice $invoice): void
     {
@@ -159,11 +153,74 @@ class InvoiceController extends Controller
             if ($tx->bank_account_id) {
                 $bank = BankAccount::find($tx->bank_account_id);
                 if ($bank) {
-                    $bank->current_balance = (float) $bank->current_balance - (float) $tx->amount;
+                    $amount = (float) $tx->amount;
+                    if ($tx->type === 'Expense') {
+                        $bank->current_balance = (float) $bank->current_balance + $amount;
+                    } else {
+                        $bank->current_balance = (float) $bank->current_balance - $amount;
+                    }
                     $bank->save();
                 }
             }
             $tx->delete();
+        }
+    }
+
+    /**
+     * Get operational expense entries (Paid only) for applying to bank/transactions.
+     */
+    private function getOperationalExpenseEntries(Invoice $invoice): array
+    {
+        $entries = [];
+        $date = $invoice->date ? $invoice->date->format('Y-m-d') : now()->toDateString();
+        foreach ($invoice->operational_expenses ?? [] as $row) {
+            $paid = isset($row['paid']) ? filter_var($row['paid'], FILTER_VALIDATE_BOOLEAN) : false;
+            if (!$paid) {
+                continue;
+            }
+            $amt = (float) ($row['amount'] ?? 0);
+            $bankId = isset($row['bank_account_id']) ? (int) $row['bank_account_id'] : null;
+            if ($amt > 0 && $bankId) {
+                $entries[] = [
+                    'name' => $row['name'] ?? 'Operational expense',
+                    'amount' => $amt,
+                    'bank_account_id' => $bankId,
+                    'date' => $date,
+                ];
+            }
+        }
+        return $entries;
+    }
+
+    /**
+     * Create Expense transactions and debit bank balances for invoice operational expenses.
+     */
+    private function applyOperationalExpenses(Invoice $invoice): void
+    {
+        $entries = $this->getOperationalExpenseEntries($invoice);
+        $invNumber = $invoice->invoice_number ?? (string) $invoice->id;
+        foreach ($entries as $entry) {
+            $bank = BankAccount::find($entry['bank_account_id']);
+            if (!$bank) {
+                continue;
+            }
+            $bank->current_balance = (float) $bank->current_balance - $entry['amount'];
+            $bank->save();
+
+            Transaction::create([
+                'type' => 'Expense',
+                'date' => $entry['date'],
+                'amount' => $entry['amount'],
+                'currency' => 'INR',
+                'category' => 'Operational',
+                'method' => 'Bank Transfer',
+                'bank' => $bank->bank_name ?? $bank->nick_name,
+                'bank_account_id' => $bank->id,
+                'reference_id' => $invNumber,
+                'description' => "Operational expense: {$entry['name']} (Invoice {$invNumber})",
+                'status' => 'Cleared',
+                'invoice_id' => $invoice->id,
+            ]);
         }
     }
 
@@ -240,6 +297,11 @@ class InvoiceController extends Controller
             'extra_installments.*.amount' => 'nullable|numeric',
             'extra_installments.*.bank_account_id' => 'nullable|exists:bank_accounts,id',
             'extra_installments.*.notes' => 'nullable|string',
+            'operational_expenses' => 'nullable|array',
+            'operational_expenses.*.name' => 'nullable|string',
+            'operational_expenses.*.amount' => 'nullable|numeric',
+            'operational_expenses.*.bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'operational_expenses.*.paid' => 'nullable|boolean',
         ]);
 
         $items = $validated['items'] ?? [];
@@ -273,6 +335,7 @@ class InvoiceController extends Controller
             'initial_deposit_amount' => $validated['initial_deposit_amount'] ?? null,
             'initial_deposit_bank_id' => $validated['initial_deposit_bank_id'] ?? null,
             'extra_installments' => $validated['extra_installments'] ?? null,
+            'operational_expenses' => $validated['operational_expenses'] ?? null,
         ];
 
         if ($request->hasFile('qr_code')) {
@@ -290,23 +353,37 @@ class InvoiceController extends Controller
         }
 
         $this->syncIncomeFromInvoice($invoice);
+        $this->applyOperationalExpenses($invoice);
 
         return response()->json($invoice->load('items'), 201);
+    }
+
+    /**
+     * Get next invoice sequence number for current year. Database-agnostic (SQLite & MySQL).
+     */
+    private function getNextInvoiceSequence(): int
+    {
+        $year = date('Y');
+        $prefix = "INV-{$year}-";
+        $numbers = Invoice::where('invoice_number', 'like', $prefix . '%')
+            ->pluck('invoice_number');
+        $maxSeq = 0;
+        foreach ($numbers as $num) {
+            $parts = explode('-', $num);
+            $seq = (int) end($parts);
+            if ($seq > $maxSeq) {
+                $maxSeq = $seq;
+            }
+        }
+        return $maxSeq + 1;
     }
 
     private function generateNextInvoiceNumber(): string
     {
         $year = date('Y');
         $prefix = "INV-{$year}-";
-        $last = Invoice::where('invoice_number', 'like', $prefix . '%')
-            ->orderByRaw('CAST(SUBSTRING_INDEX(invoice_number, "-", -1) AS UNSIGNED) DESC')
-            ->value('invoice_number');
-        $seq = 1;
-        if ($last) {
-            $parts = explode('-', $last);
-            $seq = (int) end($parts) + 1;
-        }
-        return $prefix . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+        $seq = $this->getNextInvoiceSequence();
+        return $prefix . str_pad((string) $seq, 5, '0', STR_PAD_LEFT);
     }
 
     public function update(Request $request, Invoice $invoice)
@@ -334,6 +411,11 @@ class InvoiceController extends Controller
             'extra_installments.*.amount' => 'nullable|numeric',
             'extra_installments.*.bank_account_id' => 'nullable|exists:bank_accounts,id',
             'extra_installments.*.notes' => 'nullable|string',
+            'operational_expenses' => 'nullable|array',
+            'operational_expenses.*.name' => 'nullable|string',
+            'operational_expenses.*.amount' => 'nullable|numeric',
+            'operational_expenses.*.bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'operational_expenses.*.paid' => 'nullable|boolean',
         ]);
 
         $items = $validated['items'] ?? [];
@@ -364,6 +446,7 @@ class InvoiceController extends Controller
             'initial_deposit_amount' => $validated['initial_deposit_amount'] ?? null,
             'initial_deposit_bank_id' => $validated['initial_deposit_bank_id'] ?? null,
             'extra_installments' => $validated['extra_installments'] ?? null,
+            'operational_expenses' => $validated['operational_expenses'] ?? null,
         ];
 
         if ($request->hasFile('qr_code')) {
@@ -384,6 +467,7 @@ class InvoiceController extends Controller
         }
 
         $this->syncIncomeFromInvoice($invoice);
+        $this->applyOperationalExpenses($invoice);
 
         return response()->json($invoice->load('items'));
     }

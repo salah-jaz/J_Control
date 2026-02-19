@@ -11,6 +11,7 @@ const defaultSettings = {
     address: "",
     gst: "",
     logo: "",
+    signature: "",
     tagline: "",
     terms: "",
   },
@@ -99,6 +100,35 @@ export default function Settings() {
     }
   };
 
+  /* SIGNATURE UPLOAD */
+  const handleSignatureUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('signature', file);
+
+    try {
+      const response = await api.post('/settings/upload-signature', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setSettings({
+        ...settings,
+        company: {
+          ...settings.company,
+          signature: response.data.url
+        }
+      });
+      toast.success("Signature uploaded. Click Save Settings to apply.");
+    } catch (error) {
+      console.error("Failed to upload signature", error);
+      toast.error("Failed to upload signature. Use PNG, JPG or JPEG.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50">
@@ -159,6 +189,36 @@ export default function Settings() {
                       />
                     </label>
                     <p className="text-xs text-slate-400 mt-2 font-medium">Recommended: 200x200px (PNG/JPG)</p>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-4 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                  <div className="h-20 w-40 rounded-xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+                    {settings.company.signature ? (
+                      <img src={settings.company.signature} alt="Signature" className="h-full w-full object-contain" />
+                    ) : (
+                      <span className="text-slate-400 text-xs font-medium">Signature</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <label className="label">Signature Upload</label>
+                    <label className="inline-block">
+                      <span className="sr-only">Choose signature image</span>
+                      <input
+                        type="file"
+                        onChange={handleSignatureUpload}
+                        accept=".png,.jpg,.jpeg"
+                        className="block w-full text-sm text-slate-500
+                          file:mr-4 file:py-2.5 file:px-6
+                          file:rounded-xl file:border-0
+                          file:text-sm file:font-bold
+                          file:bg-brand-50 file:text-brand-700
+                          hover:file:bg-brand-100
+                          transition-all cursor-pointer
+                        "
+                      />
+                    </label>
+                    <p className="text-xs text-slate-400 mt-2 font-medium">PNG, JPG or JPEG. Shown on invoice in Authorized Sign section.</p>
                   </div>
                 </div>
 

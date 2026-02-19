@@ -344,9 +344,15 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                                     </p>
                                 </div>
                                 <div className="text-center min-w-[180px]">
-                                    <div className="font-signature text-3xl text-slate-800 mb-2 transform -rotate-2">
-                                        {companySettings?.name || 'Administrator'}
-                                    </div>
+                                    {companySettings?.signature ? (
+                                        <div className="mb-2 flex justify-center">
+                                            <img src={companySettings.signature} alt="Signature" className="max-h-14 w-auto object-contain" />
+                                        </div>
+                                    ) : (
+                                        <div className="font-signature text-3xl text-slate-800 mb-2 transform -rotate-2">
+                                            {companySettings?.name || 'Administrator'}
+                                        </div>
+                                    )}
                                     <div className="h-0.5 bg-slate-300 w-full mb-2 rounded-full"></div>
                                     <p className="text-[9px] uppercase font-bold text-slate-400 tracking-[0.2em]">Authorized Signatory</p>
                                 </div>

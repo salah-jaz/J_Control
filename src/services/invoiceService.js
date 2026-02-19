@@ -1,8 +1,19 @@
 import api from '../api/axios';
 
 export const getNextInvoiceNumber = async () => {
-  const response = await api.get('/invoices/next-number');
-  return response.data.invoice_number;
+  const doFetch = () => api.get('/invoices/next-number').then((res) => res.data);
+  try {
+    const data = await doFetch();
+    return data?.invoice_number ?? data?.invoice_id ?? null;
+  } catch (firstErr) {
+    await new Promise((r) => setTimeout(r, 600));
+    try {
+      const data = await doFetch();
+      return data?.invoice_number ?? data?.invoice_id ?? null;
+    } catch {
+      throw firstErr;
+    }
+  }
 };
 
 export const getInvoiceSummary = async () => {

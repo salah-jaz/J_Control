@@ -13,6 +13,7 @@ class Invoice extends Model
         'client_id', 'client_name', 'date', 'amount', 'status', 'gst', 'discount', 'discount_type', 'grand_total',
         'bank_account_id', 'bank_name', 'account_number', 'gpay_number', 'qr_code', 'invoice_number',
         'initial_deposit_enabled', 'initial_deposit_amount', 'initial_deposit_bank_id', 'extra_installments',
+        'operational_expenses',
     ];
 
     protected $casts = [
@@ -24,6 +25,7 @@ class Invoice extends Model
         'initial_deposit_enabled' => 'boolean',
         'initial_deposit_amount' => 'decimal:2',
         'extra_installments' => 'array',
+        'operational_expenses' => 'array',
     ];
 
     public function items()
