@@ -30,6 +30,7 @@ const Sidebar = ({ isOpen, setIsOpen, alertCount = 0 }) => {
         { label: "Lead Management", path: "/leads", icon: Briefcase },
         { label: "Products & Services", path: "/products", icon: Package },
         { label: "Income", path: "/income", icon: Wallet },
+        { label: "Quotation", path: "/quotations", icon: FileText },
         { label: "Expense", path: "/expense", icon: CreditCard },
         { label: "Invoices", path: "/invoices", icon: FileText },
         { label: "Bank Accounts", path: "/banks", icon: Landmark },

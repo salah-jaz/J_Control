@@ -77,4 +77,19 @@ class SettingController extends Controller
 
         return response()->json(['error' => 'No file uploaded'], 400);
     }
+
+    public function uploadSignature(Request $request)
+    {
+        $request->validate([
+            'signature' => 'required|image|mimes:png,jpg,jpeg|max:2048',
+        ]);
+
+        if ($request->hasFile('signature')) {
+            $path = $request->file('signature')->store('signatures', 'public');
+            $url = asset('storage/' . $path);
+            return response()->json(['url' => $url, 'path' => $path]);
+        }
+
+        return response()->json(['error' => 'No file uploaded'], 400);
+    }
 }

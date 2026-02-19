@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ClientManagement from './pages/ClientManagement';
 import Invoices from './pages/Invoices';
+import Quotations from './pages/Quotations';
 import Leads from './pages/Leads';
 import Reports from './pages/Reports';
 import FollowUpCalendar from './pages/FollowUpCalendar';
@@ -56,6 +57,14 @@ function App() {
               element={
                 <Layout title="Products & Services">
                   <Products />
+                </Layout>
+              }
+            />
+            <Route
+              path="/quotations"
+              element={
+                <Layout title="Quotation Management">
+                  <Quotations />
                 </Layout>
               }
             />

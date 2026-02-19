@@ -10,6 +10,7 @@ class Income extends Model
     use HasFactory;
 
     protected $fillable = [
+        'invoice_id',
         'client',
         'source',
         'project',
@@ -46,5 +47,17 @@ class Income extends Model
         'follow_up_date',
         'commission',
         'tax_category',
+        'initial_deposit_amount',
+        'initial_deposit_bank_id',
+        'extra_installments',
     ];
+
+    protected $casts = [
+        'extra_installments' => 'array',
+    ];
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
+    }
 }

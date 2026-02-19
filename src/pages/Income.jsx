@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
-import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark, Wallet, TrendingUp, AlertCircle, Receipt } from "lucide-react";
 import toast from "react-hot-toast";
 import { exportToCSV } from "../utils/csvExport";
 
-import { getIncomes, createIncome, updateIncome, deleteIncome } from "../services/incomeService";
+import { getIncomes, createIncome, updateIncome, deleteIncome, getIncomeSummary } from "../services/incomeService";
+import { getTransactions, getTransaction } from "../services/transactionService";
 import { getBankAccounts } from "../services/bankAccountService";
+import { getIncomeCategories, createIncomeCategory, deleteIncomeCategory } from "../services/incomeCategoryService";
 import { getClients } from "../services/db";
 import clsx from "clsx";
 
@@ -17,23 +19,16 @@ const emptyForm = {
   amount: "",
   currency: "INR",
 
-  method: "",
+  method: "Other",
   transactionId: "",
   bank: "",
   bankAccountId: null,
   receivedDate: "",
   status: "Received",
 
-  gstApplied: "No",
-  gstPercent: "18",
-  gstAmount: "",
-  netAmount: "",
-
   staff: "",
   department: "",
   notes: "",
-
-  // New fields
   description: "",
   referenceNumber: "",
   invoiceDate: "",
@@ -43,13 +38,20 @@ const emptyForm = {
   clientEmail: "",
   clientPhone: "",
   paymentTerms: "",
-  discountApplied: "No",
-  discountAmount: "",
-  lateFee: "",
   collectionStatus: "Collected",
   followUpDate: "",
   commission: "",
   taxCategory: "",
+
+  // Financial Summary
+  autoCalculateAmount: true,
+  discount: "",
+  taxAmount: "",
+  initialDepositEnabled: false,
+  initialDepositAmount: "",
+  initialDepositBankId: null,
+  initialDepositBankName: "",
+  extraInstallments: [],
 };
 
 export default function Income() {
@@ -63,19 +65,64 @@ export default function Income() {
   const [openForm, setOpenForm] = useState(false);
   const [openView, setOpenView] = useState(false);
 
+  const [transactions, setTransactions] = useState([]);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewTransactionId, setViewTransactionId] = useState(null);
+  const [viewDetail, setViewDetail] = useState(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
   const [editId, setEditId] = useState(null);
+  /** When editing, number of extra installments that came from server (read-only). New rows after this are editable. */
+  const [savedExtraInstallmentsCount, setSavedExtraInstallmentsCount] = useState(0);
   const [viewItem, setViewItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [bankModalOpen, setBankModalOpen] = useState(false);
+  const [bankModalFor, setBankModalFor] = useState(null);
+  /** Set when save is blocked by bank validation; used to switch tab and focus first invalid bank field. */
+  const [firstInvalidBankKey, setFirstInvalidBankKey] = useState(null);
+  const firstInvalidBankRef = useRef(null);
+
+  const [incomeCategories, setIncomeCategories] = useState([]);
+  const [addCategoryModalOpen, setAddCategoryModalOpen] = useState(false);
+  const [manageCategoriesModalOpen, setManageCategoriesModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [addCategorySaving, setAddCategorySaving] = useState(false);
+
+  const [incomeSummary, setIncomeSummary] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [bankFilter, setBankFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("All");
 
   /* LOAD */
   useEffect(() => {
     loadData();
   }, []);
 
+  /* Auto-focus first invalid bank field when save is blocked by bank validation */
+  useEffect(() => {
+    if (!firstInvalidBankKey) return;
+    const timer = setTimeout(() => {
+      if (firstInvalidBankRef.current) {
+        firstInvalidBankRef.current.focus();
+      }
+      setFirstInvalidBankKey(null);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [firstInvalidBankKey]);
+
   const loadData = async () => {
     try {
-      const records = await getIncomes();
+      const [records, txns, categories, summary] = await Promise.all([
+        getIncomes(),
+        getTransactions(),
+        getIncomeCategories().catch(() => []),
+        getIncomeSummary().catch(() => null),
+      ]);
       setData(records);
+      setTransactions(txns || []);
+      setIncomeCategories(categories || []);
+      setIncomeSummary(summary);
       const banks = await getBankAccounts();
       setBankAccounts(banks);
       const clientsData = await getClients();
@@ -85,47 +132,72 @@ export default function Income() {
     }
   };
 
-  /* AUTO-CALCULATE TAX */
-  useEffect(() => {
-    const baseAmount = parseFloat(form.amount) || 0;
-    if (form.gstApplied === "Yes") {
-      const percent = parseFloat(form.gstPercent) || 0;
-      const calculatedGst = (baseAmount * percent) / 100;
-      const total = baseAmount + calculatedGst;
-      setForm((prev) => ({
-        ...prev,
-        gstAmount: calculatedGst.toFixed(2),
-        netAmount: total.toFixed(2),
-      }));
-    } else {
-      setForm((prev) => ({
-        ...prev,
-        gstAmount: "0",
-        netAmount: baseAmount.toFixed(2),
-      }));
-    }
-  }, [form.amount, form.gstApplied, form.gstPercent]);
+  const subtotal = parseFloat(form.amount) || 0;
+  const discountVal = parseFloat(form.discount) || 0;
+  const taxVal = parseFloat(form.taxAmount) || 0;
+  const totalAmount = subtotal - discountVal + taxVal;
+  const initialDeposit = form.initialDepositEnabled ? (parseFloat(form.initialDepositAmount) || 0) : 0;
+  const sumInstallments = (form.extraInstallments || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+  const balanceDue = totalAmount - initialDeposit - sumInstallments;
+  const isSavedRecord = !!editId;
 
   const openAdd = () => {
     setForm(emptyForm);
     setErrors({});
     setEditId(null);
+    setSavedExtraInstallmentsCount(0);
+    setFirstInvalidBankKey(null);
     setTab("basic");
     setOpenForm(true);
   };
 
+  const getBankDisplayName = (bankId) => {
+    const b = bankAccounts.find((x) => x.id === bankId);
+    return b ? `${b.bankName} - ${b.accountNumber}` : "";
+  };
+
   const openEdit = (item) => {
-    setForm(item);
+    const extra = Array.isArray(item.extraInstallments) ? item.extraInstallments : [];
+    const hasInitial = item.initialDepositAmount != null && item.initialDepositAmount !== "" && parseFloat(item.initialDepositAmount) > 0;
+    const loaded = {
+      ...emptyForm,
+      ...item,
+      discount: item.discountAmount != null && item.discountAmount !== "" ? String(item.discountAmount) : "",
+      taxAmount: item.gstAmount != null && item.gstAmount !== "" ? String(item.gstAmount) : "",
+      extraInstallments: extra.map((i) => ({ ...i, bankName: i.bankName || getBankDisplayName(i.bankAccountId) })),
+      initialDepositEnabled: !!hasInitial,
+      initialDepositAmount: hasInitial ? String(item.initialDepositAmount) : "",
+      initialDepositBankId: item.initialDepositBankId || null,
+      initialDepositBankName: item.initialDepositBankName || getBankDisplayName(item.initialDepositBankId),
+    };
+    setForm(loaded);
     setErrors({});
     setEditId(item.id);
+    setSavedExtraInstallmentsCount(extra.length);
+    setFirstInvalidBankKey(null);
     setTab("basic");
     setOpenForm(true);
   };
 
   const openViewModal = (item) => {
-    setViewItem(item);
-    setOpenView(true);
+    console.log("View clicked:", item);
+    if (!item?.id) {
+      console.error("Transaction id missing");
+      return;
+    }
+    setViewDetail(null);
+    setViewTransactionId(item.id);
+    setViewModalOpen(true);
   };
+
+  useEffect(() => {
+    if (!viewModalOpen || !viewTransactionId) return;
+    setViewLoading(true);
+    getTransaction(viewTransactionId)
+      .then((res) => setViewDetail(res.data))
+      .catch(console.error)
+      .finally(() => setViewLoading(false));
+  }, [viewModalOpen, viewTransactionId]);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this income record?")) return;
@@ -141,27 +213,47 @@ export default function Income() {
   const validate = () => {
     const e = {};
     if (!form.client) e.client = "Client is required";
-    if (!form.source) e.source = "Income source is required";
-    if (!form.amount) e.amount = "Amount is required";
-    if (!form.method) e.method = "Payment method is required";
+    if (!form.amount) e.amount = "Subtotal (Amount) is required";
 
-    if (form.status !== "Pending" && !form.receivedDate) {
-      e.receivedDate = "Received date is required";
+    // Initial Deposit: if enabled and amount > 0, bank is required
+    const initialAmt = parseFloat(form.initialDepositAmount) || 0;
+    if (form.initialDepositEnabled && initialAmt > 0 && !form.initialDepositBankId) {
+      e.initialDepositBank = "Please select bank account for initial deposit";
     }
 
-    if (!form.status) e.status = "Status is required";
+    // Extra Installments: if amount > 0, bank is required for that row
+    (form.extraInstallments || []).forEach((row, idx) => {
+      const amt = parseFloat(row.amount) || 0;
+      if (amt > 0 && !row.bankAccountId) {
+        e[`installmentBank_${idx}`] = "Please select bank account for installment payment";
+      }
+    });
 
-    if (form.method !== "Cash" && !form.transactionId) {
-      e.transactionId = "Transaction ID is required for non-cash payments";
+    // Category optional; if entered, must be from dropdown
+    if (form.category && !incomeCategories.some((c) => c.name === form.category)) {
+      e.category = "Please select a category from the list";
     }
 
     if (Object.keys(e).length > 0) {
       setErrors(e);
-      const firstError = Object.values(e)[0];
-      toast.error(Object.keys(e).length > 1 ? `Please fix validation errors. ${firstError}` : firstError);
+      const bankMsg = e.initialDepositBank || (() => {
+        const k = Object.keys(e).find((key) => key.startsWith("installmentBank_"));
+        return k ? e[k] : null;
+      })();
+      toast.error(bankMsg || e.client || e.source || e.amount || Object.values(e)[0]);
+      if (e.initialDepositBank) {
+        setFirstInvalidBankKey("initialDepositBank");
+        setTab("summary");
+      } else {
+        const firstIdx = (form.extraInstallments || []).findIndex((_, i) => e[`installmentBank_${i}`]);
+        if (firstIdx >= 0) {
+          setFirstInvalidBankKey(`installmentBank_${firstIdx}`);
+          setTab("installments");
+        }
+      }
       return false;
     }
-
+    setFirstInvalidBankKey(null);
     return true;
   };
 
@@ -193,6 +285,39 @@ export default function Income() {
 
   const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
+  const StatCard = ({ title, value, icon: Icon, color }) => (
+    <div className="card hover:border-brand-200/50 group h-36 flex flex-col justify-between p-6">
+      <div className="flex justify-between items-start">
+        <div className={`p-3.5 rounded-xl ${color}`}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
+          <h3 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">{value}</h3>
+        </div>
+      </div>
+      <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
+        <div className={`h-full rounded-full ${color} opacity-30`} style={{ width: "70%" }} />
+      </div>
+    </div>
+  );
+
+  const isDateInRange = (dateStr, range) => {
+    if (!dateStr || range === "All") return true;
+    const d = new Date(dateStr);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    if (range === "Today") return d >= todayStart && d < new Date(todayStart.getTime() + 86400000);
+    if (range === "This Week") return d >= weekStart;
+    if (range === "This Month") return d >= monthStart;
+    if (range === "This Year") return d >= yearStart;
+    return true;
+  };
+
   /* FILTER DATA */
   const filteredData = data.filter((item) =>
     Object.values(item).some(
@@ -201,6 +326,28 @@ export default function Income() {
         val.toString().toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
+
+  /* Income-type transactions for table; apply search + status, category, bank, date filters */
+  const filteredTransactions = transactions.filter((txn) => {
+    if (txn.type !== "Income") return false;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      const match =
+        (txn.id != null && String(txn.id).toLowerCase().includes(q)) ||
+        (txn.party && txn.party.toLowerCase().includes(q)) ||
+        (txn.reference && String(txn.reference || "").toLowerCase().includes(q)) ||
+        (txn.category && String(txn.category).toLowerCase().includes(q)) ||
+        (txn.invoiceNo && String(txn.invoiceNo).toLowerCase().includes(q)) ||
+        (txn.bankName && txn.bankName.toLowerCase().includes(q)) ||
+        (txn.amount != null && String(txn.amount).includes(q));
+      if (!match) return false;
+    }
+    if (statusFilter !== "All" && txn.incomeStatus !== statusFilter) return false;
+    if (categoryFilter && txn.category !== categoryFilter) return false;
+    if (bankFilter && txn.bankAccountId != null && txn.bankAccountId !== Number(bankFilter)) return false;
+    if (!isDateInRange(txn.date, dateFilter)) return false;
+    return true;
+  });
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
@@ -219,23 +366,101 @@ export default function Income() {
         </button>
       </div>
 
+      {/* SUMMARY CARDS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <StatCard
+          title="Total Income"
+          value={incomeSummary != null ? `₹${Number(incomeSummary.totalIncome || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
+          icon={Wallet}
+          color="bg-slate-600"
+        />
+        <StatCard
+          title="Amount Received"
+          value={incomeSummary != null ? `₹${Number(incomeSummary.totalReceived || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
+          icon={TrendingUp}
+          color="bg-emerald-600"
+        />
+        <StatCard
+          title="Balance Due"
+          value={incomeSummary != null ? `₹${Number(incomeSummary.totalBalance || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
+          icon={AlertCircle}
+          color="bg-amber-600"
+        />
+        <StatCard
+          title="Total Transactions"
+          value={incomeSummary != null ? String(incomeSummary.totalCount ?? 0) : "—"}
+          icon={Receipt}
+          color="bg-blue-600"
+        />
+      </div>
+
+      {/* SEARCH & FILTERS */}
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search income..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all shadow-sm"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[120px]"
+          >
+            <option value="All">All</option>
+            <option value="Paid">Paid</option>
+            <option value="Partial">Partial</option>
+            <option value="Unpaid">Unpaid</option>
+          </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
+          >
+            <option value="">All Categories</option>
+            {incomeCategories.map((c) => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+          <select
+            value={bankFilter}
+            onChange={(e) => setBankFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[160px]"
+          >
+            <option value="">All Banks</option>
+            {bankAccounts.map((b) => (
+              <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>
+            ))}
+          </select>
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[120px]"
+          >
+            <option value="All">All Time</option>
+            <option value="Today">Today</option>
+            <option value="This Week">This Week</option>
+            <option value="This Month">This Month</option>
+            <option value="This Year">This Year</option>
+          </select>
+        </div>
+      </div>
+
       {/* TABLE */}
       <div className="card p-0 overflow-hidden">
         <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
           <h3 className="font-bold text-slate-800">Recent Transactions</h3>
           <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-            <div className="relative flex-1 lg:flex-none">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search..."
-                className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 md:w-64 transition-all"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg self-center">
+              Showing {filteredTransactions.length} of {transactions.filter((t) => t.type === "Income").length}
+            </span>
             <button
-              onClick={() => exportToCSV(filteredData, "income_records")}
+              onClick={() => exportToCSV(filteredTransactions, "income_transactions")}
               className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
               title="Export to CSV"
             >
@@ -247,69 +472,136 @@ export default function Income() {
           <table className="w-full text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
+                <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">Client</th>
-                <th className="px-6 py-4">Source</th>
                 <th className="px-6 py-4 text-right">Amount</th>
                 <th className="px-6 py-4">Method</th>
                 <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Bank</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredData.length === 0 ? (
+              {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-slate-500 italic">
-                    No income records found
+                  <td colSpan="7" className="px-6 py-12 text-center text-slate-500 italic">
+                    No income transactions found
                   </td>
                 </tr>
               ) : (
-                filteredData.map((item, i) => (
-                  <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-6 py-4 font-medium text-slate-900">{item.client}</td>
-                    <td className="px-6 py-4 text-slate-600">{item.source}</td>
-                    <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
-                      ₹{parseFloat(item.amount).toLocaleString('en-IN')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
-                        {item.method}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600 font-mono text-xs">{item.receivedDate}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => openViewModal(item)}
-                          title="View"
-                          className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                        >
-                          <Eye size={18} />
-                        </button>
-                        <button
-                          onClick={() => openEdit(item)}
-                          title="Edit"
-                          className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                          <Edit2 size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          title="Delete"
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                filteredTransactions.map((txn) => {
+                  const income = txn.relatedId ? data.find((i) => i.id === txn.relatedId) : null;
+                  return (
+                    <tr key={txn.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">{txn.id}</td>
+                      <td className="px-6 py-4 font-medium text-slate-900">{txn.party || "-"}</td>
+                      <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
+                        ₹{parseFloat(txn.amount || 0).toLocaleString("en-IN")}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
+                          {txn.method || "-"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 font-mono text-xs">{txn.date || "-"}</td>
+                      <td className="px-6 py-4 text-slate-600 text-xs">{txn.bankName || txn.bank || "-"}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          {income?.invoice_id && (
+                            <span className="px-2 py-1 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-xs font-semibold" title="Created from Invoice">
+                              Invoice Linked
+                            </span>
+                          )}
+                          <button
+                            onClick={() => openViewModal(txn)}
+                            title="View"
+                            className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          {income && !income.invoice_id && (
+                            <>
+                              <button
+                                onClick={() => openEdit(income)}
+                                title="Edit"
+                                className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                              >
+                                <Edit2 size={18} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(txn.relatedId)}
+                                title="Delete"
+                                className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* VIEW MODAL */}
+      {/* Transaction Details Modal - GET /transactions/{id} */}
+      {viewModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
+          <div className="bg-white max-w-lg w-full rounded-2xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
+            <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Transaction Details</h2>
+              <button
+                onClick={() => {
+                  setViewModalOpen(false);
+                  setViewTransactionId(null);
+                  setViewDetail(null);
+                }}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-4 md:p-6 overflow-y-auto">
+              {viewLoading ? (
+                <p className="text-slate-500 text-center py-8">Loading...</p>
+              ) : viewDetail ? (
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="text-slate-500">Transaction ID</div>
+                  <div className="font-semibold text-slate-800">{viewDetail.id}</div>
+                  <div className="text-slate-500">Amount</div>
+                  <div className="font-bold text-slate-900">₹ {parseFloat(viewDetail.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+                  <div className="text-slate-500">Bank Name</div>
+                  <div className="font-medium text-slate-800">{viewDetail.bankName || viewDetail.bank || "-"}</div>
+                  <div className="text-slate-500">Client</div>
+                  <div className="font-medium text-slate-800">{viewDetail.party || "-"}</div>
+                  <div className="text-slate-500">Date</div>
+                  <div className="font-medium text-slate-800">{viewDetail.date || "-"}</div>
+                  <div className="text-slate-500">Method</div>
+                  <div className="font-medium text-slate-800">{viewDetail.method || "-"}</div>
+                  <div className="text-slate-500">Status</div>
+                  <div className="font-medium text-slate-800">{viewDetail.status || "-"}</div>
+                  <div className="text-slate-500">Reference</div>
+                  <div className="font-mono text-xs text-slate-700">{viewDetail.reference || "-"}</div>
+                </div>
+              ) : (
+                <p className="text-slate-500 text-center py-8">Could not load transaction.</p>
+              )}
+              {viewDetail?.description && (
+                <div className="mt-4">
+                  <div className="text-slate-500 text-sm mb-1">Description</div>
+                  <p className="text-slate-800 text-sm">{viewDetail.description}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Legacy VIEW MODAL (income key-value) - kept if needed elsewhere */}
       {openView && viewItem && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
           <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl animate-slide-up flex flex-col max-h-[95vh] overflow-hidden">
@@ -361,16 +653,21 @@ export default function Income() {
 
             {/* TABS */}
             <div className="flex px-4 md:px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto custom-scrollbar flex-shrink-0">
-              {["basic", "payment", "tax", "internal"].map((t) => (
+              {[
+                { id: "basic", label: "Basic" },
+                { id: "financial", label: "Financial Summary" },
+                { id: "installments", label: "Extra Installments" },
+                { id: "internal", label: "Internal" },
+              ].map(({ id, label }) => (
                 <button
-                  key={t}
-                  onClick={() => setTab(t)}
+                  key={id}
+                  onClick={() => setTab(id)}
                   className={clsx(
                     "px-4 md:px-6 py-3 md:py-4 text-[10px] md:text-sm font-bold uppercase tracking-wide border-b-2 transition-all whitespace-nowrap",
-                    tab === t ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
+                    tab === id ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
                   )}
                 >
-                  {t}
+                  {label}
                 </button>
               ))}
             </div>
@@ -393,15 +690,15 @@ export default function Income() {
                       >
                         <option value="">Select Client</option>
                         {clients.map((c) => (
-                          <option key={c.id} value={c.company_name}>
-                            {c.company_name}
+                          <option key={c.id} value={c.company_name || c.client_name}>
+                            {c.company_name || c.client_name}
                           </option>
                         ))}
                       </select>
                     </div>
                     <div>
                       <label className="label">
-                        Income Source <Req />
+                        Income Source
                       </label>
                       <input
                         className={inputClass("source")}
@@ -425,16 +722,43 @@ export default function Income() {
                       />
                     </div>
                     <div>
-                      <label className="label">
-                        Category
-                      </label>
-                      <input
-                        className="input"
-                        value={form.category}
-                        onChange={(e) =>
-                          setForm({ ...form, category: e.target.value })
-                        }
-                      />
+                      <label className="label">Category</label>
+                      <div className="flex gap-2">
+                        <select
+                          className={clsx("input flex-1", errors.category && "border-red-500 focus:border-red-500 focus:ring-red-200")}
+                          value={form.category}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "__add__") {
+                              setAddCategoryModalOpen(true);
+                              return;
+                            }
+                            if (v === "__manage__") {
+                              setManageCategoriesModalOpen(true);
+                              return;
+                            }
+                            setForm({ ...form, category: v });
+                          }}
+                        >
+                          <option value="">Select Category</option>
+                          {incomeCategories.map((c) => (
+                            <option key={c.id} value={c.name}>
+                              {c.name}
+                            </option>
+                          ))}
+                          <option value="__add__">— Add New Category —</option>
+                          <option value="__manage__">— Manage Categories —</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setAddCategoryModalOpen(true)}
+                          className="btn-primary whitespace-nowrap flex items-center gap-1"
+                          title="Add category"
+                        >
+                          <Plus className="w-4 h-4" /> Add
+                        </button>
+                      </div>
+                      {errors.category && <p className="text-sm text-red-500 mt-1">{errors.category}</p>}
                     </div>
                     <div>
                       <label className="label">
@@ -450,11 +774,13 @@ export default function Income() {
                     </div>
                     <div>
                       <label className="label">
-                        Base Amount (₹) <Req />
+                        Subtotal (₹) <Req />
                       </label>
                       <input
                         type="number"
+                        step="0.01"
                         className={inputClass("amount")}
+                        placeholder="0.00"
                         value={form.amount}
                         onChange={(e) =>
                           setForm({ ...form, amount: e.target.value })
@@ -535,272 +861,197 @@ export default function Income() {
                   </>
                 )}
 
-                {tab === "payment" && (
-                  <>
-                    <div>
-                      <label className="label">
-                        Payment Method <Req />
-                      </label>
-                      <select
-                        className={inputClass("method")}
-                        value={form.method}
-                        onChange={(e) =>
-                          setForm({ ...form, method: e.target.value })
-                        }
-                      >
-                        <option value="">Select Method</option>
-                        <option>Bank Transfer</option>
-                        <option>UPI</option>
-                        <option>Cash</option>
-                        <option>Cheque</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label">
-                        Transaction / UTR ID
-                      </label>
-                      <input
-                        className={inputClass("transactionId")}
-                        value={form.transactionId}
-                        onChange={(e) =>
-                          setForm({ ...form, transactionId: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">
-                        Bank / Wallet Name
-                      </label>
-                      <select
-                        className="input"
-                        value={form.bank}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          const bankObj = bankAccounts.find(b => `${b.bankName} - ${b.accountNumber}` === val);
-                          setForm({ ...form, bank: val, bankAccountId: bankObj ? bankObj.id : null });
-                        }}
-                      >
-                        <option value="">Select Bank / Wallet</option>
-                        {bankAccounts.map((b) => (
-                          <option key={b.id} value={`${b.bankName} - ${b.accountNumber}`}>
-                            {b.bankName} - {b.accountNumber}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label">
-                        Received Date {form.status !== "Pending" && <Req />}
-                      </label>
-                      <input
-                        type="date"
-                        className={inputClass("receivedDate")}
-                        value={form.receivedDate}
-                        onChange={(e) =>
-                          setForm({ ...form, receivedDate: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">
-                        Payment Status <Req />
-                      </label>
-                      <select
-                        className={inputClass("status")}
-                        value={form.status}
-                        onChange={(e) =>
-                          setForm({ ...form, status: e.target.value })
-                        }
-                      >
-                        <option>Received</option>
-                        <option>Pending</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="label">
-                        Due Date
-                      </label>
-                      <input
-                        type="date"
-                        className="input"
-                        value={form.dueDate}
-                        onChange={(e) =>
-                          setForm({ ...form, dueDate: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label">
-                        Recurring Income
-                      </label>
-                      <select
-                        className="input"
-                        value={form.recurring}
-                        onChange={(e) =>
-                          setForm({ ...form, recurring: e.target.value })
-                        }
-                      >
-                        <option>No</option>
-                        <option>Yes</option>
-                      </select>
-                    </div>
-
-                    {form.recurring === "Yes" && (
-                      <div>
-                        <label className="label">
-                          Frequency
-                        </label>
-                        <select
-                          className="input"
-                          value={form.frequency}
-                          onChange={(e) =>
-                            setForm({ ...form, frequency: e.target.value })
-                          }
-                        >
-                          <option value="">Select Frequency</option>
-                          <option>Monthly</option>
-                          <option>Quarterly</option>
-                          <option>Yearly</option>
-                          <option>Weekly</option>
-                        </select>
+                {tab === "financial" && (
+                  <div className="md:col-span-2 space-y-6">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                      <h3 className="text-base font-bold text-slate-800 mb-4">Financial Summary</h3>
+                      <div className="flex items-center gap-2 mb-4">
+                        <input
+                          type="checkbox"
+                          id="autoCalc"
+                          checked={form.autoCalculateAmount}
+                          onChange={(e) => setForm({ ...form, autoCalculateAmount: e.target.checked })}
+                          className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                        />
+                        <label htmlFor="autoCalc" className="text-sm font-medium text-slate-700">Auto-calculate Amount</label>
                       </div>
-                    )}
-
-                    <div>
-                      <label className="label">
-                        Payment Terms
-                      </label>
-                      <input
-                        className="input"
-                        placeholder="e.g. Net 30, Due on Receipt"
-                        value={form.paymentTerms}
-                        onChange={(e) =>
-                          setForm({ ...form, paymentTerms: e.target.value })
-                        }
-                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="label">Subtotal (₹)</label>
+                          <input type="text" readOnly className="input bg-gray-50" value={form.amount ? `₹${Number(form.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "₹0.00"} />
+                        </div>
+                        <div>
+                          <label className="label">Discount (₹)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="input"
+                            placeholder="0.00"
+                            value={form.discount}
+                            onChange={(e) => setForm({ ...form, discount: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="label">Tax Amount (₹)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            className="input"
+                            placeholder="0.00"
+                            value={form.taxAmount}
+                            onChange={(e) => setForm({ ...form, taxAmount: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="label">Total Amount (₹)</label>
+                          <input type="text" readOnly className="input bg-brand-50 font-bold" value={`₹${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`} />
+                        </div>
+                      </div>
+                      <div className="mt-6 pt-4 border-t border-gray-100">
+                        <div className="flex items-center gap-2 mb-4">
+                          <input
+                            type="checkbox"
+                            id="initialDeposit"
+                            checked={form.initialDepositEnabled}
+                            onChange={(e) => setForm({ ...form, initialDepositEnabled: e.target.checked, initialDepositAmount: e.target.checked ? form.initialDepositAmount : "", initialDepositBankId: e.target.checked ? form.initialDepositBankId : null, initialDepositBankName: e.target.checked ? form.initialDepositBankName : "" })}
+                            className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                          />
+                          <label htmlFor="initialDeposit" className="text-sm font-medium text-slate-700">Initial Deposit</label>
+                        </div>
+                        {form.initialDepositEnabled && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="label">Initial Deposit Amount (₹)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                readOnly={isSavedRecord}
+                                className="input"
+                                placeholder="0.00"
+                                value={form.initialDepositAmount}
+                                onChange={(e) => setForm({ ...form, initialDepositAmount: e.target.value })}
+                              />
+                            </div>
+                            <div>
+                              <label className="label">Bank Account</label>
+                              <div className="flex gap-2">
+                                <button
+                                  ref={firstInvalidBankKey === "initialDepositBank" ? firstInvalidBankRef : null}
+                                  type="button"
+                                  onClick={() => { setBankModalFor("initial"); setBankModalOpen(true); }}
+                                  disabled={isSavedRecord}
+                                  className={clsx("btn-secondary flex-1", errors.initialDepositBank && "border-red-500 focus:border-red-500 focus:ring-red-200")}
+                                >
+                                  {form.initialDepositBankName || "Select Bank"}
+                                </button>
+                              </div>
+                              {errors.initialDepositBank && (
+                                <p className="text-sm text-red-500 mt-1">{errors.initialDepositBank}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        <div className="mt-4">
+                          <label className="label">Balance Due (₹)</label>
+                          <input type="text" readOnly className="input bg-amber-50 font-bold text-slate-800" value={`₹${Math.max(0, balanceDue).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`} />
+                        </div>
+                      </div>
                     </div>
-                  </>
+                  </div>
                 )}
 
-                {tab === "tax" && (
-                  <>
-                    <div>
-                      <label className="label">
-                        Apply GST?
-                      </label>
-                      <select
-                        className="input"
-                        value={form.gstApplied}
-                        onChange={(e) =>
-                          setForm({ ...form, gstApplied: e.target.value })
-                        }
-                      >
-                        <option>No</option>
-                        <option>Yes</option>
-                      </select>
-                    </div>
-                    {form.gstApplied === "Yes" && (
-                      <div>
-                        <label className="label">
-                          GST Percent (%)
-                        </label>
-                        <input
-                          type="number"
-                          className="input"
-                          value={form.gstPercent}
-                          onChange={(e) =>
-                            setForm({ ...form, gstPercent: e.target.value })
-                          }
-                        />
+                {tab === "installments" && (
+                  <div className="md:col-span-2 space-y-6">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-base font-bold text-slate-800">Extra Installments (Split Payments)</h3>
+                        <button type="button" onClick={() => setForm({ ...form, extraInstallments: [...(form.extraInstallments || []), { date: "", amount: "", bankAccountId: null, bankName: "", note: "" }] })} className="btn-primary flex items-center gap-2">
+                          <Plus className="w-4 h-4" /> Add Payment
+                        </button>
                       </div>
-                    )}
-
-                    <div>
-                      <label className="label">
-                        Tax Category
-                      </label>
-                      <select
-                        className="input"
-                        value={form.taxCategory}
-                        onChange={(e) =>
-                          setForm({ ...form, taxCategory: e.target.value })
-                        }
-                      >
-                        <option value="">Select Category</option>
-                        <option>CGST/SGST</option>
-                        <option>IGST</option>
-                        <option>Exempt</option>
-                        <option>Zero Rated</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="label">
-                        Discount Applied
-                      </label>
-                      <select
-                        className="input"
-                        value={form.discountApplied}
-                        onChange={(e) =>
-                          setForm({ ...form, discountApplied: e.target.value })
-                        }
-                      >
-                        <option>No</option>
-                        <option>Yes</option>
-                      </select>
-                    </div>
-
-                    {form.discountApplied === "Yes" && (
-                      <div>
-                        <label className="label">
-                          Discount Amount (₹)
-                        </label>
-                        <input
-                          type="number"
-                          className="input"
-                          value={form.discountAmount}
-                          onChange={(e) =>
-                            setForm({ ...form, discountAmount: e.target.value })
-                          }
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="label">
-                        Late Fee (₹)
-                      </label>
-                      <input
-                        type="number"
-                        className="input"
-                        placeholder="If applicable"
-                        value={form.lateFee}
-                        onChange={(e) =>
-                          setForm({ ...form, lateFee: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="md:col-span-2 grid grid-cols-2 gap-4 mt-2 p-4 md:p-6 bg-brand-50 rounded-2xl border border-brand-100">
-                      <div>
-                        <p className="text-[10px] md:text-xs text-brand-600 font-bold uppercase tracking-wide">
-                          GST Amount
-                        </p>
-                        <p className="text-lg md:text-2xl font-bold text-slate-800">
-                          ₹{form.gstAmount || "0.00"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] md:text-xs text-brand-600 font-bold uppercase tracking-wide">
-                          Net Total
-                        </p>
-                        <p className="text-lg md:text-2xl font-bold text-brand-700">
-                          ₹{form.netAmount || "0.00"}
-                        </p>
+                      <p className="text-sm text-slate-500 mb-4">Track multiple income payments. {isSavedRecord && "Saved payments are read-only; you can only add new ones."}</p>
+                      <div className="space-y-4">
+                        {(form.extraInstallments || []).length === 0 ? (
+                          <p className="text-sm text-slate-400 py-6 text-center">No payments added yet. Click &quot;+ Add Payment&quot; to add one.</p>
+                        ) : (
+                          (form.extraInstallments || []).map((row, idx) => {
+                            const rowIsSaved = isSavedRecord && idx < savedExtraInstallmentsCount;
+                            return (
+                            <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 items-end">
+                              <div className="md:col-span-2">
+                                <label className="label text-xs">Date</label>
+                                <input
+                                  type="date"
+                                  readOnly={rowIsSaved}
+                                  className="input"
+                                  value={row.date}
+                                  onChange={(e) => {
+                                    const next = [...(form.extraInstallments || [])];
+                                    next[idx] = { ...next[idx], date: e.target.value };
+                                    setForm({ ...form, extraInstallments: next });
+                                  }}
+                                />
+                              </div>
+                              <div className="md:col-span-2">
+                                <label className="label text-xs">Amount (₹)</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  readOnly={rowIsSaved}
+                                  className="input"
+                                  placeholder="0.00"
+                                  value={row.amount}
+                                  onChange={(e) => {
+                                    const next = [...(form.extraInstallments || [])];
+                                    next[idx] = { ...next[idx], amount: e.target.value };
+                                    setForm({ ...form, extraInstallments: next });
+                                  }}
+                                />
+                              </div>
+                              <div className="md:col-span-3">
+                                <label className="label text-xs">Bank Account</label>
+                                <button
+                                  ref={firstInvalidBankKey === `installmentBank_${idx}` ? firstInvalidBankRef : null}
+                                  type="button"
+                                  disabled={rowIsSaved}
+                                  onClick={() => { setBankModalFor({ type: "installment", index: idx }); setBankModalOpen(true); }}
+                                  className={clsx("input w-full text-left truncate bg-white", errors[`installmentBank_${idx}`] && "border-red-500 focus:border-red-500 focus:ring-red-200")}
+                                >
+                                  {row.bankName || "Select Bank"}
+                                </button>
+                                {errors[`installmentBank_${idx}`] && (
+                                  <p className="text-sm text-red-500 mt-1">{errors[`installmentBank_${idx}`]}</p>
+                                )}
+                              </div>
+                              <div className="md:col-span-3">
+                                <label className="label text-xs">Note</label>
+                                <input
+                                  type="text"
+                                  readOnly={rowIsSaved}
+                                  className="input"
+                                  placeholder="Optional"
+                                  value={row.note}
+                                  onChange={(e) => {
+                                    const next = [...(form.extraInstallments || [])];
+                                    next[idx] = { ...next[idx], note: e.target.value };
+                                    setForm({ ...form, extraInstallments: next });
+                                  }}
+                                />
+                              </div>
+                              <div className="md:col-span-2 flex justify-end">
+                                {!rowIsSaved && (
+                                  <button type="button" onClick={() => setForm({ ...form, extraInstallments: (form.extraInstallments || []).filter((_, i) => i !== idx) })} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            );
+                          })
+                        )}
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
 
                 {tab === "internal" && (
@@ -895,6 +1146,156 @@ export default function Income() {
                 )}
               </div>
             </div>
+
+            {/* Select Bank Account Modal */}
+            {bankModalOpen && (
+              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-slate-800">Select Bank Account</h3>
+                    <button type="button" onClick={() => { setBankModalOpen(false); setBankModalFor(null); }} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="overflow-y-auto p-4 space-y-2">
+                    {bankAccounts.length === 0 ? (
+                      <p className="text-sm text-slate-500">No bank accounts found. Add one in Bank Accounts.</p>
+                    ) : (
+                      bankAccounts.map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => {
+                            const name = `${b.bankName} - ${b.accountNumber}`;
+                            if (bankModalFor === "initial") {
+                              setForm((prev) => ({ ...prev, initialDepositBankId: b.id, initialDepositBankName: name }));
+                              setErrors((prev) => {
+                                const next = { ...prev };
+                                delete next.initialDepositBank;
+                                return next;
+                              });
+                            } else if (bankModalFor && bankModalFor.type === "installment" && typeof bankModalFor.index === "number") {
+                              const idx = bankModalFor.index;
+                              const next = [...(form.extraInstallments || [])];
+                              next[idx] = { ...next[idx], bankAccountId: b.id, bankName: name };
+                              setForm((prev) => ({ ...prev, extraInstallments: next }));
+                              setErrors((prev) => {
+                                const nextErr = { ...prev };
+                                delete nextErr[`installmentBank_${idx}`];
+                                return nextErr;
+                              });
+                            }
+                            setBankModalOpen(false);
+                            setBankModalFor(null);
+                          }}
+                          className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50/50 text-left transition-colors"
+                        >
+                          <Landmark className="w-5 h-5 text-brand-600" />
+                          <span className="font-medium text-slate-800">{b.bankName} - {b.accountNumber}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Add New Category Modal */}
+            {addCategoryModalOpen && (
+              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col">
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-slate-800">Add New Category</h3>
+                    <button type="button" onClick={() => { setAddCategoryModalOpen(false); setNewCategoryName(""); }} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    <div>
+                      <label className="label">Category name</label>
+                      <input
+                        type="text"
+                        className="input"
+                        placeholder="Enter category name"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="p-4 border-t border-gray-100 flex justify-end gap-2">
+                    <button type="button" onClick={() => { setAddCategoryModalOpen(false); setNewCategoryName(""); }} className="btn-secondary">Cancel</button>
+                    <button
+                      type="button"
+                      disabled={!newCategoryName.trim() || addCategorySaving}
+                      className="btn-primary"
+                      onClick={async () => {
+                        const name = newCategoryName.trim();
+                        if (!name) return;
+                        setAddCategorySaving(true);
+                        try {
+                          const created = await createIncomeCategory(name);
+                          const list = await getIncomeCategories();
+                          setIncomeCategories(list);
+                          setForm((prev) => ({ ...prev, category: created.name }));
+                          setAddCategoryModalOpen(false);
+                          setNewCategoryName("");
+                          toast.success("Category added");
+                        } catch (e) {
+                          toast.error(e.response?.data?.message || "Failed to add category");
+                        } finally {
+                          setAddCategorySaving(false);
+                        }
+                      }}
+                    >
+                      {addCategorySaving ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Manage Categories Modal */}
+            {manageCategoriesModalOpen && (
+              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-slate-800">Manage Categories</h3>
+                    <button type="button" onClick={() => setManageCategoriesModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="overflow-y-auto p-4 space-y-2">
+                    {incomeCategories.length === 0 ? (
+                      <p className="text-sm text-slate-500">No categories yet. Add one from the dropdown.</p>
+                    ) : (
+                      incomeCategories.map((c) => (
+                        <div key={c.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/50">
+                          <span className="font-medium text-slate-800">{c.name}</span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await deleteIncomeCategory(c.id);
+                                const list = await getIncomeCategories();
+                                setIncomeCategories(list);
+                                if (form.category === c.name) setForm((prev) => ({ ...prev, category: "" }));
+                                toast.success("Category removed");
+                              } catch (e) {
+                                toast.error(e.response?.data?.message || "Failed to delete");
+                              }
+                            }}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* FOOTER */}
             <div className="flex justify-end gap-3 p-4 md:p-6 border-t border-gray-100 bg-white flex-shrink-0">

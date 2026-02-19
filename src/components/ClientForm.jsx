@@ -1,12 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Building2, User, MapPin, FileText, Landmark } from 'lucide-react';
+import { X, Save, Building2, User, MapPin, FileText, Landmark, Plus, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+const emptyBankForm = () => ({
+    bank_name: '',
+    account_holder_name: '',
+    account_number: '',
+    ifsc_code: '',
+    upi_id: '',
+    mobile_number: '',
+    cheque_print_name: ''
+});
 
 const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
     const [activeTab, setActiveTab] = useState('basic');
     const [errors, setErrors] = useState({});
+    const [bankList, setBankList] = useState([]);
+    const [editingBankIndex, setEditingBankIndex] = useState(null);
+    const [bankForm, setBankForm] = useState(emptyBankForm());
+    const [bankFormError, setBankFormError] = useState('');
     const [formData, setFormData] = useState({
         // Basic
+        client_name: '',
         company_name: '',
         company_logo: '',
         company_type: 'Proprietorship',
@@ -17,6 +32,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
         primary_contact_name: '',
         contact_person_name: '',
         mobile_number: '',
+        secondary_mobile_number: '',
         email_address: '',
         website_url: '',
 
@@ -37,7 +53,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
         msme_number: '',
         tan_number: '',
 
-        // Bank
+        // Legacy single bank (kept for backward compat; primary data is bankList)
         bank_name: '',
         account_holder_name: '',
         account_number: '',
@@ -49,14 +65,37 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
     useEffect(() => {
         if (client) {
             setFormData({ ...client, company_type: client.company_type || 'Proprietorship' });
+            // Initialize bank list: prefer bank_details array, else legacy single bank
+            if (client.bank_details && Array.isArray(client.bank_details) && client.bank_details.length > 0) {
+                setBankList(client.bank_details);
+            } else if (client.bank_name && client.bank_name.trim()) {
+                setBankList([{
+                    bank_name: client.bank_name || '',
+                    account_holder_name: client.account_holder_name || '',
+                    account_number: client.account_number || '',
+                    ifsc_code: client.ifsc_code || '',
+                    upi_id: client.upi_id || '',
+                    mobile_number: client.mobile_number || '',
+                    cheque_print_name: client.cheque_print_name || ''
+                }]);
+            } else {
+                setBankList([]);
+            }
+            setBankForm(emptyBankForm());
+            setEditingBankIndex(null);
+            setBankFormError('');
         } else {
             setFormData({
-                company_name: '', company_logo: '', company_type: 'Proprietorship', default_currency: 'INR', financial_year: '',
-                primary_contact_name: '', contact_person_name: '', mobile_number: '', email_address: '', website_url: '',
+                client_name: '', company_name: '', company_logo: '', company_type: 'Proprietorship', default_currency: 'INR', financial_year: '',
+                primary_contact_name: '', contact_person_name: '', mobile_number: '', secondary_mobile_number: '', email_address: '', website_url: '',
                 address_line_1: '', address_line_2: '', city: '', state: '', country: '', pincode: '',
                 gst_registration_type: 'Regular', gst_state_code: '', gst_number: '', pan_number: '', cin_number: '', msme_number: '', tan_number: '',
-                bank_name: '', account_holder_name: '', account_number: '', ifsc_code: '', upi_id: '', cheque_print_name: ''
+                bank_name: '', account_holder_name: '', account_number: '', ifsc_code: '', upi_id: '', mobile_number: '', cheque_print_name: ''
             });
+            setBankList([]);
+            setBankForm(emptyBankForm());
+            setEditingBankIndex(null);
+            setBankFormError('');
             setErrors({});
             setActiveTab('basic');
         }
@@ -65,44 +104,18 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
     const validate = (data) => {
         const newErrors = {};
 
-        // 1. Mandatory Fields
-        if (!data.company_name?.trim()) newErrors.company_name = "Company Name is required";
-        if (!data.contact_person_name?.trim()) newErrors.contact_person_name = "Contact Person Name is required";
-        if (!data.mobile_number?.trim()) newErrors.mobile_number = "Mobile Number is required";
-
-        if (!data.email_address?.trim()) {
-            newErrors.email_address = "Email Address is required";
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email_address)) {
+        // 1. Mandatory Fields — at least one of Client Name or Company Name
+        const hasClientName = !!data.client_name?.trim();
+        const hasCompanyName = !!data.company_name?.trim();
+        if (!hasClientName && !hasCompanyName) {
+            newErrors.client_or_company = "Please enter Client Name or Company Name";
+        }
+        // Contact fields are optional; validate email format only when provided
+        if (data.email_address?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email_address)) {
             newErrors.email_address = "Invalid email address";
         }
 
-        if (!data.city?.trim()) newErrors.city = "City is required";
-        if (!data.state?.trim()) newErrors.state = "State is required";
-        if (!data.country?.trim()) newErrors.country = "Country is required";
-        if (!data.pincode?.trim()) newErrors.pincode = "Pincode is required";
-        if (!data.gst_registration_type) newErrors.gst_registration_type = "GST Registration Type is required";
-
-        // 2. Conditional Validation
-        // GST Validation
-        if (['Regular', 'Composition'].includes(data.gst_registration_type)) {
-            if (!data.gst_number?.trim()) {
-                newErrors.gst_number = "GST Number is required for Regular/Composition";
-            }
-        }
-
-        // CIN Validation (Private Limited)
-        if (data.company_type === 'Private Limited') {
-            if (!data.cin_number?.trim()) {
-                newErrors.cin_number = "CIN Number is required for Private Limited";
-            }
-        }
-
-        // PAN Validation (Required if GST is missing)
-        if (!data.gst_number?.trim()) {
-            if (!data.pan_number?.trim()) {
-                newErrors.pan_number = "PAN Number is required (if GST not provided)";
-            }
-        }
+        // Address and Tax & Compliance sections are fully optional — no validation
 
         return newErrors;
     };
@@ -121,15 +134,15 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
             return;
         }
 
-        onSave({ ...formData, id: client ? client.id : null });
+        onSave({ ...formData, bank_details: bankList, id: client ? client.id : null });
     };
 
     const handleChange = (e) => {
         if (readOnly) return;
         const { name, value } = e.target;
 
-        // Restrict mobile_number and account_number to integers only
-        if (['mobile_number', 'account_number'].includes(name)) {
+        // Restrict mobile numbers and account_number to integers only
+        if (['mobile_number', 'secondary_mobile_number', 'account_number'].includes(name)) {
             if (value && !/^\d*$/.test(value)) return;
         }
 
@@ -154,10 +167,78 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
             });
         }
 
-        // Also re-validate dependencies
-        if (['gst_registration_type', 'company_type', 'gst_number'].includes(name)) {
-            setErrors(currentErrors); // Sync all relevant errors logic
+        // Also re-validate dependencies (including client/company name pair)
+        if (['gst_registration_type', 'company_type', 'gst_number', 'client_name', 'company_name'].includes(name)) {
+            setErrors(currentErrors);
         }
+    };
+
+    const handleBankFormChange = (e) => {
+        if (readOnly) return;
+        const { name, value } = e.target;
+        if (name === 'account_number' && value && !/^\d*$/.test(value)) return;
+        setBankForm(prev => ({ ...prev, [name]: value }));
+        if (bankFormError) setBankFormError('');
+    };
+
+    const handleAddOrUpdateBank = (e) => {
+        e.preventDefault();
+        const name = (bankForm.bank_name || '').trim();
+        if (!name) {
+            setBankFormError('Bank Name is required');
+            return;
+        }
+        const entry = {
+            bank_name: name,
+            account_holder_name: (bankForm.account_holder_name || '').trim(),
+            account_number: (bankForm.account_number || '').trim(),
+            ifsc_code: (bankForm.ifsc_code || '').trim(),
+            upi_id: (bankForm.upi_id || '').trim(),
+            mobile_number: (bankForm.mobile_number || '').trim(),
+            cheque_print_name: (bankForm.cheque_print_name || '').trim()
+        };
+        if (editingBankIndex !== null) {
+            setBankList(prev => prev.map((b, i) => i === editingBankIndex ? entry : b));
+            setEditingBankIndex(null);
+            toast.success('Bank updated');
+        } else {
+            setBankList(prev => [...prev, entry]);
+            toast.success('Bank added');
+        }
+        setBankForm(emptyBankForm());
+        setBankFormError('');
+    };
+
+    const handleEditBank = (index) => {
+        const b = bankList[index];
+        setBankForm({
+            bank_name: b.bank_name || '',
+            account_holder_name: b.account_holder_name || '',
+            account_number: b.account_number || '',
+            ifsc_code: b.ifsc_code || '',
+            upi_id: b.upi_id || '',
+            mobile_number: b.mobile_number || '',
+            cheque_print_name: b.cheque_print_name || ''
+        });
+        setEditingBankIndex(index);
+        setBankFormError('');
+    };
+
+    const handleDeleteBank = (index) => {
+        setBankList(prev => prev.filter((_, i) => i !== index));
+        if (editingBankIndex === index) {
+            setBankForm(emptyBankForm());
+            setEditingBankIndex(null);
+        } else if (editingBankIndex !== null && editingBankIndex > index) {
+            setEditingBankIndex(editingBankIndex - 1);
+        }
+        toast.success('Bank removed');
+    };
+
+    const handleCancelEditBank = () => {
+        setBankForm(emptyBankForm());
+        setEditingBankIndex(null);
+        setBankFormError('');
     };
 
     if (!isOpen) return null;
@@ -170,14 +251,15 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
         { id: 'bank', label: 'Bank Details', icon: Landmark },
     ];
 
-    // Helper to get input classes based on error state
-    const getInputClassName = (fieldName) => `
+    // Helper to get input classes based on error state (optional: alsoErrorKey for shared validation e.g. client_or_company)
+    const getInputClassName = (fieldName, alsoErrorKey) => {
+        const hasError = errors[fieldName] || (alsoErrorKey && errors[alsoErrorKey]);
+        return `
         input
-        ${errors[fieldName]
-            ? '!border-red-500 bg-red-50 focus:!ring-red-200 focus:!border-red-500'
-            : ''}
+        ${hasError ? '!border-red-500 bg-red-50 focus:!ring-red-200 focus:!border-red-500' : ''}
         ${readOnly ? 'bg-gray-100 text-slate-500 cursor-not-allowed' : ''}
     `;
+    };
 
     // Helper to render error message
     const ErrorMsg = ({ field }) => errors[field] ? (
@@ -220,10 +302,8 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                             {tabs.map(tab => {
                                 // Check if tab has errors
                                 const hasTabErrors = (
-                                    (tab.id === 'basic' && (errors.company_name || errors.company_type)) ||
-                                    (tab.id === 'contact' && (errors.contact_person_name || errors.mobile_number || errors.email_address)) ||
-                                    (tab.id === 'address' && (errors.city || errors.state || errors.country || errors.pincode)) ||
-                                    (tab.id === 'tax' && (errors.gst_registration_type || errors.gst_number || errors.cin_number || errors.pan_number))
+                                    (tab.id === 'basic' && (errors.client_or_company || errors.company_name || errors.company_type)) ||
+                                    (tab.id === 'contact' && errors.email_address)
                                 );
 
                                 return (
@@ -270,16 +350,31 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                                             <div className="col-span-2">
-                                                <Label required>Company Name</Label>
+                                                <Label>Client Name</Label>
+                                                <input
+                                                    type="text"
+                                                    name="client_name"
+                                                    value={formData.client_name}
+                                                    onChange={handleChange}
+                                                    className={getInputClassName('client_name', 'client_or_company')}
+                                                    placeholder="e.g. John Doe"
+                                                />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <Label>Company Name</Label>
                                                 <input
                                                     type="text"
                                                     name="company_name"
                                                     value={formData.company_name}
                                                     onChange={handleChange}
-                                                    className={getInputClassName('company_name')}
+                                                    className={getInputClassName('company_name', 'client_or_company')}
                                                     placeholder="e.g. Acme Corp"
                                                 />
-                                                <ErrorMsg field="company_name" />
+                                                <p className="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
+                                                    <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                                    For individual clients use Client Name, for business clients use Company Name.
+                                                </p>
+                                                <ErrorMsg field="client_or_company" />
                                             </div>
                                             <div>
                                                 <Label>Company Type</Label>
@@ -325,26 +420,26 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                     <div className="space-y-6 animate-fadeIn">
                                         <div className="flex flex-col gap-1 border-b border-gray-100 pb-4 mb-2">
                                             <h4 className="text-lg font-bold text-slate-800">Contact Details</h4>
-                                            <p className="text-sm text-slate-500">Primary point of contact for this client.</p>
+                                            <p className="text-sm text-slate-500">All fields are optional. Add contact information when available.</p>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                                             <div>
-                                                <Label required>Contact Person Name</Label>
-                                                <input type="text" name="contact_person_name" value={formData.contact_person_name} onChange={handleChange} className={getInputClassName('contact_person_name')} />
+                                                <Label>Contact Person Name</Label>
+                                                <input type="text" name="contact_person_name" value={formData.contact_person_name} onChange={handleChange} className={getInputClassName('contact_person_name')} placeholder="Optional" />
                                                 <ErrorMsg field="contact_person_name" />
                                             </div>
                                             <div>
-                                                <Label>Primary Contact Name (Optional)</Label>
-                                                <input type="text" name="primary_contact_name" value={formData.primary_contact_name} onChange={handleChange} className={getInputClassName('primary_contact_name')} />
-                                            </div>
-                                            <div>
-                                                <Label required>Mobile Number</Label>
-                                                <input type="tel" name="mobile_number" value={formData.mobile_number} onChange={handleChange} className={getInputClassName('mobile_number')} />
+                                                <Label>Primary Mobile Number</Label>
+                                                <input type="tel" name="mobile_number" value={formData.mobile_number} onChange={handleChange} className={getInputClassName('mobile_number')} placeholder="Optional" />
                                                 <ErrorMsg field="mobile_number" />
                                             </div>
                                             <div>
-                                                <Label required>Email Address</Label>
-                                                <input type="email" name="email_address" value={formData.email_address} onChange={handleChange} className={getInputClassName('email_address')} />
+                                                <Label>Secondary Mobile Number</Label>
+                                                <input type="tel" name="secondary_mobile_number" value={formData.secondary_mobile_number} onChange={handleChange} className={getInputClassName('secondary_mobile_number')} placeholder="Optional" />
+                                            </div>
+                                            <div>
+                                                <Label>Email Address</Label>
+                                                <input type="email" name="email_address" value={formData.email_address} onChange={handleChange} className={getInputClassName('email_address')} placeholder="Optional" />
                                                 <ErrorMsg field="email_address" />
                                             </div>
                                             <div className="col-span-2">
@@ -371,24 +466,20 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                                 <input type="text" name="address_line_2" value={formData.address_line_2} onChange={handleChange} className={getInputClassName('address_line_2')} />
                                             </div>
                                             <div>
-                                                <Label required>City</Label>
+                                                <Label>City</Label>
                                                 <input type="text" name="city" value={formData.city} onChange={handleChange} className={getInputClassName('city')} />
-                                                <ErrorMsg field="city" />
                                             </div>
                                             <div>
-                                                <Label required>State</Label>
+                                                <Label>State</Label>
                                                 <input type="text" name="state" value={formData.state} onChange={handleChange} className={getInputClassName('state')} />
-                                                <ErrorMsg field="state" />
                                             </div>
                                             <div>
-                                                <Label required>Country</Label>
+                                                <Label>Country</Label>
                                                 <input type="text" name="country" value={formData.country} onChange={handleChange} className={getInputClassName('country')} />
-                                                <ErrorMsg field="country" />
                                             </div>
                                             <div>
-                                                <Label required>Pincode</Label>
+                                                <Label>Pincode</Label>
                                                 <input type="text" name="pincode" value={formData.pincode} onChange={handleChange} className={getInputClassName('pincode')} />
-                                                <ErrorMsg field="pincode" />
                                             </div>
                                         </div>
                                     </div>
@@ -402,7 +493,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                                             <div>
-                                                <Label required>GST Registration Type</Label>
+                                                <Label>GST Registration Type</Label>
                                                 <select name="gst_registration_type" value={formData.gst_registration_type} onChange={handleChange} className={getInputClassName('gst_registration_type')}>
                                                     <option value="Regular">Regular</option>
                                                     <option value="Composition">Composition</option>
@@ -410,14 +501,13 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                                     <option value="Overseas">Overseas</option>
                                                     <option value="Consumer">Consumer</option>
                                                 </select>
-                                                <ErrorMsg field="gst_registration_type" />
                                             </div>
                                             <div>
                                                 <Label>GST State Code</Label>
                                                 <input type="text" name="gst_state_code" value={formData.gst_state_code} onChange={handleChange} className={getInputClassName('gst_state_code')} />
                                             </div>
                                             <div>
-                                                <Label required={['Regular', 'Composition'].includes(formData.gst_registration_type)}>GST Number</Label>
+                                                <Label>GST Number</Label>
                                                 <input
                                                     type="text"
                                                     name="gst_number"
@@ -427,15 +517,13 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                                     disabled={formData.gst_registration_type === 'Unregistered'}
                                                     placeholder={formData.gst_registration_type === 'Unregistered' ? 'Not Applicable' : ''}
                                                 />
-                                                <ErrorMsg field="gst_number" />
                                             </div>
                                             <div>
-                                                <Label required={!formData.gst_number}>PAN Number</Label>
+                                                <Label>PAN Number</Label>
                                                 <input type="text" name="pan_number" value={formData.pan_number} onChange={handleChange} className={getInputClassName('pan_number')} />
-                                                <ErrorMsg field="pan_number" />
                                             </div>
                                             <div>
-                                                <Label required={formData.company_type === 'Private Limited'}>CIN Number</Label>
+                                                <Label>CIN Number</Label>
                                                 <input
                                                     type="text"
                                                     name="cin_number"
@@ -444,7 +532,6 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                                     className={getInputClassName('cin_number')}
                                                     placeholder="For Pvt Ltd"
                                                 />
-                                                <ErrorMsg field="cin_number" />
                                             </div>
                                             <div>
                                                 <Label>MSME Number</Label>
@@ -459,36 +546,151 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                 )}
 
                                 {activeTab === 'bank' && (
-                                    <div className="space-y-6 animate-fadeIn">
-                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4 mb-2">
+                                    <div className="space-y-8 animate-fadeIn max-w-3xl">
+                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4">
                                             <h4 className="text-lg font-bold text-slate-800">Bank Details</h4>
-                                            <p className="text-sm text-slate-500">For invoice generation and payments.</p>
+                                            <p className="text-sm text-slate-500">Add one or more bank accounts for invoicing and payments. Changes are saved when you save the client.</p>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                            <div className="col-span-2">
-                                                <Label>Bank Name</Label>
-                                                <input type="text" name="bank_name" value={formData.bank_name} onChange={handleChange} className={getInputClassName('bank_name')} />
+
+                                        {/* Add Bank Form - Top Section */}
+                                        {!readOnly && (
+                                            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-6 shadow-sm">
+                                                <h5 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-4">Add Bank</h5>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <div className="sm:col-span-2">
+                                                        <Label required>Bank Name</Label>
+                                                        <input
+                                                            type="text"
+                                                            value={bankForm.bank_name}
+                                                            onChange={handleBankFormChange}
+                                                            name="bank_name"
+                                                            className={`input w-full ${bankFormError ? '!border-red-500 bg-red-50 focus:!ring-red-200' : ''} ${readOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                            placeholder="e.g. State Bank of India"
+                                                        />
+                                                        {bankFormError && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1.5 font-medium"><span className="w-1 h-1 rounded-full bg-red-500"></span> {bankFormError}</p>}
+                                                    </div>
+                                                    <div>
+                                                        <Label>Account Holder Name</Label>
+                                                        <input type="text" name="account_holder_name" value={bankForm.account_holder_name} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
+                                                    </div>
+                                                    <div>
+                                                        <Label>Account Number</Label>
+                                                        <input type="text" name="account_number" value={bankForm.account_number} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
+                                                    </div>
+                                                    <div>
+                                                        <Label>IFSC Code</Label>
+                                                        <input type="text" name="ifsc_code" value={bankForm.ifsc_code} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
+                                                    </div>
+                                                    <div>
+                                                        <Label>UPI ID</Label>
+                                                        <input type="text" name="upi_id" value={bankForm.upi_id} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
+                                                    </div>
+                                                    <div>
+                                                        <Label>Mobile Number</Label>
+                                                        <input type="text" name="mobile_number" value={bankForm.mobile_number} onChange={handleBankFormChange} className="input w-full" placeholder="Mobile Number" />
+                                                    </div>
+                                                    <div>
+                                                        <Label>Cheque Print Name</Label>
+                                                        <input type="text" name="cheque_print_name" value={bankForm.cheque_print_name} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-3 mt-5 pt-4 border-t border-slate-200">
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleAddOrUpdateBank}
+                                                        className="btn-primary flex items-center gap-2 h-10 px-4"
+                                                    >
+                                                        {editingBankIndex !== null ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                                        {editingBankIndex !== null ? 'Update Bank' : '+ Add Bank'}
+                                                    </button>
+                                                    {editingBankIndex !== null && (
+                                                        <button type="button" onClick={handleCancelEditBank} className="btn-secondary h-10 px-4">
+                                                            Cancel
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div>
-                                                <Label>Account Holder Name</Label>
-                                                <input type="text" name="account_holder_name" value={formData.account_holder_name} onChange={handleChange} className={getInputClassName('account_holder_name')} />
-                                            </div>
-                                            <div>
-                                                <Label>Account Number</Label>
-                                                <input type="text" name="account_number" value={formData.account_number} onChange={handleChange} className={getInputClassName('account_number')} />
-                                            </div>
-                                            <div>
-                                                <Label>IFSC Code</Label>
-                                                <input type="text" name="ifsc_code" value={formData.ifsc_code} onChange={handleChange} className={getInputClassName('ifsc_code')} />
-                                            </div>
-                                            <div>
-                                                <Label>UPI ID</Label>
-                                                <input type="text" name="upi_id" value={formData.upi_id} onChange={handleChange} className={getInputClassName('upi_id')} />
-                                            </div>
-                                            <div>
-                                                <Label>Cheque Print Name</Label>
-                                                <input type="text" name="cheque_print_name" value={formData.cheque_print_name} onChange={handleChange} className={getInputClassName('cheque_print_name')} />
-                                            </div>
+                                        )}
+
+                                        {/* Bank List - View: cards with all fields; Edit: table */}
+                                        <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                                            <h5 className="text-sm font-bold text-slate-700 uppercase tracking-wide px-5 py-4 bg-slate-50 border-b border-slate-200">Bank List</h5>
+                                            {bankList.length === 0 ? (
+                                                <div className="px-5 py-10 text-center text-slate-500">
+                                                    <Landmark className="h-10 w-10 mx-auto mb-2 text-slate-300" />
+                                                    <p className="font-medium">No banks added</p>
+                                                    {!readOnly && <p className="text-sm mt-1">Use the form above to add bank details.</p>}
+                                                </div>
+                                            ) : readOnly ? (
+                                                <div className="p-5 space-y-4">
+                                                    {bankList.map((row, index) => (
+                                                        <div key={index} className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Bank Name</p>
+                                                                    <p className="font-medium text-slate-800">{row.bank_name || '—'}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Account Holder Name</p>
+                                                                    <p className="font-medium text-slate-800">{row.account_holder_name || '—'}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Account Number</p>
+                                                                    <p className="font-medium text-slate-800">{row.account_number || '—'}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">IFSC Code</p>
+                                                                    <p className="font-medium text-slate-800">{row.ifsc_code || '—'}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Mobile Number</p>
+                                                                    <p className="font-medium text-slate-800">{row.mobile_number || '—'}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">UPI ID</p>
+                                                                    <p className="font-medium text-slate-800">{row.upi_id || '—'}</p>
+                                                                </div>
+                                                                <div className="sm:col-span-2">
+                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Cheque Print Name</p>
+                                                                    <p className="font-medium text-slate-800">{row.cheque_print_name || '—'}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-left">
+                                                        <thead>
+                                                            <tr className="bg-slate-100/80 text-slate-600 text-xs font-semibold uppercase tracking-wider">
+                                                                <th className="px-5 py-3">Bank Name</th>
+                                                                <th className="px-5 py-3">Account Number</th>
+                                                                <th className="px-5 py-3">IFSC Code</th>
+                                                                <th className="px-5 py-3 text-right w-28">Actions</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100">
+                                                            {bankList.map((row, index) => (
+                                                                <tr key={index} className="hover:bg-slate-50/50 transition-colors">
+                                                                    <td className="px-5 py-3 font-medium text-slate-800">{row.bank_name || '—'}</td>
+                                                                    <td className="px-5 py-3 text-slate-600">{row.account_number || '—'}</td>
+                                                                    <td className="px-5 py-3 text-slate-600">{row.ifsc_code || '—'}</td>
+                                                                    <td className="px-5 py-3 text-right">
+                                                                        <div className="flex items-center justify-end gap-1">
+                                                                            <button type="button" onClick={() => handleEditBank(index)} className="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="Edit">
+                                                                                <Pencil className="h-4 w-4" />
+                                                                            </button>
+                                                                            <button type="button" onClick={() => handleDeleteBank(index)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}

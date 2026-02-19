@@ -194,7 +194,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                             <div className="max-w-[400px]">
                                 <h3 className="text-[#e11d24] font-bold text-xs uppercase mb-4 italic tracking-widest">INVOICE TO:</h3>
                                 <h2 className="text-3xl font-black text-[#1d1d1d] mb-3 leading-none">
-                                    {client ? (client.company_name || client.name) : 'JAZ'}
+                                    {client ? (client.company_name || client.client_name || client.name) : 'JAZ'}
                                 </h2>
                                 <p className="text-[12px] text-slate-400 font-bold mb-6 uppercase tracking-tight">{client?.role || 'MANAGING DIRECTOR, COMPANY LTD.'}</p>
                                 <div className="text-[11px] space-y-2 font-bold text-slate-500">
@@ -308,13 +308,17 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                                 <div className="mt-16 text-center px-10">
                                     <div className="relative inline-block w-full">
                                         {/* Signature Section */}
-                                        <div className="h-14 flex items-end justify-center pb-2">
-                                            <svg className="w-32 h-14 text-slate-700 opacity-60" viewBox="0 0 120 40">
-                                                <path d="M10 30 C 30 10, 50 10, 70 30 S 110 30, 110 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                                            </svg>
+                                        <div className="min-h-[3.5rem] flex items-end justify-center pb-2">
+                                            {companySettings?.signature ? (
+                                                <img src={companySettings.signature} alt="Signature" className="max-h-14 w-auto object-contain" />
+                                            ) : (
+                                                <svg className="w-32 h-14 text-slate-700 opacity-60" viewBox="0 0 120 40">
+                                                    <path d="M10 30 C 30 10, 50 10, 70 30 S 110 30, 110 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                                                </svg>
+                                            )}
                                         </div>
                                         <div className="border-t-[1.5px] border-slate-300 pt-2.5">
-                                            <p className="text-[11px] font-black uppercase text-[#1a1a1a] italic tracking-tight">Your Name & Signature</p>
+                                            <p className="text-[11px] font-black uppercase text-[#1a1a1a] italic tracking-tight">Authorized Sign</p>
                                         </div>
                                     </div>
                                 </div>

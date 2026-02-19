@@ -41,4 +41,9 @@ class Lead extends Model
     {
         return $this->hasMany(CallLog::class);
     }
+
+    public function leadNotes()
+    {
+        return $this->hasMany(LeadNote::class);
+    }
 }

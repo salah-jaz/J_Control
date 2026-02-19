@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->string('phone')->nullable();
-            $table->string('role')->default('Staff'); // Admin, Manager, Staff
+            $table->string('role')->nullable()->default('Staff'); // Admin, Manager, Staff
             $table->string('department')->nullable();
-            $table->string('status')->default('Active'); // Active, Inactive
+            $table->string('status')->nullable()->default('Active'); // Active, Inactive
             $table->text('notes')->nullable();
         });
     }

@@ -1,8 +1,9 @@
-
 import api from "../api/axios";
 
 export const getTransactions = async () => {
     const response = await api.get("/transactions");
-    // The controller returns the data already formatted as we need it
     return response.data;
 };
+
+/** GET /transactions/{id} - returns full axios response so caller can use res.data */
+export const getTransaction = (id) => api.get(`/transactions/${id}`);

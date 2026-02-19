@@ -17,15 +17,22 @@ class Transaction extends Model
         'category',
         'method',
         'bank',
+        'bank_account_id',
         'reference_id',
         'description',
         'status',
         'related_id',
         'related_type',
+        'invoice_id',
     ];
 
     public function related()
     {
         return $this->morphTo();
+    }
+
+    public function bankAccount()
+    {
+        return $this->belongsTo(BankAccount::class, 'bank_account_id');
     }
 }

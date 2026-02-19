@@ -15,7 +15,7 @@ return new class extends Migration
      */
     public function up()
     {
-        DB::statement('ALTER TABLE transactions MODIFY COLUMN date DATE NULL');
+        // Handled in create table migration
     }
 
     /**
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down()
     {
-        DB::statement('ALTER TABLE transactions MODIFY COLUMN date DATE NOT NULL');
+        // Handled in create table migration
     }
 };

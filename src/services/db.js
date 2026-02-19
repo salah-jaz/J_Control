@@ -123,16 +123,21 @@ import api from '../api/axios';
 export const getLeads = async () => {
     try {
         const response = await api.get('/leads');
-        return response.data.map(lead => ({
-            ...lead,
-            firstName: lead.first_name,
-            lastName: lead.last_name,
-            jobTitle: lead.job_title,
-            assignedTo: lead.assigned_to,
-            createdAt: lead.created_at,
-            followUps: lead.follow_ups || lead.followUps || [],
-            callLogs: lead.call_logs || lead.callLogs || []
-        }));
+        return response.data.map(lead => {
+            const latestNote = lead.lead_notes?.[0] || lead.leadNotes?.[0];
+            return {
+                ...lead,
+                firstName: lead.first_name,
+                lastName: lead.last_name,
+                jobTitle: lead.job_title,
+                assignedTo: lead.assigned_to,
+                createdAt: lead.created_at,
+                followUps: lead.follow_ups || lead.followUps || [],
+                callLogs: lead.call_logs || lead.callLogs || [],
+                notesCount: lead.lead_notes_count ?? lead.notesCount ?? 0,
+                lastNote: latestNote ? { note: latestNote.note, noteType: latestNote.note_type, createdAt: latestNote.created_at } : null,
+            };
+        });
     } catch (error) {
         console.error("Failed to fetch leads:", error);
         return [];
@@ -188,7 +193,71 @@ export const deleteLead = async (id) => {
         console.error("Failed to delete lead:", error);
         return false;
     }
-}
+};
+
+const mapNote = (n) => ({
+    ...n,
+    id: n.id,
+    leadId: n.lead_id,
+    note: n.note,
+    noteType: n.note_type,
+    followUpDate: n.follow_up_date,
+    reminder: n.reminder,
+    createdBy: n.created_by,
+    createdAt: n.created_at,
+    updatedAt: n.updated_at,
+});
+
+export const getLeadNotes = async (leadId) => {
+    try {
+        const response = await api.get(`/leads/${leadId}/notes`);
+        const data = Array.isArray(response.data) ? response.data : [];
+        return data.map(mapNote);
+    } catch (error) {
+        console.error("Failed to fetch lead notes:", error);
+        return [];
+    }
+};
+
+export const createLeadNote = async (leadId, payload) => {
+    try {
+        const response = await api.post(`/leads/${leadId}/notes`, {
+            note: payload.note,
+            note_type: payload.noteType || 'General Note',
+            follow_up_date: payload.followUpDate || null,
+            reminder: payload.reminder ?? false,
+        });
+        return mapNote(response.data);
+    } catch (error) {
+        console.error("Failed to create lead note:", error);
+        throw error;
+    }
+};
+
+export const updateLeadNote = async (noteId, payload) => {
+    try {
+        const response = await api.put(`/notes/${noteId}`, {
+            note: payload.note,
+            note_type: payload.noteType,
+            follow_up_date: payload.followUpDate || null,
+            reminder: payload.reminder,
+        });
+        return mapNote(response.data);
+    } catch (error) {
+        console.error("Failed to update lead note:", error);
+        throw error;
+    }
+};
+
+export const deleteLeadNote = async (noteId) => {
+    try {
+        await api.delete(`/notes/${noteId}`);
+        return true;
+    } catch (error) {
+        console.error("Failed to delete lead note:", error);
+        return false;
+    }
+};
 
 export const getAssignees = () => {
     const stored = localStorage.getItem('assignees');
@@ -272,12 +341,33 @@ export const deleteFollowUp = async (id) => {
     }
 };
 
-export const getClients = async () => {
+/**
+ * @param {Object} [filters] - Optional: { search, status, gstType, location, dateRange, dateFrom, dateTo }
+ */
+export const getClients = async (filters = {}) => {
     try {
-        const response = await api.get('/clients');
+        const params = {};
+        if (filters.search != null && String(filters.search).trim() !== '') params.search = filters.search.trim();
+        if (filters.status != null && filters.status !== '') params.status = filters.status;
+        if (filters.gstType != null && filters.gstType !== '') params.gstType = filters.gstType;
+        if (filters.location != null && filters.location !== '') params.location = filters.location;
+        if (filters.dateRange != null && filters.dateRange !== '') params.dateRange = filters.dateRange;
+        if (filters.dateFrom != null && filters.dateFrom !== '') params.dateFrom = filters.dateFrom;
+        if (filters.dateTo != null && filters.dateTo !== '') params.dateTo = filters.dateTo;
+        const response = await api.get('/clients', { params });
         return response.data;
     } catch (error) {
         console.error("Failed to fetch clients:", error);
+        return [];
+    }
+};
+
+export const getClientLocations = async () => {
+    try {
+        const response = await api.get('/clients', { params: { locations_only: 1 } });
+        return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+        console.error("Failed to fetch client locations:", error);
         return [];
     }
 };

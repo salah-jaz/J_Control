@@ -1,740 +1,340 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Filter, Download, Trash2, Edit2, Upload, FileText, Landmark, User, Layers, Eye, Printer, X } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, Eye, X, User, Layers, Landmark, Wallet, FileText, AlertCircle, TrendingUp, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getInvoices, getClients, saveInvoice, deleteInvoice, getSettings } from '../services/db';
-import { getBankAccounts } from '../services/bankAccountService';
-import { getProducts } from '../services/productService';
 import clsx from 'clsx';
-import { useReactToPrint } from 'react-to-print';
 import { useLocation } from 'react-router-dom';
-
+import { getNextInvoiceNumber, getInvoiceSummary, getInvoices, deleteInvoice } from '../services/invoiceService';
+import { getClients } from '../services/db';
 import InvoiceView from '../components/InvoiceViewer';
-import SearchableSelect from '../components/SearchableSelect';
-import QuickProductForm from '../components/QuickProductForm';
+import InvoiceForm from '../components/InvoiceForm';
 
+function isDateInRange(dateStr, range) {
+  if (!dateStr || range === 'All') return true;
+  const d = new Date(dateStr);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+  if (range === 'Today') return d >= todayStart && d < new Date(todayStart.getTime() + 86400000);
+  if (range === 'This Week') return d >= weekStart;
+  if (range === 'This Month') return d >= monthStart;
+  if (range === 'This Year') return d >= yearStart;
+  return true;
+}
 
-const InvoiceForm = ({ isOpen, onClose, onSave, invoice }) => {
-    const [clients, setClients] = useState([]);
-    const [bankAccounts, setBankAccounts] = useState([]);
-    const [products, setProducts] = useState([]);
-    const [activeTab, setActiveTab] = useState('basic'); // basic, services, bank
+const StatCard = ({ title, value, icon: Icon, color }) => (
+  <div className="card hover:border-brand-200/50 group h-36 flex flex-col justify-between p-6">
+    <div className="flex justify-between items-start">
+      <div className={`p-3.5 rounded-xl ${color}`}>
+        <Icon className="w-6 h-6 text-white" />
+      </div>
+      <div className="text-right">
+        <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
+        <h3 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">{value}</h3>
+      </div>
+    </div>
+    <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
+      <div className={`h-full rounded-full ${color} opacity-30`} style={{ width: '70%' }} />
+    </div>
+  </div>
+);
 
-    // Form State
-    const [formData, setFormData] = useState({
-        clientId: '',
-        date: new Date().toISOString().split('T')[0],
-        status: 'Pending',
-        gst: 0,
-        discount: 0,
-        bankAccountId: '',
-        gpayNumber: '',
-    });
+export default function Invoices() {
+  const [invoices, setInvoices] = useState([]);
+  const [invoiceSummary, setInvoiceSummary] = useState(null);
+  const [clients, setClients] = useState([]);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState(null);
+  const [viewingInvoice, setViewingInvoice] = useState(null);
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState(null);
+  const [nextInvoiceNumberLoading, setNextInvoiceNumberLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [clientFilter, setClientFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [dateFilter, setDateFilter] = useState('All');
+  const location = useLocation();
 
-    const [items, setItems] = useState([
-        { sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }
-    ]);
-    const [qrCodeFile, setQrCodeFile] = useState(null);
-    const [qrCodePreview, setQrCodePreview] = useState(null);
+  useEffect(() => {
+    if (location.state?.openForm) {
+      setEditingInvoice(null);
+      setNextInvoiceNumber(null);
+      setIsFormOpen(true);
+    }
+    if (location.state?.initialStatus) setStatusFilter(location.state.initialStatus);
+    window.history.replaceState({}, document.title);
+  }, [location]);
 
-    // Quick Add Product State
-    const [quickForm, setQuickForm] = useState({ isOpen: false, rowIndex: null, query: '' });
+  const loadData = async () => {
+    try {
+      const [list, summary, clientsData] = await Promise.all([getInvoices(), getInvoiceSummary(), getClients()]);
+      setInvoices(Array.isArray(list) ? list : []);
+      setInvoiceSummary(summary);
+      setClients(clientsData || []);
+    } catch (e) {
+      console.error('Failed to load invoices', e);
+    }
+  };
 
-    // Load Initial Data
-    useEffect(() => {
-        const loadData = async () => {
-            const [clientsData, banksData, productsData] = await Promise.all([
-                getClients(),
-                getBankAccounts(),
-                getProducts()
-            ]);
-            setClients(clientsData);
-            setBankAccounts(banksData);
-            setProducts(productsData);
-        };
-        loadData();
-    }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
-    // Load Invoice Data on Edit
-    useEffect(() => {
-        if (invoice && isOpen) {
-            setFormData({
-                clientId: invoice.client_id || invoice.clientId || '',
-                date: typeof invoice.date === 'string' ? invoice.date.split('T')[0] : invoice.date,
-                status: invoice.status || 'Pending',
-                gst: parseFloat(invoice.gst || 0),
-                discount: parseFloat(invoice.discount || 0),
-                bankAccountId: invoice.bank_account_id || '',
-                gpayNumber: invoice.gpay_number || '',
-            });
-
-            if (invoice.items && invoice.items.length > 0) {
-                setItems(invoice.items.map((item, index) => ({
-                    sNo: index + 1,
-                    serviceName: item.service_name,
-                    paymentStatus: item.payment_status || 'Pending',
-                    amount: item.amount
-                })));
-            } else {
-                // Fallback if no items (migration)
-                if (invoice.amount && !invoice.items) {
-                    setItems([{ sNo: 1, serviceName: 'Service', paymentStatus: 'Pending', amount: invoice.amount }]);
-                } else {
-                    setItems([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
-                }
-            }
-
-            if (invoice.qr_code) {
-                // Determine if full URL or relative path
-                const API_BASE_URL = 'http://localhost:8000';
-                const url = invoice.qr_code.startsWith('http')
-                    ? invoice.qr_code
-                    : `${API_BASE_URL}/storage/${invoice.qr_code}`;
-                setQrCodePreview(url);
-            } else {
-                setQrCodePreview(null);
-            }
-            setQrCodeFile(null);
-        } else if (!invoice && isOpen) {
-            // Reset Form (New)
-            setFormData({
-                clientId: '',
-                date: new Date().toISOString().split('T')[0],
-                status: 'Pending',
-                gst: 0,
-                discount: 0,
-                bankAccountId: '',
-                gpayNumber: '',
-            });
-            setItems([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
-            setQrCodeFile(null);
-            setQrCodePreview(null);
-        }
-        setActiveTab('basic');
-    }, [invoice, isOpen]);
-
-    // Calculations
-    const calculateSubtotal = () => {
-        return items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-    };
-
-    const calculateGrandTotal = () => {
-        const subtotal = calculateSubtotal();
-        const gstAmount = subtotal * ((parseFloat(formData.gst) || 0) / 100);
-        const discountAmount = parseFloat(formData.discount) || 0;
-        return Math.max(0, subtotal + gstAmount - discountAmount);
-    };
-
-    // Item Handlers
-    const handleItemChange = (index, field, value) => {
-        const newItems = [...items];
-        newItems[index][field] = value;
-
-        if (field === 'serviceName') {
-            const product = products.find(p => p.name === value);
-            if (product) {
-                newItems[index].amount = product.price;
-            }
-        }
-
-        setItems(newItems);
-    };
-
-    const addItem = () => {
-        setItems([...items, { sNo: items.length + 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
-    };
-
-    const removeItem = (index) => {
-        if (items.length > 1) {
-            const newItems = items.filter((_, i) => i !== index).map((item, i) => ({ ...item, sNo: i + 1 }));
-            setItems(newItems);
-        }
-    };
-
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setQrCodeFile(file);
-            setQrCodePreview(URL.createObjectURL(file));
-        }
-    };
-
-    const handleQuickAddSuccess = (newProduct) => {
-        setProducts(prev => [newProduct, ...prev]);
-
-        if (quickForm.rowIndex !== null) {
-            // Update items directly to ensure price is set immediately
-            const newItems = [...items];
-            newItems[quickForm.rowIndex].serviceName = newProduct.name;
-            newItems[quickForm.rowIndex].amount = newProduct.price; // Set price immediately
-            setItems(newItems);
-        }
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        // Validation
-        if (!formData.clientId) {
-            toast.error("Please select a client");
-            return;
-        }
-        if (items.some(i => !i.serviceName || !i.amount)) {
-            toast.error("All service details (name and amount) are required");
-            return;
-        }
-
-        const client = clients.find(c => c.id == formData.clientId);
-
-        const data = new FormData();
-        if (invoice?.id) data.append('id', invoice.id);
-        data.append('client_id', formData.clientId);
-        data.append('client_name', client ? client.company_name : '');
-        data.append('date', formData.date);
-        data.append('status', formData.status);
-        data.append('gst', formData.gst);
-        data.append('discount', formData.discount);
-
-        data.append('bank_account_id', formData.bankAccountId);
-        data.append('gpay_number', formData.gpayNumber);
-
-        // Append Items
-        items.forEach((item, index) => {
-            data.append(`items[${index}][service_name]`, item.serviceName);
-            data.append(`items[${index}][payment_status]`, item.paymentStatus);
-            data.append(`items[${index}][amount]`, item.amount);
+  useEffect(() => {
+    if (isFormOpen && !editingInvoice) {
+      let cancelled = false;
+      setNextInvoiceNumberLoading(true);
+      getNextInvoiceNumber()
+        .then((number) => {
+          if (!cancelled) {
+            setNextInvoiceNumber(number || `INV-${new Date().getFullYear()}-draft`);
+            setNextInvoiceNumberLoading(false);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            console.error('Failed to load next invoice number:', err);
+            const year = new Date().getFullYear();
+            setNextInvoiceNumber(`INV-${year}-draft`);
+            setNextInvoiceNumberLoading(false);
+            toast('Invoice ID will be assigned when you save.', { icon: 'ℹ️', duration: 4000 });
+          }
         });
+      return () => { cancelled = true; };
+    }
+  }, [isFormOpen, editingInvoice]);
 
-        if (qrCodeFile) {
-            data.append('qr_code', qrCodeFile);
-        }
+  const filteredInvoices = invoices.filter((inv) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      const match =
+        (inv.invoice_number && inv.invoice_number.toLowerCase().includes(q)) ||
+        (inv.client_name && inv.client_name.toLowerCase().includes(q)) ||
+        (String(inv.id).includes(q));
+      if (!match) return false;
+    }
+    if (clientFilter) {
+      const invClientName = inv.client_name || inv.clientName;
+      const matchName = clients.find((c) => (c.company_name || c.client_name) === clientFilter);
+      const nameMatch = invClientName === clientFilter || (matchName && inv.client_id == matchName.id);
+      if (!nameMatch) return false;
+    }
+    if (statusFilter !== 'All' && inv.status !== statusFilter) return false;
+    if (!isDateInRange(inv.date, dateFilter)) return false;
+    return true;
+  });
 
-        try {
-            await onSave(data);
-            onClose();
-        } catch (error) {
-            console.error("Failed to save invoice", error);
-            toast.error("Failed to save invoice.");
-        }
-    };
+  const handleSave = async () => {
+    await loadData();
+  };
 
-    if (!isOpen) return null;
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this invoice? Linked income/transactions will be removed.')) return;
+    try {
+      await deleteInvoice(id);
+      toast.success('Invoice deleted');
+      loadData();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Failed to delete');
+    }
+  };
 
-    return (
-        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
-
-                {/* Header */}
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
-                    <div>
-                        <h3 className="text-xl font-bold text-slate-900 tracking-tight">{invoice ? 'Edit Invoice' : 'Create New Invoice'}</h3>
-                        <p className="text-sm text-slate-500 mt-1">Fill in the details below</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex border-b border-gray-200 px-6">
-                    <button
-                        onClick={() => setActiveTab('basic')}
-                        className={clsx(
-                            "px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
-                            activeTab === 'basic' ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-700"
-                        )}
-                    >
-                        <User className="w-4 h-4" /> Basic Info
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('services')}
-                        className={clsx(
-                            "px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
-                            activeTab === 'services' ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-700"
-                        )}
-                    >
-                        <Layers className="w-4 h-4" /> Service Details
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('bank')}
-                        className={clsx(
-                            "px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
-                            activeTab === 'bank' ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-700"
-                        )}
-                    >
-                        <Landmark className="w-4 h-4" /> Bank Details
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
-
-                    {/* Basic Info Tab */}
-                    {activeTab === 'basic' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
-                            <div>
-                                <label className="label">Invoice ID</label>
-                                <div className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-slate-500 font-medium">
-                                    {invoice ? `INV-${invoice.id}` : 'Auto Generated'}
-                                </div>
-                            </div>
-                            <div>
-                                <label className="label">Client</label>
-                                <select
-                                    value={formData.clientId}
-                                    onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                                    className="input"
-                                >
-                                    <option value="">Select a client</option>
-                                    {clients.map(c => (
-                                        <option key={c.id} value={c.id}>{c.company_name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="label">Date</label>
-                                <input
-                                    type="date"
-                                    value={formData.date}
-                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    className="input"
-                                />
-                            </div>
-                            <div>
-                                <label className="label">Status</label>
-                                <select
-                                    value={formData.status}
-                                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                    className="input"
-                                >
-                                    <option value="Pending">Pending</option>
-                                    <option value="Paid">Paid</option>
-                                    <option value="Overdue">Overdue</option>
-                                </select>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Service Details Tab */}
-                    {activeTab === 'services' && (
-                        <div className="space-y-4 animate-fade-in">
-                            <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
-                                        <tr>
-                                            <th className="px-4 py-3 w-16 text-center">S.No</th>
-                                            <th className="px-4 py-3">Service</th>
-                                            <th className="px-4 py-3">Payment Status</th>
-                                            <th className="px-4 py-3">Amount (₹)</th>
-                                            <th className="px-4 py-3 w-10"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {items.map((item, index) => (
-                                            <tr key={index}>
-                                                <td className="px-4 py-2 text-center text-gray-500">{item.sNo}</td>
-                                                <td className="px-4 py-2">
-                                                    <div className="flex gap-2">
-                                                        <SearchableSelect
-                                                            options={products.map(p => ({
-                                                                value: p.name,
-                                                                label: p.name,
-                                                                subLabel: `₹ ${parseFloat(p.price).toLocaleString()}`
-                                                            }))}
-                                                            value={item.serviceName}
-                                                            onChange={(val) => handleItemChange(index, 'serviceName', val)}
-                                                            placeholder="Select Service"
-                                                            creatable={true}
-                                                            className="flex-1"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setQuickForm({ isOpen: true, rowIndex: index, query: item.serviceName })}
-                                                            className="p-2 bg-brand-50 text-brand-600 rounded-lg hover:bg-brand-100 transition-colors border border-brand-200"
-                                                            title="Add New Service"
-                                                        >
-                                                            <Plus className="w-5 h-5" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-2">
-                                                    <select
-                                                        value={item.paymentStatus}
-                                                        onChange={(e) => handleItemChange(index, 'paymentStatus', e.target.value)}
-                                                        className="input"
-                                                    >
-                                                        <option value="Pending">Pending</option>
-                                                        <option value="Paid">Paid</option>
-                                                    </select>
-                                                </td>
-                                                <td className="px-4 py-2">
-                                                    <input
-                                                        type="number"
-                                                        value={item.amount}
-                                                        onChange={(e) => handleItemChange(index, 'amount', e.target.value)}
-                                                        className="input"
-                                                        placeholder="0.00"
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-2 text-center">
-                                                    {items.length > 1 && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeItem(index)}
-                                                            className="text-red-500 hover:text-red-700 transition"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={addItem}
-                                className="flex items-center gap-2 text-brand-600 font-bold hover:text-brand-700 transition ml-1"
-                            >
-                                <Plus className="w-4 h-4" /> Add Service Detail
-                            </button>
-
-                            <div className="bg-gray-50 p-4 rounded-xl space-y-4 border border-gray-100 mt-4">
-                                <h4 className="font-semibold text-gray-700 text-sm uppercase tracking-wide mb-2">Totals</h4>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="label">GST %</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            max="100"
-                                            value={formData.gst}
-                                            onChange={(e) => setFormData({ ...formData, gst: e.target.value })}
-                                            className="input"
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="label">Discount (₹)</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={formData.discount}
-                                            onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
-                                            className="input"
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Bank Details Tab */}
-                    {activeTab === 'bank' && (
-                        <div className="space-y-6 animate-fade-in">
-                            <div>
-                                <label className="label">Bank Account</label>
-                                <select
-                                    value={formData.bankAccountId}
-                                    onChange={(e) => {
-                                        const bankId = e.target.value;
-                                        setFormData({ ...formData, bankAccountId: bankId });
-
-                                        // Auto-preview bank QR if no specific file uploaded
-                                        if (!qrCodeFile) {
-                                            const selectedBank = bankAccounts.find(b => b.id == bankId);
-                                            if (selectedBank && selectedBank.qrCode) {
-                                                const API_BASE_URL = 'http://localhost:8000';
-                                                const url = selectedBank.qrCode.startsWith('http')
-                                                    ? selectedBank.qrCode
-                                                    : `${API_BASE_URL}/storage/${selectedBank.qrCode}`;
-                                                setQrCodePreview(url);
-                                            } else {
-                                                setQrCodePreview(null);
-                                            }
-                                        }
-                                    }}
-                                    className="input"
-                                >
-                                    <option value="">Select Bank Account</option>
-                                    {bankAccounts.map(b => (
-                                        <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber} ({b.accountName})</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="label">GPay Number</label>
-                                <input
-                                    type="text"
-                                    value={formData.gpayNumber}
-                                    onChange={(e) => setFormData({ ...formData, gpayNumber: e.target.value })}
-                                    className="input"
-                                    placeholder="Enter GPay Number"
-                                />
-                            </div>
-                            <div>
-                                <label className="label">QR Upload (Optional)</label>
-                                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition cursor-pointer relative">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleFileChange}
-                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                    />
-                                    <div className="flex flex-col items-center justify-center text-gray-400">
-                                        <Upload className="w-8 h-8 mb-2" />
-                                        <p className="text-sm font-medium">Click to upload Custom QR</p>
-                                        <p className="text-xs">Overrides Bank Default</p>
-                                    </div>
-                                    {qrCodePreview && (
-                                        <div className="mt-4">
-                                            <p className="text-xs text-green-600 font-medium mb-2">
-                                                {qrCodeFile ? "New File Selected:" : "Preview (Bank / Existing):"}
-                                            </p>
-                                            <img src={qrCodePreview} alt="QR Preview" className="mx-auto h-32 object-contain border border-gray-200 rounded-lg p-1 bg-white" />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </form>
-
-                <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
-                    <div>
-                        <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">Total Amount</p>
-                        <p className="text-3xl font-bold text-brand-600">₹ {calculateGrandTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="btn-secondary"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleSubmit}
-                            type="button"
-                            className="btn-primary shadow-lg shadow-brand-500/30"
-                        >
-                            {invoice ? 'Save Changes' : 'Create Invoice'}
-                        </button>
-                    </div>
-                </div>
-
-                <QuickProductForm
-                    isOpen={quickForm.isOpen}
-                    onClose={() => setQuickForm({ ...quickForm, isOpen: false })}
-                    onSuccess={handleQuickAddSuccess}
-                    initialName={quickForm.query}
-                />
-            </div>
+  return (
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Invoices</h1>
+          <p className="text-slate-500 mt-1 text-base md:text-lg">Manage billing and payments.</p>
         </div>
-    );
-};
+        <button
+          onClick={() => {
+            setEditingInvoice(null);
+            setNextInvoiceNumber(null);
+            setIsFormOpen(true);
+          }}
+          className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 shadow-lg shadow-brand-500/30"
+        >
+          <Plus size={20} /> New Invoice
+        </button>
+      </div>
 
-const Invoices = () => {
-    const [invoices, setInvoices] = useState([]);
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [isViewOpen, setIsViewOpen] = useState(false);
-    const [editingInvoice, setEditingInvoice] = useState(null);
-    const [viewingInvoice, setViewingInvoice] = useState(null);
-    const [filterStatus, setFilterStatus] = useState('All');
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <StatCard
+          title="Total Invoices"
+          value={invoiceSummary != null ? String(invoiceSummary.totalInvoices ?? 0) : '—'}
+          icon={FileText}
+          color="bg-slate-600"
+        />
+        <StatCard
+          title="Paid Invoices"
+          value={invoiceSummary != null ? String(invoiceSummary.paidInvoices ?? 0) : '—'}
+          icon={Receipt}
+          color="bg-emerald-600"
+        />
+        <StatCard
+          title="Pending / Overdue"
+          value={invoiceSummary != null ? String((invoiceSummary.pendingInvoices ?? 0) + (invoiceSummary.overdueInvoices ?? 0)) : '—'}
+          icon={AlertCircle}
+          color="bg-amber-600"
+        />
+        <StatCard
+          title="Total Revenue"
+          value={invoiceSummary != null ? `₹${Number(invoiceSummary.totalRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
+          icon={TrendingUp}
+          color="bg-blue-600"
+        />
+      </div>
 
-    const location = useLocation();
-
-    useEffect(() => {
-        if (location.state) {
-            if (location.state.openForm) {
-                setEditingInvoice(null);
-                setIsFormOpen(true);
-            }
-            if (location.state.initialStatus) {
-                setFilterStatus(location.state.initialStatus);
-            }
-            // Clear state so it doesn't persist on refresh/reload weirdly if we used replace, 
-            // but for now this is fine as one-off actions. Use navigation history replacement if needed.
-            window.history.replaceState({}, document.title);
-        }
-    }, [location]);
-
-    useEffect(() => {
-        const fetchInvoices = async () => {
-            const data = await getInvoices();
-            setInvoices(data);
-        };
-        fetchInvoices();
-    }, []);
-
-    const handleSave = async (invoiceData) => {
-        // invoiceData is FormData
-        await saveInvoice(invoiceData);
-        // Refresh list
-        const data = await getInvoices();
-        setInvoices(data);
-    };
-
-    const handleDelete = async (id) => {
-        if (confirm("Confirm delete invoice?")) {
-            try {
-                await deleteInvoice(id);
-                toast.success("Invoice deleted successfully");
-                const data = await getInvoices();
-                setInvoices(data);
-            } catch (error) {
-                toast.error("Failed to delete invoice");
-            }
-        }
-    };
-
-    const handleEdit = (invoice) => {
-        setEditingInvoice(invoice);
-        setIsFormOpen(true);
-    };
-
-    const handleView = (invoice) => {
-        setViewingInvoice(invoice);
-        setIsViewOpen(true);
-    };
-
-    const filteredInvoices = invoices.filter(inv =>
-        filterStatus === 'All' ? true : inv.status === filterStatus
-    );
-
-    return (
-        <div className="p-8 max-w-[1600px] mx-auto animate-fade-in space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Invoices</h1>
-                    <p className="text-slate-500 mt-1 text-lg">Manage your billing and payments.</p>
-                </div>
-                <button
-                    onClick={() => {
-                        setEditingInvoice(null);
-                        setIsFormOpen(true);
-                    }}
-                    className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
-                >
-                    <Plus className="h-5 w-5" />
-                    New Invoice
-                </button>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center space-x-1 bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
-                    {['All', 'Paid', 'Pending', 'Overdue'].map(status => (
-                        <button
-                            key={status}
-                            onClick={() => setFilterStatus(status)}
-                            className={clsx(
-                                "px-4 py-2 rounded-lg text-sm font-bold transition-all",
-                                filterStatus === status
-                                    ? "bg-brand-50 text-brand-700 shadow-sm"
-                                    : "text-slate-500 hover:text-slate-700 hover:bg-gray-50"
-                            )}
-                        >
-                            {status}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            <div className="card p-0 overflow-hidden min-h-[500px]">
-                <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                    <h3 className="font-bold text-slate-800">Invoice History</h3>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
-                            <tr>
-                                <th className="px-6 py-4">Invoice ID</th>
-                                <th className="px-6 py-4">Client</th>
-                                <th className="px-6 py-4">Date</th>
-                                <th className="px-6 py-4">Grand Total</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {filteredInvoices.map((inv) => (
-                                <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors group">
-                                    <td className="px-6 py-4 font-bold text-slate-900">#{inv.id}</td>
-                                    <td className="px-6 py-4 text-slate-700 font-medium">{inv.client_name || inv.clientName}</td>
-                                    <td className="px-6 py-4 text-slate-500 font-medium">{typeof inv.date === 'string' ? inv.date.split('T')[0] : inv.date}</td>
-                                    <td className="px-6 py-4 font-bold text-slate-900">
-                                        ₹{parseFloat(inv.grand_total || inv.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={clsx(
-                                            "badge",
-                                            inv.status === 'Paid' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                                                inv.status === 'Pending' ? "bg-amber-50 text-amber-700 border-amber-200" :
-                                                    "bg-rose-50 text-rose-700 border-rose-100"
-                                        )}>
-                                            <span className={clsx(
-                                                "w-1.5 h-1.5 rounded-full mr-1.5 inline-block",
-                                                inv.status === 'Paid' ? 'bg-emerald-500' :
-                                                    inv.status === 'Pending' ? 'bg-amber-500' : 'bg-rose-500'
-                                            )}></span>
-                                            {inv.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => handleView(inv)}
-                                                className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
-                                                title="View/Print Invoice"
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleEdit(inv)}
-                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                title="Edit Invoice"
-                                            >
-                                                <Edit2 className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(inv.id)}
-                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                title="Delete Invoice"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {filteredInvoices.length === 0 && (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400 italic font-medium">
-                                        No invoices found matching your filter.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <InvoiceForm
-                isOpen={isFormOpen}
-                onClose={() => setIsFormOpen(false)}
-                invoice={editingInvoice}
-                onSave={handleSave}
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search invoice..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full"
             />
-
-            <InvoiceView
-                isOpen={isViewOpen}
-                onClose={() => setIsViewOpen(false)}
-                invoice={viewingInvoice}
-            />
+          </div>
+          <select
+            value={clientFilter}
+            onChange={(e) => setClientFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[160px]"
+          >
+            <option value="">All Clients</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.company_name || c.client_name}>{c.company_name || c.client_name}</option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[120px]"
+          >
+            <option value="All">All</option>
+            <option value="Paid">Paid</option>
+            <option value="Pending">Pending</option>
+            <option value="Overdue">Overdue</option>
+          </select>
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[120px]"
+          >
+            <option value="All">All Time</option>
+            <option value="Today">Today</option>
+            <option value="This Week">This Week</option>
+            <option value="This Month">This Month</option>
+            <option value="This Year">This Year</option>
+          </select>
         </div>
-    );
-};
+      </div>
 
-export default Invoices;
+      <div className="card p-0 overflow-hidden">
+        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
+          <h3 className="font-bold text-slate-800">Invoice History</h3>
+          <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
+            Showing {filteredInvoices.length} of {invoices.length}
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left min-w-[700px]">
+            <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
+              <tr>
+                <th className="px-6 py-4">Invoice ID</th>
+                <th className="px-6 py-4">Client</th>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4 text-right">Grand Total</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filteredInvoices.map((inv) => (
+                <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-6 py-4 font-mono font-bold text-slate-800">{inv.invoice_number || `#${inv.id}`}</td>
+                  <td className="px-6 py-4 font-medium text-slate-900">{inv.client_name || inv.clientName || '—'}</td>
+                  <td className="px-6 py-4 text-slate-600 font-mono text-xs">
+                    {typeof inv.date === 'string' ? inv.date.split('T')[0] : (inv.date || '—')}
+                  </td>
+                  <td className="px-6 py-4 text-right font-bold text-slate-900">
+                    ₹{parseFloat(inv.grand_total ?? inv.amount ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={clsx(
+                        'badge',
+                        inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                          inv.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            'bg-rose-50 text-rose-700 border-rose-100'
+                      )}
+                    >
+                      <span
+                        className={clsx(
+                          'w-1.5 h-1.5 rounded-full mr-1.5 inline-block',
+                          inv.status === 'Paid' ? 'bg-emerald-500' : inv.status === 'Pending' ? 'bg-amber-500' : 'bg-rose-500'
+                        )}
+                      />
+                      {inv.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => setViewingInvoice(inv)}
+                        className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                        title="View"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      <button
+                        onClick={() => { setEditingInvoice(inv); setIsFormOpen(true); }}
+                        className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        title="Edit"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(inv.id)}
+                        className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredInvoices.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-slate-500 italic">
+                    No invoices found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <InvoiceForm
+        isOpen={isFormOpen}
+        invoice={editingInvoice}
+        nextInvoiceNumber={nextInvoiceNumber}
+        nextInvoiceNumberLoading={nextInvoiceNumberLoading}
+        onClose={() => setIsFormOpen(false)}
+        onSave={handleSave}
+      />
+
+      {viewingInvoice && (
+        <InvoiceView
+          isOpen={!!viewingInvoice}
+          onClose={() => setViewingInvoice(null)}
+          invoice={viewingInvoice}
+        />
+      )}
+    </div>
+  );
+}
