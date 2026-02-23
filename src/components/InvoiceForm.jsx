@@ -5,7 +5,7 @@ import clsx from 'clsx';
 import { createInvoice, updateInvoice } from '../services/invoiceService';
 import { getClients } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
-import AgreementBuilder from './AgreementBuilder';
+import AgreementTab from './AgreementTab';
 
 const emptyForm = {
   clientId: '',
@@ -734,10 +734,7 @@ const InvoiceForm = ({
 
             {activeTab === 'agreement' && (
               <div className="md:col-span-2">
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-base font-bold text-slate-800 mb-4">Agreement / Document Content</h3>
-                  <AgreementBuilder value={agreementContent} onChange={setAgreementContent} />
-                </div>
+                <AgreementTab value={agreementContent} onChange={setAgreementContent} />
               </div>
             )}
           </div>

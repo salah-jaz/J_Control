@@ -10,7 +10,7 @@ import {
   setDefaultTemplate,
 } from '../utils/printTemplateStorage';
 
-const MODULE_ORDER = ['quotations', 'invoices'];
+const MODULE_ORDER = ['quotations', 'invoices', 'agreements'];
 
 export default function PrintTemplatesList() {
   const [templates, setTemplates] = useState(() => getTemplates());
@@ -53,7 +53,7 @@ export default function PrintTemplatesList() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Print Templates</h1>
-          <p className="text-slate-500 mt-1">Manage print layouts for Invoices, Quotations, Orders, and Purchases.</p>
+          <p className="text-slate-500 mt-1">Manage print layouts for Invoices, Quotations, and Agreements.</p>
         </div>
         <Link
           to="/print-templates/new"
