@@ -16,6 +16,7 @@ import {
     getDefaultPrintConfigKeys,
     getStoredPrintConfig,
 } from '../config/printTemplateModules';
+import { getApiOrigin } from '../api/axios';
 import PrintConfigModal from './PrintConfigModal';
 import AgreementContentDisplay from './AgreementContentDisplay';
 
@@ -90,7 +91,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
         const html = defaultTemplate.template_html
             ? getEffectiveTemplateHtml(defaultTemplate, 'invoices')
             : buildFullTemplateHtml(filterTemplateByPrintConfig(defaultTemplate, keys), 'invoices');
-        const data = buildInvoicePrintData(invoice, companySettings, client, bank);
+        const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
         return resolveTemplateHtmlWithData(html, 'invoices', data);
     }, [defaultTemplate, companySettings, invoice, client, bank, getPrintConfigKeys]);
 
@@ -101,7 +102,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
             const html = defaultTemplate.template_html
                 ? getEffectiveTemplateHtml(defaultTemplate, 'invoices')
                 : buildFullTemplateHtml(filtered, 'invoices');
-            const data = buildInvoicePrintData(invoice, companySettings, client, bank);
+            const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
             return resolveTemplateHtmlWithData(html, 'invoices', data);
         },
         [defaultTemplate, companySettings, invoice, client, bank]

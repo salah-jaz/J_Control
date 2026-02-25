@@ -8,6 +8,13 @@ const api = axios.create({
     },
 });
 
+/** Origin for API (used to resolve relative image URLs in print, e.g. logo/signature/seal). */
+export function getApiOrigin() {
+    const base = api.defaults.baseURL;
+    if (base && typeof base === 'string') return base.replace(/\/api\/?$/, '') || base;
+    return typeof window !== 'undefined' ? window.location.origin : '';
+}
+
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {

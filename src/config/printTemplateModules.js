@@ -11,6 +11,7 @@ export const MODULES = [
 
 /** Section keys for full invoice layout (used by builder and buildFullTemplateHtml). */
 export const TEMPLATE_SECTIONS = [
+  'title',
   'header',
   'customerLeft',
   'customerRight',
@@ -19,6 +20,7 @@ export const TEMPLATE_SECTIONS = [
   'bankDetails',
   'contactInfo',
   'signature',
+  'termsAndConditions',
   'footer',
 ];
 
@@ -162,6 +164,7 @@ export const DEFAULT_AGREEMENT_STYLES = {
 
 /** Print configuration: checkboxes for which fields to include in print/PDF. Each option maps to template variables. */
 export const PRINT_CONFIG_OPTIONS = [
+  { key: 'title', label: 'Title', variables: ['invoice_title'] },
   { key: 'company_logo', label: 'Company Logo', variables: ['company_logo'] },
   { key: 'company_name', label: 'Company Name', variables: ['company_name'] },
   { key: 'company_address', label: 'Company Address', variables: ['company_address'] },
@@ -184,7 +187,10 @@ export const PRINT_CONFIG_OPTIONS = [
   { key: 'balance_due', label: 'Balance Due', variables: ['balance_due'] },
   { key: 'bank_details', label: 'Bank Details', variables: ['bank_name', 'bank_account_number', 'ifsc_code'] },
   { key: 'signature', label: 'Signature', variables: ['authorized_signature'] },
+  { key: 'authorized_signature_text', label: 'Authorized Signature (Text)', variables: ['authorized_signature_text'] },
+  { key: 'seal', label: 'Seal Image', variables: ['company_seal'] },
   { key: 'terms_and_conditions', label: 'Terms and Conditions', variables: ['terms_and_conditions'] },
+  { key: 'notes', label: 'Notes', variables: ['company_notes'] },
 ];
 
 /** Get all option keys (for "all selected" default). */
@@ -236,6 +242,7 @@ export function setStoredPrintConfig(moduleKey, selectedKeys) {
 export const MODULE_FIELDS = {
   invoices: [
     // Header / Company
+    { id: 'invoice_title', label: 'Title', variable: 'invoice_title' },
     { id: 'company_logo', label: 'Company Logo', variable: 'company_logo' },
     { id: 'company_name', label: 'Company Name', variable: 'company_name' },
     { id: 'company_address', label: 'Company Address', variable: 'company_address' },
@@ -243,6 +250,7 @@ export const MODULE_FIELDS = {
     { id: 'company_email', label: 'Company Email', variable: 'company_email' },
     { id: 'invoice_id', label: 'Invoice ID', variable: 'invoice_number' },
     { id: 'invoice_date', label: 'Invoice Date', variable: 'date' },
+    { id: 'due_date', label: 'Due Date', variable: 'due_date' },
     // Customer (Invoice To)
     { id: 'customer_name', label: 'Customer Name', variable: 'client_name' },
     { id: 'customer_address', label: 'Customer Address', variable: 'customer_address' },
@@ -264,9 +272,15 @@ export const MODULE_FIELDS = {
     { id: 'ifsc_code', label: 'IFSC Code', variable: 'ifsc_code' },
     // Signature & Footer
     { id: 'authorized_signature', label: 'Authorized Signature', variable: 'authorized_signature' },
+    { id: 'authorized_signature_text', label: 'Authorized Signature (Text)', variable: 'authorized_signature_text' },
+    { id: 'designation', label: 'Designation', variable: 'designation' },
+    { id: 'company_seal', label: 'Seal Image', variable: 'company_seal' },
     { id: 'terms_and_conditions', label: 'Terms and Conditions', variable: 'terms_and_conditions' },
+    { id: 'company_notes', label: 'Notes', variable: 'company_notes' },
   ],
   quotations: [
+    // Title & Header
+    { id: 'quotation_title', label: 'Title', variable: 'quotation_title' },
     { id: 'company_logo', label: 'Company Logo', variable: 'company_logo' },
     { id: 'company_name', label: 'Company Name', variable: 'company_name' },
     { id: 'company_address', label: 'Company Address', variable: 'company_address' },
@@ -275,12 +289,31 @@ export const MODULE_FIELDS = {
     { id: 'quotation_id', label: 'Quotation ID', variable: 'quotation_number' },
     { id: 'quotation_date', label: 'Quotation Date', variable: 'date' },
     { id: 'valid_until', label: 'Valid Until', variable: 'valid_until' },
+    // Customer (Client)
     { id: 'client_name', label: 'Client Name', variable: 'client_name' },
     { id: 'customer_address', label: 'Customer Address', variable: 'customer_address' },
     { id: 'customer_email', label: 'Customer Email', variable: 'customer_email' },
-    { id: 'items_table', label: 'Items Table', variable: 'items_table' },
+    { id: 'customer_phone', label: 'Customer Phone', variable: 'customer_phone' },
+    // Payment & Totals
+    { id: 'payment_status', label: 'Payment Status', variable: 'payment_status' },
+    { id: 'subtotal', label: 'Subtotal', variable: 'subtotal' },
+    { id: 'discount', label: 'Discount', variable: 'discount' },
+    { id: 'tax', label: 'Tax', variable: 'tax_amount' },
     { id: 'total_amount', label: 'Total Amount', variable: 'total' },
+    { id: 'paid_amount', label: 'Paid Amount', variable: 'paid_amount' },
+    { id: 'balance_due', label: 'Balance Due', variable: 'balance_due' },
+    // Items
+    { id: 'items_table', label: 'Items Table', variable: 'items_table' },
+    // Bank
+    { id: 'bank_name', label: 'Bank Name', variable: 'bank_name' },
+    { id: 'bank_account_number', label: 'Bank Account Number', variable: 'bank_account_number' },
+    { id: 'ifsc_code', label: 'IFSC Code', variable: 'ifsc_code' },
+    // Signature & Footer
+    { id: 'authorized_signature', label: 'Authorized Signature', variable: 'authorized_signature' },
+    { id: 'authorized_signature_text', label: 'Authorized Signature (Text)', variable: 'authorized_signature_text' },
+    { id: 'company_seal', label: 'Seal Image', variable: 'company_seal' },
     { id: 'terms_and_conditions', label: 'Terms and Conditions', variable: 'terms_and_conditions' },
+    { id: 'company_notes', label: 'Notes', variable: 'company_notes' },
   ],
   orders: [
     { id: 'order_id', label: 'Order ID', variable: 'order_number' },
@@ -345,12 +378,153 @@ export const MODULE_FIELDS = {
   ],
 };
 
+/** Variable → section mapping so we can sync Builder from custom HTML (invoices / quotations / agreements). */
+const VARIABLE_SECTION_MAP = {
+  invoices: {
+    invoice_title: 'title',
+    company_logo: 'header',
+    company_name: 'header',
+    company_address: 'header',
+    company_phone: 'header',
+    company_email: 'header',
+    invoice_number: 'header',
+    date: 'header',
+    due_date: 'header',
+    client_name: 'customerLeft',
+    customer_address: 'customerLeft',
+    customer_email: 'customerLeft',
+    customer_phone: 'customerLeft',
+    items_table: 'itemsTable',
+    subtotal: 'totals',
+    discount: 'totals',
+    tax_amount: 'totals',
+    grand_total: 'totals',
+    paid_amount: 'totals',
+    balance_due: 'totals',
+    bank_name: 'bankDetails',
+    bank_account_number: 'bankDetails',
+    ifsc_code: 'bankDetails',
+    authorized_signature: 'signature',
+    authorized_signature_text: 'signature',
+    designation: 'signature',
+    company_seal: 'signature',
+    terms_and_conditions: 'termsAndConditions',
+    company_notes: 'termsAndConditions',
+  },
+  quotations: {
+    quotation_title: 'title',
+    company_logo: 'header',
+    company_name: 'header',
+    company_address: 'header',
+    company_phone: 'header',
+    company_email: 'header',
+    quotation_number: 'header',
+    date: 'header',
+    valid_until: 'header',
+    client_name: 'customerLeft',
+    customer_address: 'customerLeft',
+    customer_email: 'customerLeft',
+    customer_phone: 'customerLeft',
+    payment_status: 'totals',
+    subtotal: 'totals',
+    discount: 'totals',
+    tax_amount: 'totals',
+    total: 'totals',
+    paid_amount: 'totals',
+    balance_due: 'totals',
+    items_table: 'itemsTable',
+    bank_name: 'bankDetails',
+    bank_account_number: 'bankDetails',
+    ifsc_code: 'bankDetails',
+    authorized_signature: 'signature',
+    authorized_signature_text: 'signature',
+    company_seal: 'signature',
+    terms_and_conditions: 'termsAndConditions',
+    company_notes: 'termsAndConditions',
+  },
+  agreements: {
+    company_logo: 'header',
+    company_name: 'header',
+    company_address: 'header',
+    company_email: 'header',
+    company_phone: 'header',
+    agreement_title: 'header',
+    agreement_reference_number: 'header',
+    agreement_date: 'header',
+    provider_name: 'partyDetailsProvider',
+    provider_address: 'partyDetailsProvider',
+    provider_email: 'partyDetailsProvider',
+    provider_phone: 'partyDetailsProvider',
+    client_name: 'partyDetailsClient',
+    client_address: 'partyDetailsClient',
+    client_email: 'partyDetailsClient',
+    client_phone: 'partyDetailsClient',
+    agreement_content: 'body',
+    total_amount: 'footer',
+    payment_terms: 'footer',
+    start_date: 'footer',
+    end_date: 'footer',
+    agreement_terms_and_conditions: 'footer',
+    provider_signature: 'signatureProvider',
+    provider_signature_name: 'signatureProvider',
+    provider_signature_date: 'signatureProvider',
+    client_signature: 'signatureClient',
+    client_signature_name: 'signatureClient',
+    client_signature_date: 'signatureClient',
+    company_footer_text: 'footer',
+    company_website: 'footer',
+    company_gst_number: 'footer',
+    document_title: 'footer',
+    created_date: 'footer',
+    created_by: 'footer',
+    page_number: 'footer',
+  },
+};
+
+/**
+ * Parse template HTML for {{prefix.variable}} placeholders and return a template object (section -> fields)
+ * so the Builder can show which fields are used when the user has custom HTML.
+ */
+export function parseTemplateFromHtml(html, moduleKey) {
+  if (!html || typeof html !== 'string') return null;
+  const prefix = MODULES.find((m) => m.value === moduleKey)?.prefix || 'invoice';
+  const sectionMap = VARIABLE_SECTION_MAP[moduleKey];
+  const fieldsList = MODULE_FIELDS[moduleKey];
+  if (!sectionMap || !fieldsList) return null;
+  const re = new RegExp(`\\{\\{${prefix}\\.([a-z0-9_]+)\\}\\}`, 'gi');
+  const seen = new Set();
+  const variables = [];
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const variable = m[1].toLowerCase();
+    if (!seen.has(variable)) {
+      seen.add(variable);
+      variables.push(variable);
+    }
+  }
+  if (variables.length === 0) return null;
+  const fieldByVar = Object.fromEntries((fieldsList || []).map((f) => [f.variable, f]));
+  const template = {};
+  const sectionKeys = moduleKey === 'agreements' ? AGREEMENT_TEMPLATE_SECTIONS : [...TEMPLATE_SECTIONS, 'body'];
+  sectionKeys.forEach((key) => { template[key] = []; });
+  variables.forEach((variable) => {
+    const section = sectionMap[variable];
+    const field = fieldByVar[variable];
+    if (section && template[section] && field) {
+      template[section].push({ id: field.id, label: field.label, variable: field.variable });
+    }
+  });
+  return template;
+}
+
 /** Minimal CSS for dynamic print layout – only styles used when HTML is built strictly from Builder fields. */
 export const MINIMAL_PRINT_STYLES = `
   .print-doc-dynamic { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; max-width: 800px; margin: 0 auto; padding: 16px; }
   .print-doc-dynamic .print-section { margin-bottom: 1rem; }
   .print-doc-dynamic .print-field { display: block; margin-bottom: 0.5rem; }
   .print-doc-dynamic .print-field:last-child { margin-bottom: 0; }
+  .print-doc-dynamic .seal-image-wrap { display: block; margin-bottom: 0.5rem; }
+  .print-doc-dynamic .seal-image-wrap .seal-image { max-height: 48px; max-width: 80px; display: inline-block; vertical-align: middle; object-fit: contain; }
   @media print { .print-doc-dynamic { max-width: 100%; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 `;
 
@@ -387,6 +561,7 @@ export const PRINT_PREVIEW_STYLES = `
   .print-signature { text-align: right; margin-top: 32px; }
   .print-signature .sig-label { font-size: 12px; color: #64748b; margin-top: 8px; }
   .print-signature .sig-image { max-height: 48px; max-width: 140px; margin-left: auto; display: block; }
+  .print-signature .seal-image { max-height: 48px; max-width: 80px; display: inline-block; vertical-align: middle; }
   .print-footer { border-top: 2px solid #e2e8f0; padding-top: 16px; margin-top: 24px; font-size: 12px; color: #64748b; }
   .print-footer .footer-row { margin-bottom: 6px; }
   .print-section:empty { display: none !important; }
@@ -565,6 +740,7 @@ export function getSampleData(moduleKey) {
   const agreementTableHtml = SAMPLE_ITEMS_TABLE_HTML.agreement || '';
   const samples = {
     invoice: {
+      invoice_title: 'INVOICE',
       company_logo: '<div class="company-logo" style="height:56px;width:160px;background:#e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#64748b;font-weight:600">Company Logo</div>',
       company_name: 'J-Control Pvt Ltd',
       company_address: '123 Business Park, Sector 5\nMumbai, Maharashtra 400001',
@@ -572,6 +748,7 @@ export function getSampleData(moduleKey) {
       company_email: 'billing@jcontrol.com',
       invoice_number: 'INV-2026-00001',
       date: '19 Feb 2026',
+      due_date: '19 Mar 2026',
       client_name: 'ABC Pvt Ltd',
       customer_address: '456 Client Avenue, Andheri East\nMumbai 400069',
       customer_email: 'accounts@abcpvt.com',
@@ -588,9 +765,14 @@ export function getSampleData(moduleKey) {
       bank_account_number: 'XXXX XXXX 1234',
       ifsc_code: 'HDFC0001234',
       authorized_signature: 'Authorized Signatory',
+      authorized_signature_text: 'Authorized Signatory',
+      designation: 'Director',
+      company_seal: '<div class="seal-image" style="height:48px;width:80px;background:#e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#64748b">Seal</div>',
       terms_and_conditions: 'Payment due within 30 days. Please quote invoice number when paying.',
+      company_notes: 'Additional notes from company settings. Shown on invoice when added to template.',
     },
     quotation: {
+      quotation_title: 'QUOTATION',
       company_logo: '<div class="company-logo" style="height:48px;width:120px;background:#e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#64748b">Logo</div>',
       company_name: 'J-Control Pvt Ltd',
       company_address: '123 Business Park, Mumbai 400001',
@@ -602,9 +784,23 @@ export function getSampleData(moduleKey) {
       client_name: 'XYZ Corp',
       customer_address: '456 Client Ave, Mumbai',
       customer_email: 'client@xyz.com',
+      customer_phone: '+91 98765 43210',
+      payment_status: '<span class="payment-badge pending">Pending</span>',
       items_table: tableHtml,
+      subtotal: '₹14,000.00',
+      discount: '₹0.00',
+      tax_amount: '₹1,000.00',
       total: '₹15,000.00',
+      paid_amount: '₹0.00',
+      balance_due: '₹15,000.00',
+      bank_name: 'HDFC Bank',
+      bank_account_number: 'XXXX XXXX 1234',
+      ifsc_code: 'HDFC0001234',
+      authorized_signature: 'Authorized Signatory',
+      authorized_signature_text: 'Authorized Signatory',
+      company_seal: '<div class="seal-image" style="height:48px;width:80px;background:#e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#64748b">Seal</div>',
       terms_and_conditions: 'Valid for 30 days. Terms apply.',
+      company_notes: 'Additional notes from company settings.',
     },
     order: {
       order_number: 'ORD-2026-001',
@@ -778,6 +974,9 @@ function buildDynamicTemplateBody(template, moduleKey) {
     const isSignatureName = moduleKey === 'agreements' && (variable === 'provider_signature_name' || variable === 'client_signature_name');
     if (isSignatureName) {
       return `<div class="agreement-signature-name">${ph}</div>`;
+    }
+    if (moduleKey !== 'agreements' && sectionKey === 'signature' && variable === 'company_seal') {
+      return `<div class="print-field seal-image-wrap">${ph}</div>`;
     }
     if (moduleKey === 'agreements' && sectionKey === 'header') {
       if (variable === 'company_logo') return `<div class="print-field agreement-company-logo">${ph}</div>`;
@@ -1153,8 +1352,25 @@ export function buildItemsTableHtml(items, type = 'invoice') {
   return `<table class="print-table">${thead}<tbody>${rows.join('')}</tbody></table>`;
 }
 
+/**
+ * Resolve image URL to absolute so it loads in print/iframe (same or cross-origin).
+ * If url is already http(s) absolute, return as-is. If relative, prepend baseUrl.
+ */
+export function toAbsoluteImageUrl(url, baseUrl) {
+  if (!url || typeof url !== 'string') return url;
+  if (/^https?:\/\//i.test(url)) return url;
+  if (!baseUrl || typeof baseUrl !== 'string') return url;
+  const base = baseUrl.replace(/\/+$/, '');
+  return url.startsWith('/') ? base + url : base + '/' + url;
+}
+
 /** Build flat data object for invoice print (matches template variables). */
-export function buildInvoicePrintData(invoice, company = {}, client = null, bank = null) {
+export function buildInvoicePrintData(invoice, company = {}, client = null, bank = null, options = {}) {
+  const baseUrl = options.baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+  const logoUrl = toAbsoluteImageUrl(company?.logo, baseUrl);
+  const signatureUrl = toAbsoluteImageUrl(company?.signature, baseUrl);
+  const sealUrl = toAbsoluteImageUrl(company?.seal, baseUrl);
+
   const items = invoice?.items || [];
   const subtotal = parseFloat(invoice?.amount) || items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
   const gst = parseFloat(invoice?.gst) || 0;
@@ -1172,12 +1388,14 @@ export function buildInvoicePrintData(invoice, company = {}, client = null, bank
   const balanceDue = Math.max(0, grandTotal - paidAmount);
   const fmt = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
   const dateStr = invoice?.date ? (typeof invoice.date === 'string' ? invoice.date.split('T')[0] : new Date(invoice.date).toLocaleDateString()) : '—';
+  const dueDateStr = invoice?.due_date ? (typeof invoice.due_date === 'string' ? invoice.due_date.split('T')[0] : new Date(invoice.due_date).toLocaleDateString()) : dateStr;
   const paymentStatus =
     paidAmount >= grandTotal ? '<span class="payment-badge paid">Paid</span>' : paidAmount > 0 ? '<span class="payment-badge partial">Partially Paid</span>' : '<span class="payment-badge pending">Pending</span>';
-  const companyLogo = company?.logo ? `<img src="${company.logo}" alt="Logo" class="company-logo" style="max-height:56px;max-width:160px;object-fit:contain" />` : '<div class="company-logo" style="height:56px;width:160px;background:#e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#64748b">Logo</div>';
+  const companyLogo = logoUrl ? `<img src="${logoUrl}" alt="Logo" class="company-logo" style="max-height:56px;max-width:160px;object-fit:contain" />` : '<div class="company-logo" style="height:56px;width:160px;background:#e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#64748b">Logo</div>';
   const clientName = client ? (client.company_name || client.client_name || '') : '';
   const clientAddress = client ? [client.address_line_1, client.address_line_2, client.city, client.state, client.country].filter(Boolean).join(', ') : '';
   return {
+    invoice_title: 'INVOICE',
     company_logo: companyLogo,
     company_name: company?.name || '',
     company_address: company?.address || '',
@@ -1185,6 +1403,7 @@ export function buildInvoicePrintData(invoice, company = {}, client = null, bank
     company_email: company?.email || '',
     invoice_number: invoice?.id ?? invoice?.invoice_no ?? '—',
     date: dateStr,
+    due_date: dueDateStr,
     client_name: clientName,
     customer_address: clientAddress,
     customer_email: client?.email_address || client?.email || '',
@@ -1200,8 +1419,12 @@ export function buildInvoicePrintData(invoice, company = {}, client = null, bank
     bank_name: bank?.bankName || bank?.bank_name || '',
     bank_account_number: bank?.accountNumber || bank?.account_number || '',
     ifsc_code: bank?.ifsc || bank?.ifsc_code || '',
-    authorized_signature: company?.signature ? `<img src="${company.signature}" alt="Signature" class="sig-image" />` : (company?.name || 'Authorized Signatory'),
+    authorized_signature: signatureUrl ? `<img src="${signatureUrl}" alt="Signature" class="sig-image" style="max-height:48px;object-fit:contain" />` : (company?.name || 'Authorized Signatory'),
+    authorized_signature_text: company?.authorized_signature_text || '',
+    designation: company?.designation || '',
+    company_seal: sealUrl ? `<img src="${sealUrl}" alt="Seal" class="seal-image" style="max-height:48px;max-width:80px;object-fit:contain" />` : '',
     terms_and_conditions: company?.terms || '',
+    company_notes: company?.notes || '',
   };
 }
 
@@ -1449,20 +1672,26 @@ export function buildAgreementPrintData(agreement, company = {}, client = null, 
 }
 
 /** Build flat data object for quotation print (matches template variables). */
-export function buildQuotationPrintData(quotation, company = {}) {
+export function buildQuotationPrintData(quotation, company = {}, bank = null) {
   const client = quotation?.client;
   const items = quotation?.items || [];
-  const subtotal = parseFloat(quotation?.subtotal) || 0;
-  const discount = parseFloat(quotation?.discount) || 0;
-  const tax = parseFloat(quotation?.tax) || 0;
-  const total = parseFloat(quotation?.total) || 0;
+  const subtotalVal = parseFloat(quotation?.subtotal) || 0;
+  const discountVal = parseFloat(quotation?.discount) || 0;
+  const taxPct = parseFloat(quotation?.tax) || 0;
+  const taxAmount = subtotalVal * (taxPct / 100);
+  const total = parseFloat(quotation?.total) || Math.max(0, subtotalVal - discountVal + taxAmount);
   const dateStr = quotation?.date ? (typeof quotation.date === 'string' ? quotation.date.split('T')[0] : quotation.date) : '—';
   const validStr = quotation?.expiry_date || quotation?.valid_until ? (typeof (quotation?.expiry_date || quotation?.valid_until) === 'string' ? (quotation.expiry_date || quotation.valid_until).split('T')[0] : '—') : '—';
   const fmt = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
   const clientName = client ? (client.company_name || client.client_name || '') : '—';
   const clientAddress = client ? [client.address_line_1, client.address_line_2, client.city, client.state, client.country].filter(Boolean).join(', ') : '';
+  const clientPhone = client?.mobile_number || client?.phone || '';
   const companyLogo = company?.logo ? `<img src="${company.logo}" alt="Logo" class="company-logo" style="max-height:48px;max-width:120px;object-fit:contain" />` : '<div class="company-logo" style="height:48px;width:120px;background:#e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#64748b">Logo</div>';
+  const paymentStatus = quotation?.status === 'Accepted' ? '<span class="payment-badge paid">Accepted</span>' : quotation?.status === 'Rejected' ? '<span class="payment-badge pending">Rejected</span>' : '<span class="payment-badge pending">Pending</span>';
+  const authorizedSignature = company?.signature ? `<img src="${company.signature}" alt="Signature" class="sig-image" style="max-height:48px;object-fit:contain" />` : (company?.name || 'Authorized Signatory');
+  const companySeal = company?.seal ? `<img src="${company.seal}" alt="Seal" class="seal-image" style="max-height:48px;max-width:80px;object-fit:contain" />` : '';
   return {
+    quotation_title: 'QUOTATION',
     company_logo: companyLogo,
     company_name: company?.name || '',
     company_address: company?.address || '',
@@ -1474,8 +1703,22 @@ export function buildQuotationPrintData(quotation, company = {}) {
     client_name: clientName,
     customer_address: clientAddress,
     customer_email: client?.email_address || client?.email || '',
+    customer_phone: clientPhone,
+    payment_status: paymentStatus,
     items_table: buildItemsTableHtml(items, 'quotation'),
+    subtotal: fmt(subtotalVal),
+    discount: fmt(discountVal),
+    tax_amount: fmt(taxAmount),
     total: fmt(total),
+    paid_amount: fmt(0),
+    balance_due: fmt(total),
+    bank_name: bank?.bankName || bank?.bank_name || '',
+    bank_account_number: bank?.accountNumber || bank?.account_number || '',
+    ifsc_code: bank?.ifsc || bank?.ifsc_code || '',
+    authorized_signature: authorizedSignature,
+    authorized_signature_text: company?.authorized_signature_text || '',
+    company_seal: companySeal,
     terms_and_conditions: quotation?.notes || company?.terms || '',
+    company_notes: company?.notes || '',
   };
 }

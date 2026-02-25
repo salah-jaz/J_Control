@@ -13,7 +13,9 @@ import {
   resolveTemplateHtml,
   resolveTemplateHtmlWithData,
   getSampleData,
+  parseTemplateFromHtml,
 } from '../config/printTemplateModules';
+import { JAZ_INVOICE_TEMPLATE_HTML, JAZ_INVOICE_TEMPLATE_CSS } from '../config/jazInvoiceTemplate';
 import { getTemplateById, saveTemplate } from '../utils/printTemplateStorage';
 
 const AUTO_SCROLL_THRESHOLD = 100;
@@ -24,6 +26,7 @@ const ALL_SECTION_KEYS = [...new Set([...TEMPLATE_SECTIONS, 'body', ...AGREEMENT
 const DEFAULT_TEMPLATE = Object.fromEntries(ALL_SECTION_KEYS.map((k) => [k, []]));
 
 const SECTION_LABELS = {
+  title: 'Title',
   header: 'Header Section',
   customerLeft: 'Invoice To (Customer)',
   customerRight: 'Invoice From (Company)',
@@ -32,6 +35,7 @@ const SECTION_LABELS = {
   bankDetails: 'Bank Details Section',
   contactInfo: 'Contact Info Section',
   signature: 'Signature Section',
+  termsAndConditions: 'Terms and Conditions',
   footer: 'Footer Section',
   body: 'Body',
   partyDetailsProvider: 'Service Provider',
@@ -180,6 +184,15 @@ export default function PrintTemplateBuilder() {
     }
   }, [editId, isEdit, navigate]);
 
+  // When user fills HTML/CSS first (Builder empty), sync Builder from parsed HTML so both Builder and Preview show content
+  useEffect(() => {
+    if (!templateHtml.trim()) return;
+    const hasAnyBuilderFields = ALL_SECTION_KEYS.some((k) => (template[k]?.length || 0) > 0);
+    if (hasAnyBuilderFields) return;
+    const parsed = parseTemplateFromHtml(templateHtml, selectedModule);
+    if (parsed) setTemplate(parsed);
+  }, [templateHtml, selectedModule, template]);
+
   const handleDragStart = useCallback((e, field) => {
     e.dataTransfer.setData('application/json', JSON.stringify(field));
     e.dataTransfer.effectAllowed = 'copy';
@@ -276,6 +289,21 @@ export default function PrintTemplateBuilder() {
     setTemplateCss(getDefaultCss(selectedModule));
     toast.success('HTML & CSS regenerated from Builder layout');
   }, [template, selectedModule]);
+
+  const handleLoadJazInvoiceTemplate = useCallback(() => {
+    if (selectedModule !== 'invoices') return;
+    setTemplateHtml(JAZ_INVOICE_TEMPLATE_HTML);
+    setTemplateCss(JAZ_INVOICE_TEMPLATE_CSS);
+    const parsed = parseTemplateFromHtml(JAZ_INVOICE_TEMPLATE_HTML, 'invoices');
+    if (parsed) {
+      const merged = { ...DEFAULT_TEMPLATE };
+      ALL_SECTION_KEYS.forEach((key) => {
+        merged[key] = Array.isArray(parsed[key]) ? parsed[key] : [];
+      });
+      setTemplate(merged);
+    }
+    toast.success('Jaz Infotech A4 invoice template loaded');
+  }, [selectedModule]);
 
   const handleSave = useCallback(() => {
     const name = (templateName || '').trim();
@@ -455,6 +483,7 @@ export default function PrintTemplateBuilder() {
                 </>
               ) : (
                 <>
+                  <DropZone zone="title" title={SECTION_LABELS.title} />
                   <DropZone zone="header" title={SECTION_LABELS.header} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <DropZone zone="customerLeft" title={SECTION_LABELS.customerLeft} />
@@ -467,6 +496,7 @@ export default function PrintTemplateBuilder() {
                     <DropZone zone="contactInfo" title={SECTION_LABELS.contactInfo} />
                   </div>
                   <DropZone zone="signature" title={SECTION_LABELS.signature} />
+                  <DropZone zone="termsAndConditions" title={SECTION_LABELS.termsAndConditions} />
                   <DropZone zone="footer" title={SECTION_LABELS.footer} />
                 </>
               )}
@@ -490,7 +520,7 @@ export default function PrintTemplateBuilder() {
                 }
                 return (
                   <iframe
-                    key={selectedModule === 'agreements' && templateStyles ? `preview-${JSON.stringify({
+                    key={`preview-${selectedModule}-${templateHtml.length}-${templateCss.length}${selectedModule === 'agreements' && templateStyles ? `-${JSON.stringify({
                       n: templateStyles.companyName,
                       e: templateStyles.companyEmail,
                       p: templateStyles.companyPhone,
@@ -500,7 +530,7 @@ export default function PrintTemplateBuilder() {
                       pe: templateStyles.providerEmail,
                       pp: templateStyles.providerPhone,
                       pa: templateStyles.providerAddress,
-                    })}` : 'preview'}
+                    })}` : ''}`}
                     title="Print template preview"
                     srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${previewHtml}</body></html>`}
                     className="w-full min-h-[480px] border-0 bg-white"
@@ -517,13 +547,24 @@ export default function PrintTemplateBuilder() {
             <div className="card p-6 overflow-y-auto flex-1 min-h-0 mt-4 space-y-6">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <h3 className="text-sm font-bold text-slate-600">Editable HTML &amp; CSS</h3>
-                <button
-                  type="button"
-                  onClick={handleRegenerateFromBuilder}
-                  className="btn-secondary text-sm"
-                >
-                  Regenerate from Builder
-                </button>
+                <div className="flex gap-2">
+                  {selectedModule === 'invoices' && (
+                    <button
+                      type="button"
+                      onClick={handleLoadJazInvoiceTemplate}
+                      className="btn-secondary text-sm"
+                    >
+                      Load Jaz Invoice Template
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleRegenerateFromBuilder}
+                    className="btn-secondary text-sm"
+                  >
+                    Regenerate from Builder
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-slate-500">
                 Full layout is generated from the Builder. Use variables like {'{{'}{prefix}.field_name{'}}'}. Edit below to customize; Preview updates live. Custom classes, page-break-after, and inline styles are supported.
