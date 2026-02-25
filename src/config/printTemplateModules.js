@@ -80,6 +80,8 @@ export const DEFAULT_AGREEMENT_STYLES = {
   terms: {
     fontSize: '13px',
     color: '#475569',
+    lineHeight: '1.5',
+    textAlign: 'left',
   },
   signature: {
     fontSize: '14px',
@@ -940,6 +942,61 @@ function getAgreementStylesCssBlock(mergedStyles) {
   text-align: ${(s.providerAddress || {}).alignment || (s.providerAddress || {}).textAlign || 'left'} !important;
 }`;
 
+  // Fallback: apply same styles without .agreement-print-root so they work with custom HTML or when root class is missing
+  const fallbackBlock = `
+.agreement-company-logo { text-align: ${logo.textAlign || 'left'} !important; }
+.agreement-company-logo img {
+  width: ${logo.width || '120px'} !important;
+  margin-bottom: ${logo.marginBottom || '10px'} !important;
+  display: block;
+}
+.agreement-company-name {
+  font-size: ${name.fontSize || '20px'} !important;
+  color: ${name.color || '#1e293b'} !important;
+  font-weight: ${name.fontWeight || '700'} !important;
+  text-align: ${name.textAlign || name.alignment || 'left'} !important;
+  margin-bottom: ${name.marginBottom || '4px'} !important;
+}
+.agreement-company-email {
+  font-size: ${email.fontSize || '14px'} !important;
+  color: ${email.color || '#475569'} !important;
+  text-align: ${email.textAlign || email.alignment || 'left'} !important;
+}
+.agreement-company-phone {
+  font-size: ${phone.fontSize || '14px'} !important;
+  color: ${phone.color || '#475569'} !important;
+  text-align: ${phone.textAlign || phone.alignment || 'left'} !important;
+}
+.agreement-company-address {
+  font-size: ${address.fontSize || '14px'} !important;
+  color: ${address.color || '#475569'} !important;
+  text-align: ${address.textAlign || address.alignment || 'left'} !important;
+  line-height: ${address.lineHeight || '1.4'} !important;
+}
+.agreement-provider-name {
+  font-size: ${(s.providerName || {}).fontSize || '18px'} !important;
+  color: ${(s.providerName || {}).color || '#1e293b'} !important;
+  font-weight: ${(s.providerName || {}).fontWeight || '600'} !important;
+  text-align: ${(s.providerName || {}).alignment || (s.providerName || {}).textAlign || 'left'} !important;
+  margin-bottom: ${(s.providerName || {}).marginBottom || '4px'} !important;
+}
+.agreement-provider-email {
+  font-size: ${(s.providerEmail || {}).fontSize || '14px'} !important;
+  color: ${(s.providerEmail || {}).color || '#475569'} !important;
+  text-align: ${(s.providerEmail || {}).alignment || (s.providerEmail || {}).textAlign || 'left'} !important;
+}
+.agreement-provider-phone {
+  font-size: ${(s.providerPhone || {}).fontSize || '14px'} !important;
+  color: ${(s.providerPhone || {}).color || '#475569'} !important;
+  text-align: ${(s.providerPhone || {}).alignment || (s.providerPhone || {}).textAlign || 'left'} !important;
+}
+.agreement-provider-address {
+  font-size: ${(s.providerAddress || {}).fontSize || '14px'} !important;
+  color: ${(s.providerAddress || {}).color || '#475569'} !important;
+  line-height: ${(s.providerAddress || {}).lineHeight || '1.4'} !important;
+  text-align: ${(s.providerAddress || {}).alignment || (s.providerAddress || {}).textAlign || 'left'} !important;
+}`;
+
   return `<style class="agreement-template-styles">
 .agreement-heading, .print-doc-dynamic .agreement-heading {
   font-size: {{agreement.styles.heading.fontSize}};
@@ -981,6 +1038,8 @@ function getAgreementStylesCssBlock(mergedStyles) {
 .agreement-terms-text, .print-doc-dynamic .agreement-terms-text {
   font-size: {{agreement.styles.terms.fontSize}};
   color: {{agreement.styles.terms.color}};
+  line-height: {{agreement.styles.terms.lineHeight}};
+  text-align: {{agreement.styles.terms.textAlign}};
   font-family: {{agreement.styles.fontFamily}};
 }
 .agreement-table td, .print-doc-dynamic .agreement-table td {
@@ -1009,6 +1068,7 @@ function getAgreementStylesCssBlock(mergedStyles) {
 .print-doc-dynamic { max-width: {{agreement.styles.body.maxWidth}}; margin-left: auto; margin-right: auto; }
 
 ${companyBlock}
+${fallbackBlock}
 </style>
 `;
 }
@@ -1061,6 +1121,9 @@ export function resolveTemplateHtmlWithData(html, moduleKey, dataFlat) {
     if (moduleKey === 'agreements' && AGREEMENT_HEADER_CLASS[path]) {
       const cls = AGREEMENT_HEADER_CLASS[path];
       value = `<div class="${cls}">${value}</div>`;
+    } else if (moduleKey === 'agreements' && path === 'agreement_terms_and_conditions') {
+      // Wrap footer terms in styled divs so Agreement Terms & Conditions styles apply in preview/print
+      value = `<div class="agreement-terms"><div class="agreement-terms-text">${escapeHtml(value).replace(/\n/g, '<br/>')}</div></div>`;
     }
     return value;
   });

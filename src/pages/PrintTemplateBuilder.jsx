@@ -1076,7 +1076,8 @@ export default function PrintTemplateBuilder() {
                 </div>
               </div>
               <div className="border-t border-slate-200 pt-4">
-                <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Terms and conditions</h4>
+                <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Agreement Terms &amp; Conditions</h4>
+                <p className="text-xs text-slate-500 mb-3">Style the terms and conditions text block in the agreement.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">Font size</label>
@@ -1088,6 +1089,19 @@ export default function PrintTemplateBuilder() {
                       <input type="color" className="w-10 h-10 rounded border border-slate-200 cursor-pointer" value={/^#[0-9A-Fa-f]{6}$/.test(templateStyles.terms?.color) ? templateStyles.terms.color : '#475569'} onChange={(e) => setTemplateStyles((prev) => ({ ...prev, terms: { ...(prev.terms || {}), color: e.target.value } }))} />
                       <input type="text" className="input flex-1 font-mono text-sm" value={templateStyles.terms?.color ?? ''} onChange={(e) => setTemplateStyles((prev) => ({ ...prev, terms: { ...(prev.terms || {}), color: e.target.value } }))} placeholder="#475569" />
                     </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Line height</label>
+                    <input type="text" className="input w-full" value={templateStyles.terms?.lineHeight ?? ''} onChange={(e) => setTemplateStyles((prev) => ({ ...prev, terms: { ...(prev.terms || {}), lineHeight: e.target.value } }))} placeholder="1.5" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Alignment</label>
+                    <select className="input w-full" value={templateStyles.terms?.textAlign ?? templateStyles.terms?.alignment ?? 'left'} onChange={(e) => setTemplateStyles((prev) => ({ ...prev, terms: { ...(prev.terms || {}), textAlign: e.target.value, alignment: e.target.value } }))}>
+                      <option value="left">Left</option>
+                      <option value="center">Center</option>
+                      <option value="right">Right</option>
+                      <option value="justify">Justify</option>
+                    </select>
                   </div>
                 </div>
               </div>
