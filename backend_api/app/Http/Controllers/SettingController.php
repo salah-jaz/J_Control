@@ -45,7 +45,25 @@ class SettingController extends Controller
             ]);
         }
 
-        return response()->json($settings);
+        return response()->json($this->ensureAbsoluteUrls($settings));
+    }
+
+    /** Ensure company logo, signature, and seal are absolute URLs for print/preview. */
+    private function ensureAbsoluteUrls($settings)
+    {
+        if (!$settings || !isset($settings->company)) {
+            return $settings;
+        }
+        $company = $settings->company;
+        if (is_array($company)) {
+            foreach (['logo', 'signature', 'seal'] as $key) {
+                if (!empty($company[$key]) && !preg_match('#^https?://#i', $company[$key])) {
+                    $company[$key] = asset($company[$key]);
+                }
+            }
+            $settings->company = $company;
+        }
+        return $settings;
     }
 
     public function update(Request $request)
@@ -86,6 +104,21 @@ class SettingController extends Controller
 
         if ($request->hasFile('signature')) {
             $path = $request->file('signature')->store('signatures', 'public');
+            $url = asset('storage/' . $path);
+            return response()->json(['url' => $url, 'path' => $path]);
+        }
+
+        return response()->json(['error' => 'No file uploaded'], 400);
+    }
+
+    public function uploadSeal(Request $request)
+    {
+        $request->validate([
+            'seal' => 'required|image|mimes:png,jpg,jpeg|max:2048',
+        ]);
+
+        if ($request->hasFile('seal')) {
+            $path = $request->file('seal')->store('seals', 'public');
             $url = asset('storage/' . $path);
             return response()->json(['url' => $url, 'path' => $path]);
         }

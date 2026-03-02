@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Wallet, User, Shield, Bell, LayoutTemplate } from "lucide-react";
-import api from "../api/axios";
+import { Building2, Wallet, User, Shield, Bell, LayoutTemplate, Stamp } from "lucide-react";
+import api, { getApiOrigin } from "../api/axios";
+import { toAbsoluteImageUrl } from "../config/printTemplateModules";
 import toast from "react-hot-toast";
 
 const defaultSettings = {
@@ -13,8 +14,11 @@ const defaultSettings = {
     gst: "",
     logo: "",
     signature: "",
+    authorized_signature_text: "",
+    seal: "",
     tagline: "",
     terms: "",
+    notes: "",
   },
   finance: {
     currency: "INR",
@@ -49,7 +53,11 @@ export default function Settings() {
       try {
         const response = await api.get('/settings');
         if (response.data) {
-          setSettings(response.data);
+          setSettings({
+            ...defaultSettings,
+            ...response.data,
+            company: { ...defaultSettings.company, ...(response.data.company || {}) },
+          });
         }
       } catch (error) {
         console.error("Failed to load settings", error);
@@ -72,32 +80,65 @@ export default function Settings() {
     }
   };
 
+  /* Image upload: max 2MB, validate type before sending */
+  const MAX_IMAGE_SIZE_KB = 2048;
+  const LOGO_ACCEPT = ".png,.jpg,.jpeg,.gif,.svg,image/png,image/jpeg,image/gif,image/svg+xml";
+  const SIGNATURE_SEAL_ACCEPT = ".png,.jpg,.jpeg,image/png,image/jpeg";
+
+  const validateImageFile = (file, allowedExtensions, allowedMimeTypes) => {
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    const mime = (file.type || "").toLowerCase();
+    const extOk = allowedExtensions.includes(ext);
+    const mimeOk = mime && allowedMimeTypes.includes(mime);
+    if (!extOk && !mimeOk) {
+      return `Please choose an image file (${allowedExtensions.join(", ").toUpperCase()}). "${file.name}" was not recognized as a valid image.`;
+    }
+    const sizeKb = file.size / 1024;
+    if (sizeKb > MAX_IMAGE_SIZE_KB) {
+      return `File is too large (${Math.round(sizeKb)} KB). Maximum size is ${MAX_IMAGE_SIZE_KB} KB (2 MB).`;
+    }
+    return null;
+  };
+
+  const LOGO_MIMES = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/svg+xml"];
+  const SIGNATURE_SEAL_MIMES = ["image/png", "image/jpeg", "image/jpg"];
+
+  const getUploadErrorMessage = (error) => {
+    const errors = error?.response?.data?.errors;
+    if (errors && typeof errors === "object") {
+      const first = Object.values(errors).flat()[0];
+      if (first) return first;
+    }
+    const msg = error?.response?.data?.message;
+    if (msg) return msg;
+    return null;
+  };
+
   /* LOGO UPLOAD */
   const handleLogoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
+    const err = validateImageFile(file, ["png", "jpg", "jpeg", "gif", "svg"], LOGO_MIMES);
+    if (err) {
+      toast.error(err);
+      e.target.value = "";
+      return;
+    }
     const formData = new FormData();
-    formData.append('logo', file);
-
+    formData.append("logo", file);
     try {
-      const response = await api.post('/settings/upload-logo', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await api.post("/settings/upload-logo", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-
       setSettings({
         ...settings,
-        company: {
-          ...settings.company,
-          logo: response.data.url
-        }
+        company: { ...settings.company, logo: response.data.url },
       });
-      toast.success("Logo uploaded successfully");
+      toast.success("Logo uploaded successfully. Click Save Settings to keep it.");
     } catch (error) {
-      console.error("Failed to upload logo", error);
-      toast.error("Failed to upload logo");
+      const msg = getUploadErrorMessage(error) || "Failed to upload logo. Use PNG, JPG, GIF or SVG (max 2 MB).";
+      toast.error(msg);
+      e.target.value = "";
     }
   };
 
@@ -105,30 +146,62 @@ export default function Settings() {
   const handleSignatureUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
+    const err = validateImageFile(file, ["png", "jpg", "jpeg"], SIGNATURE_SEAL_MIMES);
+    if (err) {
+      toast.error(err);
+      e.target.value = "";
+      return;
+    }
     const formData = new FormData();
-    formData.append('signature', file);
-
+    formData.append("signature", file);
     try {
-      const response = await api.post('/settings/upload-signature', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await api.post("/settings/upload-signature", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-
       setSettings({
         ...settings,
-        company: {
-          ...settings.company,
-          signature: response.data.url
-        }
+        company: { ...settings.company, signature: response.data.url },
       });
       toast.success("Signature uploaded. Click Save Settings to apply.");
     } catch (error) {
-      console.error("Failed to upload signature", error);
-      toast.error("Failed to upload signature. Use PNG, JPG or JPEG.");
+      const msg = getUploadErrorMessage(error) || "Failed to upload signature. Use PNG or JPG (max 2 MB).";
+      toast.error(msg);
+      e.target.value = "";
     }
   };
+
+  /* SEAL UPLOAD */
+  const handleSealUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const err = validateImageFile(file, ["png", "jpg", "jpeg"], SIGNATURE_SEAL_MIMES);
+    if (err) {
+      toast.error(err);
+      e.target.value = "";
+      return;
+    }
+    const formData = new FormData();
+    formData.append("seal", file);
+    try {
+      const response = await api.post("/settings/upload-seal", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setSettings({
+        ...settings,
+        company: { ...settings.company, seal: response.data.url },
+      });
+      toast.success("Seal uploaded. Click Save Settings to apply.");
+    } catch (error) {
+      const msg = getUploadErrorMessage(error) || "Failed to upload seal. Use PNG or JPG (max 2 MB).";
+      toast.error(msg);
+      e.target.value = "";
+    }
+  };
+
+  const apiOrigin = getApiOrigin();
+  const logoDisplayUrl = useMemo(() => toAbsoluteImageUrl(settings?.company?.logo, apiOrigin), [settings?.company?.logo, apiOrigin]);
+  const signatureDisplayUrl = useMemo(() => toAbsoluteImageUrl(settings?.company?.signature, apiOrigin), [settings?.company?.signature, apiOrigin]);
+  const sealDisplayUrl = useMemo(() => toAbsoluteImageUrl(settings?.company?.seal, apiOrigin), [settings?.company?.seal, apiOrigin]);
 
   if (loading) {
     return (
@@ -171,8 +244,8 @@ export default function Settings() {
               <Section title="Company Settings">
                 <div className="md:col-span-2 flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-4 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
                   <div className="h-24 w-24 rounded-2xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
-                    {settings.company.logo ? (
-                      <img src={settings.company.logo} alt="Company Logo" className="h-full w-full object-contain" />
+                    {logoDisplayUrl ? (
+                      <img src={logoDisplayUrl} alt="Company Logo" className="h-full w-full object-contain" />
                     ) : (
                       <Building2 className="text-slate-300" size={32} />
                     )}
@@ -181,7 +254,7 @@ export default function Settings() {
                     <label className="label">Company Logo</label>
                     <label className="inline-block">
                       <span className="sr-only">Choose profile photo</span>
-                      <input type="file" onChange={handleLogoUpload} accept="image/*"
+                      <input type="file" onChange={handleLogoUpload} accept={LOGO_ACCEPT}
                         className="block w-full text-sm text-slate-500
                         file:mr-4 file:py-2.5 file:px-6
                         file:rounded-xl file:border-0
@@ -193,38 +266,81 @@ export default function Settings() {
                       "
                       />
                     </label>
-                    <p className="text-xs text-slate-400 mt-2 font-medium">Recommended: 200x200px (PNG/JPG)</p>
+                    <p className="text-xs text-slate-400 mt-2 font-medium">PNG, JPG, GIF or SVG. Max 2 MB. Recommended: 200×200px.</p>
                   </div>
                 </div>
 
-                <div className="md:col-span-2 flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-4 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
-                  <div className="h-20 w-40 rounded-xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
-                    {settings.company.signature ? (
-                      <img src={settings.company.signature} alt="Signature" className="h-full w-full object-contain" />
-                    ) : (
-                      <span className="text-slate-400 text-xs font-medium">Signature</span>
-                    )}
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                    <div className="h-20 w-40 rounded-xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+                      {signatureDisplayUrl ? (
+                        <img src={signatureDisplayUrl} alt="Signature" className="h-full w-full object-contain" />
+                      ) : (
+                        <span className="text-slate-400 text-xs font-medium">Signature</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <label className="label">Signature Upload</label>
+                      <label className="inline-block">
+                        <span className="sr-only">Choose signature image</span>
+                        <input
+                          type="file"
+                          onChange={handleSignatureUpload}
+                          accept={SIGNATURE_SEAL_ACCEPT}
+                          className="block w-full text-sm text-slate-500
+                            file:mr-4 file:py-2.5 file:px-6
+                            file:rounded-xl file:border-0
+                            file:text-sm file:font-bold
+                            file:bg-brand-50 file:text-brand-700
+                            hover:file:bg-brand-100
+                            transition-all cursor-pointer
+                          "
+                        />
+                      </label>
+                      <p className="text-xs text-slate-400 mt-2 font-medium">PNG, JPG or JPEG. Shown on invoice in Authorized Sign section.</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <label className="label">Signature Upload</label>
-                    <label className="inline-block">
-                      <span className="sr-only">Choose signature image</span>
-                      <input
-                        type="file"
-                        onChange={handleSignatureUpload}
-                        accept=".png,.jpg,.jpeg"
-                        className="block w-full text-sm text-slate-500
-                          file:mr-4 file:py-2.5 file:px-6
-                          file:rounded-xl file:border-0
-                          file:text-sm file:font-bold
-                          file:bg-brand-50 file:text-brand-700
-                          hover:file:bg-brand-100
-                          transition-all cursor-pointer
-                        "
-                      />
-                    </label>
-                    <p className="text-xs text-slate-400 mt-2 font-medium">PNG, JPG or JPEG. Shown on invoice in Authorized Sign section.</p>
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                    <div className="h-20 w-40 rounded-xl bg-white border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+                      {sealDisplayUrl ? (
+                        <img src={sealDisplayUrl} alt="Seal" className="h-full w-full object-contain" />
+                      ) : (
+                        <Stamp className="text-slate-300" size={28} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <label className="label">Seal Upload</label>
+                      <label className="inline-block">
+                        <span className="sr-only">Choose seal image</span>
+                        <input
+                          type="file"
+                          onChange={handleSealUpload}
+                          accept={SIGNATURE_SEAL_ACCEPT}
+                          className="block w-full text-sm text-slate-500
+                            file:mr-4 file:py-2.5 file:px-6
+                            file:rounded-xl file:border-0
+                            file:text-sm file:font-bold
+                            file:bg-brand-50 file:text-brand-700
+                            hover:file:bg-brand-100
+                            transition-all cursor-pointer
+                          "
+                        />
+                      </label>
+                      <p className="text-xs text-slate-400 mt-2 font-medium">PNG or JPG only. Max 2 MB. Company seal shown next to signature on documents.</p>
+                    </div>
                   </div>
+                </div>
+
+                <div className="md:col-span-2 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                  <label className="label block mb-2">Authorized Signature (Text)</label>
+                  <input
+                    type="text"
+                    value={settings.company.authorized_signature_text ?? ''}
+                    onChange={e => setSettings({ ...settings, company: { ...settings.company, authorized_signature_text: e.target.value } })}
+                    placeholder="e.g. Authorized Signatory, Director"
+                    className="input w-full"
+                  />
+                  <p className="text-xs text-slate-400 mt-2 font-medium">Name or title shown below signature on invoices. Add this field in the invoice print template to display it.</p>
                 </div>
 
                 <Input label="Company Name" value={settings.company.name}
@@ -239,8 +355,12 @@ export default function Settings() {
                   onChange={v => setSettings({ ...settings, company: { ...settings.company, address: v } })} />
                 <Input label="Company Tagline" value={settings.company.tagline}
                   onChange={v => setSettings({ ...settings, company: { ...settings.company, tagline: v } })} />
-                <Textarea label="Terms & Conditions" value={settings.company.terms}
-                  onChange={v => setSettings({ ...settings, company: { ...settings.company, terms: v } })} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Textarea label="Terms & Conditions" value={settings.company.terms}
+                    onChange={v => setSettings({ ...settings, company: { ...settings.company, terms: v } })} />
+                  <Textarea label="Notes" value={settings.company.notes}
+                    onChange={v => setSettings({ ...settings, company: { ...settings.company, notes: v } })} />
+                </div>
               </Section>
             )}
 

@@ -59,6 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/settings', [\App\Http\Controllers\SettingController::class, 'update']);
     Route::post('/settings/upload-logo', [\App\Http\Controllers\SettingController::class, 'uploadLogo']);
     Route::post('/settings/upload-signature', [\App\Http\Controllers\SettingController::class, 'uploadSignature']);
+    Route::post('/settings/upload-seal', [\App\Http\Controllers\SettingController::class, 'uploadSeal']);
 
     // Reports Routes
     Route::get('/reports/summary', [\App\Http\Controllers\ReportsController::class, 'summary']);

@@ -16,7 +16,7 @@ import clsx from "clsx";
 import { getQuotations, createQuotation, updateQuotation, deleteQuotation, convertQuotationToInvoice } from "../services/quotationService";
 import { getClients } from "../services/db";
 import QuotationView from "../components/QuotationView";
-import AgreementBuilder from "../components/AgreementBuilder";
+import AgreementTab from "../components/AgreementTab";
 
 const emptyForm = {
   client_id: "",
@@ -713,13 +713,10 @@ function Quotations() {
 
               {tab === "agreement" && (
                 <div className="max-w-3xl">
-                  <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h3 className="text-base font-bold text-slate-800 mb-4">Agreement / Document Content</h3>
-                    <AgreementBuilder
-                      value={form.agreement_content || []}
-                      onChange={(v) => setForm({ ...form, agreement_content: v })}
-                    />
-                  </div>
+                  <AgreementTab
+                    value={form.agreement_content || []}
+                    onChange={(v) => setForm({ ...form, agreement_content: v })}
+                  />
                 </div>
               )}
             </div>

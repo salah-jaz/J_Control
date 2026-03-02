@@ -2,10 +2,10 @@
  * Print template storage: list of templates with id, name, module, isDefault, layout.
  * One-time migration from legacy print_template_by_module (one per module) to new array format.
  */
-import { MODULES, TEMPLATE_SECTIONS } from '../config/printTemplateModules';
+import { MODULES, TEMPLATE_SECTIONS, AGREEMENT_TEMPLATE_SECTIONS } from '../config/printTemplateModules';
 
 const STORAGE_KEY = 'print_templates';
-const SECTION_KEYS = [...TEMPLATE_SECTIONS, 'body'];
+const SECTION_KEYS = [...new Set([...TEMPLATE_SECTIONS, 'body', ...AGREEMENT_TEMPLATE_SECTIONS])];
 function toSectionPayload(obj) {
   const out = {};
   SECTION_KEYS.forEach((key) => {
@@ -90,6 +90,9 @@ export function saveTemplate(payload) {
           module: payload.module ?? t.module,
           isDefault: payload.isDefault ?? t.isDefault,
           ...sections,
+          template_html: payload.template_html !== undefined ? payload.template_html : t.template_html,
+          template_css: payload.template_css !== undefined ? payload.template_css : t.template_css,
+          styles: payload.styles !== undefined ? payload.styles : t.styles,
         };
         list[i] = template;
         if (template.isDefault) {
@@ -107,6 +110,9 @@ export function saveTemplate(payload) {
       module: payload.module || 'invoices',
       isDefault: payload.isDefault ?? false,
       ...toSectionPayload(payload),
+      template_html: payload.template_html,
+      template_css: payload.template_css,
+      styles: payload.styles ?? null,
     };
     if (template.isDefault) {
       list.forEach((x, i) => {
@@ -135,6 +141,9 @@ export function duplicateTemplate(id) {
     module: t.module,
     isDefault: false,
     ...toSectionPayload(t),
+    template_html: t.template_html,
+    template_css: t.template_css,
+    styles: t.styles,
   });
 }
 

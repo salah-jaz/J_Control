@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Printer, X, Phone, Mail, MapPin } from 'lucide-react';
+import toast from 'react-hot-toast';
 import TemplateSwitcher from './TemplateSwitcher';
 import { getClients, getSettings } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
@@ -8,12 +9,14 @@ import { useReactToPrint } from 'react-to-print';
 import { getDefaultTemplate } from '../utils/printTemplateStorage';
 import {
     buildFullTemplateHtml,
+    getEffectiveTemplateHtml,
     resolveTemplateHtmlWithData,
     buildInvoicePrintData,
     filterTemplateByPrintConfig,
     getDefaultPrintConfigKeys,
     getStoredPrintConfig,
 } from '../config/printTemplateModules';
+import { getApiOrigin } from '../api/axios';
 import PrintConfigModal from './PrintConfigModal';
 import AgreementContentDisplay from './AgreementContentDisplay';
 
@@ -67,9 +70,10 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
     const printHtml = useMemo(() => {
         if (!defaultTemplate || !companySettings) return null;
         const keys = getPrintConfigKeys();
-        const filtered = filterTemplateByPrintConfig(defaultTemplate, keys);
-        const html = buildFullTemplateHtml(filtered, 'invoices');
-        const data = buildInvoicePrintData(invoice, companySettings, client, bank);
+        const html = defaultTemplate.template_html
+            ? getEffectiveTemplateHtml(defaultTemplate, 'invoices')
+            : buildFullTemplateHtml(filterTemplateByPrintConfig(defaultTemplate, keys), 'invoices');
+        const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
         return resolveTemplateHtmlWithData(html, 'invoices', data);
     }, [defaultTemplate, companySettings, invoice, client, bank, getPrintConfigKeys]);
 
@@ -77,8 +81,10 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
         (selectedKeys) => {
             if (!defaultTemplate || !companySettings) return '';
             const filtered = filterTemplateByPrintConfig(defaultTemplate, selectedKeys);
-            const html = buildFullTemplateHtml(filtered, 'invoices');
-            const data = buildInvoicePrintData(invoice, companySettings, client, bank);
+            const html = defaultTemplate.template_html
+                ? getEffectiveTemplateHtml(defaultTemplate, 'invoices')
+                : buildFullTemplateHtml(filtered, 'invoices');
+            const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
             return resolveTemplateHtmlWithData(html, 'invoices', data);
         },
         [defaultTemplate, companySettings, invoice, client, bank]
@@ -161,7 +167,13 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                         <TemplateSwitcher activeTemplate={activeTemplate} onTemplateChange={onTemplateChange} />
                         <button
                             type="button"
-                            onClick={() => (defaultTemplate ? openPrintConfig() : handlePrint())}
+                            onClick={() => {
+                                if (!defaultTemplate) {
+                                    toast.error('No default Invoice template set. Create one in Print Templates.');
+                                    return;
+                                }
+                                openPrintConfig();
+                            }}
                             className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30 py-2 text-sm"
                         >
                             <Printer className="w-4 h-4" /> Print
@@ -185,228 +197,12 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                             )}
                             </>
                         ) : (
-                            <>
-                        {/* 100% Accurate Header Design */}
-                        <div className="relative bg-white pt-12 pb-6 px-10 overflow-hidden">
-                            {/* Large Rounded Black Corner Shape */}
-                            <div className="absolute top-0 right-0 bg-[#1d1d1d] w-[40%] h-[155px] rounded-bl-[100px] -z-0"></div>
-
-                            {/* Red Decorative Bar with Curve end */}
-                            <div className="absolute top-[160px] left-0 bg-[#e11d24] w-[65%] h-12 mt-10 -z-0"></div>
-
-                            <div className="relative z-10 flex justify-between items-start ">
-                                {/* Logo & Company Branding */}
-                                <div className="flex items-center gap-4">
-                                    {companySettings?.logo ? (
-                                        <img src={companySettings.logo} alt="Logo" className="h-12 w-auto object-contain" />
-                                    ) : (
-                                        <div className="h-12 w-12 bg-[#e11d24] rounded-lg flex items-center justify-center text-white font-bold text-2xl">
-                                            {companySettings?.name?.charAt(0) || 'J'}
-                                        </div>
-                                    )}
-                                    <div className="flex flex-col">
-                                        <div className="flex items-baseline">
-                                            <h2 className="text-3xl font-black text-[#1d1d1d] uppercase">
-                                                {companySettings?.name || 'JAZ'}
-                                            </h2>
-                                        </div>
-                                    </div>
-                                </div>vv
-
-                                {/* Large Invoice Header & Specific Details */}
-                                <div className="text-right pr-6">
-                                    <h1 className="text-3xl font-black tracking-tighter text-white leading-none mb-2 pr-12 uppercase">
-                                        INVOICE
-                                    </h1>
-                                    <div className="space-y-2 text-xs font-bold text-white">
-                                        <div className="flex justify-end gap-x-8">
-                                            <span className="text-gray-400 font-medium">Invoice No:</span>
-                                            <span className="w-24 text-left">#{invoice.id || '5'}</span>
-                                        </div>
-                                        <div className="flex justify-end gap-x-8">
-                                            <span className="text-gray-400 font-medium">Due Date:</span>
-                                            <span className="w-24 text-left">{invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '24 Dec 2025'}</span>
-                                        </div>
-                                        <div className="flex justify-end gap-x-8">
-                                            <span className="text-gray-400 font-medium">Invoice Date:</span>
-                                            <span className="w-24 text-left">{new Date(invoice.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                                        </div>
-                                    </div>
+                            <div className="max-w-[210mm] mx-auto p-6">
+                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
+                                    <p className="font-semibold">No default Invoice template set.</p>
+                                    <p className="mt-2 text-sm">Go to Print Templates to create and set a default template for Invoices. Print and PDF will use that template.</p>
                                 </div>
                             </div>
-
-                            {/* Contact Info Bar (Overlaying the red shape) */}
-                            <div className="relative z-10 mt-12  h-12 flex items-center pl-10">
-                                <div className="flex items-center gap-12 text-white text-[11px] font-bold">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-white/20 p-1 rounded-full"><Phone className="w-3.5 h-3.5 fill-white" /></div>
-                                        <span>{companySettings?.phone || '9870605010'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-white/20 p-1 rounded-full"><Mail className="w-3.5 h-3.5 fill-white" /></div>
-                                        <span>{companySettings?.email || 'jaz@gamil.com'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-white/20 p-1 rounded-full"><MapPin className="w-3.5 h-3.5 fill-white" /></div>
-                                        <span>{companySettings?.address || 'NGO B Colony , Tirunelveli'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Client Info with Accurate Spacing */}
-                        <div className="flex justify-between px-10 pt-16 pb-12">
-                            <div className="max-w-[400px]">
-                                <h3 className="text-[#e11d24] font-bold text-xs uppercase mb-4 italic tracking-widest">INVOICE TO:</h3>
-                                <h2 className="text-3xl font-black text-[#1d1d1d] mb-3 leading-none">
-                                    {client ? (client.company_name || client.client_name || client.name) : 'JAZ'}
-                                </h2>
-                                <p className="text-[12px] text-slate-400 font-bold mb-6 uppercase tracking-tight">{client?.role || 'MANAGING DIRECTOR, COMPANY LTD.'}</p>
-                                <div className="text-[11px] space-y-2 font-bold text-slate-500">
-                                    <p>Phone: {client?.mobile_number || '1234567890'}</p>
-                                    <p>Email: {client?.email_address || 'jaz@gmail.com'}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Items Table */}
-                        <div className="px-10 flex-1">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="bg-[#e11d24] text-white text-[12px] font-black uppercase italic tracking-widest">
-                                        <th className="py-3 px-4 text-left w-16">NO.</th>
-                                        <th className="py-3 px-4 text-left">PRODUCT DESCRIPTION</th>
-                                        <th className="py-3 px-4 text-center">PRICE</th>
-                                        <th className="py-3 px-4 text-center">QTY.</th>
-                                        <th className="py-3 px-4 text-right">TOTAL</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {(items.length > 0 ? items : [{ service_name: 'Service', amount: invoice.amount, quantity: 1, rate: invoice.amount }]).map((item, index) => (
-                                        <tr key={index} className="border-b border-slate-100 last:border-0">
-                                            <td className="py-6 px-4 text-left text-xs font-bold text-slate-400 italic">
-                                                {(index + 1).toString().padStart(2, '0')}
-                                            </td>
-                                            <td className="py-6 px-4 text-left">
-                                                <p className="text-[15px] font-black text-[#1a1a1a] italic">{item.service_name || item.serviceName}</p>
-                                                <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-tight">
-                                                    {item.description || 'Lorem ipsum dolor sit amet.'}
-                                                </p>
-                                            </td>
-                                            <td className="py-6 px-4 text-center text-xs font-bold text-slate-700 italic">
-                                                ₹{parseFloat(item.rate || (item.amount / (item.quantity || 1))).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </td>
-                                            <td className="py-6 px-4 text-center text-xs font-bold text-slate-700 italic">
-                                                {item.quantity || 1}
-                                            </td>
-                                            <td className="py-6 px-4 text-right text-[15px] font-black text-[#1a1a1a] italic">
-                                                ₹{parseFloat(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {invoice?.agreement_content?.length > 0 && (
-                          <div className="px-10 py-4">
-                            <AgreementContentDisplay blocks={invoice.agreement_content} />
-                          </div>
-                        )}
-
-                        {/* Totals & Payment Details (Down Side) */}
-                        <div className="px-10 py-12 flex justify-between items-start bg-white border-t border-slate-50">
-                            <div className="flex flex-col gap-8 max-w-lg">
-                                {/* Bank & QR for the bottom left */}
-                                <div className="flex items-start gap-8">
-                                    {/* QR Code Section */}
-                                    <div className="flex flex-col items-center gap-2">
-                                        <div className="bg-white p-2 border-2 border-slate-100 rounded-xl shadow-sm overflow-hidden flex items-center justify-center">
-                                            {qrCodeUrl ? (
-                                                <img src={qrCodeUrl} alt="Payment QR" className="w-20 h-20 object-contain" />
-                                            ) : (
-                                                <div className="w-20 h-20 bg-slate-50 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-lg">
-                                                    <div className="bg-[#1d1d1d] w-10 h-10 rounded opacity-10 mb-1"></div>
-                                                    <span className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter">QR CODE</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <span className="text-[8px] font-black text-[#e11d24] italic uppercase tracking-widest">Scan to Pay</span>
-                                    </div>
-
-                                    <div className='ml-4'>
-                                        <h3 className="text-[#e11d24] font-bold text-[11px] uppercase mb-3 italic tracking-widest">PAYMENT INFO</h3>
-                                        <div className="text-[10px] space-y-1.5 font-bold text-[#1d1d1d]">
-                                            <p><span className="text-slate-400 uppercase font-medium inline-block w-24">Bank Name:</span> {bank?.bank_name || bank?.bankName || 'YOUR BANK NAME'}</p>
-                                            <p><span className="text-slate-400 uppercase font-medium inline-block w-24">Account No:</span> {bank?.account_number || bank?.accountNumber || '888000222888'}</p>
-                                            <p><span className="text-slate-400 uppercase font-medium inline-block w-24">IFSC Code:</span> {bank?.ifsc_code || bank?.ifsc || 'HDFC000123'}</p>
-                                            <p><span className="text-slate-400 uppercase font-medium inline-block w-24">Branch:</span> {bank?.branch_name || bank?.branchName || 'TIRUNELVELI'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className='mt-16'>
-                                    <h4 className="text-[#e11d24] font-bold text-[11px] uppercase mb-3 italic tracking-wider">Terms & Conditions:</h4>
-                                    <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
-                                        {companySettings?.terms || 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.'}
-                                    </p>
-                                    <p className="text-[#e11d24] text-sm font-black italic mt-6">Thank you for your business with us.</p>
-                                </div>
-                            </div>
-
-                            <div className="w-[320px]">
-                                <div className="space-y-4 pb-8 text-xs font-bold italic">
-                                    <div className="flex justify-between items-center px-4">
-                                        <span className="text-slate-500 uppercase">Subtotal:</span>
-                                        <span className="text-[#1a1a1a] text-sm">₹{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center px-4">
-                                        <span className="text-slate-500 uppercase">Discount:</span>
-                                        <span className="text-[#1a1a1a] text-sm">₹{discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center px-4">
-                                        <span className="text-slate-500 uppercase">Tax ({gst}%):</span>
-                                        <span className="text-[#1a1a1a] text-sm">₹{gstAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                    </div>
-                                </div>
-                                <div className="relative bg-[#e11d24] h-12 flex items-center px-6" style={{ clipPath: 'polygon(8% 0, 100% 0, 100% 100%, 0 100%)' }}>
-                                    <div className="w-full flex justify-between items-center text-white font-black text-[15px] italic">
-                                        <span>TOTAL AMOUNT :</span>
-                                        <span>{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                                    </div>
-                                </div>
-
-                                <div className="mt-16 text-center px-10">
-                                    <div className="relative inline-block w-full">
-                                        {/* Signature Section */}
-                                        <div className="min-h-[3.5rem] flex items-end justify-center pb-2">
-                                            {companySettings?.signature ? (
-                                                <img src={companySettings.signature} alt="Signature" className="max-h-14 w-auto object-contain" />
-                                            ) : (
-                                                <svg className="w-32 h-14 text-slate-700 opacity-60" viewBox="0 0 120 40">
-                                                    <path d="M10 30 C 30 10, 50 10, 70 30 S 110 30, 110 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-                                                </svg>
-                                            )}
-                                        </div>
-                                        <div className="border-t-[1.5px] border-slate-300 pt-2.5">
-                                            <p className="text-[11px] font-black uppercase text-[#1a1a1a] italic tracking-tight">Authorized Sign</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Footer Section */}
-                        <div className="relative h-10 mt-auto">
-                            <div className="absolute inset-0 bg-[#1a1a1a]"
-                                style={{ clipPath: 'polygon(0 100%, 100% 100%, 100% 0, 48% 0, 42% 100%, 0 100%)' }}>
-                            </div>
-                            <div className="absolute inset-0 bg-[#e11d24]"
-                                style={{ clipPath: 'polygon(0 100%, 42% 100%, 48% 0, 0 0)' }}>
-                            </div>
-                        </div>
-
-                            </>
                         )}
                     </div>
                 </div>
