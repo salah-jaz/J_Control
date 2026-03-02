@@ -147,3 +147,5 @@ export const JAZ_INVOICE_TEMPLATE_HTML = `
   </div>
 </div>
 `;
+
+
