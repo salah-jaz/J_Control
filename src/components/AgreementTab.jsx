@@ -4,14 +4,9 @@ import toast from 'react-hot-toast';
 import AgreementBuilder from './AgreementBuilder';
 import AgreementContentDisplay from './AgreementContentDisplay';
 import AgreementPreviewModal from './AgreementPreviewModal';
-import {
-  getSavedAgreements,
-  saveAgreement,
-  updateAgreement,
-  deleteAgreement,
-} from '../services/agreementTemplateService';
+import agreementService from '../services/agreementService';
 
-export default function AgreementTab({ value = [], onChange }) {
+export default function AgreementTab({ value = [], onChange, clientId, quotationId }) {
   const [list, setList] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -24,11 +19,22 @@ export default function AgreementTab({ value = [], onChange }) {
 
   const blocks = Array.isArray(value) ? value : [];
 
-  const refreshList = () => setList(getSavedAgreements());
+  const refreshList = async () => {
+    if (!quotationId) {
+      setList([]);
+      return;
+    }
+    try {
+      const res = await agreementService.getAll({ quotation_id: quotationId });
+      setList(res.data?.agreements || []);
+    } catch (e) {
+      console.error('Failed to load linked agreements', e);
+    }
+  };
 
   useEffect(() => {
     refreshList();
-  }, []);
+  }, [quotationId]);
 
   const openEdit = (agreement) => {
     setEditingId(agreement.id);
@@ -37,15 +43,19 @@ export default function AgreementTab({ value = [], onChange }) {
     setModalOpen(true);
   };
 
-  const handleSaveAgreementInModal = () => {
+  const handleSaveAgreementInModal = async () => {
     const title = modalTitle.trim() || 'Untitled Agreement';
-    updateAgreement(editingId, { title, content: modalContent });
-    toast.success('Agreement updated');
-    refreshList();
-    setModalOpen(false);
+    try {
+      await agreementService.update(editingId, { title, content: modalContent, client_id: clientId, status: 'Draft', date: new Date().toISOString().split('T')[0] });
+      toast.success('Agreement updated successfully');
+      refreshList();
+      setModalOpen(false);
+    } catch (e) {
+      toast.error('Failed to update agreement');
+    }
   };
 
-  const handleSaveAgreementFromDocument = () => {
+  const handleSaveAgreementFromDocument = async () => {
     const title = agreementTitle.trim();
     if (!title) {
       toast.error('Enter agreement title');
@@ -55,12 +65,32 @@ export default function AgreementTab({ value = [], onChange }) {
       toast.error('Add some content first (e.g. heading, paragraph)');
       return;
     }
+    if (!clientId) {
+      toast.error('Please select a client for this quotation first.');
+      return;
+    }
+    if (!quotationId) {
+      toast.error('Please save the Quotation first before creating an Agreement.');
+      return;
+    }
+
     const content = JSON.parse(JSON.stringify(blocks));
-    saveAgreement(title, content);
-    toast.success('Agreement saved');
-    refreshList();
-    setAgreementTitle('');
-    onChange([]);
+    try {
+      await agreementService.create({
+        title,
+        client_id: clientId,
+        quotation_id: quotationId,
+        date: new Date().toISOString().split('T')[0],
+        status: 'Draft',
+        content
+      });
+      toast.success('Agreement saved to backend successfully');
+      refreshList();
+      setAgreementTitle('');
+      onChange([]);
+    } catch (e) {
+      toast.error('Failed to save agreement record');
+    }
   };
 
   const openView = (agreement) => {
@@ -73,11 +103,15 @@ export default function AgreementTab({ value = [], onChange }) {
     setPreviewAutoPrint(true);
   };
 
-  const handleDeleteAgreement = (agreement) => {
+  const handleDeleteAgreement = async (agreement) => {
     if (!window.confirm(`Delete agreement "${agreement.title}"?`)) return;
-    deleteAgreement(agreement.id);
-    refreshList();
-    toast.success('Agreement deleted');
+    try {
+      await agreementService.delete(agreement.id);
+      toast.success('Agreement deleted');
+      refreshList();
+    } catch (e) {
+      toast.error('Failed to delete agreement');
+    }
   };
 
   const formatDate = (iso) => {
@@ -111,7 +145,7 @@ export default function AgreementTab({ value = [], onChange }) {
                     <p className="font-semibold text-slate-800 truncate">{agreement.title}</p>
                     <p className="text-xs text-slate-500 flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
-                      {formatDate(agreement.createdAt)}
+                      {formatDate(agreement.created_at || agreement.createdAt)}
                     </p>
                   </div>
                 </div>

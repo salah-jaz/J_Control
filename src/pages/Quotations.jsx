@@ -92,10 +92,10 @@ function Quotations() {
 
   const filteredBySearch = searchQuery.trim()
     ? quotations.filter(
-        (q) =>
-          (q.quotation_no && q.quotation_no.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (q.client && (q.client.company_name || q.client.client_name || "").toLowerCase().includes(searchQuery.toLowerCase()))
-      )
+      (q) =>
+        (q.quotation_no && q.quotation_no.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (q.client && (q.client.company_name || q.client.client_name || "").toLowerCase().includes(searchQuery.toLowerCase()))
+    )
     : quotations;
 
   const subtotalForm = (form.items || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
@@ -130,8 +130,9 @@ function Quotations() {
     if (items.length === 0) items.push({ item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 });
     let agreementContent = [];
     try {
-      const agr = q.agreement_content;
-      agreementContent = Array.isArray(agr) ? agr : (typeof agr === "string" ? JSON.parse(agr || "[]") : []);
+      if (q.agreement && q.agreement.content) {
+        agreementContent = Array.isArray(q.agreement.content) ? q.agreement.content : JSON.parse(q.agreement.content || "[]");
+      }
     } catch {
       agreementContent = [];
     }
@@ -424,7 +425,7 @@ function Quotations() {
                       {q.expiry_date ? (typeof q.expiry_date === "string" ? q.expiry_date.split("T")[0] : q.expiry_date) : "—"}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-end gap-1 transition-opacity">
                         <button
                           onClick={() => openViewModal(q)}
                           title="View"
@@ -716,6 +717,8 @@ function Quotations() {
                   <AgreementTab
                     value={form.agreement_content || []}
                     onChange={(v) => setForm({ ...form, agreement_content: v })}
+                    clientId={form.client_id}
+                    quotationId={editId}
                   />
                 </div>
               )}

@@ -14,6 +14,9 @@ export default function PrintConfigModal({
   moduleLabel,
   getPreviewHtml,
   onPrint,
+  templates = [],
+  selectedTemplate = null,
+  onSelectTemplate = () => { },
 }) {
   const defaultKeys = getDefaultPrintConfigKeys();
   const stored = getStoredPrintConfig(moduleKey);
@@ -58,7 +61,29 @@ export default function PrintConfigModal({
           </button>
         </div>
 
-        <p className="px-4 pb-2 text-sm text-slate-500 flex-shrink-0">
+        {templates && templates.length > 0 && (
+          <div className="px-4 pt-4 flex-shrink-0">
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Select Template
+            </label>
+            <select
+              className="w-full text-sm rounded-lg border-slate-300 focus:ring-brand-500 px-3 py-2 border outline-none cursor-pointer"
+              value={selectedTemplate?.id || ''}
+              onChange={(e) => {
+                const t = templates.find((x) => x.id === e.target.value);
+                if (t) onSelectTemplate(t);
+              }}
+            >
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} {t.isDefault ? '(Default)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <p className="px-4 pt-4 pb-2 text-sm text-slate-500 flex-shrink-0">
           Choose which fields to include in Print and PDF for {moduleLabel}. Uncheck to hide.
         </p>
 

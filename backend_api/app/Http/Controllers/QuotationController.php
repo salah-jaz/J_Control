@@ -25,7 +25,7 @@ class QuotationController extends Controller
 
     public function index(Request $request)
     {
-        $query = Quotation::with(['client', 'items']);
+        $query = Quotation::with(['client', 'items', 'agreement']);
 
         if ($request->filled('status') && $request->status !== 'All') {
             $query->where('status', $request->status);
@@ -92,6 +92,7 @@ class QuotationController extends Controller
             'items.*.price' => 'nullable|numeric',
             'items.*.tax' => 'nullable|numeric',
             'items.*.amount' => 'nullable|numeric',
+            'agreement_content' => 'nullable|array',
         ]);
 
         $validated['quotation_no'] = $validated['quotation_no'] ?? self::nextQuotationNo();
@@ -114,12 +115,23 @@ class QuotationController extends Controller
             ]);
         }
 
-        return $quotation->load(['client', 'items']);
+        if (!empty($validated['agreement_content'])) {
+            $quotation->agreement()->create([
+                'agreement_no' => \App\Http\Controllers\AgreementController::generateNextNumber(),
+                'title' => 'Quotation Agreement - ' . $quotation->quotation_no,
+                'client_id' => $quotation->client_id,
+                'date' => now()->toDateString(),
+                'status' => 'Draft',
+                'content' => $validated['agreement_content'],
+            ]);
+        }
+
+        return $quotation->load(['client', 'items', 'agreement']);
     }
 
     public function show(Quotation $quotation)
     {
-        return $quotation->load(['client', 'items']);
+        return $quotation->load(['client', 'items', 'agreement']);
     }
 
     public function update(Request $request, Quotation $quotation)
@@ -147,6 +159,7 @@ class QuotationController extends Controller
             'items.*.price' => 'nullable|numeric',
             'items.*.tax' => 'nullable|numeric',
             'items.*.amount' => 'nullable|numeric',
+            'agreement_content' => 'nullable|array',
         ]);
 
         $quotation->update($validated);
@@ -164,7 +177,26 @@ class QuotationController extends Controller
             ]);
         }
 
-        return $quotation->load(['client', 'items']);
+        if (array_key_exists('agreement_content', $validated)) {
+            $content = $validated['agreement_content'];
+            if (!empty($content)) {
+                $existing = $quotation->agreement;
+                if ($existing) {
+                    $existing->update(['content' => $content]);
+                } else {
+                    $quotation->agreement()->create([
+                        'agreement_no' => \App\Http\Controllers\AgreementController::generateNextNumber(),
+                        'title' => 'Quotation Agreement - ' . $quotation->quotation_no,
+                        'client_id' => $quotation->client_id,
+                        'date' => now()->toDateString(),
+                        'status' => 'Draft',
+                        'content' => $content,
+                    ]);
+                }
+            }
+        }
+
+        return $quotation->load(['client', 'items', 'agreement']);
     }
 
     public function destroy(Quotation $quotation)
@@ -213,7 +245,7 @@ class QuotationController extends Controller
 
         return response()->json([
             'message' => 'Quotation converted to invoice successfully.',
-            'quotation' => $quotation->load(['client', 'items']),
+            'quotation' => $quotation->load(['client', 'items', 'agreement']),
             'invoice' => $invoice->load('items'),
         ]);
     }

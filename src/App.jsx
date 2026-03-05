@@ -18,8 +18,10 @@ import { Toaster } from 'react-hot-toast';
 import Settings from "./pages/Settings";
 import User from "./pages/User";
 import Products from "./pages/Products";
-import PrintTemplateBuilder from "./pages/PrintTemplateBuilder";
-import PrintTemplatesList from "./pages/PrintTemplatesList";
+import Agreements from "./pages/Agreements";
+import ModernPrintTemplateBuilder from "./pages/ModernPrintTemplateBuilder";
+import ModernPrintTemplatesList from "./pages/ModernPrintTemplatesList";
+
 
 function App() {
   return (
@@ -79,6 +81,14 @@ function App() {
               }
             />
             <Route
+              path="/agreements"
+              element={
+                <Layout title="Agreement Management">
+                  <Agreements />
+                </Layout>
+              }
+            />
+            <Route
               path="/income"
               element={
                 <Layout title="Income">
@@ -126,7 +136,7 @@ function App() {
               path="/print-templates"
               element={
                 <Layout title="Print Templates">
-                  <PrintTemplatesList />
+                  <ModernPrintTemplatesList />
                 </Layout>
               }
             />
@@ -134,7 +144,7 @@ function App() {
               path="/print-templates/new"
               element={
                 <Layout title="New Print Template">
-                  <PrintTemplateBuilder />
+                  <ModernPrintTemplateBuilder />
                 </Layout>
               }
             />
@@ -142,7 +152,7 @@ function App() {
               path="/print-templates/edit/:id"
               element={
                 <Layout title="Edit Print Template">
-                  <PrintTemplateBuilder />
+                  <ModernPrintTemplateBuilder />
                 </Layout>
               }
             />
