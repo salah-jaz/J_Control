@@ -341,6 +341,165 @@ export const deleteFollowUp = async (id) => {
     }
 };
 
+export const getPlannerEvents = async (params = {}) => {
+    try {
+        const response = await api.get('/planner-events', { params });
+        const body = response.data;
+        if (Array.isArray(body)) {
+            return body;
+        }
+        if (body && Array.isArray(body.data)) {
+            return body.data;
+        }
+        return [];
+    } catch (error) {
+        console.error("Failed to fetch planner events:", error);
+        return [];
+    }
+};
+
+export const getTodayPlannerEvents = async () => {
+    try {
+        const response = await api.get('/planner-events/today');
+        const body = response.data;
+        if (Array.isArray(body)) {
+            return body;
+        }
+        if (body && Array.isArray(body.data)) {
+            return body.data;
+        }
+        return [];
+    } catch (error) {
+        console.error("Failed to fetch today's planner events:", error);
+        return [];
+    }
+};
+
+export const savePlannerEvent = async (event) => {
+    try {
+        // Support FormData for file uploads
+        if (event instanceof FormData) {
+            const id = event.get('id');
+            if (id) {
+                event.append('_method', 'PUT');
+                const response = await api.post(`/planner-events/${id}`, event, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                const body = response.data;
+                return body && body.data ? body.data : body;
+            } else {
+                const response = await api.post('/planner-events', event, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                const body = response.data;
+                return body && body.data ? body.data : body;
+            }
+        }
+
+        if (event.id) {
+            const response = await api.put(`/planner-events/${event.id}`, event);
+            const body = response.data;
+            return body && body.data ? body.data : body;
+        } else {
+            const response = await api.post('/planner-events', event);
+            const body = response.data;
+            return body && body.data ? body.data : body;
+        }
+    } catch (error) {
+        console.error("Failed to save planner event:", error);
+        throw error;
+    }
+};
+
+export const deletePlannerEvent = async (id) => {
+    try {
+        await api.delete(`/planner-events/${id}`);
+        return true;
+    } catch (error) {
+        console.error("Failed to delete planner event:", error);
+        return false;
+    }
+};
+
+export const completePlannerEvent = async (payload) => {
+    try {
+        const response = await api.post('/planner-events/complete', payload);
+        const body = response.data;
+        return body && body.data ? body.data : body;
+    } catch (error) {
+        console.error("Failed to complete planner event:", error);
+        throw error;
+    }
+};
+
+export const reschedulePlannerEvent = async (payload) => {
+    try {
+        const response = await api.post('/planner-events/reschedule', payload);
+        const body = response.data;
+        return body && body.data ? body.data : body;
+    } catch (error) {
+        console.error("Failed to reschedule planner event:", error);
+        throw error;
+    }
+};
+
+export const createNextPlannerMeeting = async (payload) => {
+    try {
+        const response = await api.post('/planner-events/next-meeting', payload);
+        const body = response.data;
+        return body && body.data ? body.data : body;
+    } catch (error) {
+        console.error("Failed to create next planner meeting:", error);
+        throw error;
+    }
+};
+
+export const cancelPlannerEvent = async (payload) => {
+    try {
+        const response = await api.post('/planner-events/cancel', payload);
+        const body = response.data;
+        return body && body.data ? body.data : body;
+    } catch (error) {
+        console.error("Failed to cancel planner event:", error);
+        throw error;
+    }
+};
+
+export const getPlannerNotes = async (params = {}) => {
+    try {
+        const response = await api.get('/planner-notes', { params });
+        return response.data;
+    } catch (error) {
+        console.error("Failed to fetch planner notes:", error);
+        return [];
+    }
+};
+
+export const savePlannerNote = async (note) => {
+    try {
+        if (note.id) {
+            const response = await api.put(`/planner-notes/${note.id}`, note);
+            return response.data;
+        } else {
+            const response = await api.post('/planner-notes', note);
+            return response.data;
+        }
+    } catch (error) {
+        console.error("Failed to save planner note:", error);
+        throw error;
+    }
+};
+
+export const deletePlannerNote = async (id) => {
+    try {
+        await api.delete(`/planner-notes/${id}`);
+        return true;
+    } catch (error) {
+        console.error("Failed to delete planner note:", error);
+        return false;
+    }
+};
+
 /**
  * @param {Object} [filters] - Optional: { search, status, gstType, location, dateRange, dateFrom, dateTo }
  */

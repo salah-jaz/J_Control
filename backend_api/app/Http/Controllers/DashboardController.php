@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Invoice;
+use App\Models\PlannerEvent;
 
 
 class DashboardController extends Controller
@@ -18,6 +19,12 @@ class DashboardController extends Controller
         $pendingAmount = Invoice::where('status', 'Pending')->sum('grand_total');
         
         $recentInvoices = Invoice::latest()->take(5)->get();
+
+        // Today's planner events (commitments)
+        $today = now()->toDateString();
+        $todaysEvents = PlannerEvent::whereDate('event_date', $today)
+            ->orderBy('start_time')
+            ->get(['id', 'title', 'event_date', 'start_time', 'end_time', 'category', 'priority', 'status']);
 
         // Monthly Revenue (Last 6 months)
         $monthlyRevenue = Invoice::where('status', 'Paid')
@@ -40,7 +47,8 @@ class DashboardController extends Controller
             'pendingAmount' => $pendingAmount,
             'recentInvoices' => $recentInvoices,
             'monthlyRevenue' => $monthlyRevenue,
-            'invoiceStatusCounts' => $invoiceStatusCounts
+            'invoiceStatusCounts' => $invoiceStatusCounts,
+            'todaysEvents' => $todaysEvents,
         ]);
     }
 }

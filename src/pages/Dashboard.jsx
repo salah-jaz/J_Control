@@ -65,11 +65,13 @@ const Dashboard = () => {
         invoiceStatusCounts: []
     });
     const [todayIncome, setTodayIncome] = useState(0);
+    const [todaysEvents, setTodaysEvents] = useState([]);
 
     useEffect(() => {
         const fetchStats = async () => {
             const data = await getDashboardStats();
             setStats(data);
+            setTodaysEvents(data.todaysEvents || []);
 
             // Fetch today's income
             const today = new Date().toISOString().split('T')[0];
@@ -232,6 +234,52 @@ const Dashboard = () => {
                                 </p>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Today's Commitments */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100/60 p-6 flex flex-col h-full">
+                        <h3 className="text-lg font-bold text-slate-800 mb-3">Today&apos;s Commitments</h3>
+                        {todaysEvents.length === 0 ? (
+                            <p className="text-sm text-slate-400">No events scheduled for today.</p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {todaysEvents.map((ev) => {
+                                    const status = ev.status || 'scheduled';
+                                    const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+                                    const color =
+                                        status === 'completed' ? '#10B981' :
+                                            status === 'cancelled' ? '#EF4444' :
+                                                status === 'missed' ? '#FB923C' :
+                                                    status === 'rescheduled' ? '#F59E0B' :
+                                                        ev.category === 'payment' ? '#10B981' :
+                                                            ev.category === 'deadline' ? '#EF4444' :
+                                                                ev.category === 'reminder' ? '#FACC15' :
+                                                                    '#3B82F6';
+
+                                    return (
+                                        <li key={ev.id} className="flex items-start gap-3">
+                                            <div
+                                                className="mt-1 h-2 w-2 rounded-full"
+                                                style={{ backgroundColor: color }}
+                                            ></div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-800">
+                                                    {ev.title} <span className="text-xs text-slate-500">– {statusLabel}</span>
+                                                </p>
+                                                <p className="text-xs text-slate-500">
+                                                    {ev.start_time
+                                                        ? new Date(`1970-01-01T${ev.start_time}`).toLocaleTimeString([], {
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                        })
+                                                        : 'All day'}
+                                                </p>
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
                     </div>
                 </div>
             </div>

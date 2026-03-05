@@ -52,6 +52,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('transactions', \App\Http\Controllers\TransactionController::class);
     Route::apiResource('users', \App\Http\Controllers\UserController::class);
     Route::apiResource('products', \App\Http\Controllers\ProductController::class);
+    Route::get('planner-events/today', [\App\Http\Controllers\PlannerEventController::class, 'today']);
+    Route::post('planner-events/complete', [\App\Http\Controllers\PlannerEventController::class, 'complete']);
+    Route::post('planner-events/reschedule', [\App\Http\Controllers\PlannerEventController::class, 'reschedule']);
+    Route::post('planner-events/next-meeting', [\App\Http\Controllers\PlannerEventController::class, 'nextMeeting']);
+    Route::post('planner-events/cancel', [\App\Http\Controllers\PlannerEventController::class, 'cancel']);
+    Route::apiResource('planner-events', \App\Http\Controllers\PlannerEventController::class);
+    Route::apiResource('planner-notes', \App\Http\Controllers\PlannerNoteController::class);
     Route::get('/dashboard-stats', [\App\Http\Controllers\DashboardController::class, 'stats']);
 
     // Settings Routes
