@@ -1,10 +1,38 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { getPlannerEvents, savePlannerEvent, deletePlannerEvent, getPlannerNotes, savePlannerNote, deletePlannerNote, getClients, getUsers, completePlannerEvent, reschedulePlannerEvent, createNextPlannerMeeting, cancelPlannerEvent } from '../services/db';
-import { Calendar as CalendarIcon, Plus, Filter, Trash2, AlertTriangle, Edit3, X, CheckCircle2, Clock3 } from 'lucide-react';
+import {
+    getPlannerEvents,
+    savePlannerEvent,
+    deletePlannerEvent,
+    getPlannerNotes,
+    savePlannerNote,
+    deletePlannerNote,
+    getClients,
+    getUsers,
+    completePlannerEvent,
+    reschedulePlannerEvent,
+    createNextPlannerMeeting,
+    cancelPlannerEvent,
+    getPlannerStats,
+} from '../services/db';
+import {
+    Calendar as CalendarIcon,
+    Plus,
+    Filter,
+    Trash2,
+    AlertTriangle,
+    Edit3,
+    X,
+    CheckCircle2,
+    Clock3,
+    Search,
+    CalendarDays,
+    CalendarClock,
+    XCircle,
+} from 'lucide-react';
 import clsx from 'clsx';
 import { toast } from 'react-hot-toast';
 
@@ -30,6 +58,21 @@ const STATUS_COLORS = {
     missed: '#FB923C', // Orange
 };
 
+const StatCard = ({ title, description, value, icon: Icon, iconBgClass, iconColorClass }) => (
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide">{title}</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{value}</p>
+                <p className="text-xs text-slate-400 mt-1.5">{description}</p>
+            </div>
+            <div className={`flex-shrink-0 p-3 rounded-xl shadow-sm border ${iconBgClass} ${iconColorClass}`}>
+                <Icon className="w-6 h-6" />
+            </div>
+        </div>
+    </div>
+);
+
 const Planner = () => {
     const [currentView, setCurrentView] = useState('dayGridMonth');
     const [calendarRange, setCalendarRange] = useState({ start: null, end: null });
@@ -38,8 +81,12 @@ const Planner = () => {
     const [eventNotes, setEventNotes] = useState([]);
     const [independentNotes, setIndependentNotes] = useState([]);
     const [filtersOpen, setFiltersOpen] = useState(false);
-    const [categoriesFilter, setCategoriesFilter] = useState(['meeting', 'payment', 'deadline', 'reminder', 'personal']);
-    const [prioritiesFilter, setPrioritiesFilter] = useState(['low', 'medium', 'high']);
+    const [search, setSearch] = useState('');
+    const [searchDebounced, setSearchDebounced] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [categoryFilter, setCategoryFilter] = useState('all');
+    const [priorityFilter, setPriorityFilter] = useState('all');
+    const [dateFilter, setDateFilter] = useState('all');
     const [clientFilter, setClientFilter] = useState('');
     const [userFilter, setUserFilter] = useState('');
     const [clients, setClients] = useState([]);
@@ -87,6 +134,13 @@ const Planner = () => {
         meeting_notes: '',
     });
     const [cancelForm, setCancelForm] = useState({ cancel_reason: '' });
+    const [stats, setStats] = useState({
+        total_events: 0,
+        today_events: 0,
+        completed_events: 0,
+        upcoming_events: 0,
+        cancelled_events: 0,
+    });
 
     useEffect(() => {
         const loadLookups = async () => {
@@ -101,10 +155,36 @@ const Planner = () => {
     }, []);
 
     useEffect(() => {
+        const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
+        return () => clearTimeout(t);
+    }, [search]);
+
+    const fetchStats = useCallback(async () => {
+        try {
+            const data = await getPlannerStats();
+            if (data) {
+                setStats({
+                    total_events: data.total_events ?? 0,
+                    today_events: data.today_events ?? 0,
+                    completed_events: data.completed_events ?? 0,
+                    upcoming_events: data.upcoming_events ?? 0,
+                    cancelled_events: data.cancelled_events ?? 0,
+                });
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchStats();
+    }, [fetchStats]);
+
+    useEffect(() => {
         if (calendarRange.start && calendarRange.end) {
             fetchEvents();
         }
-    }, [calendarRange, categoriesFilter, prioritiesFilter, clientFilter, userFilter]);
+    }, [calendarRange, categoryFilter, priorityFilter, clientFilter, userFilter]);
 
     useEffect(() => {
         fetchIndependentNotes();
@@ -115,11 +195,11 @@ const Planner = () => {
             start: calendarRange.start,
             end: calendarRange.end,
         };
-        if (categoriesFilter.length && categoriesFilter.length < Object.keys(CATEGORY_COLORS).length) {
-            params.categories = categoriesFilter.join(',');
+        if (categoryFilter !== 'all') {
+            params.categories = categoryFilter;
         }
-        if (prioritiesFilter.length && prioritiesFilter.length < Object.keys(PRIORITY_COLORS).length) {
-            params.priorities = prioritiesFilter.join(',');
+        if (priorityFilter !== 'all') {
+            params.priorities = priorityFilter;
         }
         if (clientFilter) params.client_id = clientFilter;
         if (userFilter) params.user_id = userFilter;
@@ -145,9 +225,78 @@ const Planner = () => {
         });
     };
 
+    const filteredEvents = useMemo(() => {
+        const searchLower = searchDebounced.toLowerCase();
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const now = new Date();
+
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - startOfWeek.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        return events.filter((e) => {
+            if (searchLower) {
+                const haystack = [
+                    e.title,
+                    e.description,
+                    e.meeting_notes,
+                    e.client_name,
+                ]
+                    .filter(Boolean)
+                    .join(' ')
+                    .toLowerCase();
+
+                if (!haystack.includes(searchLower)) {
+                    return false;
+                }
+            }
+
+            const status = e.status || 'scheduled';
+            if (statusFilter !== 'all' && status !== statusFilter) {
+                return false;
+            }
+
+            if (categoryFilter !== 'all' && e.category !== categoryFilter) {
+                return false;
+            }
+
+            if (priorityFilter !== 'all' && e.priority !== priorityFilter) {
+                return false;
+            }
+
+            if (dateFilter !== 'all' && e.event_date) {
+                const eventDateObj = new Date(`${e.event_date}T00:00:00`);
+                if (!Number.isNaN(eventDateObj.getTime())) {
+                    if (dateFilter === 'today' && e.event_date !== todayStr) {
+                        return false;
+                    }
+                    if (dateFilter === 'week') {
+                        if (eventDateObj < startOfWeek || eventDateObj > endOfWeek) {
+                            return false;
+                        }
+                    }
+                    if (dateFilter === 'month') {
+                        if (eventDateObj < startOfMonth || eventDateObj > endOfMonth) {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            return true;
+        });
+    }, [events, searchDebounced, statusFilter, categoryFilter, priorityFilter, dateFilter]);
+
     const mappedEvents = useMemo(
         () =>
-            events.map((e) => {
+            filteredEvents.map((e) => {
                 const hasPreformatted = !!(e.start && e.end);
 
                 const start = hasPreformatted
@@ -180,7 +329,7 @@ const Planner = () => {
                     },
                 };
             }),
-        [events],
+        [filteredEvents],
     );
 
     const handleEventClick = async (clickInfo) => {
@@ -207,6 +356,7 @@ const Planner = () => {
         try {
             await savePlannerEvent({ id, ...updated });
             await fetchEvents();
+            await fetchStats();
         } catch (err) {
             console.error(err);
         }
@@ -295,6 +445,7 @@ const Planner = () => {
             await savePlannerEvent(formData);
             setIsEventModalOpen(false);
             await fetchEvents();
+            await fetchStats();
         } catch (err) {
             console.error(err);
             setEventError('Failed to save event. Please check the required fields.');
@@ -312,6 +463,7 @@ const Planner = () => {
             setEventNotes([]);
             await fetchEvents();
             toast.success('Event deleted');
+            await fetchStats();
         } catch (err) {
             console.error(err);
         }
@@ -341,8 +493,7 @@ const Planner = () => {
         e.preventDefault();
         if (!selectedEvent) return;
         try {
-            const updated = await completePlannerEvent({
-                event_id: selectedEvent.id,
+            const updated = await completePlannerEvent(selectedEvent.id, {
                 meeting_notes: completionForm.meeting_notes,
                 outcome: completionForm.outcome,
             });
@@ -350,6 +501,7 @@ const Planner = () => {
             await fetchEvents();
             setSelectedEvent(updated);
             toast.success('Meeting marked as completed');
+            await fetchStats();
         } catch (err) {
             console.error(err);
             toast.error('Failed to mark meeting as completed');
@@ -373,8 +525,7 @@ const Planner = () => {
         e.preventDefault();
         if (!selectedEvent) return;
         try {
-            const updated = await reschedulePlannerEvent({
-                event_id: selectedEvent.id,
+            const updated = await reschedulePlannerEvent(selectedEvent.id, {
                 event_date: rescheduleForm.event_date,
                 start_time: rescheduleForm.start_time || null,
                 end_time: rescheduleForm.end_time || null,
@@ -384,6 +535,7 @@ const Planner = () => {
             await fetchEvents();
             setSelectedEvent(updated);
             toast.success('Meeting rescheduled');
+            await fetchStats();
         } catch (err) {
             console.error(err);
             toast.error('Failed to reschedule meeting');
@@ -407,8 +559,7 @@ const Planner = () => {
         e.preventDefault();
         if (!selectedEvent) return;
         try {
-            await createNextPlannerMeeting({
-                source_event_id: selectedEvent.id,
+            await createNextPlannerMeeting(selectedEvent.id, {
                 title: selectedEvent.title,
                 description: selectedEvent.description,
                 event_date: nextMeetingForm.event_date,
@@ -423,6 +574,7 @@ const Planner = () => {
             setIsNextMeetingModalOpen(false);
             await fetchEvents();
             toast.success('Next meeting scheduled');
+            await fetchStats();
         } catch (err) {
             console.error(err);
             toast.error('Failed to schedule next meeting');
@@ -441,14 +593,14 @@ const Planner = () => {
         e.preventDefault();
         if (!selectedEvent) return;
         try {
-            const updated = await cancelPlannerEvent({
-                event_id: selectedEvent.id,
+            const updated = await cancelPlannerEvent(selectedEvent.id, {
                 cancel_reason: cancelForm.cancel_reason || null,
             });
             setIsCancelModalOpen(false);
             await fetchEvents();
             setSelectedEvent(updated);
             toast.success('Meeting cancelled');
+            await fetchStats();
         } catch (err) {
             console.error(err);
             toast.error('Failed to cancel meeting');
@@ -566,14 +718,6 @@ const Planner = () => {
         );
     };
 
-    const toggleFilterValue = (value, current, setter) => {
-        if (current.includes(value)) {
-            setter(current.filter((v) => v !== value));
-        } else {
-            setter([...current, value]);
-        }
-    };
-
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -627,77 +771,139 @@ const Planner = () => {
                         className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-medium text-slate-600 hover:bg-gray-50 shadow-sm"
                     >
                         <Filter className="h-4 w-4" />
-                        Filters
+                        More Filters
                     </button>
-                    <button
-                        onClick={openNewEventModal}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-brand-600 text-white text-xs font-medium shadow-sm hover:bg-brand-700"
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+                <StatCard
+                    title="Total Events"
+                    description="Total events in planner"
+                    value={stats.total_events}
+                    icon={CalendarDays}
+                    iconBgClass="bg-blue-50 border-blue-100"
+                    iconColorClass="text-blue-600"
+                />
+                <StatCard
+                    title="Today's Events"
+                    description="Events scheduled today"
+                    value={stats.today_events}
+                    icon={Clock3}
+                    iconBgClass="bg-emerald-50 border-emerald-100"
+                    iconColorClass="text-emerald-600"
+                />
+                <StatCard
+                    title="Completed Meetings"
+                    description="Meetings finished"
+                    value={stats.completed_events}
+                    icon={CheckCircle2}
+                    iconBgClass="bg-green-50 border-green-100"
+                    iconColorClass="text-green-600"
+                />
+                <StatCard
+                    title="Upcoming Meetings"
+                    description="Future meetings"
+                    value={stats.upcoming_events}
+                    icon={CalendarClock}
+                    iconBgClass="bg-indigo-50 border-indigo-100"
+                    iconColorClass="text-indigo-600"
+                />
+                <StatCard
+                    title="Cancelled Meetings"
+                    description="Cancelled events"
+                    value={stats.cancelled_events}
+                    icon={XCircle}
+                    iconBgClass="bg-red-50 border-red-100"
+                    iconColorClass="text-red-600"
+                />
+            </div>
+
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+                <div className="flex flex-col lg:flex-row gap-4 flex-wrap items-end">
+                    <div className="relative flex-1 min-w-[200px]">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                            type="text"
+                            placeholder="Search events or meetings..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all shadow-sm"
+                        />
+                    </div>
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[150px]"
                     >
-                        <Plus className="h-4 w-4" />
-                        Add Event
-                    </button>
+                        <option value="all">All Status</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="completed">Completed</option>
+                        <option value="rescheduled">Rescheduled</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="missed">Missed</option>
+                    </select>
+                    <select
+                        value={categoryFilter}
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[150px]"
+                    >
+                        <option value="all">All Categories</option>
+                        <option value="meeting">Meeting</option>
+                        <option value="payment">Payment</option>
+                        <option value="deadline">Deadline</option>
+                        <option value="reminder">Reminder</option>
+                        <option value="personal">Personal</option>
+                    </select>
+                    <select
+                        value={priorityFilter}
+                        onChange={(e) => setPriorityFilter(e.target.value)}
+                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
+                    >
+                        <option value="all">All Priorities</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                    <select
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value)}
+                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
+                    >
+                        <option value="all">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                    </select>
+                    <div className="flex items-center gap-2 ml-auto flex-wrap">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSearch('');
+                                setSearchDebounced('');
+                                setStatusFilter('all');
+                                setCategoryFilter('all');
+                                setPriorityFilter('all');
+                                setDateFilter('all');
+                            }}
+                            className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-gray-50 transition-colors"
+                        >
+                            Reset Filters
+                        </button>
+                        <button
+                            onClick={openNewEventModal}
+                            className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30 h-[38px]"
+                        >
+                            <Plus className="h-5 w-5" />
+                            Add Event
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {filtersOpen && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5 space-y-3">
                     <div className="flex flex-wrap gap-4 items-start">
-                        <div>
-                            <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
-                                Category
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                {Object.keys(CATEGORY_COLORS).map((cat) => (
-                                    <button
-                                        key={cat}
-                                        type="button"
-                                        onClick={() =>
-                                            toggleFilterValue(cat, categoriesFilter, setCategoriesFilter)
-                                        }
-                                        className={clsx(
-                                            'px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center gap-1',
-                                            categoriesFilter.includes(cat)
-                                                ? 'bg-brand-50 text-brand-700 border-brand-200'
-                                                : 'bg-gray-50 text-slate-500 border-gray-200',
-                                        )}
-                                    >
-                                        <span
-                                            className="w-2 h-2 rounded-full"
-                                            style={{ backgroundColor: CATEGORY_COLORS[cat] }}
-                                        ></span>
-                                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div>
-                            <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
-                                Priority
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                {Object.keys(PRIORITY_COLORS).map((p) => (
-                                    <button
-                                        key={p}
-                                        type="button"
-                                        onClick={() =>
-                                            toggleFilterValue(p, prioritiesFilter, setPrioritiesFilter)
-                                        }
-                                        className={clsx(
-                                            'px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center gap-1',
-                                            prioritiesFilter.includes(p)
-                                                ? 'bg-slate-900 text-white border-slate-900'
-                                                : 'bg-gray-50 text-slate-500 border-gray-200',
-                                        )}
-                                    >
-                                        <span
-                                            className="w-2 h-2 rounded-full"
-                                            style={{ backgroundColor: PRIORITY_COLORS[p] }}
-                                        ></span>
-                                        {p.charAt(0).toUpperCase() + p.slice(1)}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
                         <div className="flex-1 min-w-[160px]">
                             <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
                                 Client
@@ -733,6 +939,9 @@ const Planner = () => {
                             </select>
                         </div>
                     </div>
+                    <p className="text-[11px] text-slate-400">
+                        These filters further narrow down planner events by linked client and user.
+                    </p>
                 </div>
             )}
 

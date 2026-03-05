@@ -295,6 +295,28 @@ export const getDashboardStats = async () => {
     }
 };
 
+export const getPlannerStats = async () => {
+    try {
+        const response = await api.get('/planner/stats');
+        return response.data || {
+            total_events: 0,
+            today_events: 0,
+            completed_events: 0,
+            upcoming_events: 0,
+            cancelled_events: 0,
+        };
+    } catch (error) {
+        console.error("Failed to fetch planner stats:", error);
+        return {
+            total_events: 0,
+            today_events: 0,
+            completed_events: 0,
+            upcoming_events: 0,
+            cancelled_events: 0,
+        };
+    }
+};
+
 
 export const getFollowUps = async (params) => {
     try {
@@ -421,9 +443,9 @@ export const deletePlannerEvent = async (id) => {
     }
 };
 
-export const completePlannerEvent = async (payload) => {
+export const completePlannerEvent = async (eventId, payload = {}) => {
     try {
-        const response = await api.post('/planner-events/complete', payload);
+        const response = await api.post(`/planner-events/complete/${eventId}`, payload);
         const body = response.data;
         return body && body.data ? body.data : body;
     } catch (error) {
@@ -432,9 +454,9 @@ export const completePlannerEvent = async (payload) => {
     }
 };
 
-export const reschedulePlannerEvent = async (payload) => {
+export const reschedulePlannerEvent = async (eventId, payload) => {
     try {
-        const response = await api.post('/planner-events/reschedule', payload);
+        const response = await api.post(`/planner-events/reschedule/${eventId}`, payload);
         const body = response.data;
         return body && body.data ? body.data : body;
     } catch (error) {
@@ -443,9 +465,9 @@ export const reschedulePlannerEvent = async (payload) => {
     }
 };
 
-export const createNextPlannerMeeting = async (payload) => {
+export const createNextPlannerMeeting = async (sourceEventId, payload) => {
     try {
-        const response = await api.post('/planner-events/next-meeting', payload);
+        const response = await api.post(`/planner-events/next-meeting/${sourceEventId}`, payload);
         const body = response.data;
         return body && body.data ? body.data : body;
     } catch (error) {
@@ -454,9 +476,9 @@ export const createNextPlannerMeeting = async (payload) => {
     }
 };
 
-export const cancelPlannerEvent = async (payload) => {
+export const cancelPlannerEvent = async (eventId, payload = {}) => {
     try {
-        const response = await api.post('/planner-events/cancel', payload);
+        const response = await api.post(`/planner-events/cancel/${eventId}`, payload);
         const body = response.data;
         return body && body.data ? body.data : body;
     } catch (error) {

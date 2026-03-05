@@ -53,6 +53,9 @@ class PlannerEventController extends Controller
             'cancel_reason' => $event->cancel_reason,
             'meeting_notes' => $event->meeting_notes,
             'client_id' => $event->client_id,
+            'client_name' => optional($event->client)->company_name
+                ?? optional($event->client)->client_name
+                ?? optional($event->client)->name,
             'invoice_id' => $event->invoice_id,
             'reminder_time' => $event->reminder_time,
             'attachment' => $event->attachment,
@@ -132,6 +135,30 @@ class PlannerEventController extends Controller
     }
 
     /**
+     * Get high-level statistics for planner events.
+     */
+    public function stats()
+    {
+        $today = now()->toDateString();
+
+        $totalEvents = PlannerEvent::count();
+        $todayEvents = PlannerEvent::whereDate('event_date', $today)->count();
+        $completedEvents = PlannerEvent::where('status', 'completed')->count();
+        $upcomingEvents = PlannerEvent::where('status', 'scheduled')
+            ->whereDate('event_date', '>=', $today)
+            ->count();
+        $cancelledEvents = PlannerEvent::where('status', 'cancelled')->count();
+
+        return response()->json([
+            'total_events' => $totalEvents,
+            'today_events' => $todayEvents,
+            'completed_events' => $completedEvents,
+            'upcoming_events' => $upcomingEvents,
+            'cancelled_events' => $cancelledEvents,
+        ]);
+    }
+
+    /**
      * Get today's planner events (used for reminder checks).
      */
     public function today()
@@ -179,15 +206,14 @@ class PlannerEventController extends Controller
         ]);
     }
 
-    public function complete(Request $request)
+    public function complete(Request $request, $id)
     {
         $validated = $request->validate([
-            'event_id' => 'required|exists:planner_events,id',
             'meeting_notes' => 'nullable|string',
             'outcome' => 'nullable|string',
         ]);
 
-        $event = PlannerEvent::findOrFail($validated['event_id']);
+        $event = PlannerEvent::findOrFail($id);
         $event->status = 'completed';
         $event->completed_at = now();
 
@@ -198,26 +224,30 @@ class PlannerEventController extends Controller
 
         $event->save();
 
+        $payload = $this->transformEvent($event);
+
         return response()->json([
             'status' => 'success',
             'message' => 'Meeting marked as completed',
-            'data' => $this->transformEvent($event),
+            'data' => $payload,
+            'event' => $payload,
         ]);
     }
 
-    public function reschedule(Request $request)
+    public function reschedule(Request $request, $id)
     {
+        // Align validation with frontend payload: date is required,
+        // start time required, end time optional, reason optional.
         $validated = $request->validate([
-            'event_id' => 'required|exists:planner_events,id',
             'event_date' => 'required|date',
-            'start_time' => 'nullable|date_format:H:i',
-            'end_time' => 'nullable|date_format:H:i',
+            'start_time' => 'required',
+            'end_time' => 'nullable',
             'reason' => 'nullable|string',
         ]);
 
-        $event = PlannerEvent::findOrFail($validated['event_id']);
+        $event = PlannerEvent::findOrFail($id);
         $event->event_date = $validated['event_date'];
-        $event->start_time = $validated['start_time'] ?? null;
+        $event->start_time = $validated['start_time'];
         $event->end_time = $validated['end_time'] ?? null;
         $event->status = 'rescheduled';
 
@@ -231,36 +261,46 @@ class PlannerEventController extends Controller
 
         $event->save();
 
+        $payload = $this->transformEvent($event);
+
         return response()->json([
             'status' => 'success',
             'message' => 'Meeting rescheduled',
-            'data' => $this->transformEvent($event),
+            'data' => $payload,
+            'event' => $payload,
         ]);
     }
 
-    public function nextMeeting(Request $request)
+    public function nextMeeting(Request $request, $id)
     {
+        // Validation matches what the frontend actually sends:
+        // - event_date and start_time are required
+        // - end_time and notes/meeting_notes are optional
+        // - other fields are optional overrides; we fall back to source event.
         $validated = $request->validate([
-            'source_event_id' => 'required|exists:planner_events,id',
-            'title' => 'required|string|max:255',
+            'title' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'event_date' => 'required|date',
-            'start_time' => 'nullable|date_format:H:i',
-            'end_time' => 'nullable|date_format:H:i',
+            'start_time' => 'required',
+            'end_time' => 'nullable',
             'category' => 'nullable|string|in:meeting,payment,deadline,reminder,personal',
             'priority' => 'nullable|string|in:low,medium,high',
             'client_id' => 'nullable|exists:clients,id',
             'reminder_time' => 'nullable|integer|in:10,30,60,1440',
+            // Support both `notes` (spec) and `meeting_notes` (current frontend).
+            'notes' => 'nullable|string',
             'meeting_notes' => 'nullable|string',
         ]);
 
-        $source = PlannerEvent::findOrFail($validated['source_event_id']);
+        $source = PlannerEvent::findOrFail($id);
+
+        $notes = $validated['meeting_notes'] ?? $validated['notes'] ?? null;
 
         $data = [
-            'title' => $validated['title'],
+            'title' => $validated['title'] ?? $source->title,
             'description' => $validated['description'] ?? $source->description,
             'event_date' => $validated['event_date'],
-            'start_time' => $validated['start_time'] ?? null,
+            'start_time' => $validated['start_time'],
             'end_time' => $validated['end_time'] ?? null,
             'category' => $validated['category'] ?? $source->category,
             'priority' => $validated['priority'] ?? $source->priority,
@@ -269,35 +309,41 @@ class PlannerEventController extends Controller
             'reminder_time' => $validated['reminder_time'] ?? $source->reminder_time,
             'status' => 'scheduled',
             'rescheduled_from' => $source->id,
-            'meeting_notes' => $validated['meeting_notes'] ?? null,
-            'created_by' => Auth::id() ?? $source->created_by,
+            'meeting_notes' => $notes,
+            'created_by' => $source->created_by ?? Auth::id(),
         ];
 
         $event = PlannerEvent::create($data);
 
+        $payload = $this->transformEvent($event);
+
         return response()->json([
             'status' => 'success',
             'message' => 'Next meeting scheduled',
-            'data' => $this->transformEvent($event),
+            'data' => $payload,
+            'event' => $payload,
         ], 201);
     }
 
-    public function cancel(Request $request)
+    public function cancel(Request $request, $id)
     {
         $validated = $request->validate([
-            'event_id' => 'required|exists:planner_events,id',
             'cancel_reason' => 'nullable|string',
+            'reason' => 'nullable|string',
         ]);
 
-        $event = PlannerEvent::findOrFail($validated['event_id']);
+        $event = PlannerEvent::findOrFail($id);
         $event->status = 'cancelled';
-        $event->cancel_reason = $validated['cancel_reason'] ?? null;
+        $event->cancel_reason = $validated['cancel_reason'] ?? $validated['reason'] ?? null;
         $event->save();
+
+        $payload = $this->transformEvent($event);
 
         return response()->json([
             'status' => 'success',
             'message' => 'Meeting cancelled',
-            'data' => $this->transformEvent($event),
+            'data' => $payload,
+            'event' => $payload,
         ]);
     }
 
