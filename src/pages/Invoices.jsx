@@ -5,7 +5,7 @@ import clsx from 'clsx';
 import { useLocation } from 'react-router-dom';
 import { getNextInvoiceNumber, getInvoiceSummary, getInvoices, deleteInvoice } from '../services/invoiceService';
 import { getClients } from '../services/db';
-import InvoiceView from '../components/InvoiceViewer';
+import InvoiceView from '../components/InvoiceView';
 import InvoiceForm from '../components/InvoiceForm';
 
 function isDateInRange(dateStr, range) {
@@ -333,6 +333,15 @@ export default function Invoices() {
           isOpen={!!viewingInvoice}
           onClose={() => setViewingInvoice(null)}
           invoice={viewingInvoice}
+          onEdit={() => {
+            setViewingInvoice(null);
+            setEditingInvoice(viewingInvoice);
+            setIsFormOpen(true);
+          }}
+          onDelete={() => {
+            handleDelete(viewingInvoice.id);
+            setViewingInvoice(null);
+          }}
         />
       )}
     </div>

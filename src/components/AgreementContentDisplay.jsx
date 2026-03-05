@@ -9,25 +9,45 @@ const documentWrapperClass =
 export default function AgreementContentDisplay({ blocks = [], className = '' }) {
   if (!Array.isArray(blocks) || blocks.length === 0) return null;
 
+  let sectionCounter = 0;
+
   return (
     <div className={`${documentWrapperClass} ${className}`}>
       <div className="agreement-document-body space-y-1 print:space-y-1">
-        {blocks.map((block) => (
-          <BlockRender key={block.id || block.type} block={block} />
-        ))}
+        {blocks.map((block) => {
+          let displayNumber = null;
+          if (block.type === 'section') {
+            sectionCounter++;
+            displayNumber = sectionCounter;
+          }
+          return <BlockRender key={block.id || block.type} block={block} number={displayNumber} />;
+        })}
       </div>
     </div>
   );
 }
 
-function BlockRender({ block }) {
+function BlockRender({ block, number }) {
   const { type, content } = block;
   if (!type) return null;
 
   switch (type) {
+    case 'section':
+      return (
+        <h2 className="agreement-section text-xl font-bold text-slate-900 mt-8 mb-3 first:mt-0 print:mt-6 print:mb-2 break-words">
+          {number ? `${number}: ` : ''}{content || ''}
+        </h2>
+      );
+    case 'subsection':
+      return (
+        <h3 className="agreement-subsection text-lg font-bold text-slate-800 mt-5 mb-2 print:mt-4 print:mb-1.5 break-words flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0"></span>
+          {content || ''}
+        </h3>
+      );
     case 'heading':
       return (
-        <h2 className="agreement-heading text-2xl font-bold text-slate-900 mt-8 mb-3 first:mt-0 print:mt-6 print:mb-2 break-words">
+        <h2 className="agreement-heading text-2xl font-bold text-slate-900 mt-8 mb-3 first:mt-0 print:mt-6 print:mb-2 break-words text-center">
           {content || ''}
         </h2>
       );
@@ -91,6 +111,34 @@ function BlockRender({ block }) {
         </div>
       );
     }
+    case 'signature':
+      return (
+        <div className="agreement-signature grid grid-cols-2 gap-12 mt-16 print:mt-12">
+          <div className="space-y-4">
+            <div className="h-16 border-b border-gray-300"></div>
+            <p className="text-sm font-bold text-slate-800">{content?.provider || 'Service Provider'},</p>
+            <p className="text-xs text-slate-500">Jaz Infotech</p>
+          </div>
+          <div className="space-y-4">
+            <div className="h-16 border-b border-gray-300"></div>
+            <p className="text-sm font-bold text-slate-800 text-right">{content?.client || 'Client'}</p>
+          </div>
+        </div>
+      );
+    case 'approval':
+      return (
+        <div className="agreement-approval mt-10 p-6 border-2 border-slate-100 bg-slate-50/50 rounded-2xl print:mt-8 print:p-4">
+          <h4 className="font-bold text-slate-800 mb-2 underline">Approval & Next Steps</h4>
+          <p className="text-sm text-slate-700 italic">{content || ''}</p>
+        </div>
+      );
+    case 'policy':
+      return (
+        <div className="agreement-policy mt-8 p-0 border-none bg-transparent print:mt-6">
+          <h4 className="font-bold text-slate-900 border-b-2 border-slate-900 inline-block mb-1">Company Policy Note</h4>
+          <p className="text-sm text-slate-700 leading-relaxed">{content || ''}</p>
+        </div>
+      );
     default:
       return null;
   }

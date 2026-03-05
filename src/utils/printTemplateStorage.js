@@ -23,7 +23,7 @@ function loadRaw() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch (_) {}
+  } catch (_) { }
   return null;
 }
 
@@ -52,7 +52,7 @@ function migrateFromLegacy() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
       localStorage.removeItem(LEGACY_KEY);
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 /** Get all templates. Migrates from legacy once if needed. */
@@ -93,6 +93,7 @@ export function saveTemplate(payload) {
           template_html: payload.template_html !== undefined ? payload.template_html : t.template_html,
           template_css: payload.template_css !== undefined ? payload.template_css : t.template_css,
           styles: payload.styles !== undefined ? payload.styles : t.styles,
+          description: payload.description !== undefined ? payload.description : t.description,
         };
         list[i] = template;
         if (template.isDefault) {
@@ -113,6 +114,7 @@ export function saveTemplate(payload) {
       template_html: payload.template_html,
       template_css: payload.template_css,
       styles: payload.styles ?? null,
+      description: payload.description || '',
     };
     if (template.isDefault) {
       list.forEach((x, i) => {
@@ -144,6 +146,7 @@ export function duplicateTemplate(id) {
     template_html: t.template_html,
     template_css: t.template_css,
     styles: t.styles,
+    description: t.description,
   });
 }
 

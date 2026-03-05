@@ -34,6 +34,7 @@ const Sidebar = ({ isOpen, setIsOpen, alertCount = 0 }) => {
         { label: "Quotation", path: "/quotations", icon: FileText },
         { label: "Expense", path: "/expense", icon: CreditCard },
         { label: "Invoices", path: "/invoices", icon: FileText },
+        { label: "Agreement", path: "/agreements", icon: FileText },
         { label: "Bank Accounts", path: "/banks", icon: Landmark },
         { label: "Transaction", path: "/transaction", icon: BookOpen },
         { label: "Reports", path: "/reports", icon: FileBarChart2 },

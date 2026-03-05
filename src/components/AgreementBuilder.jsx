@@ -2,11 +2,16 @@ import { useState } from 'react';
 import { Plus, GripVertical, Pencil, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 
 const CONTENT_TYPES = [
-  { value: 'heading', label: 'Heading' },
-  { value: 'subheading', label: 'Subheading' },
+  { value: 'section', label: 'Numbered Section' },
+  { value: 'subsection', label: 'Subsection' },
+  { value: 'heading', label: 'Heading (Plain)' },
+  { value: 'subheading', label: 'Subheading (Plain)' },
   { value: 'paragraph', label: 'Paragraph' },
   { value: 'bullets', label: 'Bullet Points' },
   { value: 'table', label: 'Table' },
+  { value: 'signature', label: 'Signature Area' },
+  { value: 'approval', label: 'Approval Section' },
+  { value: 'policy', label: 'Company Policy Note' },
 ];
 
 function generateId() {
@@ -16,6 +21,8 @@ function generateId() {
 function createEmptyBlock(type) {
   const id = generateId();
   switch (type) {
+    case 'section':
+    case 'subsection':
     case 'heading':
     case 'subheading':
     case 'paragraph':
@@ -26,6 +33,12 @@ function createEmptyBlock(type) {
       const defaultRows = [['', '']];
       return { id, type, content: { headers: ['Column 1', 'Column 2'], rows: defaultRows } };
     }
+    case 'signature':
+      return { id, type, content: { provider: 'Service Provider', client: 'Client' } };
+    case 'approval':
+      return { id, type, content: 'Please review the above scope and confirm approval.' };
+    case 'policy':
+      return { id, type, content: 'As per company standards, development will begin only after written approval...' };
     default:
       return { id, type: 'paragraph', content: '' };
   }
@@ -190,6 +203,27 @@ function BlockEditor({ block, onChange, onSave, onCancel }) {
 
   return (
     <div className="space-y-3">
+      {type === 'section' && (
+        <div className="flex gap-2 items-center">
+          <span className="text-slate-400 font-bold shrink-0">#)</span>
+          <input
+            type="text"
+            value={content || ''}
+            onChange={(e) => updateContent(e.target.value)}
+            className="input font-bold text-lg"
+            placeholder="Enter Section Title (Number will be auto-generated)"
+          />
+        </div>
+      )}
+      {type === 'subsection' && (
+        <input
+          type="text"
+          value={content || ''}
+          onChange={(e) => updateContent(e.target.value)}
+          className="input font-semibold"
+          placeholder="Enter Subsection Title"
+        />
+      )}
       {type === 'heading' && (
         <input
           type="text"
@@ -254,6 +288,44 @@ function BlockEditor({ block, onChange, onSave, onCancel }) {
           headers={block.content?.headers || []}
           rows={block.content?.rows || []}
           onChange={(headers, rows) => updateContent({ headers, rows })}
+        />
+      )}
+      {type === 'signature' && (
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label text-xs">Left Label (Service Provider)</label>
+            <input
+              type="text"
+              value={content?.provider || ''}
+              onChange={(e) => update('provider', e.target.value)}
+              className="input"
+            />
+          </div>
+          <div>
+            <label className="label text-xs">Right Label (Client)</label>
+            <input
+              type="text"
+              value={content?.client || ''}
+              onChange={(e) => update('client', e.target.value)}
+              className="input"
+            />
+          </div>
+        </div>
+      )}
+      {type === 'approval' && (
+        <textarea
+          value={content || ''}
+          onChange={(e) => updateContent(e.target.value)}
+          className="input min-h-[100px]"
+          placeholder="Approval text or next steps..."
+        />
+      )}
+      {type === 'policy' && (
+        <textarea
+          value={content || ''}
+          onChange={(e) => updateContent(e.target.value)}
+          className="input min-h-[100px]"
+          placeholder="Policy Note content..."
         />
       )}
       <div className="flex gap-2 pt-2">

@@ -7,6 +7,7 @@ use App\Http\Controllers\AuthController;
 
 Route::post('/login', [AuthController::class, 'login']);
 
+use App\Http\Controllers\AgreementController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\LeadNoteController;
 use App\Http\Controllers\CustomerController;
@@ -66,4 +67,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports/details', [\App\Http\Controllers\ReportsController::class, 'details']);
     Route::get('/reports/filters', [\App\Http\Controllers\ReportsController::class, 'filters']);
     Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
+
+    // Agreement Routes
+    Route::get('agreements/next-number', [AgreementController::class, 'nextAgreementNo']);
+    Route::get('agreements', [AgreementController::class, 'index']);
+    Route::post('agreements', [AgreementController::class, 'store']);
+    Route::get('agreements/{agreement}', [AgreementController::class, 'show']);
+    Route::put('agreements/{agreement}', [AgreementController::class, 'update']);
+    Route::delete('agreements/{agreement}', [AgreementController::class, 'destroy']);
 });
