@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import {
   FileText,
   Plus,
@@ -15,8 +15,9 @@ import toast from "react-hot-toast";
 import clsx from "clsx";
 import { getQuotations, createQuotation, updateQuotation, deleteQuotation, convertQuotationToInvoice } from "../services/quotationService";
 import { getClients } from "../services/db";
-import QuotationView from "../components/QuotationView";
-import AgreementTab from "../components/AgreementTab";
+
+const QuotationView = lazy(() => import("../components/QuotationView"));
+const AgreementTab = lazy(() => import("../components/AgreementTab"));
 
 const emptyForm = {
   client_id: "",
@@ -61,8 +62,14 @@ function Quotations() {
 
   useEffect(() => {
     const loadClients = async () => {
-      const data = await getClients();
-      setClients(data);
+      try {
+        const result = await getClients({ per_page: 100 });
+        const list = result?.data ?? result;
+        setClients(Array.isArray(list) ? list : []);
+      } catch (e) {
+        console.error("Failed to load clients", e);
+        setClients([]);
+      }
     };
     loadClients();
   }, []);
@@ -76,10 +83,21 @@ function Quotations() {
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
       const data = await getQuotations(params);
-      setListData({ quotations: data.quotations || [], summary: data.summary || null });
+      if (Array.isArray(data)) {
+        setListData({ quotations: data, summary: null });
+      } else {
+        setListData({
+          quotations: Array.isArray(data?.quotations) ? data.quotations : [],
+          summary: data?.summary ?? null,
+        });
+      }
     } catch (e) {
       console.error("Failed to load quotations", e);
       toast.error("Failed to load quotations");
+      setListData({
+        quotations: [],
+        summary: { total: 0, draft: 0, sent: 0, accepted: 0, rejected: 0, converted: 0 },
+      });
     }
   };
 
@@ -87,8 +105,10 @@ function Quotations() {
     loadData();
   }, [statusFilter, clientFilter, dateFrom, dateTo]);
 
-  const summary = listData.summary || {};
-  const quotations = listData.quotations || [];
+  const summary = listData?.summary && typeof listData.summary === "object" ? listData.summary : {};
+  const quotations = Array.isArray(listData?.quotations) ? listData.quotations : [];
+
+  const safeClients = Array.isArray(clients) ? clients : [];
 
   const filteredBySearch = searchQuery.trim()
     ? quotations.filter(
@@ -346,8 +366,8 @@ function Quotations() {
             className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[160px]"
           >
             <option value="">All Clients</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
+            {safeClients.map((c, idx) => (
+              <option key={c?.id ?? `client-${idx}`} value={c?.id ?? ""}>{c?.company_name || c?.client_name || "—"}</option>
             ))}
           </select>
           <input
@@ -713,10 +733,12 @@ function Quotations() {
 
               {tab === "agreement" && (
                 <div className="max-w-3xl">
-                  <AgreementTab
-                    value={form.agreement_content || []}
-                    onChange={(v) => setForm({ ...form, agreement_content: v })}
-                  />
+                  <Suspense fallback={<div className="py-8 text-center text-slate-500">Loading agreement...</div>}>
+                    <AgreementTab
+                      value={form.agreement_content || []}
+                      onChange={(v) => setForm({ ...form, agreement_content: v })}
+                    />
+                  </Suspense>
                 </div>
               )}
             </div>
@@ -731,15 +753,19 @@ function Quotations() {
         </div>
       )}
 
-      <QuotationView
-        isOpen={openView}
-        onClose={() => { setOpenView(false); setViewQuotation(null); }}
-        quotation={viewQuotation}
-        onEdit={() => { setOpenView(false); if (viewQuotation) openEdit(viewQuotation); }}
-        onDelete={() => viewQuotation && handleDelete(viewQuotation.id)}
-        onConvertToInvoice={() => viewQuotation && handleConvertToInvoice(viewQuotation)}
-        onSaved={() => loadData()}
-      />
+      {openView && (
+        <Suspense fallback={<div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center"><div className="text-white">Loading...</div></div>}>
+          <QuotationView
+            isOpen={openView}
+            onClose={() => { setOpenView(false); setViewQuotation(null); }}
+            quotation={viewQuotation}
+            onEdit={() => { setOpenView(false); if (viewQuotation) openEdit(viewQuotation); }}
+            onDelete={() => viewQuotation && handleDelete(viewQuotation.id)}
+            onConvertToInvoice={() => viewQuotation && handleConvertToInvoice(viewQuotation)}
+            onSaved={() => loadData()}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

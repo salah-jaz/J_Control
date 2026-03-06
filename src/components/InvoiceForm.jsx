@@ -49,8 +49,9 @@ const InvoiceForm = ({
 
   useEffect(() => {
     const load = async () => {
-      const [c, b] = await Promise.all([getClients(), getBankAccounts()]);
-      setClients(c);
+      const [cResult, b] = await Promise.all([getClients({ per_page: 100 }), getBankAccounts()]);
+      const c = cResult?.data ?? cResult;
+      setClients(Array.isArray(c) ? c : []);
       setBankAccounts(b);
     };
     if (isOpen) load();

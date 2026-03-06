@@ -1,14 +1,17 @@
 import { useEffect, useState, useRef } from "react";
 import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark, Wallet, TrendingUp, AlertCircle, Receipt } from "lucide-react";
 import toast from "react-hot-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { exportToCSV } from "../utils/csvExport";
 
-import { getIncomes, createIncome, updateIncome, deleteIncome, getIncomeSummary } from "../services/incomeService";
+import { createIncome, updateIncome, deleteIncome } from "../services/incomeService";
 import { getTransactions, getTransaction } from "../services/transactionService";
 import { getBankAccounts } from "../services/bankAccountService";
 import { getIncomeCategories, createIncomeCategory, deleteIncomeCategory } from "../services/incomeCategoryService";
-import { getClients } from "../services/db";
+import { useIncomeList, useIncomeSummary, useClients } from "../hooks/useApiQueries";
+import { queryKeys } from "../query/queryKeys";
 import clsx from "clsx";
+import { TableSkeleton } from "../components/Skeleton";
 
 const emptyForm = {
   client: "",
@@ -55,9 +58,7 @@ const emptyForm = {
 };
 
 export default function Income() {
-  const [data, setData] = useState([]);
   const [bankAccounts, setBankAccounts] = useState([]);
-  const [clients, setClients] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [tab, setTab] = useState("basic");
@@ -72,13 +73,11 @@ export default function Income() {
   const [viewLoading, setViewLoading] = useState(false);
 
   const [editId, setEditId] = useState(null);
-  /** When editing, number of extra installments that came from server (read-only). New rows after this are editable. */
   const [savedExtraInstallmentsCount, setSavedExtraInstallmentsCount] = useState(0);
   const [viewItem, setViewItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [bankModalFor, setBankModalFor] = useState(null);
-  /** Set when save is blocked by bank validation; used to switch tab and focus first invalid bank field. */
   const [firstInvalidBankKey, setFirstInvalidBankKey] = useState(null);
   const firstInvalidBankRef = useRef(null);
 
@@ -88,15 +87,35 @@ export default function Income() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [addCategorySaving, setAddCategorySaving] = useState(false);
 
-  const [incomeSummary, setIncomeSummary] = useState(null);
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [bankFilter, setBankFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("All");
 
-  /* LOAD */
+  const { data: dataFromQuery = [], isLoading: incomeLoading } = useIncomeList();
+  const { data: incomeSummaryFromQuery } = useIncomeSummary();
+  const { data: clientsResult } = useClients({ per_page: 100 });
+  const queryClient = useQueryClient();
+
+  const data = Array.isArray(dataFromQuery) ? dataFromQuery : [];
+  const incomeSummary = incomeSummaryFromQuery ?? null;
+  const clients = Array.isArray(clientsResult?.data) ? clientsResult.data : [];
+
+  /* Load banks, transactions, categories (not in main cache) */
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+    Promise.all([
+      getTransactions().catch(() => []),
+      getIncomeCategories().catch(() => []),
+      getBankAccounts().then((b) => b),
+    ]).then(([txns, categories, banks]) => {
+      if (!cancelled) {
+        setTransactions(txns || []);
+        setIncomeCategories(categories || []);
+        setBankAccounts(Array.isArray(banks) ? banks : []);
+      }
+    });
+    return () => { cancelled = true; };
   }, []);
 
   /* Auto-focus first invalid bank field when save is blocked by bank validation */
@@ -113,20 +132,15 @@ export default function Income() {
 
   const loadData = async () => {
     try {
-      const [records, txns, categories, summary] = await Promise.all([
-        getIncomes(),
-        getTransactions(),
+      queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
+      const [txns, categories] = await Promise.all([
+        getTransactions().catch(() => []),
         getIncomeCategories().catch(() => []),
-        getIncomeSummary().catch(() => null),
       ]);
-      setData(records);
       setTransactions(txns || []);
       setIncomeCategories(categories || []);
-      setIncomeSummary(summary);
       const banks = await getBankAccounts();
-      setBankAccounts(banks);
-      const clientsData = await getClients();
-      setClients(clientsData);
+      setBankAccounts(Array.isArray(banks) ? banks : []);
     } catch (e) {
       console.error("Failed to load data", e);
     }
@@ -204,6 +218,7 @@ export default function Income() {
     try {
       await deleteIncome(id);
       toast.success("Income record deleted successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
       loadData();
     } catch (e) {
       toast.error("Failed to delete record");
@@ -268,6 +283,7 @@ export default function Income() {
         await createIncome(form);
         toast.success("Income added successfully");
       }
+      queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
       await loadData();
       setOpenForm(false);
     } catch (e) {
@@ -469,6 +485,9 @@ export default function Income() {
           </div>
         </div>
         <div className="overflow-x-auto custom-scrollbar">
+          {incomeLoading ? (
+            <TableSkeleton rows={6} cols={7} />
+          ) : (
           <table className="w-full text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
@@ -545,6 +564,7 @@ export default function Income() {
               )}
             </tbody>
           </table>
+          )}
         </div>
       </div>
 

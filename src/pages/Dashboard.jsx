@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, Users, FileText, Activity, ArrowUpRight, ArrowDownRight, ArrowRight } from 'lucide-react';
-import { getDashboardStats, getReportsSummary } from '../services/db';
+import { useDashboardData } from '../hooks/useApiQueries';
 import clsx from 'clsx';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { StatCardsSkeleton } from '../components/Skeleton';
 
 const StatCard = ({ title, value, icon: Icon, trend, color, subValue = null, subLabel = null }) => (
     <div className="card min-h-[190px] h-auto flex flex-col justify-between group cursor-default relative">
@@ -54,40 +54,25 @@ const COLORS = ['#10B981', '#F59E0B', '#EF4444', '#3B82F6'];
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const [stats, setStats] = useState({
-        totalClients: 0,
-        activeClients: 0,
-        totalInvoices: 0,
-        totalRevenue: 0,
-        pendingAmount: 0,
-        recentInvoices: [],
-        monthlyRevenue: [],
-        invoiceStatusCounts: []
-    });
-    const [todayIncome, setTodayIncome] = useState(0);
-    const [todaysEvents, setTodaysEvents] = useState([]);
-
-    useEffect(() => {
-        const fetchStats = async () => {
-            const data = await getDashboardStats();
-            setStats(data);
-            setTodaysEvents(data.todaysEvents || []);
-
-            // Fetch today's income
-            const today = new Date().toISOString().split('T')[0];
-            const summaryData = await getReportsSummary({ startDate: today, endDate: today });
-            if (summaryData) {
-                setTodayIncome(summaryData.totalIncome || 0);
-            }
-        };
-        fetchStats();
-    }, []);
+    const { stats, todayIncome, todaysEvents, isLoading, isFetching } = useDashboardData();
 
     // Prepare data for Pie Chart
     const pieData = stats.invoiceStatusCounts?.map(item => ({
         name: item.status,
         value: item.count
     })) || [];
+
+    if (isLoading) {
+        return (
+            <div className="p-4 md:p-6 lg:p-10 w-full mx-auto space-y-6 md:space-y-8 animate-fade-in">
+                <StatCardsSkeleton />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="card lg:col-span-2 h-[400px] animate-pulse rounded-2xl bg-gray-100/50" />
+                    <div className="card h-[400px] animate-pulse rounded-2xl bg-gray-100/50" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 md:p-6 lg:p-10 w-full mx-auto space-y-6 md:space-y-8 animate-fade-in">

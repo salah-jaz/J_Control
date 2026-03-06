@@ -18,7 +18,20 @@ class DashboardController extends Controller
         $totalRevenue = Invoice::where('status', 'Paid')->sum('grand_total');
         $pendingAmount = Invoice::where('status', 'Pending')->sum('grand_total');
         
-        $recentInvoices = Invoice::latest()->take(5)->get();
+        $recentInvoices = Invoice::select(['id', 'invoice_number', 'client_name', 'date', 'grand_total', 'status'])
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(function ($inv) {
+                return [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'client_name' => $inv->client_name,
+                    'date' => $inv->date?->format('Y-m-d'),
+                    'amount' => (float) $inv->grand_total,
+                    'status' => $inv->status,
+                ];
+            });
 
         // Today's planner events (commitments)
         $today = now()->toDateString();

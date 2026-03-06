@@ -553,7 +553,29 @@ export const deletePlannerNote = async (id) => {
 };
 
 /**
- * @param {Object} [filters] - Optional: { search, status, gstType, location, dateRange, dateFrom, dateTo }
+ * Normalize list API response: Laravel may return a flat array or paginated { data: [], meta: {} }.
+ * Returns { data: array, meta: null|{ total, current_page, last_page, per_page } }.
+ */
+function normalizeListResponse(response) {
+    if (Array.isArray(response)) {
+        return { data: response, meta: null };
+    }
+    if (response && typeof response === 'object' && Array.isArray(response.data)) {
+        return {
+            data: response.data,
+            meta: response.meta ? {
+                total: response.meta.total,
+                current_page: response.meta.current_page,
+                last_page: response.meta.last_page,
+                per_page: response.meta.per_page,
+            } : null,
+        };
+    }
+    return { data: [], meta: null };
+}
+
+/**
+ * @param {Object} [filters] - Optional: { search, status, gstType, location, dateRange, dateFrom, dateTo, page, per_page }
  */
 export const getClients = async (filters = {}) => {
     try {
@@ -565,11 +587,13 @@ export const getClients = async (filters = {}) => {
         if (filters.dateRange != null && filters.dateRange !== '') params.dateRange = filters.dateRange;
         if (filters.dateFrom != null && filters.dateFrom !== '') params.dateFrom = filters.dateFrom;
         if (filters.dateTo != null && filters.dateTo !== '') params.dateTo = filters.dateTo;
+        if (filters.page != null) params.page = filters.page;
+        if (filters.per_page != null) params.per_page = filters.per_page;
         const response = await api.get('/clients', { params });
-        return response.data;
+        return normalizeListResponse(response.data);
     } catch (error) {
         console.error("Failed to fetch clients:", error);
-        return [];
+        return { data: [], meta: null };
     }
 };
 

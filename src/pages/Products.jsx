@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Plus, Eye, Edit2, Trash2, X, Package, Search, ShoppingBag, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
-import { getProducts, createProduct, updateProduct, deleteProduct } from "../services/productService";
+import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "../hooks/useApiQueries";
 import clsx from "clsx";
+import { TableSkeleton } from "../components/Skeleton";
 
 const emptyForm = {
     name: "",
@@ -32,7 +33,6 @@ const isAlertActive = (item) => {
 const tabs = ["Basic Info", "Details"];
 
 export default function Products() {
-    const [data, setData] = useState([]);
     const [form, setForm] = useState(emptyForm);
     const [errors, setErrors] = useState({});
     const [openForm, setOpenForm] = useState(false);
@@ -42,18 +42,11 @@ export default function Products() {
     const [activeTab, setActiveTab] = useState(0);
     const [searchQuery, setSearchQuery] = useState("");
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
-        try {
-            const records = await getProducts();
-            setData(records);
-        } catch (e) {
-            console.error("Failed to load products", e);
-        }
-    };
+    const { data: dataRecords = [], isLoading } = useProducts();
+    const data = Array.isArray(dataRecords) ? dataRecords : [];
+    const createMutation = useCreateProduct();
+    const updateMutation = useUpdateProduct();
+    const deleteMutation = useDeleteProduct();
 
     const openAdd = () => {
         setForm(emptyForm);
@@ -80,9 +73,8 @@ export default function Products() {
     const deleteItem = async (id) => {
         if (!window.confirm("Delete this product/service?")) return;
         try {
-            await deleteProduct(id);
+            await deleteMutation.mutateAsync(id);
             toast.success("Item deleted successfully");
-            loadData();
         } catch (e) {
             console.error("Failed to delete", e);
             toast.error("Failed to delete");
@@ -107,13 +99,12 @@ export default function Products() {
         if (!validate()) return;
         try {
             if (editId) {
-                await updateProduct(editId, form);
+                await updateMutation.mutateAsync({ id: editId, data: form });
                 toast.success("Item updated successfully");
             } else {
-                await createProduct(form);
+                await createMutation.mutateAsync(form);
                 toast.success("Item added successfully");
             }
-            await loadData();
             setOpenForm(false);
         } catch (e) {
             console.error("Failed to save", e);
@@ -179,6 +170,9 @@ export default function Products() {
                     </div>
                 </div>
                 <div className="overflow-x-auto">
+                    {isLoading ? (
+                        <TableSkeleton rows={6} cols={5} />
+                    ) : (
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                             <tr>
@@ -269,6 +263,7 @@ export default function Products() {
                             )}
                         </tbody>
                     </table>
+                    )}
                 </div>
             </div>
 

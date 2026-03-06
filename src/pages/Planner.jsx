@@ -146,11 +146,11 @@ const Planner = () => {
 
     useEffect(() => {
         const loadLookups = async () => {
-            const [clientList, userList] = await Promise.all([
-                getClients().catch(() => []),
+            const [clientResult, userList] = await Promise.all([
+                getClients({ per_page: 100 }).then((r) => r?.data ?? r ?? []).catch(() => []),
                 getUsers().catch(() => []),
             ]);
-            setClients(clientList || []);
+            setClients(Array.isArray(clientResult) ? clientResult : []);
             setUsers(userList || []);
         };
         loadLookups();

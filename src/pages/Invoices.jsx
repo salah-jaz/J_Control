@@ -3,10 +3,13 @@ import { Plus, Search, Trash2, Edit2, Eye, X, User, Layers, Landmark, Wallet, Fi
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { useLocation } from 'react-router-dom';
-import { getNextInvoiceNumber, getInvoiceSummary, getInvoices, deleteInvoice } from '../services/invoiceService';
-import { getClients } from '../services/db';
+import { useQueryClient } from '@tanstack/react-query';
+import { useInvoices, useInvoiceSummary, useNextInvoiceNumber, useDeleteInvoice } from '../hooks/useApiQueries';
+import { useClients } from '../hooks/useApiQueries';
+import { queryKeys } from '../query/queryKeys';
 import InvoiceView from '../components/InvoiceViewer';
 import InvoiceForm from '../components/InvoiceForm';
+import { TableSkeleton } from '../components/Skeleton';
 
 function isDateInRange(dateStr, range) {
   if (!dateStr || range === 'All') return true;
@@ -42,68 +45,38 @@ const StatCard = ({ title, value, icon: Icon, color }) => (
 );
 
 export default function Invoices() {
-  const [invoices, setInvoices] = useState([]);
-  const [invoiceSummary, setInvoiceSummary] = useState(null);
-  const [clients, setClients] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [viewingInvoice, setViewingInvoice] = useState(null);
-  const [nextInvoiceNumber, setNextInvoiceNumber] = useState(null);
-  const [nextInvoiceNumberLoading, setNextInvoiceNumberLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [clientFilter, setClientFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('All');
   const location = useLocation();
 
+  const invoiceParams = { page: currentPage, per_page: 20 };
+  const { data: invoicesResult, isLoading: invoicesLoading } = useInvoices(invoiceParams);
+  const { data: invoiceSummary } = useInvoiceSummary();
+  const { data: clientsResult } = useClients({ per_page: 100 });
+  const { data: nextNumber, isLoading: nextInvoiceNumberLoading } = useNextInvoiceNumber(isFormOpen && !editingInvoice);
+  const deleteInvoiceMutation = useDeleteInvoice();
+  const queryClient = useQueryClient();
+
+  const invoices = Array.isArray(invoicesResult?.data) ? invoicesResult.data : [];
+  const invoicesMeta = invoicesResult?.meta ?? null;
+  const totalInvoicesCount = invoicesMeta?.total ?? invoices.length;
+  const clients = Array.isArray(clientsResult?.data) ? clientsResult.data : [];
+  const nextInvoiceNumber = nextNumber ?? (isFormOpen && !editingInvoice ? `INV-${new Date().getFullYear()}-draft` : null);
+
   useEffect(() => {
     if (location.state?.openForm) {
       setEditingInvoice(null);
-      setNextInvoiceNumber(null);
       setIsFormOpen(true);
     }
     if (location.state?.initialStatus) setStatusFilter(location.state.initialStatus);
     window.history.replaceState({}, document.title);
   }, [location]);
-
-  const loadData = async () => {
-    try {
-      const [list, summary, clientsData] = await Promise.all([getInvoices(), getInvoiceSummary(), getClients()]);
-      setInvoices(Array.isArray(list) ? list : []);
-      setInvoiceSummary(summary);
-      setClients(clientsData || []);
-    } catch (e) {
-      console.error('Failed to load invoices', e);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (isFormOpen && !editingInvoice) {
-      let cancelled = false;
-      setNextInvoiceNumberLoading(true);
-      getNextInvoiceNumber()
-        .then((number) => {
-          if (!cancelled) {
-            setNextInvoiceNumber(number || `INV-${new Date().getFullYear()}-draft`);
-            setNextInvoiceNumberLoading(false);
-          }
-        })
-        .catch((err) => {
-          if (!cancelled) {
-            console.error('Failed to load next invoice number:', err);
-            const year = new Date().getFullYear();
-            setNextInvoiceNumber(`INV-${year}-draft`);
-            setNextInvoiceNumberLoading(false);
-            toast('Invoice ID will be assigned when you save.', { icon: 'ℹ️', duration: 4000 });
-          }
-        });
-      return () => { cancelled = true; };
-    }
-  }, [isFormOpen, editingInvoice]);
 
   const filteredInvoices = invoices.filter((inv) => {
     const q = searchQuery.trim().toLowerCase();
@@ -126,15 +99,14 @@ export default function Invoices() {
   });
 
   const handleSave = async () => {
-    await loadData();
+    queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this invoice? Linked income/transactions will be removed.')) return;
     try {
-      await deleteInvoice(id);
+      await deleteInvoiceMutation.mutateAsync(id);
       toast.success('Invoice deleted');
-      loadData();
     } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to delete');
     }
@@ -236,10 +208,15 @@ export default function Invoices() {
         <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
           <h3 className="font-bold text-slate-800">Invoice History</h3>
           <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
-            Showing {filteredInvoices.length} of {invoices.length}
+            {invoicesLoading ? 'Loading...' : invoicesMeta
+              ? `Showing ${(invoicesMeta.current_page - 1) * invoicesMeta.per_page + 1}–${Math.min(invoicesMeta.current_page * invoicesMeta.per_page, invoicesMeta.total)} of ${invoicesMeta.total}`
+              : `Showing ${filteredInvoices.length} of ${invoices.length}`}
           </span>
         </div>
         <div className="overflow-x-auto">
+          {invoicesLoading ? (
+            <TableSkeleton rows={6} cols={6} />
+          ) : (
           <table className="w-full text-sm text-left min-w-[700px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
@@ -316,7 +293,33 @@ export default function Invoices() {
               )}
             </tbody>
           </table>
+          )}
         </div>
+        {invoicesMeta && invoicesMeta.last_page > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <span className="text-sm text-slate-600">
+              Page {invoicesMeta.current_page} of {invoicesMeta.last_page}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={invoicesMeta.current_page <= 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                disabled={invoicesMeta.current_page >= invoicesMeta.last_page}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <InvoiceForm
