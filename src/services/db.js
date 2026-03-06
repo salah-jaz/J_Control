@@ -402,7 +402,7 @@ export const savePlannerEvent = async (event) => {
         // Support FormData for file uploads
         if (event instanceof FormData) {
             const id = event.get('id');
-            if (id) {
+            if (id != null && id !== '' && String(id) !== 'undefined') {
                 event.append('_method', 'PUT');
                 const response = await api.post(`/planner-events/${id}`, event, {
                     headers: { 'Content-Type': 'multipart/form-data' },
@@ -418,8 +418,9 @@ export const savePlannerEvent = async (event) => {
             }
         }
 
-        if (event.id) {
-            const response = await api.put(`/planner-events/${event.id}`, event);
+        const id = event.id;
+        if (id != null && id !== '' && String(id) !== 'undefined') {
+            const response = await api.put(`/planner-events/${id}`, event);
             const body = response.data;
             return body && body.data ? body.data : body;
         } else {
@@ -435,55 +436,84 @@ export const savePlannerEvent = async (event) => {
 
 export const deletePlannerEvent = async (id) => {
     try {
+        if (id == null || id === '' || String(id) === 'undefined') {
+            throw new Error('Event ID is required to delete.');
+        }
         await api.delete(`/planner-events/${id}`);
         return true;
     } catch (error) {
         console.error("Failed to delete planner event:", error);
-        return false;
+        throw error;
     }
 };
 
+function getPlannerActionError(error) {
+    const msg = error.response?.data?.message
+        || (error.response?.data?.errors && Object.values(error.response.data.errors).flat()[0])
+        || error.message
+        || 'Request failed';
+    const e = new Error(typeof msg === 'string' ? msg : 'Request failed');
+    e.originalError = error;
+    return e;
+}
+
+function ensureEventId(eventId) {
+    const id = eventId != null && eventId !== '' ? String(eventId) : null;
+    if (!id || id === 'undefined') {
+        throw new Error('Event ID is required for this action.');
+    }
+    return id;
+}
+
 export const completePlannerEvent = async (eventId, payload = {}) => {
     try {
-        const response = await api.post(`/planner-events/complete/${eventId}`, payload);
+        const id = ensureEventId(eventId);
+        const response = await api.post(`/planner-events/complete/${id}`, payload);
         const body = response.data;
-        return body && body.data ? body.data : body;
+        const event = (body && (body.data ?? body.event)) || body;
+        return event;
     } catch (error) {
         console.error("Failed to complete planner event:", error);
-        throw error;
+        throw getPlannerActionError(error);
     }
 };
 
 export const reschedulePlannerEvent = async (eventId, payload) => {
     try {
-        const response = await api.post(`/planner-events/reschedule/${eventId}`, payload);
+        const id = ensureEventId(eventId);
+        const response = await api.post(`/planner-events/reschedule/${id}`, payload || {});
         const body = response.data;
-        return body && body.data ? body.data : body;
+        const event = (body && (body.data ?? body.event)) || body;
+        return event;
     } catch (error) {
         console.error("Failed to reschedule planner event:", error);
-        throw error;
+        throw getPlannerActionError(error);
     }
 };
 
 export const createNextPlannerMeeting = async (sourceEventId, payload) => {
     try {
-        const response = await api.post(`/planner-events/next-meeting/${sourceEventId}`, payload);
+        const id = ensureEventId(sourceEventId);
+        const response = await api.post(`/planner-events/next-meeting/${id}`, payload || {});
         const body = response.data;
-        return body && body.data ? body.data : body;
+        const event = (body && (body.data ?? body.event)) || body;
+        return event;
     } catch (error) {
         console.error("Failed to create next planner meeting:", error);
-        throw error;
+        throw getPlannerActionError(error);
     }
 };
 
 export const cancelPlannerEvent = async (eventId, payload = {}) => {
     try {
-        const response = await api.post(`/planner-events/cancel/${eventId}`, payload);
+        const id = ensureEventId(eventId);
+        const response = await api.post(`/planner-events/cancel/${id}`, payload);
         const body = response.data;
-        return body && body.data ? body.data : body;
+        const event = (body && (body.data ?? body.event)) || body;
+        return event;
     } catch (error) {
         console.error("Failed to cancel planner event:", error);
-        throw error;
+        throw getPlannerActionError(error);
     }
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -134,6 +134,8 @@ const Planner = () => {
         meeting_notes: '',
     });
     const [cancelForm, setCancelForm] = useState({ cancel_reason: '' });
+    const actionEventIdRef = useRef(null);
+    const lastClickedEventIdRef = useRef(null);
     const [stats, setStats] = useState({
         total_events: 0,
         today_events: 0,
@@ -206,6 +208,7 @@ const Planner = () => {
 
         const data = await getPlannerEvents(params);
         setEvents(data);
+        return data;
     };
 
     const fetchEventNotes = async (eventId) => {
@@ -336,6 +339,7 @@ const Planner = () => {
         const eventId = clickInfo.event.id;
         const event = events.find((ev) => String(ev.id) === eventId);
         if (event) {
+            lastClickedEventIdRef.current = event.id;
             setSelectedEvent(event);
             await fetchEventNotes(event.id);
         }
@@ -481,10 +485,15 @@ const Planner = () => {
         });
     };
 
-    const handleOpenCompleteModal = (eventOverride = null) => {
+    const handleOpenCompleteModal = (eventOverride = null, explicitEventId = null) => {
         const base = eventOverride || selectedEvent;
         if (!base) return;
-        setSelectedEvent(base);
+        const id = explicitEventId != null && explicitEventId !== '' && String(explicitEventId) !== 'undefined'
+            ? explicitEventId
+            : (base.id != null && base.id !== '' && String(base.id) !== 'undefined' ? base.id : resolveEventId(base));
+        actionEventIdRef.current = id;
+        if (id != null && id !== '' && String(id) !== 'undefined') lastClickedEventIdRef.current = id;
+        setSelectedEvent(id != null ? { ...base, id } : base);
         setCompletionForm({ meeting_notes: '', outcome: '' });
         setIsCompleteModalOpen(true);
     };
@@ -492,74 +501,100 @@ const Planner = () => {
     const handleSubmitComplete = async (e) => {
         e.preventDefault();
         if (!selectedEvent) return;
+        const eventId = getEventIdForAction();
+        if (eventId == null || eventId === '' || String(eventId) === 'undefined') {
+            toast.error('Invalid event. Please select the event again.');
+            return;
+        }
         try {
-            const updated = await completePlannerEvent(selectedEvent.id, {
+            await completePlannerEvent(eventId, {
                 meeting_notes: completionForm.meeting_notes,
                 outcome: completionForm.outcome,
             });
             setIsCompleteModalOpen(false);
-            await fetchEvents();
-            setSelectedEvent(updated);
-            toast.success('Meeting marked as completed');
+            setCompletionForm({ meeting_notes: '', outcome: '' });
+            const list = await fetchEvents();
             await fetchStats();
+            const updatedEvent = list.find((ev) => String(ev.id) === String(eventId));
+            if (updatedEvent) setSelectedEvent(updatedEvent);
+            toast.success('Meeting marked as completed');
         } catch (err) {
             console.error(err);
-            toast.error('Failed to mark meeting as completed');
+            toast.error(err.message || 'Failed to mark meeting as completed');
         }
     };
 
-    const handleOpenRescheduleModal = (eventOverride = null) => {
+    const handleOpenRescheduleModal = (eventOverride = null, explicitEventId = null) => {
         const base = eventOverride || selectedEvent;
         if (!base) return;
+        const id = explicitEventId != null && explicitEventId !== '' && String(explicitEventId) !== 'undefined'
+            ? explicitEventId
+            : (base.id != null && base.id !== '' && String(base.id) !== 'undefined' ? base.id : resolveEventId(base));
+        actionEventIdRef.current = id;
         setRescheduleForm({
             event_date: base.event_date || '',
             start_time: base.start_time || '',
             end_time: base.end_time || '',
             reason: '',
         });
-        setSelectedEvent(base);
+        setSelectedEvent(id != null ? { ...base, id } : base);
         setIsRescheduleModalOpen(true);
     };
 
     const handleSubmitReschedule = async (e) => {
         e.preventDefault();
         if (!selectedEvent) return;
+        const eventId = getEventIdForAction();
+        if (eventId == null || eventId === '' || String(eventId) === 'undefined') {
+            toast.error('Invalid event. Please select the event again.');
+            return;
+        }
         try {
-            const updated = await reschedulePlannerEvent(selectedEvent.id, {
+            await reschedulePlannerEvent(eventId, {
                 event_date: rescheduleForm.event_date,
                 start_time: rescheduleForm.start_time || null,
                 end_time: rescheduleForm.end_time || null,
                 reason: rescheduleForm.reason || null,
             });
             setIsRescheduleModalOpen(false);
-            await fetchEvents();
-            setSelectedEvent(updated);
-            toast.success('Meeting rescheduled');
+            const list = await fetchEvents();
             await fetchStats();
+            const updatedEvent = list.find((ev) => String(ev.id) === String(eventId));
+            if (updatedEvent) setSelectedEvent(updatedEvent);
+            toast.success('Meeting rescheduled');
         } catch (err) {
             console.error(err);
-            toast.error('Failed to reschedule meeting');
+            toast.error(err.message || 'Failed to reschedule meeting');
         }
     };
 
-    const handleOpenNextMeetingModal = (eventOverride = null) => {
+    const handleOpenNextMeetingModal = (eventOverride = null, explicitEventId = null) => {
         const base = eventOverride || selectedEvent;
         if (!base) return;
+        const id = explicitEventId != null && explicitEventId !== '' && String(explicitEventId) !== 'undefined'
+            ? explicitEventId
+            : (base.id != null && base.id !== '' && String(base.id) !== 'undefined' ? base.id : resolveEventId(base));
+        actionEventIdRef.current = id;
         setNextMeetingForm({
             event_date: '',
             start_time: '',
             end_time: '',
             meeting_notes: '',
         });
-        setSelectedEvent(base);
+        setSelectedEvent(id != null ? { ...base, id } : base);
         setIsNextMeetingModalOpen(true);
     };
 
     const handleSubmitNextMeeting = async (e) => {
         e.preventDefault();
         if (!selectedEvent) return;
+        const eventId = getEventIdForAction();
+        if (eventId == null || eventId === '' || String(eventId) === 'undefined') {
+            toast.error('Invalid event. Please select the event again.');
+            return;
+        }
         try {
-            await createNextPlannerMeeting(selectedEvent.id, {
+            await createNextPlannerMeeting(eventId, {
                 title: selectedEvent.title,
                 description: selectedEvent.description,
                 event_date: nextMeetingForm.event_date,
@@ -573,37 +608,47 @@ const Planner = () => {
             });
             setIsNextMeetingModalOpen(false);
             await fetchEvents();
-            toast.success('Next meeting scheduled');
             await fetchStats();
+            toast.success('Next meeting scheduled');
         } catch (err) {
             console.error(err);
-            toast.error('Failed to schedule next meeting');
+            toast.error(err.message || 'Failed to schedule next meeting');
         }
     };
 
-    const handleOpenCancelModal = (eventOverride = null) => {
+    const handleOpenCancelModal = (eventOverride = null, explicitEventId = null) => {
         const base = eventOverride || selectedEvent;
         if (!base) return;
+        const id = explicitEventId != null && explicitEventId !== '' && String(explicitEventId) !== 'undefined'
+            ? explicitEventId
+            : (base.id != null && base.id !== '' && String(base.id) !== 'undefined' ? base.id : resolveEventId(base));
+        actionEventIdRef.current = id;
         setCancelForm({ cancel_reason: '' });
-        setSelectedEvent(base);
+        setSelectedEvent(id != null ? { ...base, id } : base);
         setIsCancelModalOpen(true);
     };
 
     const handleSubmitCancel = async (e) => {
         e.preventDefault();
         if (!selectedEvent) return;
+        const eventId = getEventIdForAction();
+        if (eventId == null || eventId === '' || String(eventId) === 'undefined') {
+            toast.error('Invalid event. Please select the event again.');
+            return;
+        }
         try {
-            const updated = await cancelPlannerEvent(selectedEvent.id, {
+            await cancelPlannerEvent(eventId, {
                 cancel_reason: cancelForm.cancel_reason || null,
             });
             setIsCancelModalOpen(false);
-            await fetchEvents();
-            setSelectedEvent(updated);
-            toast.success('Meeting cancelled');
+            const list = await fetchEvents();
             await fetchStats();
+            const updatedEvent = list.find((ev) => String(ev.id) === String(eventId));
+            if (updatedEvent) setSelectedEvent(updatedEvent);
+            toast.success('Meeting cancelled');
         } catch (err) {
             console.error(err);
-            toast.error('Failed to cancel meeting');
+            toast.error(err.message || 'Failed to cancel meeting');
         }
     };
 
@@ -655,12 +700,59 @@ const Planner = () => {
         }
     };
 
+    const resolveEventId = (ev) => {
+        if (ev == null) return null;
+        const id = ev.id;
+        if (id != null && id !== '' && String(id) !== 'undefined') return id;
+        const evDate = ev.event_date ? String(ev.event_date).slice(0, 10) : '';
+        const evTitle = (ev.title || '').trim();
+        const evStart = (ev.start_time || '').toString().slice(0, 5);
+        const fromList = events.find(
+            (e) =>
+                (e.title || '').trim() === evTitle &&
+                (e.event_date ? String(e.event_date).slice(0, 10) : '') === evDate &&
+                (e.start_time || '').toString().slice(0, 5) === evStart,
+        );
+        if (fromList) return fromList.id;
+        const byTitleDate = events.find(
+            (e) => (e.title || '').trim() === evTitle && (e.event_date ? String(e.event_date).slice(0, 10) : '') === evDate,
+        );
+        return byTitleDate ? byTitleDate.id : null;
+    };
+
+    const getEventIdForAction = () => {
+        const valid = (id) => id != null && id !== '' && String(id) !== 'undefined';
+        if (valid(actionEventIdRef.current)) return actionEventIdRef.current;
+        if (valid(lastClickedEventIdRef.current)) return lastClickedEventIdRef.current;
+        if (selectedEvent) {
+            if (valid(selectedEvent.id)) return selectedEvent.id;
+            const resolved = resolveEventId(selectedEvent);
+            if (valid(resolved)) return resolved;
+        }
+        if (selectedEvent && events.length > 0) {
+            const byTitle = events.find((e) => (e.title || '') === (selectedEvent.title || ''));
+            if (byTitle && valid(byTitle.id)) return byTitle.id;
+            const byTitleDate = events.find(
+                (e) =>
+                    (e.title || '') === (selectedEvent.title || '') &&
+                    String(e.event_date || '').slice(0, 10) === String(selectedEvent.event_date || '').slice(0, 10),
+            );
+            if (byTitleDate && valid(byTitleDate.id)) return byTitleDate.id;
+        }
+        return null;
+    };
+
     const renderEventContent = (eventInfo) => {
         const status = eventInfo.event.extendedProps.status || 'scheduled';
         const statusColor = STATUS_COLORS[status] || '#6B7280';
         const raw = eventInfo.event.extendedProps;
+        const fcId = eventInfo.event.id;
+        const rawId = raw?.id;
+        const eventId = (fcId != null && fcId !== '' && String(fcId) !== 'undefined')
+            ? fcId
+            : (rawId != null && rawId !== '' && String(rawId) !== 'undefined' ? rawId : null);
         const baseEvent = {
-            id: raw.id,
+            id: eventId,
             title: raw.title,
             description: raw.description,
             event_date: raw.event_date,
@@ -697,7 +789,7 @@ const Planner = () => {
                         type="button"
                         onClick={(e) => {
                             e.stopPropagation();
-                            handleOpenCompleteModal(baseEvent);
+                            handleOpenCompleteModal(baseEvent, eventInfo.event.id ?? baseEvent.id);
                         }}
                         className="p-0.5 rounded hover:bg-gray-100"
                     >
@@ -707,7 +799,7 @@ const Planner = () => {
                         type="button"
                         onClick={(e) => {
                             e.stopPropagation();
-                            handleOpenRescheduleModal(baseEvent);
+                            handleOpenRescheduleModal(baseEvent, eventInfo.event.id ?? baseEvent.id);
                         }}
                         className="p-0.5 rounded hover:bg-gray-100"
                     >
