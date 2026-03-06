@@ -24,13 +24,65 @@ import Planner from "./pages/Planner";
 import { useEffect, useRef } from 'react';
 import { getTodayPlannerEvents } from './services/db';
 
+const NOTIFICATION_SOUND_PATH = '/notification.mp3';
+const REMINDER_SOUND_PATH = '/sounds/reminder.mp3';
+
+function playNotificationSound() {
+  try {
+    const audio = new Audio(NOTIFICATION_SOUND_PATH);
+    audio.volume = 0.6;
+    audio.play().catch(() => {});
+  } catch {
+    // Sound file may be missing; toast still shows
+  }
+}
+
 function PlannerReminderListener() {
   const navigate = useNavigate();
   const location = useLocation();
   const triggeredRef = useRef(new Set());
+  const reminderAudioRef = useRef(null);
+
+  // Single Audio instance for reminder; path /sounds/reminder.mp3 (test: http://localhost:5173/sounds/reminder.mp3)
+  useEffect(() => {
+    reminderAudioRef.current = new Audio(REMINDER_SOUND_PATH);
+    reminderAudioRef.current.volume = 1;
+    return () => {
+      if (reminderAudioRef.current) reminderAudioRef.current.pause();
+    };
+  }, []);
+
+  // Unlock browser audio (required: browsers block sound until user interaction)
+  useEffect(() => {
+    const unlockAudio = () => {
+      if (reminderAudioRef.current) {
+        reminderAudioRef.current
+          .play()
+          .then(() => {
+            reminderAudioRef.current.pause();
+            reminderAudioRef.current.currentTime = 0;
+          })
+          .catch(() => {});
+      }
+    };
+    document.addEventListener('click', unlockAudio, { once: true });
+    return () => document.removeEventListener('click', unlockAudio);
+  }, []);
+
+  const playReminderSound = () => {
+    if (!reminderAudioRef.current) return;
+    reminderAudioRef.current.currentTime = 0;
+    reminderAudioRef.current
+      .play()
+      .then(() => {})
+      .catch((err) => console.log('Reminder audio blocked:', err));
+  };
 
   useEffect(() => {
     let intervalId;
+    let startTimeIntervalId;
+
+    const pad = (n) => String(n).padStart(2, '0');
 
     const checkReminders = async () => {
       try {
@@ -57,6 +109,7 @@ function PlannerReminderListener() {
 
           if (now >= reminderTime && now <= eventStart) {
             triggeredRef.current.add(key);
+            playReminderSound();
 
             const minutesUntil = Math.max(
               0,
@@ -112,14 +165,12 @@ function PlannerReminderListener() {
       }
     };
 
-    // Initial check and interval every 60 seconds
+    // Only "X min before" reminder runs here. Event-time popup is shown only in Planner.jsx (one in-app modal + sound).
     checkReminders();
     intervalId = window.setInterval(checkReminders, 60000);
 
     return () => {
-      if (intervalId) {
-        window.clearInterval(intervalId);
-      }
+      if (intervalId) window.clearInterval(intervalId);
     };
   }, [navigate, location.key]);
 

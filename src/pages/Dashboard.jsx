@@ -56,11 +56,11 @@ const Dashboard = () => {
     const navigate = useNavigate();
     const { stats, todayIncome, todaysEvents, isLoading, isFetching } = useDashboardData();
 
-    // Prepare data for Pie Chart
-    const pieData = stats.invoiceStatusCounts?.map(item => ({
+    // Prepare data for Pie Chart (safe defaults)
+    const pieData = (stats.invoiceStatusCounts ?? []).map(item => ({
         name: item.status,
         value: item.count
-    })) || [];
+    }));
 
     if (isLoading) {
         return (
@@ -79,15 +79,15 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
                     title="Total Revenue"
-                    value={`₹${stats.totalRevenue.toLocaleString('en-IN')}`}
+                    value={`₹${(stats.totalRevenue ?? 0).toLocaleString('en-IN')}`}
                     icon={DollarSign}
                     trend={12.5}
                     color="bg-emerald-500"
                 />
                 <StatCard
                     title="Active Clients"
-                    value={stats.activeClients}
-                    subValue={stats.totalClients}
+                    value={stats.activeClients ?? 0}
+                    subValue={stats.totalClients ?? 0}
                     subLabel="Total Registered"
                     icon={Users}
                     color="bg-blue-500"
@@ -95,7 +95,7 @@ const Dashboard = () => {
                 />
                 <StatCard
                     title="Pending Invoices"
-                    value={`₹${stats.pendingAmount.toLocaleString('en-IN')}`}
+                    value={`₹${(stats.pendingAmount ?? 0).toLocaleString('en-IN')}`}
                     icon={FileText}
                     trend={-2.4}
                     color="bg-amber-500"
@@ -134,7 +134,7 @@ const Dashboard = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {stats.recentInvoices.map((inv) => (
+                                {(stats.recentInvoices ?? []).map((inv) => (
                                     <tr key={inv.id} className="group hover:bg-gray-50/80 transition-colors">
                                         <td className="px-4 py-4 font-mono font-medium text-brand-600 group-hover:text-brand-700">{inv.id}</td>
                                         <td className="px-4 py-4 font-semibold text-slate-700">{inv.client_name}</td>
@@ -152,7 +152,7 @@ const Dashboard = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {stats.recentInvoices.length === 0 && (
+                                {(stats.recentInvoices ?? []).length === 0 && (
                                     <tr>
                                         <td colSpan="5" className="px-4 py-8 text-center text-gray-400 italic">No recent activity</td>
                                     </tr>
@@ -205,8 +205,8 @@ const Dashboard = () => {
                         <div className="grid grid-cols-2 gap-3">
                             <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100/50">
                                 <p className="text-xs font-semibold text-emerald-600 mb-1">Income</p>
-                                <p className="text-lg font-bold text-slate-800 truncate" title={`₹${todayIncome}`}>
-                                    ₹{todayIncome.toLocaleString('en-IN')}
+                                <p className="text-lg font-bold text-slate-800 truncate" title={`₹${todayIncome ?? 0}`}>
+                                    ₹{(todayIncome ?? 0).toLocaleString('en-IN')}
                                 </p>
                             </div>
                             <div
@@ -224,11 +224,11 @@ const Dashboard = () => {
                     {/* Today's Commitments */}
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-100/60 p-6 flex flex-col h-full">
                         <h3 className="text-lg font-bold text-slate-800 mb-3">Today&apos;s Commitments</h3>
-                        {todaysEvents.length === 0 ? (
+                        {(todaysEvents ?? []).length === 0 ? (
                             <p className="text-sm text-slate-400">No events scheduled for today.</p>
                         ) : (
                             <ul className="space-y-3">
-                                {todaysEvents.map((ev) => {
+                                {(todaysEvents ?? []).map((ev) => {
                                     const status = ev.status || 'scheduled';
                                     const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
                                     const color =
@@ -275,7 +275,7 @@ const Dashboard = () => {
                     <h3 className="text-lg font-bold text-slate-800 mb-6">Revenue Overview</h3>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.monthlyRevenue || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <BarChart data={stats.monthlyRevenue ?? []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                 <XAxis
                                     dataKey="month"

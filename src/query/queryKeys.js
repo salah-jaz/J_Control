@@ -26,27 +26,37 @@ export const queryKeys = {
   },
   income: {
     all: ['income'],
-    list: () => ['income', 'list'],
+    list: (filters = {}) => ['income', 'list', filters],
     summary: () => ['income', 'summary'],
   },
   quotations: {
     all: ['quotations'],
-    list: (params) => ['quotations', 'list', params],
+    list: (filters = {}) => ['quotations', 'list', filters],
+    summary: () => ['quotations', 'summary'],
   },
   leads: {
     all: ['leads'],
-    list: () => ['leads', 'list'],
+    list: (filters = {}) => ['leads', 'list', filters],
   },
   reports: {
     summary: (filters) => ['reports', 'summary', filters],
+    details: (type, filters) => ['reports', 'details', type, filters],
     filters: () => ['reports', 'filters'],
   },
-  users: () => ['users'],
+  users: {
+    all: ['users'],
+    list: (filters = {}) => ['users', 'list', filters],
+  },
   settings: () => ['settings'],
   bankAccounts: () => ['bank-accounts'],
-  transactions: () => ['transactions'],
+  transactions: {
+    all: ['transactions'],
+    list: (filters = {}) => ['transactions', 'list', filters],
+    summary: () => ['transactions', 'summary'],
+  },
   expenses: {
-    list: () => ['expenses', 'list'],
+    all: ['expenses'],
+    list: (filters = {}) => ['expenses', 'list', filters],
     summary: () => ['expenses', 'summary'],
   },
   planner: {

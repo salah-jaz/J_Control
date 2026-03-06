@@ -1,9 +1,10 @@
-
 import api from "../api/axios";
+import { apiFetchList } from "../utils/apiFetch";
 
 // Helper to transform API data to Frontend format
 const toFrontend = (data) => ({
     id: data.id,
+    invoice_id: data.invoice_id,
     client: data.client,
     source: data.source,
     project: data.project,
@@ -106,9 +107,25 @@ const toBackend = (data) => ({
     })) : null,
 });
 
-export const getIncomes = async () => {
-    const response = await api.get("/incomes");
-    return response.data.map(toFrontend);
+/**
+ * Fetch incomes with optional filters. Returns { data: [], meta: null|{} } like clients/invoices.
+ * @param {Object} [filters] - { search, status, category, bank_account_id, date_from, date_to, page, per_page }
+ */
+export const getIncomes = async (filters = {}) => {
+    const params = {};
+    if (filters.search != null && String(filters.search).trim() !== '') params.search = filters.search.trim();
+    if (filters.status != null && filters.status !== '' && filters.status !== 'all') params.status = filters.status;
+    if (filters.category != null && filters.category !== '') params.category = filters.category;
+    if (filters.bank_account_id != null && filters.bank_account_id !== '') params.bank_account_id = filters.bank_account_id;
+    if (filters.date_from != null && filters.date_from !== '') params.date_from = filters.date_from;
+    if (filters.date_to != null && filters.date_to !== '') params.date_to = filters.date_to;
+    if (filters.page != null) params.page = filters.page;
+    if (filters.per_page != null) params.per_page = filters.per_page;
+
+    const result = await apiFetchList("/incomes", { params });
+    const arr = Array.isArray(result.data) ? result.data : [];
+    const data = arr.map(toFrontend);
+    return { data, meta: result.meta };
 };
 
 /** GET /incomes/summary - dashboard totals */

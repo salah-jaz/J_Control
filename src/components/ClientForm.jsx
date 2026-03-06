@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Building2, User, MapPin, FileText, Landmark, Plus, Pencil, Trash2 } from 'lucide-react';
+import { X, Save, Building2, User, MapPin, FileText, Landmark, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const emptyBankForm = () => ({
@@ -14,6 +14,7 @@ const emptyBankForm = () => ({
 
 const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
     const [activeTab, setActiveTab] = useState('basic');
+    const [isSaving, setIsSaving] = useState(false);
     const [errors, setErrors] = useState({});
     const [bankList, setBankList] = useState([]);
     const [editingBankIndex, setEditingBankIndex] = useState(null);
@@ -99,6 +100,8 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
             setErrors({});
             setActiveTab('basic');
         }
+        // Always reset saving state when modal opens / client changes
+        setIsSaving(false);
     }, [client, isOpen]);
 
     const validate = (data) => {
@@ -120,21 +123,28 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
         return newErrors;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (isSaving) return;
 
         const validationErrors = validate(formData);
 
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
             toast.error("Please fix the validation errors");
-
-            // Auto switch tab to where the first error is?
-            // Optional but good UX.
             return;
         }
 
-        onSave({ ...formData, bank_details: bankList, id: client ? client.id : null });
+        setIsSaving(true);
+        try {
+            const payload = { ...formData, bank_details: bankList, id: client ? client.id : null };
+            await Promise.resolve(onSave(payload));
+            // Success: parent closes modal and refreshes list; no need to update state (modal unmounts)
+        } catch (err) {
+            setIsSaving(false);
+            // Error toast is shown by parent
+        }
     };
 
     const handleChange = (e) => {
@@ -712,12 +722,21 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                             <button
                                 form="client-form"
                                 type="submit"
-                                disabled={Object.keys(errors).length > 0}
+                                disabled={Object.keys(errors).length > 0 || isSaving}
                                 className={`btn-primary flex items-center gap-2
-                                    ${Object.keys(errors).length > 0 ? 'opacity-50 cursor-not-allowed shadow-none' : ''}`}
+                                    ${Object.keys(errors).length > 0 || isSaving ? 'opacity-50 cursor-not-allowed shadow-none' : ''}`}
                             >
-                                <Save className="h-4 w-4" />
-                                Save Client
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="h-4 w-4" />
+                                        Save Client
+                                    </>
+                                )}
                             </button>
                         )}
                     </div>

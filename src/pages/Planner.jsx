@@ -58,6 +58,15 @@ const STATUS_COLORS = {
     missed: '#FB923C', // Orange
 };
 
+// Default stats so stats cards render instantly (like Client module). API updates these after load.
+const DEFAULT_STATS = {
+    total_events: 0,
+    today_events: 0,
+    completed_events: 0,
+    upcoming_events: 0,
+    cancelled_events: 0,
+};
+
 const StatCard = ({ title, description, value, icon: Icon, iconBgClass, iconColorClass }) => (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
         <div className="flex items-start justify-between gap-3">
@@ -92,6 +101,9 @@ const Planner = () => {
     const [clients, setClients] = useState([]);
     const [users, setUsers] = useState([]);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+    const [reminderEvent, setReminderEvent] = useState(null);
+    const reminderTriggeredRef = useRef(new Set());
+    const reminderAudioRef = useRef(null);
     const [eventForm, setEventForm] = useState({
         id: null,
         title: '',
@@ -136,22 +148,19 @@ const Planner = () => {
     const [cancelForm, setCancelForm] = useState({ cancel_reason: '' });
     const actionEventIdRef = useRef(null);
     const lastClickedEventIdRef = useRef(null);
-    const [stats, setStats] = useState({
-        total_events: 0,
-        today_events: 0,
-        completed_events: 0,
-        upcoming_events: 0,
-        cancelled_events: 0,
-    });
+    // Stats with defaults so cards render instantly; API updates after load (same pattern as Client module).
+    const [stats, setStats] = useState(DEFAULT_STATS);
 
+    // Lookups: run once on mount, do not block render.
     useEffect(() => {
         const loadLookups = async () => {
-            const [clientResult, userList] = await Promise.all([
+            const [clientResult, userResult] = await Promise.all([
                 getClients({ per_page: 100 }).then((r) => r?.data ?? r ?? []).catch(() => []),
-                getUsers().catch(() => []),
+                getUsers({ per_page: 100 }).catch(() => null),
             ]);
             setClients(Array.isArray(clientResult) ? clientResult : []);
-            setUsers(userList || []);
+            const users = userResult?.data ?? userResult ?? [];
+            setUsers(Array.isArray(users) ? users : []);
         };
         loadLookups();
     }, []);
@@ -160,6 +169,34 @@ const Planner = () => {
         const t = setTimeout(() => setSearchDebounced(search.trim()), 300);
         return () => clearTimeout(t);
     }, [search]);
+
+    // Fetch stats and independent notes in parallel after mount (single effect, no blocking).
+    useEffect(() => {
+        let cancelled = false;
+        const load = async () => {
+            try {
+                const [statsData, notesData] = await Promise.all([
+                    getPlannerStats().catch(() => null),
+                    getPlannerNotes({ only_orphaned: true }).catch(() => []),
+                ]);
+                if (cancelled) return;
+                if (statsData) {
+                    setStats({
+                        total_events: statsData.total_events ?? 0,
+                        today_events: statsData.today_events ?? 0,
+                        completed_events: statsData.completed_events ?? 0,
+                        upcoming_events: statsData.upcoming_events ?? 0,
+                        cancelled_events: statsData.cancelled_events ?? 0,
+                    });
+                }
+                setIndependentNotes(Array.isArray(notesData) ? notesData : []);
+            } catch (err) {
+                if (!cancelled) console.error(err);
+            }
+        };
+        load();
+        return () => { cancelled = true; };
+    }, []);
 
     const fetchStats = useCallback(async () => {
         try {
@@ -178,38 +215,104 @@ const Planner = () => {
         }
     }, []);
 
-    useEffect(() => {
-        fetchStats();
-    }, [fetchStats]);
-
-    useEffect(() => {
-        if (calendarRange.start && calendarRange.end) {
-            fetchEvents();
-        }
-    }, [calendarRange, categoryFilter, priorityFilter, clientFilter, userFilter]);
-
-    useEffect(() => {
-        fetchIndependentNotes();
-    }, []);
-
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
+        if (!calendarRange.start || !calendarRange.end) return [];
         const params = {
             start: calendarRange.start,
             end: calendarRange.end,
         };
-        if (categoryFilter !== 'all') {
-            params.categories = categoryFilter;
-        }
-        if (priorityFilter !== 'all') {
-            params.priorities = priorityFilter;
-        }
+        if (categoryFilter !== 'all') params.categories = categoryFilter;
+        if (priorityFilter !== 'all') params.priorities = priorityFilter;
         if (clientFilter) params.client_id = clientFilter;
         if (userFilter) params.user_id = userFilter;
 
-        const data = await getPlannerEvents(params);
+        const raw = await getPlannerEvents(params);
+        const data = Array.isArray(raw) ? raw : (raw?.data ?? []);
         setEvents(data);
         return data;
-    };
+    }, [calendarRange.start, calendarRange.end, categoryFilter, priorityFilter, clientFilter, userFilter]);
+
+    // Events: fetch only when calendar range is set (FullCalendar fires datesSet on mount). Do not block initial render.
+    useEffect(() => {
+        if (calendarRange.start && calendarRange.end) {
+            fetchEvents();
+        }
+    }, [calendarRange.start, calendarRange.end, categoryFilter, priorityFilter, clientFilter, userFilter, fetchEvents]);
+
+    // Single Audio instance for in-app reminder (path: /sounds/reminder.mp3)
+    useEffect(() => {
+        reminderAudioRef.current = new Audio('/sounds/reminder.mp3');
+        reminderAudioRef.current.volume = 1;
+        return () => {
+            if (reminderAudioRef.current) reminderAudioRef.current.pause();
+        };
+    }, []);
+
+    // Unlock browser audio (required: browsers block sound until user interaction)
+    useEffect(() => {
+        const unlockAudio = () => {
+            if (reminderAudioRef.current) {
+                reminderAudioRef.current
+                    .play()
+                    .then(() => {
+                        reminderAudioRef.current.pause();
+                        reminderAudioRef.current.currentTime = 0;
+                    })
+                    .catch(() => {});
+            }
+        };
+        document.addEventListener('click', unlockAudio, { once: true });
+        return () => document.removeEventListener('click', unlockAudio);
+    }, []);
+
+    const playReminderSound = useCallback(() => {
+        if (!reminderAudioRef.current) return;
+        reminderAudioRef.current.currentTime = 0;
+        reminderAudioRef.current
+            .play()
+            .then(() => {})
+            .catch((err) => console.log('Reminder audio blocked:', err));
+    }, []);
+
+    const closeReminder = useCallback(() => {
+        if (reminderAudioRef.current) reminderAudioRef.current.pause();
+        setReminderEvent(null);
+    }, []);
+
+    // In-app popup reminder at event start time. Check every 10s; only today's events with start_time.
+    useEffect(() => {
+        const pad = (n) => String(n).padStart(2, '0');
+
+        const intervalId = setInterval(() => {
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+            const currentTimeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+            events
+                .filter((e) => (e.event_date || '').toString().slice(0, 10) === todayStr && e.start_time)
+                .forEach((ev) => {
+                    const evTimeStr = (ev.start_time || '').toString().slice(0, 5);
+                    if (evTimeStr !== currentTimeStr) return;
+
+                    const key = `reminder-${ev.id}-${todayStr}-${evTimeStr}`;
+                    if (reminderTriggeredRef.current.has(key)) return;
+
+                    reminderTriggeredRef.current.add(key);
+                    setReminderEvent(ev);
+                });
+        }, 10000);
+
+        return () => clearInterval(intervalId);
+    }, [events]);
+
+    // Play reminder sound when event-time popup appears; stop when dismissed
+    useEffect(() => {
+        if (!reminderEvent) {
+            reminderAudioRef.current?.pause();
+            return;
+        }
+        playReminderSound();
+    }, [reminderEvent, playReminderSound]);
 
     const fetchEventNotes = async (eventId) => {
         const notes = await getPlannerNotes({ event_id: eventId });
@@ -812,6 +915,56 @@ const Planner = () => {
 
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6">
+            {/* In-app event reminder popup at event time */}
+            {reminderEvent && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-[360px] p-6 text-center animate-fade-in">
+                        <h2 className="text-lg font-bold text-slate-900 flex items-center justify-center gap-2">
+                            <span role="img" aria-label="reminder">🔔</span>
+                            Event Reminder
+                        </h2>
+                        <p className="mt-3 text-slate-700">
+                            <span className="font-semibold text-slate-900">Title:</span>{' '}
+                            {reminderEvent.title || 'Event'}
+                        </p>
+                        <p className="mt-1 text-slate-600">
+                            <span className="font-semibold text-slate-900">Time:</span>{' '}
+                            {(reminderEvent.start_time || '').toString().slice(0, 5)}
+                        </p>
+                        {reminderEvent.notes && (
+                            <p className="mt-2 text-sm text-slate-500">
+                                <span className="font-semibold text-slate-700">Notes:</span>{' '}
+                                {reminderEvent.notes}
+                            </p>
+                        )}
+                        <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const ev = reminderEvent;
+                                    closeReminder();
+                                    if (ev?.id) {
+                                        lastClickedEventIdRef.current = ev.id;
+                                        setSelectedEvent(ev);
+                                        fetchEventNotes(ev.id);
+                                    }
+                                }}
+                                className="px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 shadow-sm"
+                            >
+                                View Event
+                            </button>
+                            <button
+                                type="button"
+                                onClick={closeReminder}
+                                className="px-4 py-2 rounded-xl border border-gray-200 text-slate-600 text-sm font-medium hover:bg-gray-50"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2">

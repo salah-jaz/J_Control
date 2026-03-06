@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Eye, Edit2, Trash2, X, Package, Search, ShoppingBag, AlertTriangle } from "lucide-react";
+import { Plus, Eye, Edit2, Trash2, X, Package, Search, ShoppingBag, AlertTriangle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "../hooks/useApiQueries";
 import clsx from "clsx";
@@ -35,6 +35,7 @@ const tabs = ["Basic Info", "Details"];
 export default function Products() {
     const [form, setForm] = useState(emptyForm);
     const [errors, setErrors] = useState({});
+    const [isSaving, setIsSaving] = useState(false);
     const [openForm, setOpenForm] = useState(false);
     const [openView, setOpenView] = useState(false);
     const [editId, setEditId] = useState(null);
@@ -53,6 +54,7 @@ export default function Products() {
         setErrors({});
         setEditId(null);
         setActiveTab(0);
+        setIsSaving(false);
         setOpenForm(true);
     };
 
@@ -61,6 +63,7 @@ export default function Products() {
         setEditId(item.id);
         setErrors({});
         setActiveTab(0);
+        setIsSaving(false);
         setOpenForm(true);
     };
 
@@ -96,7 +99,9 @@ export default function Products() {
     };
 
     const saveItem = async () => {
+        if (isSaving) return;
         if (!validate()) return;
+        setIsSaving(true);
         try {
             if (editId) {
                 await updateMutation.mutateAsync({ id: editId, data: form });
@@ -108,6 +113,7 @@ export default function Products() {
             setOpenForm(false);
         } catch (e) {
             console.error("Failed to save", e);
+            setIsSaving(false);
             if (e.response && e.response.data && e.response.data.errors) {
                 setErrors(e.response.data.errors);
                 toast.error("Validation failed. Please check the form.");
@@ -420,12 +426,21 @@ export default function Products() {
                         </div>
 
                         <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-white flex-shrink-0">
-                            <button onClick={() => setOpenForm(false)} className="btn-secondary">Cancel</button>
+                            <button onClick={() => setOpenForm(false)} className="btn-secondary" disabled={isSaving}>Cancel</button>
                             <button
+                                type="button"
                                 onClick={saveItem}
-                                className="btn-primary"
+                                disabled={isSaving}
+                                className={clsx("btn-primary flex items-center gap-2", isSaving && "opacity-50 cursor-not-allowed")}
                             >
-                                Save Item
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    "Save Item"
+                                )}
                             </button>
                         </div>
                     </div>

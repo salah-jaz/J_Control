@@ -1,8 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, Edit2, Trash2, UserPlus, Search, X, Shield, Mail, Phone, UserCheck } from "lucide-react";
-import { getUsers, saveUser, deleteUser } from "../services/db";
+import { saveUser, deleteUser } from "../services/db";
 import toast from "react-hot-toast";
 import clsx from "clsx";
+import { useUsers } from "../hooks/useApiQueries";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateCache } from "../utils/apiFetch";
+import { queryKeys } from "../query/queryKeys";
+import { TableSkeleton } from "../components/Skeleton";
 
 const emptyForm = {
   name: "",
@@ -15,31 +20,37 @@ const emptyForm = {
 };
 
 export default function Users() {
-  const [data, setData] = useState([]);
+  const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [openForm, setOpenForm] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [viewItem, setViewItem] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-
-  /* LOAD */
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const users = await getUsers();
-      setData(users || []);
-    } catch (err) {
-      toast.error("Failed to fetch users");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [searchDebounced, setSearchDebounced] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const t = setTimeout(() => setSearchDebounced(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchDebounced]);
+
+  const filters = useMemo(
+    () => ({
+      search: searchDebounced || undefined,
+      page: currentPage,
+      per_page: 20,
+    }),
+    [searchDebounced, currentPage]
+  );
+
+  const { data: usersResult, isLoading } = useUsers(filters);
+  const data = Array.isArray(usersResult?.data) ? usersResult.data : [];
+  const meta = usersResult?.meta ?? null;
 
   const openAdd = () => {
     setForm({ ...emptyForm, password: "" });
@@ -63,7 +74,8 @@ export default function Users() {
     try {
       await deleteUser(id);
       toast.success("User deleted successfully");
-      fetchData();
+      invalidateCache("/users");
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     } catch (error) {
       toast.error("Failed to delete user");
     }
@@ -86,7 +98,8 @@ export default function Users() {
       await saveUser(form);
       toast.success("User saved successfully");
       setOpenForm(false);
-      fetchData();
+      invalidateCache("/users");
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     } catch (error) {
       console.error(error);
       if (error.response?.data?.errors) {
@@ -141,6 +154,16 @@ export default function Users() {
             />
           </div>
         </div>
+        {meta && (
+          <div className="px-4 md:px-6 py-2 border-b border-gray-100 bg-gray-50/30 text-xs font-semibold text-slate-500">
+            {meta
+              ? `Showing ${(meta.current_page - 1) * meta.per_page + 1}–${Math.min(
+                  meta.current_page * meta.per_page,
+                  meta.total
+                )} of ${meta.total}`
+              : `Showing ${filteredData.length}`}
+          </div>
+        )}
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
@@ -153,8 +176,12 @@ export default function Users() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {loading ? (
-                <tr><td colSpan="5" className="p-12 text-center text-slate-400 italic">Loading users...</td></tr>
+              {isLoading ? (
+                <tr>
+                  <td colSpan="5" className="p-0">
+                    <TableSkeleton rows={6} cols={5} />
+                  </td>
+                </tr>
               ) : filteredData.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="p-12 text-center text-slate-400 italic">
@@ -225,6 +252,32 @@ export default function Users() {
             </tbody>
           </table>
         </div>
+        {meta && meta.last_page > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <span className="text-sm text-slate-600">
+              Showing {(meta.current_page - 1) * meta.per_page + 1}–
+              {Math.min(meta.current_page * meta.per_page, meta.total)} of {meta.total}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={meta.current_page <= 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                disabled={meta.current_page >= meta.last_page}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* VIEW MODAL */}

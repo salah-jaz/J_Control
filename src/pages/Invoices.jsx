@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useInvoices, useInvoiceSummary, useNextInvoiceNumber, useDeleteInvoice } from '../hooks/useApiQueries';
+import { invalidateCache } from '../utils/apiFetch';
 import { useClients } from '../hooks/useApiQueries';
 import { queryKeys } from '../query/queryKeys';
 import InvoiceView from '../components/InvoiceViewer';
@@ -99,6 +100,7 @@ export default function Invoices() {
   });
 
   const handleSave = async () => {
+    invalidateCache('/invoices');
     queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
   };
 

@@ -1,4 +1,5 @@
 import api from '../api/axios';
+import { apiFetchList } from '../utils/apiFetch';
 
 export const getNextInvoiceNumber = async () => {
   const doFetch = () => api.get('/invoices/next-number').then((res) => res.data);
@@ -26,36 +27,8 @@ export const getInvoiceSummary = async () => {
   }
 };
 
-/**
- * Normalize list API response: Laravel may return a flat array or paginated { data: [], meta: {} }.
- * Returns { data: array, meta: null|{ total, current_page, last_page, per_page } }.
- */
-function normalizeListResponse(response) {
-  if (Array.isArray(response)) {
-    return { data: response, meta: null };
-  }
-  if (response && typeof response === 'object' && Array.isArray(response.data)) {
-    return {
-      data: response.data,
-      meta: response.meta ? {
-        total: response.meta.total,
-        current_page: response.meta.current_page,
-        last_page: response.meta.last_page,
-        per_page: response.meta.per_page,
-      } : null,
-    };
-  }
-  return { data: [], meta: null };
-}
-
 export const getInvoices = async (params = {}) => {
-  try {
-    const response = await api.get('/invoices', { params });
-    return normalizeListResponse(response.data);
-  } catch (e) {
-    console.error('Failed to fetch invoices', e);
-    return { data: [], meta: null };
-  }
+  return apiFetchList('/invoices', { params });
 };
 
 export const getInvoice = async (id) => {

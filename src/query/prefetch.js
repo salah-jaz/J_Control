@@ -1,6 +1,6 @@
 import { queryClient } from './queryClient';
 import { queryKeys } from './queryKeys';
-import { getDashboardStats, getReportsSummary, getClients, getClientLocations } from '../services/db';
+import { getDashboardStats, getClients, getClientLocations } from '../services/db';
 import { getProducts } from '../services/productService';
 import { getInvoices, getInvoiceSummary } from '../services/invoiceService';
 import { getIncomes, getIncomeSummary } from '../services/incomeService';
@@ -13,17 +13,11 @@ const STALE_TWO_MIN = 2 * 60 * 1000;
  * All requests run in parallel; cache is populated in the background.
  */
 export function prefetchAppData() {
-  const today = new Date().toISOString().split('T')[0];
   Promise.all([
     queryClient.prefetchQuery({
       queryKey: queryKeys.dashboard.stats(),
       queryFn: getDashboardStats,
       staleTime: STALE_TWO_MIN,
-    }),
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.dashboard.todayIncome(today),
-      queryFn: () => getReportsSummary({ startDate: today, endDate: today }),
-      staleTime: 60 * 1000,
     }),
     queryClient.prefetchQuery({
       queryKey: queryKeys.clients.list({}),

@@ -99,6 +99,7 @@ const ClientManagement = () => {
                 || (data?.errors && Object.values(data.errors).flat()[0])
                 || "Failed to save client. Please try again.";
             toast.error(typeof message === 'string' ? message : "Failed to save client. Please try again.");
+            throw error;
         }
     };
 

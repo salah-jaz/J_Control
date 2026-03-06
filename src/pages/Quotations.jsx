@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, lazy } from "react";
+import { useState, useEffect, useMemo, Suspense, lazy } from "react";
 import {
   FileText,
   Plus,
@@ -10,11 +10,16 @@ import {
   X,
   User,
   Layers,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import clsx from "clsx";
-import { getQuotations, createQuotation, updateQuotation, deleteQuotation, convertQuotationToInvoice } from "../services/quotationService";
-import { getClients } from "../services/db";
+import { useQueryClient } from "@tanstack/react-query";
+import { createQuotation, updateQuotation, deleteQuotation, convertQuotationToInvoice } from "../services/quotationService";
+import { useQuotationList, useQuotationSummary, useClients } from "../hooks/useApiQueries";
+import { invalidateCache } from "../utils/apiFetch";
+import { queryKeys } from "../query/queryKeys";
+import { TableSkeleton } from "../components/Skeleton";
 
 const QuotationView = lazy(() => import("../components/QuotationView"));
 const AgreementTab = lazy(() => import("../components/AgreementTab"));
@@ -41,82 +46,58 @@ const emptyForm = {
 const STATUS_OPTIONS = ["Draft", "Sent", "Accepted", "Rejected", "Converted"];
 
 function Quotations() {
-  const [listData, setListData] = useState({ quotations: [], summary: null });
-  const [clients, setClients] = useState([]);
+  const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
   const [tab, setTab] = useState("basic");
   const [openForm, setOpenForm] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [editId, setEditId] = useState(null);
   const [viewQuotation, setViewQuotation] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [clientFilter, setClientFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const filters = useMemo(
+    () => ({
+      search: searchDebounced.trim() || undefined,
+      status: statusFilter === "All" ? undefined : statusFilter,
+      client_id: clientFilter || undefined,
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
+      page: currentPage,
+      per_page: 20,
+    }),
+    [searchDebounced, statusFilter, clientFilter, dateFrom, dateTo, currentPage]
+  );
+
+  const { data: quotationsResult, isLoading: quotationsLoading } = useQuotationList(filters);
+  const { data: summaryResult } = useQuotationSummary();
+  const { data: clientsResult } = useClients({ per_page: 100 });
+
+  const quotations = Array.isArray(quotationsResult?.data) ? quotationsResult.data : [];
+  const quotationsMeta = quotationsResult?.meta ?? null;
+  const summary = summaryResult && typeof summaryResult === "object" ? summaryResult : {};
+  const safeClients = Array.isArray(clientsResult?.data) ? clientsResult.data : [];
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const t = setTimeout(() => setSearchDebounced(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
   useEffect(() => {
-    const loadClients = async () => {
-      try {
-        const result = await getClients({ per_page: 100 });
-        const list = result?.data ?? result;
-        setClients(Array.isArray(list) ? list : []);
-      } catch (e) {
-        console.error("Failed to load clients", e);
-        setClients([]);
-      }
-    };
-    loadClients();
-  }, []);
+    setCurrentPage(1);
+  }, [searchDebounced, statusFilter, clientFilter, dateFrom, dateTo]);
 
-  const loadData = async () => {
-    try {
-      const params = {};
-      if (searchQuery.trim()) params.search = searchQuery.trim();
-      if (statusFilter !== "All") params.status = statusFilter;
-      if (clientFilter) params.client_id = clientFilter;
-      if (dateFrom) params.date_from = dateFrom;
-      if (dateTo) params.date_to = dateTo;
-      const data = await getQuotations(params);
-      if (Array.isArray(data)) {
-        setListData({ quotations: data, summary: null });
-      } else {
-        setListData({
-          quotations: Array.isArray(data?.quotations) ? data.quotations : [],
-          summary: data?.summary ?? null,
-        });
-      }
-    } catch (e) {
-      console.error("Failed to load quotations", e);
-      toast.error("Failed to load quotations");
-      setListData({
-        quotations: [],
-        summary: { total: 0, draft: 0, sent: 0, accepted: 0, rejected: 0, converted: 0 },
-      });
-    }
+  const loadData = () => {
+    invalidateCache("/quotations");
+    queryClient.invalidateQueries({ queryKey: queryKeys.quotations.all });
   };
-
-  useEffect(() => {
-    loadData();
-  }, [statusFilter, clientFilter, dateFrom, dateTo]);
-
-  const summary = listData?.summary && typeof listData.summary === "object" ? listData.summary : {};
-  const quotations = Array.isArray(listData?.quotations) ? listData.quotations : [];
-
-  const safeClients = Array.isArray(clients) ? clients : [];
-
-  const filteredBySearch = searchQuery.trim()
-    ? quotations.filter(
-        (q) =>
-          (q.quotation_no && q.quotation_no.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (q.client && (q.client.company_name || q.client.client_name || "").toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    : quotations;
 
   const subtotalForm = (form.items || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
   const discountForm = parseFloat(form.discount) || 0;
@@ -135,10 +116,12 @@ function Quotations() {
     setErrors({});
     setEditId(null);
     setTab("basic");
+    setIsSaving(false);
     setOpenForm(true);
   };
 
   const openEdit = (q) => {
+    setIsSaving(false);
     const items = (q.items || []).map((i) => ({
       item: i.item || "",
       description: i.description || "",
@@ -253,7 +236,9 @@ function Quotations() {
   };
 
   const handleSave = async () => {
+    if (isSaving) return;
     if (!validate()) return;
+    setIsSaving(true);
     const payload = {
       client_id: form.client_id,
       quotation_no: form.quotation_no || undefined,
@@ -287,9 +272,12 @@ function Quotations() {
         await createQuotation(payload);
         toast.success("Quotation created");
       }
+      queryClient.invalidateQueries({ queryKey: queryKeys.quotations.all });
+      await queryClient.refetchQueries({ queryKey: queryKeys.quotations.all });
       loadData();
       setOpenForm(false);
     } catch (err) {
+      setIsSaving(false);
       toast.error(err.response?.data?.message || "Failed to save quotation");
     }
   };
@@ -346,7 +334,6 @@ function Quotations() {
               placeholder="Search by Quotation Number or Client Name"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && loadData()}
               className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full"
             />
           </div>
@@ -384,7 +371,6 @@ function Quotations() {
             className="px-4 py-2 border border-gray-100 rounded-xl text-sm min-w-[140px]"
             placeholder="To"
           />
-          <button onClick={loadData} className="btn-primary">Apply</button>
         </div>
       </div>
 
@@ -392,10 +378,13 @@ function Quotations() {
         <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <h3 className="font-bold text-slate-800">Quotations</h3>
           <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
-            Showing {filteredBySearch.length}
+            {quotationsLoading ? "Loading..." : quotationsMeta ? `Showing ${(quotationsMeta.current_page - 1) * quotationsMeta.per_page + 1}–${Math.min(quotationsMeta.current_page * quotationsMeta.per_page, quotationsMeta.total)} of ${quotationsMeta.total}` : `Showing ${quotations.length}`}
           </span>
         </div>
         <div className="overflow-x-auto">
+          {quotationsLoading ? (
+            <TableSkeleton rows={6} cols={7} />
+          ) : (
           <table className="w-full text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
@@ -409,12 +398,12 @@ function Quotations() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredBySearch.length === 0 ? (
+              {quotations.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-12 text-center text-slate-500 italic">No quotations found</td>
                 </tr>
               ) : (
-                filteredBySearch.map((q) => (
+                quotations.map((q) => (
                   <tr key={q.id} className="hover:bg-slate-50/50 transition-colors group">
                     <td className="px-6 py-4 font-mono font-semibold text-slate-800">{q.quotation_no}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">
@@ -482,7 +471,33 @@ function Quotations() {
               )}
             </tbody>
           </table>
+          )}
         </div>
+        {quotationsMeta && quotationsMeta.last_page > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <span className="text-sm text-slate-600">
+              Showing {(quotationsMeta.current_page - 1) * quotationsMeta.per_page + 1}–{Math.min(quotationsMeta.current_page * quotationsMeta.per_page, quotationsMeta.total)} of {quotationsMeta.total}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={quotationsMeta.current_page <= 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                disabled={quotationsMeta.current_page >= quotationsMeta.last_page}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {openForm && (
@@ -526,7 +541,7 @@ function Quotations() {
                       className={inputClass("client_id")}
                     >
                       <option value="">Select client</option>
-                      {clients.map((c) => (
+                      {safeClients.map((c) => (
                         <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
                       ))}
                     </select>
@@ -745,8 +760,22 @@ function Quotations() {
             <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
               <p className="text-sm text-slate-500 font-bold uppercase">Total: ₹{totalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
               <div className="flex gap-3">
-                <button type="button" onClick={() => setOpenForm(false)} className="btn-secondary">Cancel</button>
-                <button type="button" onClick={handleSave} className="btn-primary shadow-lg shadow-brand-500/30">Save Quotation</button>
+                <button type="button" onClick={() => setOpenForm(false)} className="btn-secondary" disabled={isSaving}>Cancel</button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className={clsx("btn-primary shadow-lg shadow-brand-500/30 flex items-center gap-2", isSaving && "opacity-50 cursor-not-allowed")}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Quotation"
+                  )}
+                </button>
               </div>
             </div>
           </div>

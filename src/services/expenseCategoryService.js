@@ -1,8 +1,9 @@
 import api from "../api/axios";
+import { apiFetchList } from "../utils/apiFetch";
 
 export const getExpenseCategories = async () => {
-  const response = await api.get("/expense-categories");
-  return response.data;
+  const result = await apiFetchList("/expense-categories");
+  return Array.isArray(result.data) ? result.data : [];
 };
 
 export const createExpenseCategory = async (name) => {

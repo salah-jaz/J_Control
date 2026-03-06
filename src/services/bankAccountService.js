@@ -1,5 +1,5 @@
-
 import api from "../api/axios";
+import { apiFetchList } from "../utils/apiFetch";
 
 // Helper to transform API data to Frontend format
 const toFrontend = (data) => ({
@@ -45,8 +45,9 @@ const toBackend = (data) => ({
 });
 
 export const getBankAccounts = async () => {
-    const response = await api.get("/bank-accounts");
-    return response.data.map(toFrontend);
+    const result = await apiFetchList("/bank-accounts");
+    const arr = Array.isArray(result.data) ? result.data : [];
+    return arr.map(toFrontend);
 };
 
 export const createBankAccount = async (account) => {

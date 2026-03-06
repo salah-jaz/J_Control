@@ -120,28 +120,43 @@ import api from '../api/axios';
 
 // ... existing code ...
 
-export const getLeads = async () => {
-    try {
-        const response = await api.get('/leads');
-        return response.data.map(lead => {
-            const latestNote = lead.lead_notes?.[0] || lead.leadNotes?.[0];
-            return {
-                ...lead,
-                firstName: lead.first_name,
-                lastName: lead.last_name,
-                jobTitle: lead.job_title,
-                assignedTo: lead.assigned_to,
-                createdAt: lead.created_at,
-                followUps: lead.follow_ups || lead.followUps || [],
-                callLogs: lead.call_logs || lead.callLogs || [],
-                notesCount: lead.lead_notes_count ?? lead.notesCount ?? 0,
-                lastNote: latestNote ? { note: latestNote.note, noteType: latestNote.note_type, createdAt: latestNote.created_at } : null,
-            };
-        });
-    } catch (error) {
-        console.error("Failed to fetch leads:", error);
-        return [];
-    }
+/**
+ * Map raw API lead to frontend shape.
+ */
+function mapLeadToFrontend(lead) {
+    const latestNote = lead.lead_notes?.[0] || lead.leadNotes?.[0];
+    return {
+        ...lead,
+        firstName: lead.first_name ?? lead.firstName,
+        lastName: lead.last_name ?? lead.lastName,
+        jobTitle: lead.job_title ?? lead.jobTitle,
+        assignedTo: lead.assigned_to ?? lead.assignedTo,
+        createdAt: lead.created_at ?? lead.createdAt,
+        followUps: lead.follow_ups || lead.followUps || [],
+        callLogs: lead.call_logs || lead.callLogs || [],
+        notesCount: lead.lead_notes_count ?? lead.notesCount ?? 0,
+        lastNote: latestNote ? { note: latestNote.note, noteType: latestNote.note_type, createdAt: latestNote.created_at } : null,
+    };
+}
+
+/**
+ * Fetch leads with optional filters. Returns { data: [], meta: null|{} } like clients/invoices.
+ * @param {Object} [filters] - { search, status, priority, assigned_to, source, page, per_page }
+ */
+export const getLeads = async (filters = {}) => {
+    const params = {};
+    if (filters.search != null && String(filters.search).trim() !== '') params.search = filters.search.trim();
+    if (filters.status != null && filters.status !== '' && filters.status !== 'all') params.status = filters.status;
+    if (filters.priority != null && filters.priority !== '' && filters.priority !== 'all') params.priority = filters.priority;
+    if (filters.assigned_to != null && filters.assigned_to !== '' && filters.assigned_to !== 'all') params.assigned_to = filters.assigned_to;
+    if (filters.source != null && filters.source !== '' && filters.source !== 'all') params.source = filters.source;
+    if (filters.page != null) params.page = filters.page;
+    if (filters.per_page != null) params.per_page = filters.per_page;
+
+    const result = await apiFetchList('/leads', { params });
+    const arr = Array.isArray(result.data) ? result.data : [];
+    const data = arr.map(mapLeadToFrontend);
+    return { data, meta: result.meta };
 };
 
 export const saveLead = async (lead) => {
@@ -290,7 +305,11 @@ export const getDashboardStats = async () => {
             totalInvoices: 0,
             totalRevenue: 0,
             pendingAmount: 0,
-            recentInvoices: []
+            todayIncome: 0,
+            recentInvoices: [],
+            monthlyRevenue: [],
+            invoiceStatusCounts: [],
+            todaysEvents: [],
         };
     }
 };
@@ -364,37 +383,13 @@ export const deleteFollowUp = async (id) => {
 };
 
 export const getPlannerEvents = async (params = {}) => {
-    try {
-        const response = await api.get('/planner-events', { params });
-        const body = response.data;
-        if (Array.isArray(body)) {
-            return body;
-        }
-        if (body && Array.isArray(body.data)) {
-            return body.data;
-        }
-        return [];
-    } catch (error) {
-        console.error("Failed to fetch planner events:", error);
-        return [];
-    }
+    const result = await apiFetchList('/planner-events', { params, useCache: false });
+    return Array.isArray(result.data) ? result.data : [];
 };
 
 export const getTodayPlannerEvents = async () => {
-    try {
-        const response = await api.get('/planner-events/today');
-        const body = response.data;
-        if (Array.isArray(body)) {
-            return body;
-        }
-        if (body && Array.isArray(body.data)) {
-            return body.data;
-        }
-        return [];
-    } catch (error) {
-        console.error("Failed to fetch today's planner events:", error);
-        return [];
-    }
+    const result = await apiFetchList('/planner-events/today', { useCache: false });
+    return Array.isArray(result.data) ? result.data : [];
 };
 
 export const savePlannerEvent = async (event) => {
@@ -552,59 +547,28 @@ export const deletePlannerNote = async (id) => {
     }
 };
 
-/**
- * Normalize list API response: Laravel may return a flat array or paginated { data: [], meta: {} }.
- * Returns { data: array, meta: null|{ total, current_page, last_page, per_page } }.
- */
-function normalizeListResponse(response) {
-    if (Array.isArray(response)) {
-        return { data: response, meta: null };
-    }
-    if (response && typeof response === 'object' && Array.isArray(response.data)) {
-        return {
-            data: response.data,
-            meta: response.meta ? {
-                total: response.meta.total,
-                current_page: response.meta.current_page,
-                last_page: response.meta.last_page,
-                per_page: response.meta.per_page,
-            } : null,
-        };
-    }
-    return { data: [], meta: null };
-}
+import { apiFetchList } from '../utils/apiFetch';
 
 /**
  * @param {Object} [filters] - Optional: { search, status, gstType, location, dateRange, dateFrom, dateTo, page, per_page }
  */
 export const getClients = async (filters = {}) => {
-    try {
-        const params = {};
-        if (filters.search != null && String(filters.search).trim() !== '') params.search = filters.search.trim();
-        if (filters.status != null && filters.status !== '') params.status = filters.status;
-        if (filters.gstType != null && filters.gstType !== '') params.gstType = filters.gstType;
-        if (filters.location != null && filters.location !== '') params.location = filters.location;
-        if (filters.dateRange != null && filters.dateRange !== '') params.dateRange = filters.dateRange;
-        if (filters.dateFrom != null && filters.dateFrom !== '') params.dateFrom = filters.dateFrom;
-        if (filters.dateTo != null && filters.dateTo !== '') params.dateTo = filters.dateTo;
-        if (filters.page != null) params.page = filters.page;
-        if (filters.per_page != null) params.per_page = filters.per_page;
-        const response = await api.get('/clients', { params });
-        return normalizeListResponse(response.data);
-    } catch (error) {
-        console.error("Failed to fetch clients:", error);
-        return { data: [], meta: null };
-    }
+    const params = {};
+    if (filters.search != null && String(filters.search).trim() !== '') params.search = filters.search.trim();
+    if (filters.status != null && filters.status !== '') params.status = filters.status;
+    if (filters.gstType != null && filters.gstType !== '') params.gstType = filters.gstType;
+    if (filters.location != null && filters.location !== '') params.location = filters.location;
+    if (filters.dateRange != null && filters.dateRange !== '') params.dateRange = filters.dateRange;
+    if (filters.dateFrom != null && filters.dateFrom !== '') params.dateFrom = filters.dateFrom;
+    if (filters.dateTo != null && filters.dateTo !== '') params.dateTo = filters.dateTo;
+    if (filters.page != null) params.page = filters.page;
+    if (filters.per_page != null) params.per_page = filters.per_page;
+    return apiFetchList('/clients', { params });
 };
 
 export const getClientLocations = async () => {
-    try {
-        const response = await api.get('/clients', { params: { locations_only: 1 } });
-        return Array.isArray(response.data) ? response.data : [];
-    } catch (error) {
-        console.error("Failed to fetch client locations:", error);
-        return [];
-    }
+    const result = await apiFetchList('/clients', { params: { locations_only: 1 }, useCache: false });
+    return Array.isArray(result.data) ? result.data : [];
 };
 
 export const saveClient = async (client) => {
@@ -662,14 +626,10 @@ export const getReportFilters = async () => {
     }
 };
 
-export const getUsers = async () => {
-    try {
-        const response = await api.get('/users');
-        return response.data;
-    } catch (error) {
-        console.error("Failed to fetch users:", error);
-        return [];
-    }
+export const getUsers = async (filters = {}) => {
+    const params = { ...(filters || {}) };
+    const result = await apiFetchList('/users', { params, useCache: false });
+    return result;
 };
 
 export const saveUser = async (user) => {

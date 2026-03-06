@@ -1,13 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
     Users, Plus, Upload, Download, Search, LayoutList, Kanban, Calendar,
     MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X, ArrowRight, FileText, StickyNote
 } from 'lucide-react';
-import { getLeads, saveLead, deleteLead, getAssignees, saveAssignee, getLeadNotes, createLeadNote, updateLeadNote, deleteLeadNote } from '../services/db';
+import { getAssignees, saveAssignee, saveLead, getLeadNotes, createLeadNote, updateLeadNote, deleteLeadNote } from '../services/db';
+import { useQueryClient } from '@tanstack/react-query';
+import { useLeads, useSaveLead, useDeleteLead } from '../hooks/useApiQueries';
+import { queryKeys } from '../query/queryKeys';
 import clsx from 'clsx';
 import SetFollowUpModal from '../components/SetFollowUpModal';
 import LogCallModal from '../components/LogCallModal';
 import FollowUpCalendar from './FollowUpCalendar';
+import { TableSkeleton } from '../components/Skeleton';
+import toast from 'react-hot-toast';
 
 const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssignee }) => {
     const [formData, setFormData] = useState({
@@ -876,27 +881,57 @@ const KanbanView = ({ leads, onView }) => {
 };
 
 const Leads = () => {
-    const [leads, setLeads] = useState([]);
     const [viewMode, setViewMode] = useState('list');
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingLead, setEditingLead] = useState(null);
     const [isViewMode, setIsViewMode] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [searchDebounced, setSearchDebounced] = useState('');
     const [statusFilter, setStatusFilter] = useState('All Statuses');
     const [sourceFilter, setSourceFilter] = useState('All Sources');
     const [priorityFilter, setPriorityFilter] = useState('All Priorities');
     const [assigneeFilter, setAssigneeFilter] = useState('All Assignees');
+    const [currentPage, setCurrentPage] = useState(1);
     const [assignees, setAssignees] = useState([]);
     const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
     const [followUpLead, setFollowUpLead] = useState(null);
     const [previousFollowUp, setPreviousFollowUp] = useState(null);
-
     const [isLogCallModalOpen, setIsLogCallModalOpen] = useState(false);
     const [logCallLead, setLogCallLead] = useState(null);
+    const [isOverdueModalOpen, setIsOverdueModalOpen] = useState(false);
+    const [filterByOverdue, setFilterByOverdue] = useState(false);
+
+    const filters = useMemo(() => ({
+        search: searchDebounced.trim() || undefined,
+        status: statusFilter === 'All Statuses' ? undefined : statusFilter,
+        source: sourceFilter === 'All Sources' ? undefined : sourceFilter,
+        priority: priorityFilter === 'All Priorities' ? undefined : priorityFilter,
+        assigned_to: assigneeFilter === 'All Assignees' ? undefined : assigneeFilter,
+        page: currentPage,
+        per_page: 20,
+    }), [searchDebounced, statusFilter, sourceFilter, priorityFilter, assigneeFilter, currentPage]);
+
+    const queryClient = useQueryClient();
+    const { data: leadsResult, isLoading } = useLeads(filters);
+    const saveLeadMutation = useSaveLead();
+    const deleteLeadMutation = useDeleteLead();
+
+    const leads = Array.isArray(leadsResult?.data) ? leadsResult.data : [];
+    const leadsMeta = leadsResult?.meta ?? null;
+    const totalLeadsCount = leadsMeta?.total ?? leads.length;
 
     useEffect(() => {
         setAssignees(getAssignees());
     }, []);
+
+    useEffect(() => {
+        const t = setTimeout(() => setSearchDebounced(searchTerm), 300);
+        return () => clearTimeout(t);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchDebounced, statusFilter, sourceFilter, priorityFilter, assigneeFilter]);
 
     const handleAddAssignee = (name) => {
         if (name) {
@@ -907,33 +942,36 @@ const Leads = () => {
 
     const fileInputRef = useRef(null);
 
-    const fetchLeads = async () => {
-        const data = await getLeads();
-        setLeads(data);
-        return data;
-    };
-
-    useEffect(() => {
-        fetchLeads();
-    }, []);
-
     const handleSave = async (lead) => {
-        const leadWithDate = {
-            ...lead,
-        };
-        await saveLead(leadWithDate);
-        fetchLeads();
+        try {
+            await saveLeadMutation.mutateAsync({ ...lead });
+            setIsFormOpen(false);
+            setEditingLead(null);
+            toast.success('Lead saved successfully');
+        } catch (err) {
+            console.error('Failed to save lead', err);
+            toast.error(err?.response?.data?.message || 'Failed to save lead');
+        }
     };
 
     const handleDelete = async (id) => {
-        if (confirm("Are you sure you want to delete this lead?")) {
-            await deleteLead(id);
-            fetchLeads();
+        if (!confirm("Are you sure you want to delete this lead?")) return;
+        try {
+            await deleteLeadMutation.mutateAsync(id);
+            toast.success('Lead deleted');
+        } catch (err) {
+            console.error('Failed to delete lead', err);
+            toast.error('Failed to delete lead');
         }
-    }
+    };
 
-    const [isOverdueModalOpen, setIsOverdueModalOpen] = useState(false);
-    const [filterByOverdue, setFilterByOverdue] = useState(false);
+    // Keep editingLead in sync when leads refetch (e.g. after follow-up or call log)
+    useEffect(() => {
+        if (editingLead?.id && leads.length > 0) {
+            const updated = leads.find((l) => l.id === editingLead.id);
+            if (updated) setEditingLead(updated);
+        }
+    }, [leads]);
 
     // Overdue: follow-up date < today AND lead status is NOT Lost, Converted, or Closed
     const EXCLUDED_OVERDUE_STATUSES = ['Lost', 'Converted', 'Closed'];
@@ -1039,7 +1077,7 @@ const Leads = () => {
                         saveLead(newLead);
                     }
                 }
-                setLeads(getLeads()); // Refresh state
+                queryClient.invalidateQueries({ queryKey: queryKeys.leads.all });
                 alert('Leads imported successfully!');
             };
             reader.readAsText(file);
@@ -1048,25 +1086,13 @@ const Leads = () => {
     };
 
     const baseLeadsForFilter = filterByOverdue ? overdueLeads : leads;
-    const filteredLeads = baseLeadsForFilter.filter(lead => {
-        const matchesSearch =
-            (lead.firstName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-            (lead.lastName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-            (lead.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-            (lead.company?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'All Statuses' || lead.status === statusFilter;
-        const matchesSource = sourceFilter === 'All Sources' || lead.source === sourceFilter;
-        const matchesPriority = priorityFilter === 'All Priorities' || lead.priority === priorityFilter;
-        const matchesAssignee = assigneeFilter === 'All Assignees' || lead.assignedTo === assigneeFilter;
-
-        return matchesSearch && matchesStatus && matchesSource && matchesPriority && matchesAssignee;
-    });
+    const filteredLeads = baseLeadsForFilter;
 
     const stats = {
-        total: leads.length,
-        new: leads.filter(l => l.status === 'New').length,
-        qualified: leads.filter(l => l.status === 'Qualified').length,
-        converted: leads.filter(l => l.status === 'Converted').length
+        total: totalLeadsCount,
+        new: leads.filter((l) => l.status === 'New').length,
+        qualified: leads.filter((l) => l.status === 'Qualified').length,
+        converted: leads.filter((l) => l.status === 'Converted').length,
     };
 
     return (
@@ -1217,10 +1243,15 @@ const Leads = () => {
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                             <h3 className="font-bold text-slate-800">All Leads</h3>
                             <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
-                                Showing {filteredLeads.length} of {leads.length}
+                                {isLoading ? 'Loading...' : leadsMeta
+                                    ? `Showing ${(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}–${Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of ${leadsMeta.total}`
+                                    : `Showing ${filteredLeads.length} of ${totalLeadsCount}`}
                             </span>
                         </div>
                         <div className="overflow-x-auto custom-scrollbar">
+                            {isLoading ? (
+                                <TableSkeleton rows={8} cols={8} />
+                            ) : (
                             <table className="w-full text-sm text-left min-w-[1000px]">
                                 <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                                     <tr>
@@ -1237,8 +1268,12 @@ const Leads = () => {
                                 <tbody className="divide-y divide-gray-50">
                                     {filteredLeads.length === 0 ? (
                                         <tr>
-                                            <td colSpan="8" className="px-6 py-12 text-center text-slate-500 italic">
-                                                No leads found matching your criteria.
+                                            <td colSpan="8" className="px-6 py-12 text-center">
+                                                <div className="flex flex-col items-center justify-center text-gray-400">
+                                                    <User className="h-12 w-12 mb-3 opacity-20" />
+                                                    <p className="text-lg font-medium text-gray-500">No leads found</p>
+                                                    <p className="text-sm">Add a lead or adjust your filters.</p>
+                                                </div>
                                             </td>
                                         </tr>
                                     ) : (
@@ -1310,7 +1345,33 @@ const Leads = () => {
                                     )}
                                 </tbody>
                             </table>
+                            )}
                         </div>
+                        {leadsMeta && leadsMeta.last_page > 1 && (
+                            <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                <span className="text-sm text-slate-600">
+                                    Showing {(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}–{Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of {leadsMeta.total}
+                                </span>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                        disabled={leadsMeta.current_page <= 1}
+                                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Previous
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCurrentPage((p) => p + 1)}
+                                        disabled={leadsMeta.current_page >= leadsMeta.last_page}
+                                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -1352,14 +1413,8 @@ const Leads = () => {
                 lead={followUpLead}
                 previousFollowUp={previousFollowUp}
                 onSave={async () => {
-                    await fetchLeads();
                     setPreviousFollowUp(null);
-                    // Update the currently viewed lead if it matches
-                    if (editingLead) {
-                        const data = await getLeads();
-                        const updated = data.find(l => l.id === editingLead.id);
-                        if (updated) setEditingLead(updated);
-                    }
+                    await queryClient.invalidateQueries({ queryKey: queryKeys.leads.all });
                 }}
             />
             <OverdueModal
@@ -1378,12 +1433,7 @@ const Leads = () => {
                 onClose={() => setIsLogCallModalOpen(false)}
                 lead={logCallLead}
                 onSave={async () => {
-                    await fetchLeads();
-                    if (editingLead) {
-                        const data = await getLeads();
-                        const updated = data.find(l => l.id === editingLead.id);
-                        if (updated) setEditingLead(updated);
-                    }
+                    await queryClient.invalidateQueries({ queryKey: queryKeys.leads.all });
                 }}
             />
         </div>

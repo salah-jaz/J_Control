@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   Eye,
   Edit2,
@@ -13,23 +13,26 @@ import {
   AlertCircle,
   Receipt,
   Calendar,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { exportToCSV } from "../utils/csvExport";
 import {
-  getExpenses,
   createExpense,
   updateExpense,
   deleteExpense,
-  getExpenseSummary,
 } from "../services/expenseService";
-import { getTransactions, getTransaction } from "../services/transactionService";
 import { getBankAccounts } from "../services/bankAccountService";
 import {
   getExpenseCategories,
   createExpenseCategory,
   deleteExpenseCategory,
 } from "../services/expenseCategoryService";
+import { useExpenseList, useExpenseSummary } from "../hooks/useApiQueries";
+import { invalidateCache } from "../utils/apiFetch";
+import { queryKeys } from "../query/queryKeys";
+import { TableSkeleton } from "../components/Skeleton";
 import clsx from "clsx";
 
 const emptyForm = {
@@ -67,20 +70,19 @@ const emptyForm = {
 };
 
 export default function Expense() {
-  const [data, setData] = useState([]);
+  const queryClient = useQueryClient();
   const [bankAccounts, setBankAccounts] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
   const [tab, setTab] = useState("basic");
   const [openForm, setOpenForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [savedExtraInstallmentsCount, setSavedExtraInstallmentsCount] = useState(0);
-  const [transactions, setTransactions] = useState([]);
   const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [viewTransactionId, setViewTransactionId] = useState(null);
   const [viewDetail, setViewDetail] = useState(null);
-  const [viewLoading, setViewLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [bankModalFor, setBankModalFor] = useState(null);
   const [firstInvalidBankKey, setFirstInvalidBankKey] = useState(null);
@@ -90,16 +92,78 @@ export default function Expense() {
   const [manageCategoriesModalOpen, setManageCategoriesModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [addCategorySaving, setAddCategorySaving] = useState(false);
-  const [expenseSummary, setExpenseSummary] = useState(null);
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [bankFilter, setBankFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("All");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const filters = useMemo(() => {
+    const now = new Date();
+    let date_from = undefined;
+    let date_to = undefined;
+    if (dateFilter === "Today") {
+      date_from = today;
+      date_to = today;
+    } else if (dateFilter === "This Week") {
+      const weekStart = new Date(now);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      date_from = weekStart.toISOString().split("T")[0];
+      date_to = today;
+    } else if (dateFilter === "This Month") {
+      date_from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      date_to = today;
+    } else if (dateFilter === "This Year") {
+      date_from = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
+      date_to = today;
+    } else if (dateFrom || dateTo) {
+      date_from = dateFrom || undefined;
+      date_to = dateTo || undefined;
+    }
+    return {
+      search: searchDebounced.trim() || undefined,
+      status: statusFilter === "All" ? undefined : statusFilter,
+      category: categoryFilter || undefined,
+      bank_account_id: bankFilter || undefined,
+      date_from,
+      date_to,
+      page: currentPage,
+      per_page: 20,
+    };
+  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, dateFilter, dateFrom, dateTo, currentPage, today]);
+
+  const { data: expenseResult, isLoading: expenseLoading } = useExpenseList(filters);
+  const { data: expenseSummary } = useExpenseSummary();
+
+  const expenseRecords = Array.isArray(expenseResult?.data) ? expenseResult.data : [];
+  const expenseMeta = expenseResult?.meta ?? null;
 
   useEffect(() => {
-    loadData();
+    const t = setTimeout(() => setSearchDebounced(searchQuery.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, dateFilter, dateFrom, dateTo]);
+
+  useEffect(() => {
+    const loadSupport = async () => {
+      try {
+        const [categories, banks] = await Promise.all([
+          getExpenseCategories().catch(() => []),
+          getBankAccounts().then((b) => (Array.isArray(b) ? b : [])),
+        ]);
+        setExpenseCategories(categories || []);
+        setBankAccounts(banks || []);
+      } catch (e) {
+        console.error("Failed to load support data", e);
+      }
+    };
+    loadSupport();
   }, []);
 
   useEffect(() => {
@@ -111,23 +175,9 @@ export default function Expense() {
     return () => clearTimeout(timer);
   }, [firstInvalidBankKey]);
 
-  const loadData = async () => {
-    try {
-      const [records, txns, categories, summary] = await Promise.all([
-        getExpenses(),
-        getTransactions(),
-        getExpenseCategories().catch(() => []),
-        getExpenseSummary().catch(() => null),
-      ]);
-      setData(records);
-      setTransactions(txns || []);
-      setExpenseCategories(categories || []);
-      setExpenseSummary(summary);
-      const banks = await getBankAccounts();
-      setBankAccounts(banks);
-    } catch (e) {
-      console.error("Failed to load data", e);
-    }
+  const loadData = () => {
+    invalidateCache("/expenses");
+    queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
   };
 
   const subtotal = parseFloat(form.amount) || 0;
@@ -154,10 +204,12 @@ export default function Expense() {
     setSavedExtraInstallmentsCount(0);
     setFirstInvalidBankKey(null);
     setTab("basic");
+    setIsSaving(false);
     setOpenForm(true);
   };
 
   const openEdit = (item) => {
+    setIsSaving(false);
     const extra = Array.isArray(item.extraInstallments) ? item.extraInstallments : [];
     const hasInitial =
       item.initialDepositAmount != null &&
@@ -191,21 +243,11 @@ export default function Expense() {
     setOpenForm(true);
   };
 
-  const openViewModal = (txn) => {
-    if (!txn?.id) return;
-    setViewDetail(null);
-    setViewTransactionId(txn.id);
+  const openViewModal = (expense) => {
+    if (!expense?.id) return;
+    setViewDetail(expense);
     setViewModalOpen(true);
   };
-
-  useEffect(() => {
-    if (!viewModalOpen || !viewTransactionId) return;
-    setViewLoading(true);
-    getTransaction(viewTransactionId)
-      .then((res) => setViewDetail(res.data))
-      .catch(console.error)
-      .finally(() => setViewLoading(false));
-  }, [viewModalOpen, viewTransactionId]);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this expense record?")) return;
@@ -266,7 +308,9 @@ export default function Expense() {
   };
 
   const handleSave = async () => {
+    if (isSaving) return;
     if (!validate()) return;
+    setIsSaving(true);
     const payload = {
       ...form,
       paidDate: form.paidDate || null,
@@ -283,10 +327,13 @@ export default function Expense() {
         await createExpense(payload);
         toast.success("Expense added successfully");
       }
-      await loadData();
+      queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
+      await queryClient.refetchQueries({ queryKey: queryKeys.expenses.all });
+      loadData();
       setOpenForm(false);
     } catch (e) {
       console.error("Failed to save", e);
+      setIsSaving(false);
       if (e.response?.data?.errors) {
         setErrors(e.response.data.errors);
         toast.error("Validation failed. Please check the form.");
@@ -299,50 +346,6 @@ export default function Expense() {
   const inputClass = (f) =>
     `input ${errors[f] ? "border-red-500 focus:border-red-500 focus:ring-red-200" : ""}`;
   const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
-
-  const isDateInRange = (dateStr, range) => {
-    if (!dateStr || range === "All") return true;
-    const d = new Date(dateStr);
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart = new Date(todayStart);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const yearStart = new Date(now.getFullYear(), 0, 1);
-    if (range === "Today")
-      return d >= todayStart && d < new Date(todayStart.getTime() + 86400000);
-    if (range === "This Week") return d >= weekStart;
-    if (range === "This Month") return d >= monthStart;
-    if (range === "This Year") return d >= yearStart;
-    return true;
-  };
-
-  const filteredTransactions = transactions.filter((txn) => {
-    if (txn.type !== "Expense") return false;
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      const match =
-        (txn.id != null && String(txn.id).toLowerCase().includes(q)) ||
-        (txn.party && txn.party.toLowerCase().includes(q)) ||
-        (txn.reference && String(txn.reference || "").toLowerCase().includes(q)) ||
-        (txn.category && String(txn.category).toLowerCase().includes(q)) ||
-        (txn.bankName && txn.bankName.toLowerCase().includes(q)) ||
-        (txn.amount != null && String(txn.amount).includes(q));
-      if (!match) return false;
-    }
-    const expense = data.find((e) => e.id === txn.relatedId);
-    const expenseStatus = expense?.status ?? txn.incomeStatus;
-    const statusMap = { Paid: "Paid", Partial: "Partial", Pending: "Pending" };
-    const filterStatus = statusMap[expenseStatus] ?? expenseStatus;
-    if (statusFilter !== "All" && filterStatus !== statusFilter) return false;
-    if (categoryFilter && expense && expense.category !== categoryFilter) return false;
-    if (bankFilter && txn.bankAccountId != null && txn.bankAccountId !== Number(bankFilter))
-      return false;
-    if (dateFrom && txn.date < dateFrom) return false;
-    if (dateTo && txn.date > dateTo) return false;
-    if (dateFilter !== "All" && !isDateInRange(txn.date, dateFilter)) return false;
-    return true;
-  });
 
   const StatCard = ({ title, value, icon: Icon, color }) => (
     <div className="card hover:border-brand-200/50 group h-36 flex flex-col justify-between p-6">
@@ -516,14 +519,13 @@ export default function Expense() {
       {/* TABLE */}
       <div className="card p-0 overflow-hidden">
         <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
-          <h3 className="font-bold text-slate-800">Expense Transactions</h3>
+          <h3 className="font-bold text-slate-800">Expense Records</h3>
           <div className="flex flex-wrap gap-2 w-full lg:w-auto">
             <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
-              Showing {filteredTransactions.length} of{" "}
-              {transactions.filter((t) => t.type === "Expense").length}
+              {expenseLoading ? "Loading..." : expenseMeta ? `Showing ${(expenseMeta.current_page - 1) * expenseMeta.per_page + 1}–${Math.min(expenseMeta.current_page * expenseMeta.per_page, expenseMeta.total)} of ${expenseMeta.total}` : `Showing ${expenseRecords.length}`}
             </span>
             <button
-              onClick={() => exportToCSV(filteredTransactions, "expense_transactions")}
+              onClick={() => exportToCSV(expenseRecords.map((r) => ({ id: r.id, vendor: r.vendor, amount: r.amount, method: r.method, date: r.paidDate, bank: r.bank, status: r.status, category: r.category })), "expense_records")}
               className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50"
               title="Export to CSV"
             >
@@ -532,6 +534,9 @@ export default function Expense() {
           </div>
         </div>
         <div className="overflow-x-auto custom-scrollbar">
+          {expenseLoading ? (
+            <TableSkeleton rows={6} cols={7} />
+          ) : (
           <table className="w-full text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
@@ -545,95 +550,110 @@ export default function Expense() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredTransactions.length === 0 ? (
+              {expenseRecords.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-slate-500 italic">
-                    No expense transactions found
+                  <td colSpan="7" className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <Receipt className="h-12 w-12 mb-3 opacity-20" />
+                      <p className="text-lg font-medium text-gray-500">No expense records found</p>
+                      <p className="text-sm">Add an expense or adjust your filters.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filteredTransactions.map((txn) => {
-                  const expense = data.find((e) => e.id === txn.relatedId);
-                  return (
-                    <tr
-                      key={txn.id}
-                      className="hover:bg-slate-50/50 transition-colors group"
-                    >
-                      <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">
-                        {txn.id}
-                      </td>
-                      <td className="px-6 py-4 font-medium text-slate-900">
-                        {txn.party || "—"}
-                      </td>
-                      <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
-                        ₹{parseFloat(txn.amount || 0).toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
-                          {txn.method || "—"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 font-mono text-xs">
-                        {txn.date || "—"}
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 text-xs">
-                        {txn.bankName || txn.bank || "—"}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                          {expense?.invoice_id && (
-                            <span className="px-2 py-1 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-xs font-semibold" title="Created from Invoice">
-                              Invoice Linked
-                            </span>
-                          )}
-                          <button
-                            onClick={() => openViewModal(txn)}
-                            title="View"
-                            className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                          >
-                            <Eye size={18} />
-                          </button>
-                          {expense && !expense.invoice_id && (
-                            <>
-                              <button
-                                onClick={() => openEdit(expense)}
-                                title="Edit"
-                                className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                              >
-                                <Edit2 size={18} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(txn.relatedId)}
-                                title="Delete"
-                                className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                expenseRecords.map((expense) => (
+                  <tr key={expense.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">{expense.id}</td>
+                    <td className="px-6 py-4 font-medium text-slate-900">{expense.vendor || "—"}</td>
+                    <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
+                      ₹{parseFloat(expense.amount || 0).toLocaleString("en-IN")}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
+                        {expense.method || "—"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-slate-600 font-mono text-xs">{expense.paidDate || "—"}</td>
+                    <td className="px-6 py-4 text-slate-600 text-xs">{expense.bank || "—"}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        {expense.invoice_id && (
+                          <span className="px-2 py-1 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-xs font-semibold" title="Created from Invoice">
+                            Invoice Linked
+                          </span>
+                        )}
+                        <button
+                          onClick={() => openViewModal(expense)}
+                          title="View"
+                          className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        {!expense.invoice_id && (
+                          <>
+                            <button
+                              onClick={() => openEdit(expense)}
+                              title="Edit"
+                              className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(expense.id)}
+                              title="Delete"
+                              className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
+          )}
         </div>
+        {expenseMeta && expenseMeta.last_page > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <span className="text-sm text-slate-600">
+              Showing {(expenseMeta.current_page - 1) * expenseMeta.per_page + 1}–{Math.min(expenseMeta.current_page * expenseMeta.per_page, expenseMeta.total)} of {expenseMeta.total}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={expenseMeta.current_page <= 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                disabled={expenseMeta.current_page >= expenseMeta.last_page}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* View Transaction Details Modal */}
+      {/* View Expense Details Modal */}
       {viewModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
           <div className="bg-white max-w-lg w-full rounded-2xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
             <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
-                Expense Transaction Details
+                Expense Details
               </h2>
               <button
                 onClick={() => {
                   setViewModalOpen(false);
-                  setViewTransactionId(null);
                   setViewDetail(null);
                 }}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all"
@@ -642,44 +662,35 @@ export default function Expense() {
               </button>
             </div>
             <div className="p-4 md:p-6 overflow-y-auto">
-              {viewLoading ? (
-                <p className="text-slate-500 text-center py-8">Loading...</p>
-              ) : viewDetail ? (
+              {viewDetail ? (
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="text-slate-500">Transaction ID</div>
+                  <div className="text-slate-500">ID</div>
                   <div className="font-semibold text-slate-800">{viewDetail.id}</div>
                   <div className="text-slate-500">Vendor</div>
-                  <div className="font-medium text-slate-800">{viewDetail.party || "—"}</div>
+                  <div className="font-medium text-slate-800">{viewDetail.vendor || "—"}</div>
                   <div className="text-slate-500">Amount</div>
                   <div className="font-bold text-slate-900">
-                    ₹{" "}
-                    {parseFloat(viewDetail.amount || 0).toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                    })}
+                    ₹ {parseFloat(viewDetail.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
-                  <div className="text-slate-500">Bank Name</div>
-                  <div className="font-medium text-slate-800">
-                    {viewDetail.bankName || viewDetail.bank || "—"}
-                  </div>
+                  <div className="text-slate-500">Bank</div>
+                  <div className="font-medium text-slate-800">{viewDetail.bank || "—"}</div>
                   <div className="text-slate-500">Method</div>
-                  <div className="font-medium text-slate-800">
-                    {viewDetail.method || "—"}
-                  </div>
+                  <div className="font-medium text-slate-800">{viewDetail.method || "—"}</div>
                   <div className="text-slate-500">Date</div>
-                  <div className="font-medium text-slate-800">
-                    {viewDetail.date || "—"}
-                  </div>
+                  <div className="font-medium text-slate-800">{viewDetail.paidDate || "—"}</div>
                   <div className="text-slate-500">Status</div>
-                  <div className="font-medium text-slate-800">
-                    {viewDetail.status || "—"}
-                  </div>
-                  <div className="text-slate-500">Description</div>
-                  <div className="font-medium text-slate-800 col-span-2">
-                    {viewDetail.description || "—"}
-                  </div>
+                  <div className="font-medium text-slate-800">{viewDetail.status || "—"}</div>
+                  <div className="text-slate-500">Category</div>
+                  <div className="font-medium text-slate-800">{viewDetail.category || "—"}</div>
+                  {viewDetail.description && (
+                    <>
+                      <div className="text-slate-500">Description</div>
+                      <div className="font-medium text-slate-800 col-span-2">{viewDetail.description}</div>
+                    </>
+                  )}
                 </div>
               ) : (
-                <p className="text-slate-500 text-center py-8">Could not load transaction.</p>
+                <p className="text-slate-500 text-center py-8">No details available.</p>
               )}
             </div>
           </div>
@@ -1505,11 +1516,23 @@ export default function Expense() {
             )}
 
             <div className="flex justify-end gap-3 p-4 md:p-6 border-t border-gray-100 bg-white flex-shrink-0">
-              <button onClick={() => setOpenForm(false)} className="btn-secondary">
+              <button onClick={() => setOpenForm(false)} className="btn-secondary" disabled={isSaving}>
                 Cancel
               </button>
-              <button onClick={handleSave} className="btn-primary">
-                Save Record
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className={clsx("btn-primary flex items-center gap-2", isSaving && "opacity-50 cursor-not-allowed")}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Record"
+                )}
               </button>
             </div>
           </div>

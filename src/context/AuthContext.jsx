@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/axios';
+import { clearCache } from '../utils/apiFetch';
 
 const AuthContext = createContext();
 
@@ -46,6 +47,7 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error("Logout failed:", error);
         } finally {
+            clearCache();
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             setUser(null);

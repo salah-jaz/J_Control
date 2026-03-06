@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('invoices/next-number', [InvoiceController::class, 'nextInvoiceNumber']);
     Route::get('invoices/summary', [InvoiceController::class, 'summary']);
     Route::apiResource('invoices', InvoiceController::class);
+    Route::get('quotations/summary', [QuotationController::class, 'summary']);
     Route::get('quotations', [QuotationController::class, 'index']);
     Route::post('quotations', [QuotationController::class, 'store']);
     Route::get('quotations/{quotation}', [QuotationController::class, 'show']);
@@ -49,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('expense-categories', [\App\Http\Controllers\ExpenseCategoryController::class, 'store']);
     Route::delete('expense-categories/{id}', [\App\Http\Controllers\ExpenseCategoryController::class, 'destroy']);
     Route::apiResource('bank-accounts', \App\Http\Controllers\BankAccountController::class);
+    Route::get('transactions/summary', [\App\Http\Controllers\TransactionController::class, 'summary']);
     Route::apiResource('transactions', \App\Http\Controllers\TransactionController::class);
     Route::apiResource('users', \App\Http\Controllers\UserController::class);
     Route::apiResource('products', \App\Http\Controllers\ProductController::class);

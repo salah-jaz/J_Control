@@ -1,12 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../query/queryKeys';
+import { invalidateCache } from '../utils/apiFetch';
 import {
   getDashboardStats,
   getReportsSummary,
+  getReportDetails,
+  getReportFilters,
   getClients,
   getClientLocations,
+  getLeads,
   saveClient,
   deleteClient,
+  saveLead,
+  deleteLead,
+  getUsers,
+  getSettings,
 } from '../services/db';
 import { getProducts, createProduct, updateProduct, deleteProduct } from '../services/productService';
 import {
@@ -16,50 +24,43 @@ import {
   deleteInvoice as deleteInvoiceApi,
 } from '../services/invoiceService';
 import { getIncomes, getIncomeSummary } from '../services/incomeService';
+import { getQuotations, getQuotationSummary } from '../services/quotationService';
+import { getExpenses, getExpenseSummary } from '../services/expenseService';
+import { getTransactions, getTransactionSummary } from '../services/transactionService';
 
 const STALE_TWO_MIN = 2 * 60 * 1000;
 
-// ----- Dashboard (parallel: stats + today income) -----
+// ----- Dashboard (single API: all stats + today income + events) -----
+const defaultDashboardStats = {
+  totalClients: 0,
+  activeClients: 0,
+  totalInvoices: 0,
+  totalRevenue: 0,
+  pendingAmount: 0,
+  todayIncome: 0,
+  recentInvoices: [],
+  monthlyRevenue: [],
+  invoiceStatusCounts: [],
+  todaysEvents: [],
+};
+
 export function useDashboardData() {
-  const today = new Date().toISOString().split('T')[0];
   const statsQuery = useQuery({
     queryKey: queryKeys.dashboard.stats(),
     queryFn: getDashboardStats,
     staleTime: STALE_TWO_MIN,
   });
-  const todayIncomeQuery = useQuery({
-    queryKey: queryKeys.dashboard.todayIncome(today),
-    queryFn: () => getReportsSummary({ startDate: today, endDate: today }),
-    staleTime: 60 * 1000,
-    enabled: !!statsQuery.data,
-  });
-  const isLoading = statsQuery.isLoading;
-  const isFetching = statsQuery.isFetching || todayIncomeQuery.isFetching;
-  const stats = statsQuery.data ?? {
-    totalClients: 0,
-    activeClients: 0,
-    totalInvoices: 0,
-    totalRevenue: 0,
-    pendingAmount: 0,
-    recentInvoices: [],
-    monthlyRevenue: [],
-    invoiceStatusCounts: [],
-    todaysEvents: [],
-  };
-  const todayIncome = todayIncomeQuery.data?.totalIncome ?? 0;
-  const todaysEvents = stats.todaysEvents || [];
-  const refetch = () => {
-    statsQuery.refetch();
-    todayIncomeQuery.refetch();
-  };
+  const stats = statsQuery.data ?? defaultDashboardStats;
+  const todayIncome = stats.todayIncome ?? 0;
+  const todaysEvents = stats.todaysEvents ?? [];
   return {
     stats,
     todayIncome,
     todaysEvents,
-    isLoading,
-    isFetching,
-    refetch,
-    error: statsQuery.error || todayIncomeQuery.error,
+    isLoading: statsQuery.isLoading,
+    isFetching: statsQuery.isFetching,
+    refetch: () => statsQuery.refetch(),
+    error: statsQuery.error,
   };
 }
 
@@ -86,6 +87,7 @@ export function useSaveClient() {
   return useMutation({
     mutationFn: saveClient,
     onSuccess: () => {
+      invalidateCache('/clients');
       qc.invalidateQueries({ queryKey: queryKeys.clients.all });
     },
   });
@@ -96,6 +98,7 @@ export function useDeleteClient() {
   return useMutation({
     mutationFn: deleteClient,
     onSuccess: () => {
+      invalidateCache('/clients');
       qc.invalidateQueries({ queryKey: queryKeys.clients.all });
     },
   });
@@ -115,7 +118,10 @@ export function useCreateProduct() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: createProduct,
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.products.all }),
+    onSuccess: () => {
+      invalidateCache('/products');
+      qc.invalidateQueries({ queryKey: queryKeys.products.all });
+    },
   });
 }
 
@@ -123,7 +129,10 @@ export function useUpdateProduct() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }) => updateProduct(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.products.all }),
+    onSuccess: () => {
+      invalidateCache('/products');
+      qc.invalidateQueries({ queryKey: queryKeys.products.all });
+    },
   });
 }
 
@@ -131,7 +140,10 @@ export function useDeleteProduct() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: deleteProduct,
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.products.all }),
+    onSuccess: () => {
+      invalidateCache('/products');
+      qc.invalidateQueries({ queryKey: queryKeys.products.all });
+    },
   });
 }
 
@@ -168,16 +180,49 @@ export function useDeleteInvoice() {
   return useMutation({
     mutationFn: deleteInvoiceApi,
     onSuccess: () => {
+      invalidateCache('/invoices');
       qc.invalidateQueries({ queryKey: queryKeys.invoices.all });
     },
   });
 }
 
-// ----- Income -----
-export function useIncomeList() {
+// ----- Leads -----
+export function useLeads(filters = {}) {
   return useQuery({
-    queryKey: queryKeys.income.list(),
-    queryFn: getIncomes,
+    queryKey: queryKeys.leads.list(filters),
+    queryFn: () => getLeads(filters),
+    staleTime: STALE_TWO_MIN,
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useSaveLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: saveLead,
+    onSuccess: () => {
+      invalidateCache('/leads');
+      qc.invalidateQueries({ queryKey: queryKeys.leads.all });
+    },
+  });
+}
+
+export function useDeleteLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteLead,
+    onSuccess: () => {
+      invalidateCache('/leads');
+      qc.invalidateQueries({ queryKey: queryKeys.leads.all });
+    },
+  });
+}
+
+// ----- Income -----
+export function useIncomeList(filters = {}) {
+  return useQuery({
+    queryKey: queryKeys.income.list(filters),
+    queryFn: () => getIncomes(filters),
     staleTime: STALE_TWO_MIN,
     placeholderData: (prev) => prev,
   });
@@ -188,6 +233,111 @@ export function useIncomeSummary() {
     queryKey: queryKeys.income.summary(),
     queryFn: getIncomeSummary,
     staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// ----- Quotations -----
+export function useQuotationList(filters = {}) {
+  return useQuery({
+    queryKey: queryKeys.quotations.list(filters),
+    queryFn: () => getQuotations(filters),
+    staleTime: STALE_TWO_MIN,
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useQuotationSummary() {
+  return useQuery({
+    queryKey: queryKeys.quotations.summary(),
+    queryFn: getQuotationSummary,
+    staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// ----- Expenses -----
+export function useExpenseList(filters = {}) {
+  return useQuery({
+    queryKey: queryKeys.expenses.list(filters),
+    queryFn: () => getExpenses(filters),
+    staleTime: STALE_TWO_MIN,
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useExpenseSummary() {
+  return useQuery({
+    queryKey: queryKeys.expenses.summary(),
+    queryFn: getExpenseSummary,
+    staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// ----- Transactions -----
+export function useTransactionList(filters = {}) {
+  return useQuery({
+    queryKey: queryKeys.transactions.list(filters),
+    queryFn: () => getTransactions(filters),
+    staleTime: STALE_TWO_MIN,
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useTransactionSummary() {
+  return useQuery({
+    queryKey: queryKeys.transactions.summary(),
+    queryFn: getTransactionSummary,
+    staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// ----- Reports -----
+export function useReportsSummary(filters = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.summary(filters),
+    queryFn: () => getReportsSummary(filters),
+    staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useReportDetails(reportType, filters = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.details(reportType, filters),
+    queryFn: () => getReportDetails(reportType, filters),
+    staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
+    enabled: !!reportType,
+  });
+}
+
+export function useReportFilters() {
+  return useQuery({
+    queryKey: queryKeys.reports.filters(),
+    queryFn: getReportFilters,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ----- Users -----
+export function useUsers(filters = {}) {
+  return useQuery({
+    queryKey: queryKeys.users.list(filters),
+    queryFn: () => getUsers(filters),
+    staleTime: STALE_TWO_MIN,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// ----- Settings -----
+export function useSettings() {
+  return useQuery({
+    queryKey: queryKeys.settings(),
+    queryFn: getSettings,
+    staleTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,
   });
 }

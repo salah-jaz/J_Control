@@ -116,10 +116,54 @@ class IncomeController extends Controller
         }
     }
 
-    public function index()
+    /**
+     * List incomes with optional filters and pagination.
+     * Query params: search, status, category, bank_account_id, date_from, date_to, page, per_page
+     */
+    public function index(Request $request)
     {
-        $incomes = \App\Models\Income::latest()->get();
-        return response()->json($incomes);
+        $query = \App\Models\Income::query()->latest();
+
+        if ($request->filled('search')) {
+            $term = '%' . $request->input('search') . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('client', 'like', $term)
+                    ->orWhere('source', 'like', $term)
+                    ->orWhere('invoice_no', 'like', $term)
+                    ->orWhere('notes', 'like', $term);
+            });
+        }
+
+        if ($request->filled('status') && $request->input('status') !== 'all') {
+            $status = $request->input('status');
+            if ($status === 'Paid') {
+                $query->where('status', 'Fully Paid');
+            } elseif ($status === 'Partial') {
+                $query->where('status', 'Partially Paid');
+            } elseif ($status === 'Unpaid') {
+                $query->where('status', 'Unpaid');
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category', $request->input('category'));
+        }
+
+        if ($request->filled('bank_account_id')) {
+            $query->where('bank_account_id', $request->input('bank_account_id'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('received_date', '>=', $request->input('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('received_date', '<=', $request->input('date_to'));
+        }
+
+        $perPage = max(1, min(100, (int) $request->input('per_page', 20)));
+        return $query->paginate($perPage);
     }
 
     /**

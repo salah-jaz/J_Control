@@ -1,9 +1,10 @@
 import api from "../api/axios";
+import { apiFetchList } from "../utils/apiFetch";
 
 /** GET /income-categories */
 export const getIncomeCategories = async () => {
-  const response = await api.get("/income-categories");
-  return response.data;
+  const result = await apiFetchList("/income-categories");
+  return Array.isArray(result.data) ? result.data : [];
 };
 
 /** POST /income-categories */
