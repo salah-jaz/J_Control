@@ -124,7 +124,6 @@ export default function Invoices() {
         <button
           onClick={() => {
             setEditingInvoice(null);
-            setNextInvoiceNumber(null);
             setIsFormOpen(true);
           }}
           className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 shadow-lg shadow-brand-500/30"

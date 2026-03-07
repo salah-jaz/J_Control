@@ -323,6 +323,7 @@ export const getPlannerStats = async () => {
             completed_events: 0,
             upcoming_events: 0,
             cancelled_events: 0,
+            overdue_events: 0,
         };
     } catch (error) {
         console.error("Failed to fetch planner stats:", error);
@@ -332,6 +333,7 @@ export const getPlannerStats = async () => {
             completed_events: 0,
             upcoming_events: 0,
             cancelled_events: 0,
+            overdue_events: 0,
         };
     }
 };

@@ -32,6 +32,12 @@ import {
     CalendarDays,
     CalendarClock,
     XCircle,
+    History,
+    DollarSign,
+    Bell,
+    User,
+    LayoutList,
+    Kanban,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { toast } from 'react-hot-toast';
@@ -44,19 +50,29 @@ const CATEGORY_COLORS = {
     personal: '#8B5CF6', // Purple
 };
 
-const PRIORITY_COLORS = {
-    low: '#10B981',
-    medium: '#F59E0B',
-    high: '#EF4444',
-};
+// History modal column colors (Meeting Blue, Payment Green, Deadline Orange, Reminder Purple, Personal Gray)
+const HISTORY_CATEGORY = [
+    { key: 'meeting', label: 'Meeting', color: '#3B82F6', icon: CalendarDays },
+    { key: 'payment', label: 'Payment', color: '#10B981', icon: DollarSign },
+    { key: 'deadline', label: 'Deadline', color: '#F97316', icon: Clock3 },
+    { key: 'reminder', label: 'Reminder', color: '#8B5CF6', icon: Bell },
+    { key: 'personal', label: 'Personal', color: '#6B7280', icon: User },
+];
 
 const STATUS_COLORS = {
     scheduled: '#3B82F6', // Blue
     completed: '#10B981', // Green
     rescheduled: '#F59E0B', // Yellow
     cancelled: '#EF4444', // Red
-    missed: '#FB923C', // Orange
+    overdue: '#ff3b3b', // Red (overdue)
+    missed: '#FB923C', // Orange (legacy, treated as overdue)
 };
+
+// Reminder before event: fire at these many minutes before start (smallest first so we trigger the closest one)
+const REMINDER_BEFORE_MINUTES = [10, 30];
+
+// Do not show "before" reminder popup for events created within this window (avoids popup right after save)
+const REMINDER_GRACE_PERIOD_MS = 2 * 60 * 1000; // 2 minutes
 
 // Default stats so stats cards render instantly (like Client module). API updates these after load.
 const DEFAULT_STATS = {
@@ -65,6 +81,7 @@ const DEFAULT_STATS = {
     completed_events: 0,
     upcoming_events: 0,
     cancelled_events: 0,
+    overdue_events: 0,
 };
 
 const StatCard = ({ title, description, value, icon: Icon, iconBgClass, iconColorClass }) => (
@@ -83,6 +100,7 @@ const StatCard = ({ title, description, value, icon: Icon, iconBgClass, iconColo
 );
 
 const Planner = () => {
+    const [viewMode, setViewMode] = useState('calendar');
     const [currentView, setCurrentView] = useState('dayGridMonth');
     const [calendarRange, setCalendarRange] = useState({ start: null, end: null });
     const [events, setEvents] = useState([]);
@@ -94,7 +112,6 @@ const Planner = () => {
     const [searchDebounced, setSearchDebounced] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [categoryFilter, setCategoryFilter] = useState('all');
-    const [priorityFilter, setPriorityFilter] = useState('all');
     const [dateFilter, setDateFilter] = useState('all');
     const [clientFilter, setClientFilter] = useState('');
     const [userFilter, setUserFilter] = useState('');
@@ -102,8 +119,11 @@ const Planner = () => {
     const [users, setUsers] = useState([]);
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [reminderEvent, setReminderEvent] = useState(null);
-    const reminderTriggeredRef = useRef(new Set());
     const reminderAudioRef = useRef(null);
+    const triggeredReminderRef = useRef(new Set());
+    const triggeredOverdueRef = useRef(new Set());
+    const triggeredBeforeRef = useRef(new Set()); // keys: `${eventId}_${minutes}` e.g. "42_10", "42_30"
+    const eventsRef = useRef([]);
     const [eventForm, setEventForm] = useState({
         id: null,
         title: '',
@@ -112,7 +132,6 @@ const Planner = () => {
         start_time: '',
         end_time: '',
         category: 'meeting',
-        priority: 'medium',
         client_id: '',
         invoice_id: '',
         reminder_time: '',
@@ -148,6 +167,9 @@ const Planner = () => {
     const [cancelForm, setCancelForm] = useState({ cancel_reason: '' });
     const actionEventIdRef = useRef(null);
     const lastClickedEventIdRef = useRef(null);
+    const [overduePopupEvent, setOverduePopupEvent] = useState(null);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [historyDetailsEvent, setHistoryDetailsEvent] = useState(null);
     // Stats with defaults so cards render instantly; API updates after load (same pattern as Client module).
     const [stats, setStats] = useState(DEFAULT_STATS);
 
@@ -187,6 +209,7 @@ const Planner = () => {
                         completed_events: statsData.completed_events ?? 0,
                         upcoming_events: statsData.upcoming_events ?? 0,
                         cancelled_events: statsData.cancelled_events ?? 0,
+                        overdue_events: statsData.overdue_events ?? 0,
                     });
                 }
                 setIndependentNotes(Array.isArray(notesData) ? notesData : []);
@@ -208,6 +231,7 @@ const Planner = () => {
                     completed_events: data.completed_events ?? 0,
                     upcoming_events: data.upcoming_events ?? 0,
                     cancelled_events: data.cancelled_events ?? 0,
+                    overdue_events: data.overdue_events ?? 0,
                 });
             }
         } catch (err) {
@@ -222,7 +246,6 @@ const Planner = () => {
             end: calendarRange.end,
         };
         if (categoryFilter !== 'all') params.categories = categoryFilter;
-        if (priorityFilter !== 'all') params.priorities = priorityFilter;
         if (clientFilter) params.client_id = clientFilter;
         if (userFilter) params.user_id = userFilter;
 
@@ -230,14 +253,14 @@ const Planner = () => {
         const data = Array.isArray(raw) ? raw : (raw?.data ?? []);
         setEvents(data);
         return data;
-    }, [calendarRange.start, calendarRange.end, categoryFilter, priorityFilter, clientFilter, userFilter]);
+    }, [calendarRange.start, calendarRange.end, categoryFilter, clientFilter, userFilter]);
 
     // Events: fetch only when calendar range is set (FullCalendar fires datesSet on mount). Do not block initial render.
     useEffect(() => {
         if (calendarRange.start && calendarRange.end) {
             fetchEvents();
         }
-    }, [calendarRange.start, calendarRange.end, categoryFilter, priorityFilter, clientFilter, userFilter, fetchEvents]);
+    }, [calendarRange.start, calendarRange.end, categoryFilter, clientFilter, userFilter, fetchEvents]);
 
     // Single Audio instance for in-app reminder (path: /sounds/reminder.mp3)
     useEffect(() => {
@@ -246,6 +269,23 @@ const Planner = () => {
         return () => {
             if (reminderAudioRef.current) reminderAudioRef.current.pause();
         };
+    }, []);
+
+    // Fallback beep using Web Audio (plays when MP3 is missing or browser blocks file)
+    const playFallbackBeep = useCallback(() => {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 880;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.3);
+        } catch (_) {}
     }, []);
 
     // Unlock browser audio (required: browsers block sound until user interaction)
@@ -262,48 +302,115 @@ const Planner = () => {
             }
         };
         document.addEventListener('click', unlockAudio, { once: true });
-        return () => document.removeEventListener('click', unlockAudio);
+        document.addEventListener('keydown', unlockAudio, { once: true });
+        document.addEventListener('touchstart', unlockAudio, { once: true });
+        return () => {
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('keydown', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        };
     }, []);
 
     const playReminderSound = useCallback(() => {
-        if (!reminderAudioRef.current) return;
-        reminderAudioRef.current.currentTime = 0;
-        reminderAudioRef.current
-            .play()
-            .then(() => {})
-            .catch((err) => console.log('Reminder audio blocked:', err));
-    }, []);
+        if (reminderAudioRef.current) {
+            reminderAudioRef.current.currentTime = 0;
+            reminderAudioRef.current
+                .play()
+                .then(() => {})
+                .catch(() => {
+                    playFallbackBeep();
+                });
+        } else {
+            playFallbackBeep();
+        }
+    }, [playFallbackBeep]);
 
     const closeReminder = useCallback(() => {
         if (reminderAudioRef.current) reminderAudioRef.current.pause();
         setReminderEvent(null);
     }, []);
 
-    // In-app popup reminder at event start time. Check every 10s; only today's events with start_time.
+    // Keep ref in sync for timer callbacks
+    eventsRef.current = events;
+
+    const showReminderPopup = useCallback((event, minutesBefore = null) => {
+        setReminderEvent({ title: event.title, time: event.start_time, minutesBefore, ...event });
+    }, []);
+
+    const showOverduePopup = useCallback((event) => {
+        setOverduePopupEvent({ title: event.title, time: event.start_time, ...event });
+    }, []);
+
+    const checkPlannerEvents = useCallback(() => {
+        const eventList = eventsRef.current;
+        const now = new Date();
+
+        eventList.forEach((event) => {
+            if (!event.event_date || !event.start_time) return;
+            const status = event.status || 'scheduled';
+            if (status === 'completed' || status === 'cancelled') return;
+
+            const dateStr = String(event.event_date).slice(0, 10);
+            const timeStr = String(event.start_time).slice(0, 5);
+            const eventDateTime = new Date(`${dateStr}T${timeStr}`);
+            const eventTime = eventDateTime.getTime();
+            if (Number.isNaN(eventTime)) return;
+
+            const diffMinutes = Math.floor((now.getTime() - eventTime) / 60000);
+            const isPastEventTime = now.getTime() > eventTime;
+            const minutesUntil = Math.ceil((eventTime - now.getTime()) / 60000);
+
+            /* OVERDUE ALERT - current time past event time (e.g. 12:32 when event was 12:31); only once per event */
+            if (isPastEventTime && (status === 'scheduled' || status === 'rescheduled')) {
+                if (!triggeredOverdueRef.current.has(event.id)) {
+                    showOverduePopup(event);
+                    playReminderSound();
+                    triggeredOverdueRef.current.add(event.id);
+                    setEvents((prev) =>
+                        prev.map((e) =>
+                            e.id === event.id ? { ...e, status: 'overdue' } : e
+                        )
+                    );
+                }
+                return;
+            }
+
+            /* EVENT TIME REMINDER - same minute (diffMinutes === 0); only once per event */
+            if (diffMinutes === 0) {
+                const createdAtForReminder = event.created_at ? new Date(event.created_at).getTime() : 0;
+                const isNewlyCreatedForReminder = createdAtForReminder && (now.getTime() - createdAtForReminder) < REMINDER_GRACE_PERIOD_MS;
+                if (!isNewlyCreatedForReminder && !triggeredReminderRef.current.has(event.id)) {
+                    showReminderPopup(event);
+                    playReminderSound();
+                    triggeredReminderRef.current.add(event.id);
+                }
+                return;
+            }
+
+            /* REMINDER BEFORE EVENT - 10 min, 30 min, etc.; only once per event per threshold */
+            if (eventTime > now.getTime()) {
+                const createdAt = event.created_at ? new Date(event.created_at).getTime() : 0;
+                const isNewlyCreated = createdAt && (now.getTime() - createdAt) < REMINDER_GRACE_PERIOD_MS;
+                if (isNewlyCreated) return; // do not show reminder popup right after event creation
+
+                for (const threshold of REMINDER_BEFORE_MINUTES) {
+                    if (minutesUntil <= threshold && !triggeredBeforeRef.current.has(`${event.id}_${threshold}`)) {
+                        showReminderPopup(event, threshold);
+                        playReminderSound();
+                        triggeredBeforeRef.current.add(`${event.id}_${threshold}`);
+                        break; // one popup per check (closest threshold only)
+                    }
+                }
+            }
+        });
+    }, [showReminderPopup, showOverduePopup, playReminderSound]);
+
+    // Check every 5 seconds so overdue alert triggers shortly after event time (e.g. 12:21 when event was 12:20)
     useEffect(() => {
-        const pad = (n) => String(n).padStart(2, '0');
-
-        const intervalId = setInterval(() => {
-            const now = new Date();
-            const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-            const currentTimeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-
-            events
-                .filter((e) => (e.event_date || '').toString().slice(0, 10) === todayStr && e.start_time)
-                .forEach((ev) => {
-                    const evTimeStr = (ev.start_time || '').toString().slice(0, 5);
-                    if (evTimeStr !== currentTimeStr) return;
-
-                    const key = `reminder-${ev.id}-${todayStr}-${evTimeStr}`;
-                    if (reminderTriggeredRef.current.has(key)) return;
-
-                    reminderTriggeredRef.current.add(key);
-                    setReminderEvent(ev);
-                });
-        }, 10000);
-
+        checkPlannerEvents();
+        const intervalId = setInterval(checkPlannerEvents, 5000);
         return () => clearInterval(intervalId);
-    }, [events]);
+    }, [events, checkPlannerEvents]);
 
     // Play reminder sound when event-time popup appears; stop when dismissed
     useEffect(() => {
@@ -313,6 +420,10 @@ const Planner = () => {
         }
         playReminderSound();
     }, [reminderEvent, playReminderSound]);
+
+    const closeOverduePopup = useCallback(() => {
+        setOverduePopupEvent(null);
+    }, []);
 
     const fetchEventNotes = async (eventId) => {
         const notes = await getPlannerNotes({ event_id: eventId });
@@ -365,15 +476,14 @@ const Planner = () => {
             }
 
             const status = e.status || 'scheduled';
-            if (statusFilter !== 'all' && status !== statusFilter) {
-                return false;
+            if (statusFilter !== 'all') {
+                const matchOverdue = statusFilter === 'overdue' && (status === 'overdue' || status === 'missed');
+                if (!matchOverdue && status !== statusFilter) {
+                    return false;
+                }
             }
 
             if (categoryFilter !== 'all' && e.category !== categoryFilter) {
-                return false;
-            }
-
-            if (priorityFilter !== 'all' && e.priority !== priorityFilter) {
                 return false;
             }
 
@@ -398,7 +508,7 @@ const Planner = () => {
 
             return true;
         });
-    }, [events, searchDebounced, statusFilter, categoryFilter, priorityFilter, dateFilter]);
+    }, [events, searchDebounced, statusFilter, categoryFilter, dateFilter]);
 
     const mappedEvents = useMemo(
         () =>
@@ -419,7 +529,9 @@ const Planner = () => {
                             ? `${e.event_date}T${e.start_time}`
                             : `${e.event_date}T23:59:00`;
 
-                const statusColor = STATUS_COLORS[e.status] || STATUS_COLORS.scheduled;
+                const status = e.status || 'scheduled';
+                const isOverdue = status === 'overdue' || status === 'missed';
+                const statusColor = STATUS_COLORS[status] || STATUS_COLORS.scheduled;
                 const color = statusColor || CATEGORY_COLORS[e.category] || '#3B82F6';
 
                 return {
@@ -430,13 +542,66 @@ const Planner = () => {
                     allDay: !e.start_time && !e.end_time,
                     backgroundColor: color,
                     borderColor: color,
+                    classNames: isOverdue ? ['event-overdue'] : [],
                     extendedProps: {
                         ...e,
+                        status: isOverdue ? 'overdue' : e.status,
                     },
                 };
             }),
         [filteredEvents],
     );
+
+    // Stats for the currently viewed calendar range (month / week / day) — not global DB counts
+    const viewStats = useMemo(() => {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        return {
+            total_events: events.length,
+            today_events: events.filter((e) => String(e.event_date || '').slice(0, 10) === todayStr).length,
+            completed_events: events.filter((e) => e.status === 'completed').length,
+            upcoming_events: events.filter((e) => e.status === 'scheduled').length,
+            cancelled_events: events.filter((e) => e.status === 'cancelled').length,
+            overdue_events: events.filter((e) => e.status === 'overdue' || e.status === 'missed').length,
+        };
+    }, [events]);
+
+    // Current calendar month for History modal: calendarRange.start or fallback to today
+    const historyMonthDate = useMemo(() => {
+        if (calendarRange?.start) {
+            const d = new Date(calendarRange.start + 'T12:00:00');
+            if (!Number.isNaN(d.getTime())) return d;
+        }
+        return new Date();
+    }, [calendarRange?.start]);
+
+    const historyMonth = historyMonthDate.getMonth();
+    const historyYear = historyMonthDate.getFullYear();
+
+    // Events for the selected month only (for History modal)
+    const historyMonthEvents = useMemo(() => {
+        return events.filter((e) => {
+            const d = new Date(String(e.event_date || '').slice(0, 10) + 'T12:00:00');
+            if (Number.isNaN(d.getTime())) return false;
+            return d.getMonth() === historyMonth && d.getFullYear() === historyYear;
+        });
+    }, [events, historyMonth, historyYear]);
+
+    // Group history events by category for the 5 columns (case-insensitive)
+    const historyByCategory = useMemo(() => ({
+        meeting: historyMonthEvents.filter((e) => (e.category || '').toLowerCase() === 'meeting'),
+        payment: historyMonthEvents.filter((e) => (e.category || '').toLowerCase() === 'payment'),
+        deadline: historyMonthEvents.filter((e) => (e.category || '').toLowerCase() === 'deadline'),
+        reminder: historyMonthEvents.filter((e) => (e.category || '').toLowerCase() === 'reminder'),
+        personal: historyMonthEvents.filter((e) => (e.category || '').toLowerCase() === 'personal'),
+    }), [historyMonthEvents]);
+
+    // Kanban: group events by status for board columns
+    const kanbanGrouped = useMemo(() => ({
+        scheduled: filteredEvents.filter((e) => (e.status || 'scheduled') === 'scheduled' || (e.status === 'rescheduled')),
+        completed: filteredEvents.filter((e) => e.status === 'completed'),
+        cancelled: filteredEvents.filter((e) => e.status === 'cancelled'),
+        overdue: filteredEvents.filter((e) => e.status === 'overdue' || e.status === 'missed'),
+    }), [filteredEvents]);
 
     const handleEventClick = async (clickInfo) => {
         const eventId = clickInfo.event.id;
@@ -478,7 +643,6 @@ const Planner = () => {
             start_time: '',
             end_time: '',
             category: 'meeting',
-            priority: 'medium',
             client_id: '',
             invoice_id: '',
             reminder_time: '',
@@ -499,7 +663,6 @@ const Planner = () => {
             start_time: base.start_time || '',
             end_time: base.end_time || '',
             category: base.category || 'meeting',
-            priority: base.priority || 'medium',
             client_id: base.client_id || '',
             invoice_id: base.invoice_id || '',
             reminder_time: base.reminder_time || '',
@@ -542,7 +705,6 @@ const Planner = () => {
             if (eventForm.start_time) formData.append('start_time', eventForm.start_time);
             if (eventForm.end_time) formData.append('end_time', eventForm.end_time);
             if (eventForm.category) formData.append('category', eventForm.category);
-            if (eventForm.priority) formData.append('priority', eventForm.priority);
             if (eventForm.client_id) formData.append('client_id', eventForm.client_id);
             if (eventForm.invoice_id) formData.append('invoice_id', eventForm.invoice_id);
             if (eventForm.reminder_time) formData.append('reminder_time', eventForm.reminder_time);
@@ -660,6 +822,15 @@ const Planner = () => {
                 reason: rescheduleForm.reason || null,
             });
             setIsRescheduleModalOpen(false);
+            const id = Number(eventId);
+            if (!Number.isNaN(id)) {
+                triggeredReminderRef.current.delete(id);
+                triggeredOverdueRef.current.delete(id);
+                const prefix = `${id}_`;
+                for (const key of triggeredBeforeRef.current) {
+                    if (String(key).startsWith(prefix)) triggeredBeforeRef.current.delete(key);
+                }
+            }
             const list = await fetchEvents();
             await fetchStats();
             const updatedEvent = list.find((ev) => String(ev.id) === String(eventId));
@@ -704,7 +875,6 @@ const Planner = () => {
                 start_time: nextMeetingForm.start_time || null,
                 end_time: nextMeetingForm.end_time || null,
                 category: selectedEvent.category,
-                priority: selectedEvent.priority,
                 client_id: selectedEvent.client_id,
                 reminder_time: selectedEvent.reminder_time,
                 meeting_notes: nextMeetingForm.meeting_notes || null,
@@ -847,6 +1017,7 @@ const Planner = () => {
 
     const renderEventContent = (eventInfo) => {
         const status = eventInfo.event.extendedProps.status || 'scheduled';
+        const isOverdue = status === 'overdue' || status === 'missed';
         const statusColor = STATUS_COLORS[status] || '#6B7280';
         const raw = eventInfo.event.extendedProps;
         const fcId = eventInfo.event.id;
@@ -862,20 +1033,22 @@ const Planner = () => {
             start_time: raw.start_time,
             end_time: raw.end_time,
             category: raw.category,
-            priority: raw.priority,
-            status: raw.status,
+            status: isOverdue ? 'overdue' : raw.status,
             client_id: raw.client_id,
             reminder_time: raw.reminder_time,
         };
 
         return (
-            <div className="group flex items-center justify-between gap-1 text-[11px]">
+            <div
+                className={clsx('group flex items-center justify-between gap-1 text-[11px]', isOverdue && 'event-overdue')}
+                title={isOverdue ? 'Overdue' : undefined}
+            >
                 <div className="flex items-center gap-1 min-w-0">
                     <span
                         className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: statusColor }}
-                    ></span>
-                    <span className="truncate">{eventInfo.event.title}</span>
+                    />
+                    <span className={clsx('truncate', isOverdue && 'event-overdue')}>{eventInfo.event.title}</span>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                     <button
@@ -921,16 +1094,22 @@ const Planner = () => {
                     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-[360px] p-6 text-center animate-fade-in">
                         <h2 className="text-lg font-bold text-slate-900 flex items-center justify-center gap-2">
                             <span role="img" aria-label="reminder">🔔</span>
-                            Event Reminder
+                            {reminderEvent.minutesBefore != null ? 'Reminder' : 'Event Reminder'}
                         </h2>
                         <p className="mt-3 text-slate-700">
                             <span className="font-semibold text-slate-900">Title:</span>{' '}
                             {reminderEvent.title || 'Event'}
                         </p>
-                        <p className="mt-1 text-slate-600">
-                            <span className="font-semibold text-slate-900">Time:</span>{' '}
-                            {(reminderEvent.start_time || '').toString().slice(0, 5)}
-                        </p>
+                        {reminderEvent.minutesBefore != null ? (
+                            <p className="mt-1 text-slate-600 font-medium">
+                                Starts in {reminderEvent.minutesBefore} minute{reminderEvent.minutesBefore !== 1 ? 's' : ''}
+                            </p>
+                        ) : (
+                            <p className="mt-1 text-slate-600">
+                                <span className="font-semibold text-slate-900">Time:</span>{' '}
+                                {(reminderEvent.start_time || '').toString().slice(0, 5)}
+                            </p>
+                        )}
                         {reminderEvent.notes && (
                             <p className="mt-2 text-sm text-slate-500">
                                 <span className="font-semibold text-slate-700">Notes:</span>{' '}
@@ -960,6 +1139,169 @@ const Planner = () => {
                             >
                                 Close
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Overdue event popup when planner opens with overdue events */}
+            {overduePopupEvent && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-red-100 w-full max-w-[360px] p-6 text-center animate-fade-in">
+                        <h2 className="text-lg font-bold text-red-600 flex items-center justify-center gap-2">
+                            <span role="img" aria-label="overdue">⚠️</span>
+                            Event Overdue
+                        </h2>
+                        <p className="mt-3 text-slate-700">
+                            <span className="font-semibold text-slate-900">Meeting:</span>{' '}
+                            {overduePopupEvent.title || 'Event'}
+                        </p>
+                        <p className="mt-1 text-slate-600">
+                            <span className="font-semibold text-slate-900">Scheduled:</span>{' '}
+                            {(overduePopupEvent.start_time || overduePopupEvent.time || '').toString().slice(0, 5)}
+                        </p>
+                        <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const ev = overduePopupEvent;
+                                    closeOverduePopup();
+                                    if (ev?.id) {
+                                        lastClickedEventIdRef.current = ev.id;
+                                        setSelectedEvent(ev);
+                                        fetchEventNotes(ev.id);
+                                        handleOpenCompleteModal(ev, ev.id);
+                                    }
+                                }}
+                                className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 shadow-sm"
+                            >
+                                Mark Completed
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const ev = overduePopupEvent;
+                                    closeOverduePopup();
+                                    if (ev?.id) {
+                                        lastClickedEventIdRef.current = ev.id;
+                                        setSelectedEvent(ev);
+                                        fetchEventNotes(ev.id);
+                                        handleOpenRescheduleModal(ev, ev.id);
+                                    }
+                                }}
+                                className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 shadow-sm"
+                            >
+                                Reschedule
+                            </button>
+                            <button
+                                type="button"
+                                onClick={closeOverduePopup}
+                                className="px-4 py-2 rounded-xl border border-gray-200 text-slate-600 text-sm font-medium hover:bg-gray-50"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Planner Monthly History modal */}
+            {isHistoryModalOpen && (
+                <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/40 p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-[1000px] my-8 flex flex-col max-h-[90vh] animate-fade-in">
+                        <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
+                            <h2 className="text-lg font-bold text-slate-900">
+                                Planner Monthly History — {historyMonthDate.toLocaleString('default', { month: 'long' })} {historyYear}
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={() => { setIsHistoryModalOpen(false); setHistoryDetailsEvent(null); }}
+                                className="p-2 rounded-lg border border-gray-200 text-slate-500 hover:bg-gray-50"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto p-4">
+                            <div className="grid grid-cols-5 gap-3 min-h-[280px]">
+                                {HISTORY_CATEGORY.map(({ key, label, color, icon: Icon }) => {
+                                            const list = historyByCategory[key] || [];
+                                            return (
+                                                <div
+                                                    key={key}
+                                                    className="flex flex-col rounded-xl border border-gray-200 overflow-hidden flex-shrink-0 w-[calc(100%-0px)]"
+                                                    style={{ minWidth: 0 }}
+                                                >
+                                                    <div
+                                                        className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 flex-shrink-0 sticky top-0 bg-white z-10"
+                                                        style={{ borderLeftColor: color, borderLeftWidth: 3 }}
+                                                    >
+                                                        <Icon className="h-4 w-4 flex-shrink-0" style={{ color }} />
+                                                        <span className="font-semibold text-slate-800 text-sm truncate">{label}</span>
+                                                        <span className="text-slate-500 text-xs ml-auto">({list.length})</span>
+                                                    </div>
+                                                    <div className="flex-1 overflow-y-auto min-h-[120px] p-2 bg-gray-50/50">
+                                                        {list.length === 0 ? (
+                                                            <p className="text-xs text-slate-400 py-4 text-center">No events this month</p>
+                                                        ) : (
+                                                            list.map((ev) => {
+                                                                const evDate = ev.event_date ? new Date(String(ev.event_date).slice(0, 10) + 'T12:00:00') : null;
+                                                                const dateStr = evDate && !Number.isNaN(evDate.getTime())
+                                                                    ? evDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                                                    : '—';
+                                                                const t = (ev.start_time || '').toString().slice(0, 5);
+                                                                const timeStr = t ? (() => { const [h, m] = t.split(':'); const hh = parseInt(h, 10); return `${hh % 12 || 12}:${m} ${hh >= 12 ? 'PM' : 'AM'}`; })() : '—';
+                                                                const statusLabel = (ev.status === 'missed' ? 'overdue' : ev.status) || 'scheduled';
+                                                                return (
+                                                                    <button
+                                                                        key={ev.id}
+                                                                        type="button"
+                                                                        onClick={() => setHistoryDetailsEvent(ev)}
+                                                                        className="w-full text-left px-2 py-2 rounded-lg hover:bg-white border border-transparent hover:border-gray-200 transition-colors mb-1 last:mb-0"
+                                                                    >
+                                                                        <p className="font-medium text-slate-900 text-xs truncate">{ev.title || 'Untitled'}</p>
+                                                                        <p className="text-[11px] text-slate-500 mt-0.5">{dateStr} • {timeStr}</p>
+                                                                        <p className="text-[11px] text-slate-500">Status: {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}</p>
+                                                                    </button>
+                                                                );
+                                                            })
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                            <div className="mt-6 pt-4 border-t border-gray-100">
+                                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Monthly Summary</p>
+                                <div className="flex flex-wrap gap-4 text-sm text-slate-700">
+                                    <span>Total Events: <strong>{historyMonthEvents.length}</strong></span>
+                                    <span>Completed: <strong>{historyMonthEvents.filter((e) => e.status === 'completed').length}</strong></span>
+                                    <span>Upcoming: <strong>{historyMonthEvents.filter((e) => e.status === 'scheduled').length}</strong></span>
+                                    <span>Cancelled: <strong>{historyMonthEvents.filter((e) => e.status === 'cancelled').length}</strong></span>
+                                    <span>Overdue: <strong>{historyMonthEvents.filter((e) => e.status === 'overdue' || e.status === 'missed').length}</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* History: event details popup inside history modal */}
+            {isHistoryModalOpen && historyDetailsEvent && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 p-4" onClick={() => setHistoryDetailsEvent(null)}>
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-[400px] p-5 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-base font-bold text-slate-900 mb-3">Event Details</h3>
+                        <p className="text-sm text-slate-700"><span className="font-semibold text-slate-900">Title:</span> {historyDetailsEvent.title || 'Untitled'}</p>
+                        <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Category:</span> {(historyDetailsEvent.category || 'meeting').charAt(0).toUpperCase() + (historyDetailsEvent.category || '').slice(1)}</p>
+                        <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Date:</span> {historyDetailsEvent.event_date ? new Date(historyDetailsEvent.event_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}</p>
+                        <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Time:</span> {(historyDetailsEvent.start_time || '').toString().slice(0, 5) || '—'}</p>
+                        <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Status:</span> {((historyDetailsEvent.status === 'missed' ? 'overdue' : historyDetailsEvent.status) || 'scheduled').charAt(0).toUpperCase() + ((historyDetailsEvent.status === 'missed' ? 'overdue' : historyDetailsEvent.status) || 'scheduled').slice(1)}</p>
+                        {historyDetailsEvent.description && <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Notes:</span> {historyDetailsEvent.description}</p>}
+                        <div className="flex flex-wrap gap-2 mt-4">
+                            <button type="button" onClick={() => { setSelectedEvent(historyDetailsEvent); setHistoryDetailsEvent(null); setIsHistoryModalOpen(false); fetchEventNotes(historyDetailsEvent.id); }} className="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold">View in Panel</button>
+                            <button type="button" onClick={() => { handleOpenCompleteModal(historyDetailsEvent, historyDetailsEvent.id); setHistoryDetailsEvent(null); setIsHistoryModalOpen(false); }} className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-100">Mark Completed</button>
+                            <button type="button" onClick={() => { handleOpenRescheduleModal(historyDetailsEvent, historyDetailsEvent.id); setHistoryDetailsEvent(null); setIsHistoryModalOpen(false); }} className="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-100">Reschedule</button>
+                            <button type="button" onClick={() => { handleOpenCancelModal(historyDetailsEvent, historyDetailsEvent.id); setHistoryDetailsEvent(null); setIsHistoryModalOpen(false); }} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-semibold border border-red-100">Cancel</button>
+                            <button type="button" onClick={() => setHistoryDetailsEvent(null)} className="px-3 py-1.5 rounded-lg border border-gray-200 text-slate-600 text-xs font-medium">Close</button>
                         </div>
                     </div>
                 </div>
@@ -1018,14 +1360,23 @@ const Planner = () => {
                         <Filter className="h-4 w-4" />
                         More Filters
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => setIsHistoryModalOpen(true)}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-medium text-slate-600 hover:bg-gray-50 shadow-sm"
+                        title="Planner Monthly History"
+                    >
+                        <History className="h-4 w-4" />
+                        History
+                    </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
                 <StatCard
                     title="Total Events"
-                    description="Total events in planner"
-                    value={stats.total_events}
+                    description="Events in current view"
+                    value={viewStats.total_events}
                     icon={CalendarDays}
                     iconBgClass="bg-blue-50 border-blue-100"
                     iconColorClass="text-blue-600"
@@ -1033,7 +1384,7 @@ const Planner = () => {
                 <StatCard
                     title="Today's Events"
                     description="Events scheduled today"
-                    value={stats.today_events}
+                    value={viewStats.today_events}
                     icon={Clock3}
                     iconBgClass="bg-emerald-50 border-emerald-100"
                     iconColorClass="text-emerald-600"
@@ -1041,7 +1392,7 @@ const Planner = () => {
                 <StatCard
                     title="Completed Meetings"
                     description="Meetings finished"
-                    value={stats.completed_events}
+                    value={viewStats.completed_events}
                     icon={CheckCircle2}
                     iconBgClass="bg-green-50 border-green-100"
                     iconColorClass="text-green-600"
@@ -1049,7 +1400,7 @@ const Planner = () => {
                 <StatCard
                     title="Upcoming Meetings"
                     description="Future meetings"
-                    value={stats.upcoming_events}
+                    value={viewStats.upcoming_events}
                     icon={CalendarClock}
                     iconBgClass="bg-indigo-50 border-indigo-100"
                     iconColorClass="text-indigo-600"
@@ -1057,15 +1408,23 @@ const Planner = () => {
                 <StatCard
                     title="Cancelled Meetings"
                     description="Cancelled events"
-                    value={stats.cancelled_events}
+                    value={viewStats.cancelled_events}
                     icon={XCircle}
                     iconBgClass="bg-red-50 border-red-100"
+                    iconColorClass="text-red-600"
+                />
+                <StatCard
+                    title="Overdue Events"
+                    description="Missed / past due"
+                    value={viewStats.overdue_events}
+                    icon={AlertTriangle}
+                    iconBgClass="bg-red-50 border-red-200"
                     iconColorClass="text-red-600"
                 />
             </div>
 
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-                <div className="flex flex-col lg:flex-row gap-4 flex-wrap items-end">
+                <div className="flex flex-col lg:flex-row gap-4 flex-wrap items-center lg:items-end">
                     <div className="relative flex-1 min-w-[200px]">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
@@ -1086,7 +1445,7 @@ const Planner = () => {
                         <option value="completed">Completed</option>
                         <option value="rescheduled">Rescheduled</option>
                         <option value="cancelled">Cancelled</option>
-                        <option value="missed">Missed</option>
+                        <option value="overdue">Overdue</option>
                     </select>
                     <select
                         value={categoryFilter}
@@ -1099,16 +1458,6 @@ const Planner = () => {
                         <option value="deadline">Deadline</option>
                         <option value="reminder">Reminder</option>
                         <option value="personal">Personal</option>
-                    </select>
-                    <select
-                        value={priorityFilter}
-                        onChange={(e) => setPriorityFilter(e.target.value)}
-                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
-                    >
-                        <option value="all">All Priorities</option>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
                     </select>
                     <select
                         value={dateFilter}
@@ -1128,7 +1477,6 @@ const Planner = () => {
                                 setSearchDebounced('');
                                 setStatusFilter('all');
                                 setCategoryFilter('all');
-                                setPriorityFilter('all');
                                 setDateFilter('all');
                             }}
                             className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-gray-50 transition-colors"
@@ -1190,29 +1538,181 @@ const Planner = () => {
                 </div>
             )}
 
+            {/* View Switch Section — separate bar between filters and content */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+                <div className="flex items-center gap-2">
+                    {[
+                        { id: 'list', icon: LayoutList, label: 'List View' },
+                        { id: 'kanban', icon: Kanban, label: 'Kanban View' },
+                        { id: 'calendar', icon: CalendarDays, label: 'Calendar View' },
+                    ].map((view) => (
+                        <button
+                            key={view.id}
+                            type="button"
+                            onClick={() => setViewMode(view.id)}
+                            className={clsx(
+                                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200',
+                                viewMode === view.id
+                                    ? 'bg-brand-600 text-white shadow-sm'
+                                    : 'text-slate-600 bg-gray-100 hover:bg-gray-200'
+                            )}
+                        >
+                            <view.icon className="w-4 h-4" />
+                            {view.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             <div className="flex flex-col lg:flex-row gap-6 min-h-[600px]">
                 <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[500px]">
-                    <FullCalendar
-                        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                        initialView={currentView}
-                        headerToolbar={{
-                            left: 'prev,next today',
-                            center: 'title',
-                            right: '',
-                        }}
-                        height="100%"
-                        events={mappedEvents}
-                        eventContent={renderEventContent}
-                        selectable
-                        editable
-                        droppable={false}
-                        eventClick={handleEventClick}
-                        eventDrop={handleEventDropOrResize}
-                        eventResize={handleEventDropOrResize}
-                        datesSet={handleDatesSet}
-                        dayMaxEvents={3}
-                        moreLinkContent={(args) => `+${args.num} More Events`}
-                    />
+                    {viewMode === 'list' && (
+                        <div className="overflow-x-auto custom-scrollbar flex-1">
+                            <table className="w-full text-sm text-left min-w-[900px]">
+                                <thead className="bg-gray-50/80 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
+                                    <tr>
+                                        <th className="px-4 py-3">ID</th>
+                                        <th className="px-4 py-3">Title</th>
+                                        <th className="px-4 py-3">Category</th>
+                                        <th className="px-4 py-3">Date</th>
+                                        <th className="px-4 py-3">Start Time</th>
+                                        <th className="px-4 py-3">Status</th>
+                                        <th className="px-4 py-3">Linked Client</th>
+                                        <th className="px-4 py-3">Created</th>
+                                        <th className="px-4 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {filteredEvents.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
+                                                No events found. Add an event or adjust filters.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredEvents.map((ev) => {
+                                            const evDate = ev.event_date ? new Date(String(ev.event_date).slice(0, 10) + 'T12:00:00') : null;
+                                            const dateStr = evDate && !Number.isNaN(evDate.getTime()) ? evDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+                                            const timeStr = (ev.start_time || '').toString().slice(0, 5) || '—';
+                                            const statusLabel = (ev.status === 'missed' ? 'overdue' : ev.status) || 'scheduled';
+                                            const createdStr = ev.created_at ? new Date(ev.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+                                            return (
+                                                <tr
+                                                    key={ev.id}
+                                                    className="hover:bg-slate-50/50 transition-colors"
+                                                    onClick={() => { setSelectedEvent(ev); fetchEventNotes(ev.id); }}
+                                                >
+                                                    <td className="px-4 py-3 font-mono text-xs text-slate-600">EVT-{ev.id}</td>
+                                                    <td className="px-4 py-3 font-medium text-slate-900">{ev.title || 'Untitled'}</td>
+                                                    <td className="px-4 py-3">
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-slate-700">
+                                                            {(ev.category || 'meeting').charAt(0).toUpperCase() + (ev.category || 'meeting').slice(1)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-600">{dateStr}</td>
+                                                    <td className="px-4 py-3 text-slate-600">{timeStr}</td>
+                                                    <td className="px-4 py-3">
+                                                        <span
+                                                            className={clsx(
+                                                                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border',
+                                                                (statusLabel === 'overdue' || statusLabel === 'cancelled') ? 'bg-red-50 text-red-700 border-red-100' :
+                                                                statusLabel === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                                'bg-blue-50 text-blue-700 border-blue-100'
+                                                            )}
+                                                        >
+                                                            {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-600">{ev.client_name || '—'}</td>
+                                                    <td className="px-4 py-3 text-slate-500 text-xs">{createdStr}</td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <button type="button" onClick={(e) => { e.stopPropagation(); openEditEventModal(ev); }} className="p-1.5 rounded-lg text-slate-500 hover:bg-gray-100 mr-1" title="Edit"><Edit3 className="h-4 w-4" /></button>
+                                                        <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenCompleteModal(ev, ev.id); }} className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50" title="Complete"><CheckCircle2 className="h-4 w-4" /></button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                    {viewMode === 'kanban' && (
+                        <div className="grid grid-cols-4 gap-4 w-full flex-1 min-h-0 p-4">
+                            {[
+                                { id: 'scheduled', label: 'Scheduled', bg: 'bg-blue-50', border: 'border-blue-200' },
+                                { id: 'completed', label: 'Completed', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+                                { id: 'cancelled', label: 'Cancelled', bg: 'bg-red-50', border: 'border-red-200' },
+                                { id: 'overdue', label: 'Overdue', bg: 'bg-amber-50', border: 'border-amber-200' },
+                            ].map((col) => {
+                                const list = kanbanGrouped[col.id] || [];
+                                return (
+                                    <div
+                                        key={col.id}
+                                        className={clsx(
+                                            'rounded-xl border flex flex-col overflow-hidden min-h-[500px] p-3',
+                                            col.bg,
+                                            col.border
+                                        )}
+                                    >
+                                        <div className="flex justify-between items-center font-semibold mb-2.5 flex-shrink-0">
+                                            <h3 className="text-slate-800 text-sm">{col.label}</h3>
+                                            <span className="bg-white/90 text-slate-600 py-1 px-2 rounded-lg text-xs font-bold shadow-sm">{list.length}</span>
+                                        </div>
+                                        <div className="flex flex-col gap-2.5 overflow-y-auto min-h-0 flex-1 custom-scrollbar max-h-[600px]">
+                                            {list.length === 0 ? (
+                                                <p className="text-xs text-slate-400 italic py-6 text-center">No events</p>
+                                            ) : (
+                                                list.map((ev) => {
+                                                    const evDate = ev.event_date ? new Date(String(ev.event_date).slice(0, 10) + 'T12:00:00') : null;
+                                                    const dateStr = evDate && !Number.isNaN(evDate.getTime()) ? evDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+                                                    const t = (ev.start_time || '').toString().slice(0, 5);
+                                                    const timeStr = t ? (() => { const [h, m] = t.split(':'); const hh = parseInt(h, 10); return `${hh % 12 || 12}:${m} ${hh >= 12 ? 'PM' : 'AM'}`; })() : '—';
+                                                    return (
+                                                        <button
+                                                            key={ev.id}
+                                                            type="button"
+                                                            onClick={() => { setSelectedEvent(ev); fetchEventNotes(ev.id); }}
+                                                            className="w-full text-left bg-white rounded-lg p-2.5 shadow-[0_2px_6px_rgba(0,0,0,0.08)] border border-gray-100 hover:shadow-md hover:border-brand-200/50 transition-all"
+                                                        >
+                                                            <p className="font-semibold text-slate-900 text-sm truncate">{ev.title || 'Untitled'}</p>
+                                                            <p className="text-xs text-slate-500 mt-1">{dateStr} • {timeStr}</p>
+                                                            <span className="inline-flex mt-2 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-slate-600">
+                                                                {(ev.category || 'meeting').charAt(0).toUpperCase() + (ev.category || 'meeting').slice(1)}
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                    {viewMode === 'calendar' && (
+                        <FullCalendar
+                            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                            initialView={currentView}
+                            headerToolbar={{
+                                left: 'prev,next today',
+                                center: 'title',
+                                right: '',
+                            }}
+                            height="100%"
+                            events={mappedEvents}
+                            eventContent={renderEventContent}
+                            selectable
+                            editable
+                            droppable={false}
+                            eventClick={handleEventClick}
+                            eventDrop={handleEventDropOrResize}
+                            eventResize={handleEventDropOrResize}
+                            datesSet={handleDatesSet}
+                            dayMaxEvents={3}
+                            moreLinkContent={(args) => `+${args.num} More Events`}
+                        />
+                    )}
                 </div>
 
                 <div className="w-full lg:w-96 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[400px]">
@@ -1261,23 +1761,15 @@ const Planner = () => {
                                                 selectedEvent.category.slice(1)}
                                         </span>
                                     )}
-                                    {selectedEvent.priority && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-50 text-slate-600 border border-gray-200">
-                                            <span
-                                                className="w-2 h-2 rounded-full"
-                                                style={{
-                                                    backgroundColor:
-                                                        PRIORITY_COLORS[selectedEvent.priority] ||
-                                                        '#6B7280',
-                                                }}
-                                            ></span>
-                                            Priority:{' '}
-                                            {selectedEvent.priority.charAt(0).toUpperCase() +
-                                                selectedEvent.priority.slice(1)}
-                                        </span>
-                                    )}
                                     {selectedEvent.status && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-50 text-slate-600 border border-gray-200">
+                                        <span
+                                            className={clsx(
+                                                'inline-flex items-center gap-1 px-2 py-1 rounded-full border',
+                                                (selectedEvent.status === 'overdue' || selectedEvent.status === 'missed')
+                                                    ? 'bg-red-50 text-red-700 border-red-200'
+                                                    : 'bg-gray-50 text-slate-600 border-gray-200'
+                                            )}
+                                        >
                                             <span
                                                 className="w-2 h-2 rounded-full"
                                                 style={{
@@ -1285,10 +1777,10 @@ const Planner = () => {
                                                         STATUS_COLORS[selectedEvent.status] ||
                                                         STATUS_COLORS.scheduled,
                                                 }}
-                                            ></span>
+                                            />
                                             Status:{' '}
-                                            {selectedEvent.status.charAt(0).toUpperCase() +
-                                                selectedEvent.status.slice(1)}
+                                            {(selectedEvent.status === 'missed' ? 'overdue' : selectedEvent.status).charAt(0).toUpperCase() +
+                                                (selectedEvent.status === 'missed' ? 'overdue' : selectedEvent.status).slice(1)}
                                         </span>
                                     )}
                                 </div>
@@ -1539,39 +2031,22 @@ const Planner = () => {
                                     />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Priority
-                                    </label>
-                                    <select
-                                        name="priority"
-                                        value={eventForm.priority}
-                                        onChange={handleEventFormChange}
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                    >
-                                        <option value="low">Low</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="high">High</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Reminder
-                                    </label>
-                                    <select
-                                        name="reminder_time"
-                                        value={eventForm.reminder_time}
-                                        onChange={handleEventFormChange}
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                    >
-                                        <option value="">No Reminder</option>
-                                        <option value="10">10 minutes before</option>
-                                        <option value="30">30 minutes before</option>
-                                        <option value="60">1 hour before</option>
-                                        <option value="1440">1 day before</option>
-                                    </select>
-                                </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                                    Reminder
+                                </label>
+                                <select
+                                    name="reminder_time"
+                                    value={eventForm.reminder_time}
+                                    onChange={handleEventFormChange}
+                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
+                                >
+                                    <option value="">No Reminder</option>
+                                    <option value="10">10 minutes before</option>
+                                    <option value="30">30 minutes before</option>
+                                    <option value="60">1 hour before</option>
+                                    <option value="1440">1 day before</option>
+                                </select>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>

@@ -46,7 +46,6 @@ class PlannerEventController extends Controller
             'start_time' => $startTime,
             'end_time' => $endTime,
             'category' => $event->category,
-            'priority' => $event->priority,
             'status' => $event->status,
             'completed_at' => optional($event->completed_at)->toIso8601String(),
             'rescheduled_from' => $event->rescheduled_from,
@@ -82,11 +81,6 @@ class PlannerEventController extends Controller
             $query->whereIn('category', $categories);
         }
 
-        if ($request->filled('priorities')) {
-            $priorities = explode(',', $request->input('priorities'));
-            $query->whereIn('priority', $priorities);
-        }
-
         if ($request->filled('client_id')) {
             $query->where('client_id', $request->input('client_id'));
         }
@@ -97,11 +91,11 @@ class PlannerEventController extends Controller
 
         $events = $query->orderBy('event_date')->orderBy('start_time')->get();
 
-        // Auto-mark missed events (status = scheduled and end time already passed)
+        // Auto-mark overdue: current time > event start time AND status not completed/cancelled
         $now = now();
         foreach ($events as $event) {
             $status = $event->status ?? 'scheduled';
-            if ($status !== 'scheduled') {
+            if (in_array($status, ['completed', 'cancelled'], true)) {
                 continue;
             }
 
@@ -110,16 +104,13 @@ class PlannerEventController extends Controller
                 continue;
             }
 
-            $endTime = $event->end_time instanceof \DateTimeInterface
-                ? $event->end_time->format('H:i')
-                : ($event->end_time ?: ($event->start_time instanceof \DateTimeInterface
-                    ? $event->start_time->format('H:i')
-                    : ($event->start_time ?: '23:59')));
+            $startTime = $event->start_time instanceof \DateTimeInterface
+                ? $event->start_time->format('H:i')
+                : ($event->start_time ?: '00:00');
+            $startDateTime = \Carbon\Carbon::parse($eventDate . ' ' . $startTime);
 
-            $endDateTime = \Carbon\Carbon::parse($eventDate . ' ' . $endTime);
-
-            if ($endDateTime->lt($now)) {
-                $event->status = 'missed';
+            if ($startDateTime->lt($now)) {
+                $event->status = 'overdue';
                 $event->save();
             }
         }
@@ -136,10 +127,32 @@ class PlannerEventController extends Controller
 
     /**
      * Get high-level statistics for planner events.
+     * Sync overdue status once (do not overwrite completed/cancelled) so counts are accurate.
      */
     public function stats()
     {
         $today = now()->toDateString();
+
+        // One-time sync: mark as overdue where start time has passed and not completed/cancelled
+        $now = now();
+        $overdueIds = PlannerEvent::whereNotIn('status', ['completed', 'cancelled'])
+            ->get()
+            ->filter(function ($event) use ($now) {
+                $eventDate = $event->event_date ? $event->event_date->format('Y-m-d') : null;
+                if (!$eventDate) {
+                    return false;
+                }
+                $startTime = $event->start_time instanceof \DateTimeInterface
+                    ? $event->start_time->format('H:i')
+                    : ($event->start_time ?: '00:00');
+                $startDateTime = \Carbon\Carbon::parse($eventDate . ' ' . $startTime);
+                return $startDateTime->lt($now);
+            })
+            ->pluck('id')
+            ->all();
+        if (!empty($overdueIds)) {
+            PlannerEvent::whereIn('id', $overdueIds)->update(['status' => 'overdue']);
+        }
 
         $totalEvents = PlannerEvent::count();
         $todayEvents = PlannerEvent::whereDate('event_date', $today)->count();
@@ -148,6 +161,7 @@ class PlannerEventController extends Controller
             ->whereDate('event_date', '>=', $today)
             ->count();
         $cancelledEvents = PlannerEvent::where('status', 'cancelled')->count();
+        $overdueEvents = PlannerEvent::where('status', 'overdue')->count();
 
         return response()->json([
             'total_events' => $totalEvents,
@@ -155,6 +169,7 @@ class PlannerEventController extends Controller
             'completed_events' => $completedEvents,
             'upcoming_events' => $upcomingEvents,
             'cancelled_events' => $cancelledEvents,
+            'overdue_events' => $overdueEvents,
         ]);
     }
 
@@ -173,7 +188,7 @@ class PlannerEventController extends Controller
         $now = now();
         foreach ($events as $event) {
             $status = $event->status ?? 'scheduled';
-            if ($status !== 'scheduled') {
+            if (in_array($status, ['completed', 'cancelled'], true)) {
                 continue;
             }
 
@@ -182,16 +197,13 @@ class PlannerEventController extends Controller
                 continue;
             }
 
-            $endTime = $event->end_time instanceof \DateTimeInterface
-                ? $event->end_time->format('H:i')
-                : ($event->end_time ?: ($event->start_time instanceof \DateTimeInterface
-                    ? $event->start_time->format('H:i')
-                    : ($event->start_time ?: '23:59')));
+            $startTime = $event->start_time instanceof \DateTimeInterface
+                ? $event->start_time->format('H:i')
+                : ($event->start_time ?: '00:00');
+            $startDateTime = \Carbon\Carbon::parse($eventDate . ' ' . $startTime);
 
-            $endDateTime = \Carbon\Carbon::parse($eventDate . ' ' . $endTime);
-
-            if ($endDateTime->lt($now)) {
-                $event->status = 'missed';
+            if ($startDateTime->lt($now)) {
+                $event->status = 'overdue';
                 $event->save();
             }
         }
@@ -316,7 +328,6 @@ class PlannerEventController extends Controller
                 'start_time' => 'required',
                 'end_time' => 'nullable',
                 'category' => 'nullable|string|in:meeting,payment,deadline,reminder,personal',
-                'priority' => 'nullable|string|in:low,medium,high',
                 'client_id' => 'nullable|exists:clients,id',
                 'reminder_time' => 'nullable|integer|in:10,30,60,1440',
                 'notes' => 'nullable|string',
@@ -332,7 +343,6 @@ class PlannerEventController extends Controller
                 'start_time' => $validated['start_time'],
                 'end_time' => $validated['end_time'] ?? null,
                 'category' => $validated['category'] ?? $source->category,
-                'priority' => $validated['priority'] ?? $source->priority,
                 'client_id' => $validated['client_id'] ?? $source->client_id,
                 'invoice_id' => $source->invoice_id,
                 'reminder_time' => $validated['reminder_time'] ?? $source->reminder_time,
@@ -409,7 +419,6 @@ class PlannerEventController extends Controller
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i',
             'category' => 'nullable|string|in:meeting,payment,deadline,reminder,personal',
-            'priority' => 'nullable|string|in:low,medium,high',
             'client_id' => 'nullable|exists:clients,id',
             'invoice_id' => 'nullable|exists:invoices,id',
             'reminder_time' => 'nullable|integer|in:10,30,60,1440',
@@ -432,7 +441,7 @@ class PlannerEventController extends Controller
                 'title' => $event->title,
                 'content' => $validated['notes'],
                 'category' => $event->category,
-                'priority' => $event->priority,
+                'priority' => 'medium',
                 'created_by' => Auth::id(),
             ]);
         }
@@ -461,7 +470,6 @@ class PlannerEventController extends Controller
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i',
             'category' => 'nullable|string|in:meeting,payment,deadline,reminder,personal',
-            'priority' => 'nullable|string|in:low,medium,high',
             'client_id' => 'nullable|exists:clients,id',
             'invoice_id' => 'nullable|exists:invoices,id',
             'reminder_time' => 'nullable|integer|in:10,30,60,1440',

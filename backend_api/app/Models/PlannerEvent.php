@@ -16,7 +16,6 @@ class PlannerEvent extends Model
         'start_time',
         'end_time',
         'category',
-        'priority',
         'client_id',
         'invoice_id',
         'reminder_time',

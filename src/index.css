@@ -54,6 +54,16 @@
   .badge {
     @apply px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wide border;
   }
+
+  /* Planner: overdue events (red text + dot in calendar) */
+  .event-overdue {
+    color: #ff3b3b;
+    font-weight: 600;
+  }
+
+  .event-overdue .fc-event-title {
+    color: #ff3b3b;
+  }
 }
 
 @layer utilities {
