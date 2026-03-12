@@ -31,6 +31,11 @@ function BlockRender({ block, number }) {
   const { type, content } = block;
   if (!type) return null;
 
+  // Don't render empty paragraphs/headings that just add whitespace gaps
+  if (type !== 'table' && !content) return null;
+  if (type === 'paragraph' && typeof content === 'string' && !content.trim()) return null;
+  if (type === 'bullets' && Array.isArray(content) && content.filter(Boolean).length === 0) return null;
+
   switch (type) {
     case 'section':
       return (
@@ -138,6 +143,13 @@ function BlockRender({ block, number }) {
           <h4 className="font-bold text-slate-900 border-b-2 border-slate-900 inline-block mb-1">Company Policy Note</h4>
           <p className="text-sm text-slate-700 leading-relaxed">{content || ''}</p>
         </div>
+      );
+    case 'wysiwyg':
+      return (
+        <div
+          className="agreement-wysiwyg ql-editor mt-6 mb-4 p-0"
+          dangerouslySetInnerHTML={{ __html: content || '' }}
+        />
       );
     default:
       return null;

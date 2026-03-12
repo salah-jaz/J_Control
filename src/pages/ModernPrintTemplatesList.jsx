@@ -53,7 +53,7 @@ export default function ModernPrintTemplatesList() {
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Invoice</title>
+<title>{{invoice.invoice_title}}</title>
 </head>
 <body>
 <div class="invoice">
@@ -61,113 +61,59 @@ export default function ModernPrintTemplatesList() {
 <div class="top-shape"></div>
 <header class="header">
 <div class="logo">
-<h2>JAZ INFOTECH</h2>
+<h2>{{invoice.company_name}}</h2>
 </div>
 <div class="title">
-<h1>INVOICE</h1>
+<h1>{{invoice.invoice_title}}</h1>
 </div>
 </header>
 <section class="client">
 <h3>TO</h3>
-<p><strong>KR Power</strong></p>
-<p>SF No: 99/2 A, Site no : 5 , Near Karupparayar</p>
-<p>Kovil, School road, Chinnavedampatti</p>
-<p>Coimbatore – 641049</p>
+<p><strong>{{invoice.client_name}}</strong></p>
+<p>{{invoice.customer_address}}</p>
 </section>
 <!-- Invoice Info Bar -->
 <div class="invoice-info">
-<span><strong>INVOICE #</strong> 887</span>
-<span><strong>DATE :</strong> Feb 09, 2026</span>
-<span><strong>DUE DATE:</strong> Feb 20, 2026</span>
+<span><strong>INVOICE #</strong> {{invoice.invoice_number}}</span>
+<span><strong>DATE :</strong> {{invoice.date}}</span>
+<span><strong>DUE DATE:</strong> {{invoice.due_date}}</span>
 </div>
 <!-- Table -->
-<table class="items">
-<thead>
-<tr>
-<th>NO</th>
-<th>DESCRIPTION</th>
-<th>PRICE</th>
-<th>TOTAL</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>PROTOTYPE DEVELOPMENT QUOTATION</td>
-<td>₹ 10,000</td>
-<td>₹ 10,000</td>
-</tr>
-<tr>
-<td></td>
-<td class="included">Included</td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td>Scope: UI/UX Prototype Only</td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td>Technology: React + Tailwind CSS</td>
-<td></td>
-<td></td>
-</tr>
-<tr>
-<td></td>
-<td>
-<ul>
-<li>Dashboard</li>
-<li>Quotation</li>
-<li>Proforma Invoice</li>
-<li>Store</li>
-</ul>
-</td>
-<td></td>
-<td></td>
-</tr>
-</tbody>
-</table>
+<div style="margin-bottom: 20px;">
+{{invoice.items_table}}
+</div>
 <!-- Totals -->
 <div class="totals">
 <div class="box">
-<p>SUB-TOTAL <span>₹ 10,000</span></p>
-<p>TAX (%) <span>₹ 0</span></p>
-<p class="total">Total Due <span>₹ 10,000</span></p>
+<p>SUB-TOTAL <span>{{invoice.subtotal}}</span></p>
+<p>TAX <span>{{invoice.tax_amount}}</span></p>
+<p class="total">Total Due <span>{{invoice.grand_total}}</span></p>
 </div>
 </div>
 <!-- Terms -->
 <section class="terms">
 <h4>TERM AND CONDITIONS</h4>
-<ul>
-<li>100% advance payment</li>
-<li>Prototype only (non-production)</li>
-<li>Changes beyond scope quoted separately</li>
-<li>Minimal changes acceptable</li>
-</ul>
+<p>{{invoice.terms_and_conditions}}</p>
 </section>
 <!-- Payment -->
 <section class="payment">
 <h4>PAYMENT METHOD</h4>
-<p><strong>Bank:</strong> 237201000003008</p>
-<p><strong>Account Name:</strong> Mohamed Salahudeen G</p>
-<p><strong>IFSC:</strong> IOBA0002372</p>
-<p><strong>Account Number:</strong> +91 7708407752</p>
+<p><strong>Bank:</strong> {{invoice.bank_name}}</p>
+<p><strong>IFSC:</strong> {{invoice.ifsc_code}}</p>
+<p><strong>Account Number:</strong> {{invoice.bank_account_number}}</p>
 </section>
 <!-- Signature -->
 <div class="signature">
 <div class="sign">
-<p>MOHAMED SALAHUDEEN</p>
-<p>Managing Director</p>
+<p>{{invoice.authorized_signature}}</p>
+<p>{{invoice.authorized_signature_text}}</p>
+<p>{{invoice.designation}}</p>
 </div>
 </div>
 <footer>
 <p>THANK YOU FOR YOUR BUSINESS</p>
-<p>B – 231, IOB Colony, Palayamkottai,<br>
-Tirunelveli – 627007.</p>
-<p>CONTACT@JAZINFOTECH.COM</p>
+<p>{{invoice.company_address}}</p>
+<p>{{invoice.company_email}}</p>
 </footer>
 </div>
 </body>
@@ -289,6 +235,24 @@ text-align:center;
 footer{
 margin-top:30px;
 font-size:14px;
+}
+@media print {
+  @page { size: A4; margin: 0 !important; }
+  body { background: transparent !important; padding: 0 !important; margin: 0 !important; height: 100% !important; }
+  .invoice { 
+    max-width: none !important; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    box-shadow: none !important; 
+    border: none !important;
+    min-height: 297mm !important;
+    -webkit-print-color-adjust: exact !important; 
+    print-color-adjust: exact !important; 
+    overflow: visible !important; 
+  }
+  .top-shape { position: fixed !important; top: 0 !important; left: 0 !important; z-index: 100 !important; }
+  .items, tr, .totals, .terms, .payment, .signature, footer, .client { page-break-inside: avoid; break-inside: avoid; }
+  h1, h2, h3, h4, h5, h6 { page-break-after: avoid; break-after: avoid; }
 }`
         },
         quotations: {
@@ -296,14 +260,14 @@ font-size:14px;
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Quotation - {{quotation.quotation_no}}</title>
+    <title>{{quotation.quotation_title}} - {{quotation.quotation_number}}</title>
 </head>
 <body>
     <div class="quotation-wrap">
         <header class="quotation-header">
             <div>
-                <h1>QUOTATION</h1>
-                <p><strong>Quote No:</strong> {{quotation.quotation_no}}</p>
+                <h1>{{quotation.quotation_title}}</h1>
+                <p><strong>Quote No:</strong> {{quotation.quotation_number}}</p>
                 <p><strong>Date:</strong> {{quotation.date}}</p>
             </div>
             <div class="company-details">
@@ -314,7 +278,7 @@ font-size:14px;
         <div class="client-details">
             <h3>Quotation For:</h3>
             <p><strong>{{quotation.client_name}}</strong></p>
-            <p>{{quotation.client_address}}</p>
+            <p>{{quotation.customer_address}}</p>
         </div>
         
         <div class="items-wrap">
@@ -323,7 +287,7 @@ font-size:14px;
         
         <div class="totals-section">
             <p>Subtotal: {{quotation.subtotal}}</p>
-            <p>Tax: {{quotation.tax}}</p>
+            <p>Tax: {{quotation.tax_amount}}</p>
             <p class="grand-total">Total: {{quotation.total}}</p>
         </div>
     </div>
@@ -339,26 +303,43 @@ font-size:14px;
 .client-details h3 { color: #f59e0b; margin-bottom: 5px; }
 .items-wrap { margin-bottom: 30px; }
 .totals-section { text-align: right; width: 300px; margin-left: auto; border-top: 1px solid #cbd5e1; padding-top: 15px; }
-.grand-total { font-weight: bold; font-size: 18px; color: #f59e0b; }`
+.grand-total { font-weight: bold; font-size: 18px; color: #f59e0b; }
+@media print {
+  @page { size: A4; margin: 0 !important; }
+  body { background: transparent !important; padding: 0 !important; margin: 0 !important; height: 100% !important; }
+  .quotation-wrap { 
+    max-width: none !important; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    border: none !important; 
+    box-shadow: none !important; 
+    min-height: 297mm !important;
+    -webkit-print-color-adjust: exact !important; 
+    print-color-adjust: exact !important; 
+    overflow: visible !important; 
+  }
+  .items-wrap, tr, .totals-section, .client-details { page-break-inside: avoid; break-inside: avoid; }
+  h1, h2, h3, h4, .quotation-header { page-break-after: avoid; break-after: avoid; }
+}`
         },
         agreements: {
             html: `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Service Agreement</title>
+    <title>{{agreement.agreement_title}}</title>
 </head>
 <body>
     <div class="agreement-wrap">
         <header class="agreement-header">
-            <h1>SERVICE AGREEMENT</h1>
+            <h1>{{agreement.agreement_title}}</h1>
         </header>
 
         <div class="party-details">
             <div class="party-block">
                 <h3>Provider</h3>
-                <p><strong>{{agreement.company_name}}</strong></p>
-                <p>{{agreement.company_address}}</p>
+                <p><strong>{{agreement.provider_name}}</strong></p>
+                <p>{{agreement.provider_address}}</p>
             </div>
             <div class="party-block">
                 <h3>Client</h3>
@@ -368,9 +349,6 @@ font-size:14px;
         </div>
 
         <div class="agreement-body">
-            <h3>Terms and Conditions</h3>
-            <p>This agreement outlines the terms of service provided by {{agreement.company_name}} to {{agreement.client_name}}.</p>
-            
             <div class="dynamic-content">
                 {{agreement.agreement_content}}
             </div>
@@ -380,12 +358,12 @@ font-size:14px;
             <div class="sig-box">
                 <p class="sig-title">Provider Signature:</p>
                 <div class="sig-line"></div>
-                <p>{{agreement.company_name}}</p>
+                <p>{{agreement.provider_signature_name}}</p>
             </div>
             <div class="sig-box">
                 <p class="sig-title">Client Signature:</p>
                 <div class="sig-line"></div>
-                <p>{{agreement.client_name}}</p>
+                <p>{{agreement.client_signature_name}}</p>
             </div>
         </div>
     </div>
@@ -393,15 +371,33 @@ font-size:14px;
 </html>`,
             css: `body { font-family: Georgia, serif; line-height: 1.6; color: #1e293b; padding: 40px; }
 .agreement-wrap { max-width: 850px; margin: 0 auto; background: #fff; }
-.agreement-header { text-align: center; border-bottom: 2px solid #1e293b; margin-bottom: 40px; padding-bottom: 20px; }
-.agreement-header h1 { letter-spacing: 2px; }
-.party-details { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 40px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; background: #f8fafc; }
-.party-block h3 { margin-top: 0; color: #64748b; text-transform: uppercase; font-size: 12px; }
-.dynamic-content { margin: 30px 0; }
-.signature-section { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 60px; }
-.sig-box { padding-top: 20px; }
-.sig-line { border-bottom: 1px solid #000; height: 40px; margin-bottom: 10px; }
-.sig-title { font-weight: bold; color: #64748b; font-size: 14px; }`
+.agreement-header { text-align: center; border-bottom: 2px solid #1e293b; margin-bottom: 20px; padding-bottom: 15px; }
+.agreement-header h1 { letter-spacing: 2px; margin: 0; }
+.party-details { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; background: #f8fafc; }
+.party-block h3 { margin-top: 0; color: #64748b; text-transform: uppercase; font-size: 11px; margin-bottom: 5px; }
+.party-block p { margin: 2px 0; }
+.dynamic-content { margin: 15px 0; }
+.signature-section { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
+.sig-box { padding-top: 10px; }
+.sig-line { border-bottom: 1px solid #000; height: 30px; margin-bottom: 8px; }
+.sig-title { font-weight: bold; color: #64748b; font-size: 13px; margin: 0; }
+@media print {
+  @page { size: A4; margin: 0 !important; }
+  body { background: transparent !important; padding: 0 !important; margin: 0 !important; height: 100% !important; }
+  .agreement-wrap { 
+    max-width: none !important; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    border: none !important; 
+    box-shadow: none !important; 
+    min-height: 297mm !important;
+    -webkit-print-color-adjust: exact !important; 
+    print-color-adjust: exact !important; 
+    overflow: visible !important; 
+  }
+  .party-details, .signature-section, .sig-box, .party-block, tr { page-break-inside: avoid; break-inside: avoid; }
+  h1, h2, h3, h4, .agreement-header { page-break-after: avoid; break-after: avoid; }
+}`
         }
     };
 

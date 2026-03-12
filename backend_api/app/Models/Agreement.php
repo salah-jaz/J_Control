@@ -14,6 +14,7 @@ class Agreement extends Model
         'title',
         'tagline',
         'override_company_name',
+        'company_logo',
         'client_id',
         'quotation_id',
         'date',

@@ -9,6 +9,10 @@ import {
     Layout,
     Calendar,
     Filter,
+    Sparkles,
+    ShieldAlert,
+    Pencil,
+    Trash2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -16,6 +20,9 @@ import agreementService from "../services/agreementService";
 import { getClients } from "../services/db";
 import AgreementBuilder from "../components/AgreementBuilder";
 import AgreementPreviewModal from "../components/AgreementPreviewModal";
+import AgreementContentDisplay from "../components/AgreementContentDisplay";
+import { getEffectiveTemplateHtml, buildAgreementPrintData, resolveTemplateHtmlWithData } from "../config/printTemplateModules";
+import { getTemplates } from "../utils/printTemplateStorage";
 
 const emptyForm = {
     client_id: "",
@@ -23,6 +30,7 @@ const emptyForm = {
     title: "",
     tagline: "Build, automate, scale — without limits.",
     override_company_name: "JAZ INFOTECH",
+    company_logo: null,
     date: new Date().toISOString().split("T")[0],
     status: "Draft",
     notes: "",
@@ -45,11 +53,40 @@ function Agreements() {
     const [statusFilter, setStatusFilter] = useState("All");
     const [clientFilter, setClientFilter] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showSelection, setShowSelection] = useState(false);
+
+    // Live preview state added
+    const [templates, setTemplates] = useState([]);
+    const [livePreviewTemplateId, setLivePreviewTemplateId] = useState("standard");
 
     useEffect(() => {
         loadData();
         loadClients();
+        setTemplates(getTemplates().filter(t => t.module === 'agreements'));
     }, []);
+
+    const getLivePreviewHtml = (previewData = form) => {
+        if (!livePreviewTemplateId || livePreviewTemplateId === 'standard') return null;
+        const template = templates.find(t => t.id === livePreviewTemplateId);
+        if (!template) return null;
+
+        let templateHtml = getEffectiveTemplateHtml(template, 'agreements');
+        if (!templateHtml) return null;
+
+        const dummyTextRegex = /This space is used for agreement,\s*proposal or letter content\.?\s*You can dynamically load your agreement content here\.?/gi;
+        if (dummyTextRegex.test(templateHtml)) {
+            templateHtml = templateHtml.replace(dummyTextRegex, '{{agreement.agreement_content}}');
+        }
+
+        const printData = buildAgreementPrintData(previewData, {}, null, {
+            template,
+            templateHasBodySection: templateHtml.includes('print-section-body'),
+            templateHtml,
+            styles: t.styles
+        });
+
+        return resolveTemplateHtmlWithData(templateHtml, 'agreements', { agreement: printData });
+    };
 
     const loadClients = async () => {
         const data = await getClients();
@@ -85,26 +122,55 @@ function Agreements() {
     }, [searchQuery, statusFilter, clientFilter]);
 
     const openAdd = async () => {
+        setShowSelection(true);
+    };
+
+    const confirmAdd = async (templateType = 'blank') => {
+        setShowSelection(false);
         try {
             const res = await agreementService.getNextNumber();
             const nextNo = res.data?.next_no || res.data?.agreement_no || res.data;
+            let initialContentBlocks = [];
+
+            if (templateType === 'quotation') {
+                initialContentBlocks = [
+                    { id: `b_${Date.now()}_1`, type: 'heading', content: 'Project Agreement' },
+                    { id: `b_${Date.now()}_2`, type: 'paragraph', content: 'This agreement outlines the scope of work and deliverables based on the associated quotation.' },
+                    { id: `b_${Date.now()}_3`, type: 'section', content: 'Deliverables' },
+                    { id: `b_${Date.now()}_4`, type: 'bullets', content: ['Item 1', 'Item 2'] },
+                    { id: `b_${Date.now()}_5`, type: 'section', content: 'Terms' },
+                    { id: `b_${Date.now()}_6`, type: 'paragraph', content: 'Payment terms: 50% advance, 50% on completion.' }
+                ];
+            } else if (templateType === 'invoice') {
+                initialContentBlocks = [
+                    { id: `b_${Date.now()}_1`, type: 'heading', content: 'Service Agreement' },
+                    { id: `b_${Date.now()}_2`, type: 'paragraph', content: 'Agreement corresponding to services rendered as per the invoice.' },
+                    { id: `b_${Date.now()}_3`, type: 'section', content: 'Scope' },
+                    { id: `b_${Date.now()}_4`, type: 'paragraph', content: 'Description of services.' },
+                    { id: `b_${Date.now()}_5`, type: 'section', content: 'Financials' },
+                    { id: `b_${Date.now()}_6`, type: 'paragraph', content: 'As per the invoice.' }
+                ];
+            } else if (templateType === 'lease') {
+                initialContentBlocks = [
+                    { id: `b_${Date.now()}_1`, type: 'heading', content: 'Lease Agreement' },
+                    { id: `b_${Date.now()}_2`, type: 'paragraph', content: 'This Lease Agreement is made between the Landlord and Tenant.' },
+                    { id: `b_${Date.now()}_3`, type: 'section', content: 'Term' },
+                    { id: `b_${Date.now()}_4`, type: 'paragraph', content: 'The lease will begin on __________ and end on ___________.' },
+                    { id: `b_${Date.now()}_5`, type: 'section', content: 'Rent' },
+                    { id: `b_${Date.now()}_6`, type: 'paragraph', content: 'Monthly lease amount: $' }
+                ];
+            } else {
+                initialContentBlocks = [
+                    { id: `b_${Date.now()}_1`, type: 'heading', content: 'Scope of Work' },
+                    { id: `b_${Date.now()}_2`, type: 'paragraph', content: 'Enter your project description here...' }
+                ];
+            }
+
             setForm({
                 ...emptyForm,
                 agreement_no: nextNo,
                 date: new Date().toISOString().split("T")[0],
-                content: [
-                    { id: '1', type: 'section', content: 'Overview' },
-                    { id: '2', type: 'paragraph', content: 'As discussed, the following automation enhancements are proposed to be implemented in the existing HRMS/Payroll system using cron-based background jobs.\n\nThese changes aim to automate HR notifications, payroll logic, ticket eligibility, and leave handling, while keeping admin fully informed.' },
-                    { id: '3', type: 'section', content: 'Ticket Eligibility Automation (Air Ticket Policy)' },
-                    { id: '4', type: 'subsection', content: 'Business Logic' },
-                    { id: '5', type: 'paragraph', content: 'Ticket eligibility depends on continuous service period without visiting home country.' },
-                    { id: '6', type: 'subsection', content: 'Rules' },
-                    { id: '7', type: 'bullets', content: ['After 1 continuous year (without travel): Employee becomes eligible for One-Way Ticket', 'After 2 continuous years (without travel): Employee becomes eligible for Two-Way Ticket'] },
-                    { id: '8', type: 'section', content: 'Approval & Next Steps' },
-                    { id: '9', type: 'approval', content: 'Please review the above scope and confirm approval by replying: "Approved. Please proceed with implementation."\n\nUpon approval:\n• Final timeline & cost impact (if any) will be shared\n• Development will be scheduled accordingly' },
-                    { id: '10', type: 'policy', content: 'As per company standards, development will begin only after written approval to ensure scope clarity and avoid discrepancies.' },
-                    { id: '11', type: 'signature', content: { provider: 'Jaz Infotech', client: 'Client' } },
-                ],
+                content: initialContentBlocks,
             });
             setErrors({});
             setEditId(null);
@@ -122,6 +188,7 @@ function Agreements() {
             title: a.title || "",
             tagline: a.tagline || "",
             override_company_name: a.override_company_name || "",
+            company_logo: a.company_logo || null,
             date: a.date ? (typeof a.date === 'string' ? a.date.split("T")[0] : new Date(a.date).toISOString().split("T")[0]) : "",
             status: a.status || "Draft",
             notes: a.notes || "",
@@ -154,7 +221,11 @@ function Agreements() {
     };
 
     const handleSave = async () => {
-        if (!validate()) return;
+        if (!validate()) {
+            toast.error("Please fill all required fields in the General Details tab.");
+            setTab("basic");
+            return;
+        }
         try {
             if (editId) {
                 await agreementService.update(editId, form);
@@ -296,6 +367,20 @@ function Agreements() {
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-1">
                                                 <button
+                                                    onClick={() => openEdit(a)}
+                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="Edit"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(a.id)}
+                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                                <button
                                                     onClick={() => openPreviewModal(a)}
                                                     className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
                                                     title="Preview & Print"
@@ -315,7 +400,7 @@ function Agreements() {
             {/* Create/Edit Modal */}
             {openForm && (
                 <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[95vh] animate-slide-up overflow-hidden">
+                    <div className="bg-white w-full max-w-[1600px] xl:w-[95vw] rounded-2xl shadow-2xl flex flex-col max-h-[95vh] animate-slide-up overflow-hidden transition-all duration-300">
                         <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-white z-10">
                             <div>
                                 <h2 className="text-xl font-bold text-slate-900 tracking-tight">
@@ -347,7 +432,10 @@ function Agreements() {
                             ))}
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50/30">
+                        <div className={clsx(
+                            "flex-1 overflow-y-auto bg-slate-50/30",
+                            tab === "basic" ? "p-4 md:p-8" : "p-0"
+                        )}>
                             {tab === "basic" && (
                                 <div className="max-w-4xl mx-auto space-y-8">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -361,7 +449,7 @@ function Agreements() {
                                                 placeholder="e.g. Website Development Agreement"
                                             />
                                         </div>
-                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div>
                                                 <label className="label text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Company Name (Header)</label>
                                                 <input
@@ -369,7 +457,6 @@ function Agreements() {
                                                     value={form.override_company_name}
                                                     onChange={(e) => setForm({ ...form, override_company_name: e.target.value })}
                                                     className="input w-full"
-                                                    placeholder="e.g. JAZ INFOTECH"
                                                 />
                                             </div>
                                             <div>
@@ -379,7 +466,16 @@ function Agreements() {
                                                     value={form.tagline}
                                                     onChange={(e) => setForm({ ...form, tagline: e.target.value })}
                                                     className="input w-full"
-                                                    placeholder="e.g. Build, automate, scale..."
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="label text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Logo URL</label>
+                                                <input
+                                                    type="text"
+                                                    value={form.company_logo || ''}
+                                                    onChange={(e) => setForm({ ...form, company_logo: e.target.value })}
+                                                    className="input w-full"
+                                                    placeholder="URL or base64..."
                                                 />
                                             </div>
                                         </div>
@@ -433,12 +529,63 @@ function Agreements() {
                             )}
 
                             {tab === "content" && (
-                                <div className="max-w-4xl mx-auto">
-                                    <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+                                <div className="h-full flex flex-col lg:flex-row bg-slate-50/50">
+                                    <div className="flex-1 lg:max-w-[60%] border-b lg:border-b-0 lg:border-r border-gray-200">
                                         <AgreementBuilder
                                             value={form.content || []}
                                             onChange={(v) => setForm({ ...form, content: v })}
                                         />
+                                    </div>
+                                    <div className="hidden lg:flex flex-1 flex-col bg-slate-100 overflow-hidden relative">
+                                        <div className="p-3 border-b border-gray-200 bg-white shadow-sm z-10 flex justify-between items-center shrink-0">
+                                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                                <Eye size={14} className="text-brand-500" /> Live Preview
+                                            </span>
+                                            <select
+                                                value={livePreviewTemplateId}
+                                                onChange={e => setLivePreviewTemplateId(e.target.value)}
+                                                className="text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none"
+                                            >
+                                                <option value="standard">Standard Form</option>
+                                                {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-4 flex justify-center perspective-[1000px] bg-slate-200/50 custom-scrollbar">
+                                            <div className="bg-white border border-slate-200 shadow-md rounded-[2px] w-[210mm] max-w-none origin-top transform scale-[0.6] 2xl:scale-[0.75] transition-transform duration-300 min-h-[297mm] pointer-events-none">
+                                                {livePreviewTemplateId === 'standard' ? (
+                                                    <div className="p-12 text-slate-800">
+                                                        <div className="flex justify-between items-start mb-8 gap-4">
+                                                            <div className="text-slate-600">
+                                                                <p className="font-bold text-xl text-slate-800 tracking-tight">{form.override_company_name}</p>
+                                                            </div>
+                                                            <div className="text-right text-slate-500">
+                                                                <p className="text-sm"><span className="font-bold text-slate-700">Agreement No:</span> {form.agreement_no || "Draft"}</p>
+                                                                <p className="text-sm"><span className="font-bold text-slate-700">Date:</span> {form.date}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="w-full h-1 bg-amber-400 mb-8 rounded-full" />
+                                                        <h1 className="text-3xl font-extrabold text-slate-900 mb-8 mt-4 pb-4 border-b border-gray-200 text-center uppercase tracking-tight">
+                                                            {form.title || "Untitled Agreement"}
+                                                        </h1>
+                                                        {form.content?.length > 0 ? (
+                                                            <AgreementContentDisplay blocks={form.content} />
+                                                        ) : (
+                                                            <p className="text-center text-slate-400 italic mt-8">Start adding content to see preview...</p>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    (() => {
+                                                        const previewProps = {
+                                                            ...form,
+                                                            client: clients.find(c => c.id === Number(form.client_id)) || {},
+                                                            content: form.content
+                                                        };
+                                                        const html = getLivePreviewHtml(previewProps);
+                                                        return html ? <div dangerouslySetInnerHTML={{ __html: html }} /> : <div className="p-12 text-center text-slate-500">Preview not available</div>;
+                                                    })()
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -452,11 +599,59 @@ function Agreements() {
                 </div>
             )}
 
+            {/* Template Selection Overlay */}
+            {showSelection && (
+                <div className="fixed inset-0 bg-slate-900/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full animate-scale-in">
+                        <div className="flex justify-between items-start mb-8">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Select Agreement Template</h2>
+                                <p className="text-slate-500 mt-1">Choose a starting point for your new agreement.</p>
+                            </div>
+                            <button onClick={() => setShowSelection(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {[
+                                { id: 'quotation', name: 'Quotation Based', desc: 'Optimized for project proposals', icon: FileText, color: 'bg-brand-500' },
+                                { id: 'invoice', name: 'Invoice Format', desc: 'Focus on payments & terms', icon: Sparkles, color: 'bg-indigo-500' }
+                            ].map(t => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => confirmAdd(t.id)}
+                                    className="group flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50 border-2 border-transparent hover:border-brand-500 hover:bg-white hover:shadow-xl hover:shadow-brand-500/10 transition-all"
+                                >
+                                    <div className={clsx("w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-current/10 transition-transform group-hover:rotate-6 group-hover:scale-110", t.color)}>
+                                        <t.icon size={24} />
+                                    </div>
+                                    <p className="font-black text-slate-800 text-sm mb-1">{t.name}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold leading-tight uppercase tracking-widest">{t.desc}</p>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="mt-10 pt-6 border-t border-slate-100 flex justify-center">
+                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">Select a structure to begin</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {selectedAgreement && (
                 <AgreementPreviewModal
                     isOpen={openPreview}
                     onClose={() => { setOpenPreview(false); setSelectedAgreement(null); }}
                     agreement={selectedAgreement}
+                    onEdit={() => {
+                        setOpenPreview(false);
+                        openEdit(selectedAgreement);
+                    }}
+                    onDelete={() => {
+                        setOpenPreview(false);
+                        handleDelete(selectedAgreement.id);
+                    }}
                 />
             )}
         </div>

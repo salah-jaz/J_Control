@@ -4,16 +4,47 @@
  */
 
 const SHARED_STYLES = `
-  .jaz-doc { font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #1e293b; line-height: 1.5; max-width: 210mm; min-height: 297mm; margin: 0 auto; padding: 0; background: #fff; box-sizing: border-box; position: relative; overflow: hidden; }
+  .jaz-doc { font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #1e293b; line-height: 1.5; width: 210mm; max-width: 210mm; min-height: 297mm; height: 297mm; overflow: hidden; margin: 0 auto; padding: 0; background: #fff; box-sizing: border-box; position: relative; }
   .jaz-doc * { box-sizing: border-box; }
-  @media print { @page { size: A4; margin: 0; } .jaz-doc { max-width: 210mm; min-height: 297mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  @media print { 
+    @page { size: A4; margin: 0 !important; } 
+    html, body { width: 210mm !important; height: 297mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
+    .jaz-doc { 
+      width: 210mm !important; 
+      max-width: 210mm !important; 
+      min-height: 297mm !important; 
+      height: 297mm !important;
+      max-height: 297mm !important;
+      margin: 0 !important; 
+      padding: 0 !important; 
+      border: none !important;
+      box-shadow: none !important;
+      -webkit-print-color-adjust: exact !important; 
+      print-color-adjust: exact !important; 
+      color-adjust: exact !important;
+      overflow: hidden !important;
+      box-sizing: border-box !important;
+      page-break-after: avoid !important;
+      page-break-inside: avoid !important;
+    } 
+    .jaz-acc-tl, .jaz-acc-tr, .jaz-acc-bl {
+       position: fixed !important;
+       -webkit-print-color-adjust: exact !important;
+    }
+    .jaz-inner { padding: 0 !important; overflow: hidden !important; box-sizing: border-box !important; height: 100%; }
+    h1, h2, h3, h4, h5, h6, .jaz-header { page-break-after: avoid; break-after: avoid; }
+    .jaz-table-container, .jaz-summary, .jaz-payment-info, .jaz-signature-block, .jaz-agreement-body, tr, .jaz-total-row {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+  }
 
   /* Accents */
   .jaz-acc-tl { position: absolute; top: 0; left: 0; width: 300px; height: 40px; background: linear-gradient(135deg, #3f36a6 0%, #1e1b4b 100%); clip-path: polygon(0 0, 100% 0, 85% 100%, 0% 100%); z-index: 5; }
   .jaz-acc-tr { position: absolute; top: 0; right: 0; width: 300px; height: 40px; background: linear-gradient(-135deg, #3f36a6 0%, #1e1b4b 100%); clip-path: polygon(0 0, 100% 0, 100% 100%, 15% 100%); z-index: 5; }
   .jaz-acc-bl { position: absolute; bottom: 0; left: 0; width: 200px; height: 30px; background: #3f36a6; clip-path: polygon(0 0, 100% 100%, 0 100%); z-index: 5; }
   
-  .jaz-inner { position: relative; z-index: 10; padding: 60px 50px 80px; }
+  .jaz-inner { position: relative; z-index: 10; padding: 0; }
 
   .jaz-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
   .jaz-logo-wrap { display: flex; align-items: center; gap: 12px; }
@@ -68,8 +99,8 @@ const SHARED_STYLES = `
 `;
 
 export const PREMIUM_TEMPLATES = {
-    invoices: {
-        html: `
+  invoices: {
+    html: `
 <div class="jaz-doc">
   <div class="jaz-acc-tl"></div>
   <div class="jaz-acc-tr"></div>
@@ -165,10 +196,10 @@ export const PREMIUM_TEMPLATES = {
   </div>
 </div>
 `,
-        css: SHARED_STYLES
-    },
-    quotations: {
-        html: `
+    css: SHARED_STYLES
+  },
+  quotations: {
+    html: `
 <div class="jaz-doc">
   <div class="jaz-acc-tl"></div>
   <div class="jaz-acc-tr"></div>
@@ -258,10 +289,10 @@ export const PREMIUM_TEMPLATES = {
   </div>
 </div>
 `,
-        css: SHARED_STYLES
-    },
-    agreements: {
-        html: `
+    css: SHARED_STYLES
+  },
+  agreements: {
+    html: `
 <div class="jaz-doc">
   <div class="jaz-acc-tl"></div>
   <div class="jaz-acc-tr"></div>
@@ -308,20 +339,20 @@ export const PREMIUM_TEMPLATES = {
        </div>
     </div>
 
-    <div class="jaz-agreement-body" style="min-height: 400px; margin-bottom: 40px;">
+    <div class="jaz-agreement-body" style="margin-bottom: 20px;">
        {{agreement.agreement_content}}
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-top: 40px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
        <div class="jaz-signature-block" style="width: 100%;">
-          <div class="jaz-section-h" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px;">Provider Approval</div>
+          <div class="jaz-section-h" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 10px;">Provider Approval</div>
           <div class="jaz-sig-img" style="height: 60px;">{{agreement.provider_signature}}</div>
           <div class="jaz-sig-line"></div>
           <div class="jaz-sig-name">{{agreement.provider_signature_name}}</div>
           <div class="jaz-sig-title">Date: {{agreement.provider_signature_date}}</div>
        </div>
        <div class="jaz-signature-block" style="width: 100%;">
-          <div class="jaz-section-h" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 15px;">Client Approval</div>
+          <div class="jaz-section-h" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 10px;">Client Approval</div>
           <div class="jaz-sig-img" style="height: 60px;">{{agreement.client_signature}}</div>
           <div class="jaz-sig-line"></div>
           <div class="jaz-sig-name">{{agreement.client_signature_name}}</div>
@@ -335,6 +366,6 @@ export const PREMIUM_TEMPLATES = {
   </div>
 </div>
 `,
-        css: SHARED_STYLES
-    }
+    css: SHARED_STYLES
+  }
 };

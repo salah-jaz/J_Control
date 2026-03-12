@@ -16,7 +16,7 @@ import clsx from "clsx";
 import { getQuotations, createQuotation, updateQuotation, deleteQuotation, convertQuotationToInvoice } from "../services/quotationService";
 import { getClients } from "../services/db";
 import QuotationView from "../components/QuotationView";
-import AgreementTab from "../components/AgreementTab";
+import AgreementBuilder from "../components/AgreementBuilder";
 
 const emptyForm = {
   client_id: "",
@@ -110,7 +110,6 @@ function Quotations() {
       ...emptyForm,
       date: new Date().toISOString().split("T")[0],
       items: [{ item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 }],
-      agreement_content: [],
     });
     setErrors({});
     setEditId(null);
@@ -128,14 +127,6 @@ function Quotations() {
       amount: parseFloat(i.amount) || 0,
     }));
     if (items.length === 0) items.push({ item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 });
-    let agreementContent = [];
-    try {
-      if (q.agreement && q.agreement.content) {
-        agreementContent = Array.isArray(q.agreement.content) ? q.agreement.content : JSON.parse(q.agreement.content || "[]");
-      }
-    } catch {
-      agreementContent = [];
-    }
     setForm({
       client_id: q.client_id || "",
       quotation_no: q.quotation_no || "",
@@ -152,7 +143,7 @@ function Quotations() {
       total: parseFloat(q.total) || 0,
       initial_deposit: q.initial_deposit != null ? q.initial_deposit : "",
       items,
-      agreement_content: agreementContent,
+      agreement_content: q.agreement?.content ? (Array.isArray(q.agreement.content) ? q.agreement.content : []) : [],
     });
     setErrors({});
     setEditId(q.id);
@@ -258,7 +249,7 @@ function Quotations() {
         tax: parseFloat(i.tax) || 0,
         amount: parseFloat(i.amount) || 0,
       })),
-      agreement_content: Array.isArray(form.agreement_content) ? form.agreement_content : [],
+      agreement_content: form.agreement_content,
     };
     try {
       if (editId) {
@@ -481,7 +472,7 @@ function Quotations() {
               {[
                 { id: "basic", label: "Basic Info", icon: User },
                 { id: "items", label: "Items / Services", icon: Layers },
-                { id: "agreement", label: "Agreement", icon: FileText },
+                { id: "agreement", label: "Agreement Content", icon: FileText },
               ].map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
@@ -713,15 +704,14 @@ function Quotations() {
               )}
 
               {tab === "agreement" && (
-                <div className="max-w-3xl">
-                  <AgreementTab
+                <div className="space-y-4 h-full border rounded-xl overflow-hidden bg-white">
+                  <AgreementBuilder
                     value={form.agreement_content || []}
                     onChange={(v) => setForm({ ...form, agreement_content: v })}
-                    clientId={form.client_id}
-                    quotationId={editId}
                   />
                 </div>
               )}
+
             </div>
             <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
               <p className="text-sm text-slate-500 font-bold uppercase">Total: ₹{totalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>

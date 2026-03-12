@@ -5,7 +5,6 @@ import clsx from 'clsx';
 import { createInvoice, updateInvoice } from '../services/invoiceService';
 import { getClients } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
-import AgreementTab from './AgreementTab';
 
 const emptyForm = {
   clientId: '',
@@ -41,7 +40,6 @@ const InvoiceForm = ({
   const [activeTab, setActiveTab] = useState('basic');
   const [formData, setFormData] = useState(emptyForm);
   const [items, setItems] = useState([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
-  const [agreementContent, setAgreementContent] = useState([]);
   const [errors, setErrors] = useState({});
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [bankModalFor, setBankModalFor] = useState(null);
@@ -108,24 +106,17 @@ const InvoiceForm = ({
       setItems(
         invItems.length
           ? invItems.map((it, idx) => ({
-              sNo: idx + 1,
-              serviceName: it.service_name || '',
-              paymentStatus: it.payment_status || 'Pending',
-              amount: it.amount != null ? String(it.amount) : '',
-            }))
+            sNo: idx + 1,
+            serviceName: it.service_name || '',
+            paymentStatus: it.payment_status || 'Pending',
+            amount: it.amount != null ? String(it.amount) : '',
+          }))
           : [{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]
       );
-      try {
-        const agr = invoice.agreement_content;
-        setAgreementContent(Array.isArray(agr) ? agr : (typeof agr === 'string' ? JSON.parse(agr || '[]') : []));
-      } catch {
-        setAgreementContent([]);
-      }
       setSavedExtraInstallmentsCount(extra.length);
     } else if (!invoice && isOpen) {
       setFormData(emptyForm);
       setItems([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
-      setAgreementContent([]);
       setSavedExtraInstallmentsCount(0);
     }
     setActiveTab('basic');
@@ -220,10 +211,6 @@ const InvoiceForm = ({
       data.append(`items[${index}][amount]`, item.amount);
     });
 
-    if (agreementContent && agreementContent.length > 0) {
-      data.append('agreement_content', JSON.stringify(agreementContent));
-    }
-
     try {
       if (invoice?.id) {
         data.append('_method', 'PUT');
@@ -265,7 +252,6 @@ const InvoiceForm = ({
             { id: 'basic', label: 'Basic Info', icon: User },
             { id: 'services', label: 'Service Details', icon: Layers },
             { id: 'finance', label: 'Finance', icon: Wallet },
-            { id: 'agreement', label: 'Agreement', icon: FileText },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -732,11 +718,7 @@ const InvoiceForm = ({
               </div>
             )}
 
-            {activeTab === 'agreement' && (
-              <div className="md:col-span-2">
-                <AgreementTab value={agreementContent} onChange={setAgreementContent} />
-              </div>
-            )}
+
           </div>
 
           {bankModalOpen && (
