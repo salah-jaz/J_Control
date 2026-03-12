@@ -30,7 +30,7 @@ class AgreementController extends Controller
 
     public function index(Request $request)
     {
-        $query = Agreement::with('client');
+        $query = Agreement::with(['client', 'quotation.items', 'quotation.client']);
 
         if ($request->filled('status') && $request->status !== 'All') {
             $query->where('status', $request->status);
@@ -76,6 +76,7 @@ class AgreementController extends Controller
             'title' => 'required|string',
             'tagline' => 'nullable|string',
             'override_company_name' => 'nullable|string',
+            'company_logo' => 'nullable|string',
             'client_id' => 'required|exists:clients,id',
             'quotation_id' => 'nullable|exists:quotations,id',
             'date' => 'required|date',
@@ -90,12 +91,12 @@ class AgreementController extends Controller
 
         $agreement = Agreement::create($validated);
 
-        return $agreement->load('client');
+        return $agreement->load(['client', 'quotation.items', 'quotation.client']);
     }
 
     public function show(Agreement $agreement)
     {
-        return $agreement->load('client');
+        return $agreement->load(['client', 'quotation.items', 'quotation.client']);
     }
 
     public function update(Request $request, Agreement $agreement)
@@ -105,6 +106,7 @@ class AgreementController extends Controller
             'title' => 'required|string',
             'tagline' => 'nullable|string',
             'override_company_name' => 'nullable|string',
+            'company_logo' => 'nullable|string',
             'client_id' => 'required|exists:clients,id',
             'quotation_id' => 'nullable|exists:quotations,id',
             'date' => 'required|date',
@@ -115,7 +117,7 @@ class AgreementController extends Controller
 
         $agreement->update($validated);
 
-        return $agreement->load('client');
+        return $agreement->load(['client', 'quotation.items', 'quotation.client']);
     }
 
     public function destroy(Agreement $agreement)

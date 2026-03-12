@@ -519,18 +519,25 @@ export function parseTemplateFromHtml(html, moduleKey) {
 
 /** Minimal CSS for dynamic print layout – only styles used when HTML is built strictly from Builder fields. */
 export const MINIMAL_PRINT_STYLES = `
-  .print-doc-dynamic { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; max-width: 800px; margin: 0 auto; padding: 16px; }
+  .print-doc-dynamic { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; width: 210mm; max-width: 210mm; margin: 0; padding: 0; min-height: 297mm; height: auto; overflow: hidden; background: #fff; box-sizing: border-box; }
   .print-doc-dynamic .print-section { margin-bottom: 1rem; }
   .print-doc-dynamic .print-field { display: block; margin-bottom: 0.5rem; }
   .print-doc-dynamic .print-field:last-child { margin-bottom: 0; }
   .print-doc-dynamic .seal-image-wrap { display: block; margin-bottom: 0.5rem; }
   .print-doc-dynamic .seal-image-wrap .seal-image { max-height: 48px; max-width: 80px; display: inline-block; vertical-align: middle; object-fit: contain; }
-  @media print { .print-doc-dynamic { max-width: 100%; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  @media print { 
+    @page { size: A4; margin: 0 !important; } 
+    html, body { width: 210mm !important; height: 297mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
+    .print-doc-dynamic { width: 210mm !important; max-width: 210mm !important; padding: 0 !important; margin: 0 !important; height: auto !important; min-height: 297mm !important; max-height: none !important; overflow: hidden !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box !important; page-break-after: avoid !important; page-break-inside: avoid !important; border: none !important; box-shadow: none !important; }
+    .print-section, .print-field, .seal-image-wrap { page-break-inside: avoid; break-inside: avoid; }
+    h1, h2, h3, h4, h5, h6 { page-break-after: avoid; break-after: avoid; }
+  }
 `;
 
 /** Shared CSS for print preview – full invoice layout (legacy; used only with custom template_html). */
 export const PRINT_PREVIEW_STYLES = `
-  .print-doc { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; max-width: 210mm; margin: 0 auto; padding: 0 16px; }
+  .print-doc { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; width: 210mm; max-width: 210mm; min-height: 297mm; height: auto; overflow: hidden; margin: 0; padding: 0; box-sizing: border-box; }
+  .print-doc * { box-sizing: border-box; }
   .print-header { border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
   .print-header .header-left { flex: 1; min-width: 180px; }
   .print-header .header-right { text-align: right; }
@@ -585,13 +592,35 @@ export const PRINT_PREVIEW_STYLES = `
   .print-doc-agreement .agreement-signatures .sig-block { margin-top: 8px; }
   .print-doc-agreement .agreement-signatures .sig-image { max-height: 48px; max-width: 140px; display: block; margin-bottom: 4px; }
   .print-doc-agreement .agreement-signatures .sig-label { font-size: 12px; color: #64748b; }
+
+  @media print {
+    @page { size: A4; margin: 0 !important; }
+    html, body { width: 210mm !important; height: 297mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
+    .print-doc {
+      width: 210mm !important; max-width: 210mm !important; margin: 0 !important; padding: 0 !important;
+      height: auto !important; min-height: 297mm !important; max-height: none !important;
+      overflow: hidden !important; box-sizing: border-box !important; page-break-after: avoid !important; page-break-inside: avoid !important; border: none !important; box-shadow: none !important;
+      -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+    }
+    .print-doc-agreement { overflow: hidden !important; height: auto !important; min-height: 297mm !important; max-height: none !important; box-sizing: border-box !important; }
+    .print-header { page-break-after: avoid; break-after: avoid; }
+    .print-customer, .print-bank, .print-totals-wrap, .print-signature, .print-footer, tr, .party-block, .sig-box { page-break-inside: avoid; break-inside: avoid; }
+    h1, h2, h3, h4, h5, h6 { page-break-after: avoid; break-after: avoid; }
+  }
 `;
 
 /** Warner & Spencer style: professional letterhead agreement – red badge, curved shapes, 800px doc. */
 export const AGREEMENT_LETTERHEAD_CSS = `
   .letterhead-doc { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; max-width: 800px; margin: 0 auto; background: #fff; position: relative; padding: 0; min-height: 100vh; box-sizing: border-box; }
   .letterhead-doc * { box-sizing: border-box; }
-  @media print { .letterhead-doc { max-width: 800px; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  @media print { 
+    @page { size: A4; margin: 10mm 15mm; }
+    .letterhead-doc { max-width: none !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } 
+    .letterhead-inner { padding: 0 !important; }
+    .letterhead-curve-top-red, .letterhead-curve-grey-1, .letterhead-curve-grey-2, .letterhead-curve-grey-3, .letterhead-curve-bottom-red, .letterhead-curve-grey-b1, .letterhead-curve-grey-b2, .letterhead-curve-grey-b3 { position: fixed !important; }
+    tr, .letterhead-recipient, .letterhead-greeting, .letterhead-table-wrap, .letterhead-signature { page-break-inside: avoid; break-inside: avoid; }
+    .letterhead-heading, .letterhead-subheading, .letterhead-header-modern { page-break-after: avoid; break-after: avoid; }
+  }
   .letterhead-curves { pointer-events: none; position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 0; overflow: hidden; }
   .letterhead-curve-top-red { position: absolute; top: -80px; right: -120px; width: 420px; height: 420px; border-radius: 50%; background: #b91c1c; z-index: 1; }
   .letterhead-curve-grey-1 { position: absolute; top: 100px; right: -60px; width: 380px; height: 200px; border-radius: 50% 50% 0 0; background: #e5e7eb; z-index: 2; }
@@ -671,11 +700,9 @@ function getAgreementLetterheadHtml(prefix = 'agreement') {
         <p class="letterhead-recipient-address">{{${prefix}.client_address}}</p>
       </div>
       <p class="letterhead-greeting">Greetings!</p>
-      <div class="print-section"><h2 class="letterhead-heading">{{${prefix}.agreement_heading}}</h2></div>
-      <div class="print-section"><h3 class="letterhead-subheading">{{${prefix}.agreement_subheading}}</h3></div>
-      <div class="letterhead-paragraph print-section">{{${prefix}.agreement_paragraph}}</div>
-      <div class="letterhead-bullets print-section">{{${prefix}.agreement_bullet_points}}</div>
-      <div class="letterhead-table-wrap print-section">{{${prefix}.agreement_table}}</div>
+      <div class="print-section agreement-doc-body">
+        {{${prefix}.agreement_content}}
+      </div>
     </main>
     <div class="letterhead-signature print-section">
       <p class="letterhead-sig-label">Sincerely,</p>
@@ -1530,6 +1557,13 @@ function renderOneAgreementBlock(b, styles, sectionCounter = { val: 0 }) {
   <div class="agreement-terms-text" style="font-size: 12px; color: #475569; line-height: 1.5; white-space: pre-wrap;">${escapeHtml(String(text))}</div>
 </div>`;
     }
+    case 'wysiwyg':
+      return `<div class="agreement-wysiwyg ql-editor" style="margin-top: 24px; padding: 0;">${content || ''}</div>`;
+    case 'policy':
+      return `<div class="agreement-policy" style="margin-top: 24px; padding: 0;">
+  <h4 style="font-size: 14px; font-weight: bold; color: #0f172a; border-bottom: 2px solid #0f172a; display: inline-block; margin-bottom: 4px;">Company Policy Note</h4>
+  <p style="font-size: 14px; color: #334155; line-height: 1.6;">${escapeHtml(String(content || ''))}</p>
+</div>`;
     default:
       return '';
   }
@@ -1644,7 +1678,27 @@ export function buildAgreementPrintData(agreement, company = {}, client = null, 
 </div>`
     : '';
   const templateHasBodySection = options.templateHasBodySection === true;
-  const fullBodyHtml = templateHasBodySection ? bodyBlocksHtml : bodyBlocksHtml + termsHtml;
+  let fullBodyHtml = templateHasBodySection ? bodyBlocksHtml : bodyBlocksHtml + termsHtml;
+
+  // Process any placeholders entered by the user in the WYSIWYG editor
+  // These might be things like {{client_name}} or {{items_table}} or {{quotation.total}}
+  if (agreement?.quotation) {
+    const qData = buildQuotationPrintData(agreement.quotation, company, null);
+    // Add additional flat data
+    const replacementData = {
+      ...qData,
+      customer_name: qData.client_name,
+      quotation_number: qData.quotation_number,
+      quotation: qData
+    };
+    fullBodyHtml = fullBodyHtml.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
+      const cleanPath = path.trim();
+      const strippedPath = cleanPath.startsWith('quotation.') ? cleanPath.substring(10) : cleanPath;
+      const val = getByPath(replacementData, strippedPath);
+      return val != null ? String(val) : match;
+    });
+  }
+
   const footerTermsText = templateHasBodySection ? termsText : '';
   const { headingHtml, subheadingHtml, paragraphHtml, bulletsHtml, tableHtml } = renderAgreementBlocksToHtml(blocks);
   const dateStr = agreement?.date ? (typeof agreement.date === 'string' ? agreement.date.split('T')[0] : new Date(agreement.date).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0];

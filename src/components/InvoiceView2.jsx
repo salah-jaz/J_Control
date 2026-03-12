@@ -26,6 +26,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
     const [companySettings, setCompanySettings] = useState(null);
     const [showPrintConfig, setShowPrintConfig] = useState(false);
     const [printConfig, setPrintConfig] = useState(null);
+    const [scaleFactor, setScaleFactor] = useState(1);
     const componentRef = useRef();
     const pendingPrintRef = useRef(false);
     const defaultTemplate = useMemo(() => getDefaultTemplate('invoices'), []);
@@ -46,24 +47,94 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
         }
     }, [isOpen]);
 
+    // Auto-scaling logic to fit content nicely on one A4 page without cutting off
+    useEffect(() => {
+        if (!isOpen || !componentRef.current) return;
+        const calculateScale = () => {
+            const container = componentRef.current;
+            const contentWrap = container.querySelector('.print-scale-content');
+            if (contentWrap) {
+                // Reset scale and width for accurate measurement
+                contentWrap.style.transform = 'none';
+                contentWrap.style.width = '210mm';
+                contentWrap.style.transformOrigin = 'top left';
+                
+                const contentHeight = contentWrap.scrollHeight;
+                const a4InnerHeight = 1120; // Standard A4 height @ 96DPI is ~1123px. 1120 gives a tiny safety margin.
+                
+                if (contentHeight > a4InnerHeight) {
+                    const factor = a4InnerHeight / contentHeight;
+                    // Proportional scale to fit content within the A4 height
+                    setScaleFactor(parseFloat(factor.toFixed(4)));
+                } else {
+                    setScaleFactor(1);
+                }
+            }
+        };
+
+        const resizeTimeout = setTimeout(calculateScale, 400);
+        return () => clearTimeout(resizeTimeout);
+    }, [isOpen, invoice, activeTemplate, companySettings, printConfig]);
+
+
+
     const handlePrintTrigger = useReactToPrint({
         contentRef: componentRef,
         documentTitle: invoice?.id ? `Invoice_${invoice.id}` : 'Invoice',
         pageStyle: `
             @page {
                 size: A4;
-                margin: 0;
+                margin: 0 !important;
             }
             @media print {
-                body {
-                    -webkit-print-color-adjust: exact;
+                html, body {
+                    width: 210mm !important;
+                    height: 297mm !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    overflow: hidden !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
                 }
                 .print-container {
-                    padding: 0;
-                    margin: 0;
-                    width: 210mm;
-                    height: 297mm;
-                    overflow: hidden; /* Force single page */
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    width: 210mm !important;
+                    height: 297mm !important;
+                    min-height: 297mm !important;
+                    max-height: 297mm !important;
+                    overflow: hidden !important;
+                    box-sizing: border-box !important;
+                    page-break-after: avoid !important;
+                    page-break-inside: avoid !important;
+                    border: none !important;
+                    position: relative !important;
+                    display: block !important;
+                    background: white !important;
+                }
+                .print-scale-container {
+                    width: 100% !important;
+                    height: 100% !important;
+                    overflow: visible !important;
+                }
+                /* Do NOT force transform none here; let the inline style handle scaling */
+                .print-scale-content {
+                    width: 210mm !important;
+                    height: auto !important;
+                }
+                /* Target common template wrappers to allow stretch before scale */
+                .jaz-doc, .jaz-inner, .print-doc, .print-doc-dynamic, .invoice, .quotation, .agreement-print-root, .letterhead-doc, .letterhead-inner {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 210mm !important;
+                    max-width: 210mm !important;
+                    height: auto !important;
+                    min-height: 297mm !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                }
+                .jaz-footer-branding, .jaz-company-contact, .print-footer, footer {
+                    margin-top: auto !important;
                 }
             }
         `
@@ -194,10 +265,16 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
 
                 {/* Printable Content: Default Template from Print Templates or fallback layout */}
                 <div className="flex-1 overflow-y-auto p-0 md:p-8 bg-gray-100 print:bg-white print:p-0 print:overflow-visible">
-                    <div ref={componentRef} className="print-container bg-white shadow-sm max-w-3xl mx-auto print:shadow-none print:w-[210mm] print:min-h-[297mm] flex flex-col relative font-sans text-slate-800">
+                    <div ref={componentRef} className="print-container bg-white shadow-sm w-[210mm] h-[297mm] mx-auto print:shadow-none print:w-[210mm] print:h-auto print:min-h-[297mm] print:overflow-visible print:m-0 print:p-0 flex flex-col relative font-sans text-slate-800 print:box-border">
                         {printHtml ? (
                             <>
-                            <div className="max-w-[210mm] mx-auto text-slate-800 p-4 print:p-0" dangerouslySetInnerHTML={{ __html: printHtml }} />
+                            <div className="max-w-[210mm] mx-auto text-slate-800 p-0 print-scale-container" style={{ overflow: 'visible', width: '100%', height: '100%' }}>
+                              <div className="print-scale-content" style={{ 
+                                  transform: scaleFactor !== 1 ? `scale(${scaleFactor})` : 'none',
+                                  transformOrigin: 'top center',
+                                  width: '210mm'
+                              }} dangerouslySetInnerHTML={{ __html: printHtml }} />
+                            </div>
                             {invoice?.agreement_content?.length > 0 && (
                               <div className="max-w-[210mm] mx-auto px-4 mt-6 print:mt-4">
                                 <AgreementContentDisplay blocks={invoice.agreement_content} className="print:block" />

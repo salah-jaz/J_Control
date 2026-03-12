@@ -15,7 +15,6 @@ import {
 } from "../config/printTemplateModules";
 import { getSettings } from "../services/db";
 import PrintConfigModal from "./PrintConfigModal";
-import AgreementContentDisplay from "./AgreementContentDisplay";
 
 const QuotationView = ({
   isOpen,
@@ -75,20 +74,102 @@ const QuotationView = ({
     [quotation, activeTemplate, companySettings]
   );
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: quotation?.quotation_no ? `Quotation_${quotation.quotation_no}` : "Quotation",
-  });
+    const handlePrintTrigger = useReactToPrint({
+        contentRef: printRef,
+        documentTitle: quotation?.quotation_no ? `Quotation_${quotation.quotation_no}` : "Quotation",
+        pageStyle: `
+            @page {
+                size: A4;
+                margin: 0 !important;
+            }
+            @media print {
+                html, body {
+                    width: 210mm !important;
+                    height: 297mm !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    overflow: hidden !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .quotation-a4 {
+                    width: 210mm !important;
+                    height: 297mm !important;
+                    min-height: 297mm !important;
+                    max-height: 297mm !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    position: relative !important;
+                    display: block !important;
+                    overflow: hidden !important;
+                }
+                /* Target common template wrappers to allow stretch before scale */
+                .jaz-doc, .jaz-inner, .print-doc, .print-doc-dynamic, .invoice, .quotation, .agreement-print-root, .letterhead-doc, .letterhead-inner {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 210mm !important;
+                    max-width: 210mm !important;
+                    height: auto !important;
+                    min-height: 297mm !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                }
+                .jaz-footer-branding, .jaz-company-contact, .print-footer, footer {
+                    margin-top: auto !important;
+                }
+                .no-print {
+                    display: none !important;
+                }
+            }
+        `
+    });
 
-  useEffect(() => {
-    if (printConfig && pendingPrintRef.current && printRef.current) {
-      pendingPrintRef.current = false;
-      const t = setTimeout(() => {
-        handlePrint();
-      }, 150);
-      return () => clearTimeout(t);
-    }
-  }, [printConfig]);
+    // Auto-scaling logic to fit content nicely on one A4 page without cutting off
+    useEffect(() => {
+        if (!isOpen || !printRef.current) return;
+        const resizeTimeout = setTimeout(() => {
+            const container = printRef.current;
+            const contentWrap = container.querySelector('.print-scale-content');
+            if (contentWrap) {
+                // Reset scale and width for accurate measurement
+                contentWrap.style.transform = 'none';
+                contentWrap.style.width = '100%';
+                contentWrap.style.transformOrigin = 'top left';
+                
+                const contentHeight = contentWrap.scrollHeight;
+                const a4InnerHeight = 1125; // Standard A4 height @ 96DPI is ~1123px
+                
+                if (contentHeight > a4InnerHeight) {
+                    const scaleRatio = a4InnerHeight / contentHeight;
+                    const factor = scaleRatio - 0.01; // Safety margin
+                    
+                    // Proportional scale to fit content within the A4 height
+                    contentWrap.style.transform = `scale(${factor.toFixed(4)})`;
+                    contentWrap.style.transformOrigin = 'top center';
+                    contentWrap.style.width = '100%';
+                }
+            }
+        }, 300);
+        return () => clearTimeout(resizeTimeout);
+    }, [isOpen, quotation, selectedPreviewId, companySettings]);
+
+    const handlePrint = useCallback(() => {
+        if (handlePrintTrigger) {
+            handlePrintTrigger();
+        }
+    }, [handlePrintTrigger]);
+
+    useEffect(() => {
+        if (printConfig && pendingPrintRef.current && printRef.current) {
+            pendingPrintRef.current = false;
+            const t = setTimeout(() => {
+                handlePrint();
+            }, 150);
+            return () => clearTimeout(t);
+        }
+    }, [printConfig, handlePrint]);
 
   const openPrintConfig = () => setShowPrintConfig(true);
   const onPrintWithConfig = (selectedKeys) => {
@@ -126,8 +207,24 @@ const QuotationView = ({
   const dateStr = quotation.date ? (typeof quotation.date === "string" ? quotation.date.split("T")[0] : quotation.date) : "—";
   const expiryStr = quotation.expiry_date ? (typeof quotation.expiry_date === "string" ? quotation.expiry_date.split("T")[0] : quotation.expiry_date) : "—";
 
+  const pageStyles = `
+    @page { size: A4; margin: 0 !important; }
+    @media print {
+      html, body { height: 297mm !important; width: 210mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
+      .quotation-a4 {
+        margin: 0 !important; padding: 0 !important; box-shadow: none !important; width: 210mm !important; height: 297mm !important; max-height: 297mm !important; min-height: 297mm !important; overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important; border: none !important; box-sizing: border-box !important; position: relative !important;
+      }
+    }
+    @media screen {
+      .quotation-a4 {
+        min-height: 297mm;
+      }
+    }
+  `;
+
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm print:p-0 print:block">
+      <style>{pageStyles}</style>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[1400px] h-[95vh] flex flex-col lg:flex-row-reverse overflow-hidden print:shadow-none print:w-full print:max-w-none print:max-h-none print:h-auto print:rounded-none">
 
         {/* Templates Visual Selector (Sidebar Desktop / Top Rail Mobile) */}
@@ -251,11 +348,12 @@ const QuotationView = ({
 
           <div className="flex-1 overflow-y-auto bg-slate-200/50 print:p-0 print:bg-white flex flex-col items-center shadow-inner">
             <div className="w-full py-8 lg:py-12 flex flex-col items-center">
-              <div ref={printRef} className={clsx("bg-white transition-all w-full", selectedPreviewId === 'standard' ? "max-w-4xl p-6 md:p-10 shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:p-0 print:rounded-none" : "max-w-[210mm] shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:max-w-none print:rounded-none")}>
+              <div ref={printRef} className={clsx("quotation-a4 bg-white transition-all relative mx-auto print:h-auto print:min-h-[297mm] print:overflow-visible", selectedPreviewId === 'standard' ? "w-[210mm] h-[297mm] p-6 md:p-10 shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:p-0 print:rounded-none" : "w-[210mm] h-[297mm] shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:p-0 print:rounded-none")}>
+                <div className="print-scale-container" style={{ overflow: 'visible', width: '100%', height: '100%' }}>
+                  <div className="print-scale-content" style={{ transformOrigin: 'top left' }}>
                 {selectedPreviewId === 'standard' ? (
                   <>
-                    {/* Header Info */}
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6 p-0">
                       <div className="text-slate-600">
                         <p className="font-semibold text-slate-800">{companySettings.company_name || "Company Name"}</p>
                         <p className="text-sm">{companySettings.website || companySettings.email || "www.company.com"}</p>
@@ -350,18 +448,12 @@ const QuotationView = ({
                         </div>
                       </div>
                     </div>
-
                   </>
                 ) : (
                   <div className="text-slate-800 w-full min-h-[297mm]">
                     {printHtml ? (
                       <>
                         <div dangerouslySetInnerHTML={{ __html: printHtml }} />
-                        {quotation?.agreement_content?.length > 0 && (
-                          <div className="px-8 mt-6 pb-8">
-                            <AgreementContentDisplay blocks={quotation.agreement_content} />
-                          </div>
-                        )}
                       </>
                     ) : (
                       <div className="p-12 text-center text-slate-500">
@@ -371,6 +463,7 @@ const QuotationView = ({
                     )}
                   </div>
                 )}
+                </div></div>
               </div>
             </div>
           </div>

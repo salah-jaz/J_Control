@@ -17,7 +17,6 @@ import {
 } from '../config/printTemplateModules';
 import { getApiOrigin } from '../api/axios';
 import PrintConfigModal from './PrintConfigModal';
-import AgreementContentDisplay from './AgreementContentDisplay';
 
 const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
     const [clients, setClients] = useState([]);
@@ -25,6 +24,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
     const [companySettings, setCompanySettings] = useState(null);
     const [showPrintConfig, setShowPrintConfig] = useState(false);
     const [printConfig, setPrintConfig] = useState(null);
+    const [scaleFactor, setScaleFactor] = useState(1);
     const componentRef = useRef();
     const pendingPrintRef = useRef(false);
     const templates = useMemo(() => getTemplates().filter(t => t.module === 'invoices'), []);
@@ -47,9 +47,94 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
         }
     }, [isOpen]);
 
+    // Auto-scaling logic to fit content nicely on one A4 page without cutting off
+    useEffect(() => {
+        if (!isOpen || !componentRef.current) return;
+        const calculateScale = () => {
+            const container = componentRef.current;
+            const contentWrap = container.querySelector('.print-scale-content');
+            if (contentWrap) {
+                // Reset scale and width for accurate measurement
+                contentWrap.style.transform = 'none';
+                contentWrap.style.width = '210mm';
+                contentWrap.style.transformOrigin = 'top left';
+                
+                const contentHeight = contentWrap.scrollHeight;
+                const a4InnerHeight = 1120; // Standard A4 height @ 96DPI is ~1123px. 1120 gives a tiny safety margin.
+                
+                if (contentHeight > a4InnerHeight) {
+                    const factor = a4InnerHeight / contentHeight;
+                    // Proportional scale to fit content within the A4 height
+                    setScaleFactor(parseFloat(factor.toFixed(4)));
+                } else {
+                    setScaleFactor(1);
+                }
+            }
+        };
+
+        const resizeTimeout = setTimeout(calculateScale, 400);
+        return () => clearTimeout(resizeTimeout);
+    }, [isOpen, invoice, activeTemplate, companySettings, printConfig]);
+
     const handlePrintTrigger = useReactToPrint({
         contentRef: componentRef,
         documentTitle: invoice?.id ? `Invoice_${invoice.id}` : 'Invoice',
+        pageStyle: `
+            @page {
+                size: A4;
+                margin: 0 !important;
+            }
+            @media print {
+                html, body {
+                    width: 210mm !important;
+                    height: 297mm !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    overflow: hidden !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .invoice-a4 {
+                    width: 210mm !important;
+                    height: 297mm !important;
+                    min-height: 297mm !important;
+                    max-height: 297mm !important;
+                    overflow: hidden !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    position: relative !important;
+                    display: block !important;
+                    background: white !important;
+                }
+                .print-scale-container {
+                    width: 100% !important;
+                    height: 100% !important;
+                    overflow: visible !important;
+                }
+                /* Do NOT force transform none here; let the inline style handle scaling */
+                .print-scale-content {
+                    width: 210mm !important;
+                    height: auto !important;
+                }
+                /* Target common template wrappers to allow stretch before scale */
+                .jaz-doc, .jaz-inner, .print-doc, .print-doc-dynamic, .invoice, .quotation, .agreement-print-root, .print-container, .letterhead-doc, .letterhead-inner {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 210mm !important;
+                    max-width: 210mm !important;
+                    height: auto !important;
+                    min-height: 297mm !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                }
+                .jaz-footer-branding, .jaz-company-contact, .print-footer, footer {
+                    margin-top: auto !important;
+                }
+                .no-print {
+                    display: none !important;
+                }
+            }
+        `
     });
 
     const handlePrint = useCallback(() => {
@@ -106,11 +191,10 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
 
     if (!isOpen || !invoice) return null;
 
-    // Styles for unified A4 look (Screen & Print)
     const pageStyles = `
         @page {
             size: A4;
-            margin: 0;
+            margin: 0 !important;
         }
         
         /* Force background graphics everywhere */
@@ -121,37 +205,42 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
 
         .invoice-a4 {
             width: 210mm;
-            min-height: 296.5mm; /* Fixed A4 Height -> Min Height */
+            height: 297mm;
             background-color: white;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
             position: relative;
             box-sizing: border-box;
-            overflow: visible; 
+            overflow: hidden; 
         }
 
         /* Print Override */
         @media print {
             html, body {
-                height: auto !important;
-                width: 100%;
+                height: 297mm !important;
+                width: 210mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                overflow: visible !important;
+                overflow: hidden !important;
+                box-sizing: border-box !important;
             }
             
             .invoice-a4 {
-                margin: 0;
+                margin: 0 !important;
+                padding: 0 !important;
                 box-shadow: none !important;
-                /* Match screen rules explicitly */
-                width: 210mm;
-                min-height: 296.5mm;
-                overflow: visible;
-                /* Remove absolute positioning to keep flow identical to screen */
+                width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                overflow: hidden !important;
                 position: relative; 
                 left: 0;
                 top: 0;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                border: none !important;
+                box-sizing: border-box !important;
             }
 
             .no-print {
@@ -255,24 +344,27 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
 
                         {/* The A4 Paper */}
                         <div className="flex flex-col items-center w-full py-8 lg:py-12">
-                            <div ref={componentRef} className="invoice-a4 max-w-[210mm] shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:max-w-none print:rounded-none bg-white">
-                                {printHtml ? (
-                                    <>
-                                        <div className="w-full mx-auto text-slate-800 p-4 print:p-0" dangerouslySetInnerHTML={{ __html: printHtml }} />
-                                        {invoice?.agreement_content?.length > 0 && (
-                                            <div className="w-full mx-auto px-4 mt-6 print:mt-4">
-                                                <AgreementContentDisplay blocks={invoice.agreement_content} className="print:block" />
+                            <div ref={componentRef} className="invoice-a4 w-[210mm] h-[297mm] shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:max-w-none print:rounded-none bg-white">
+                                <div className="print-scale-container w-full h-full" style={{ overflow: 'visible', width: '100%', height: '100%' }}>
+                                    <div className="print-scale-content" style={{ 
+                                        transform: scaleFactor !== 1 ? `scale(${scaleFactor})` : 'none',
+                                        transformOrigin: 'top center',
+                                        width: '210mm'
+                                    }}>
+                                        {printHtml ? (
+                                            <>
+                                                <div className="w-[210mm] print:m-0 mx-auto text-slate-800 p-0" dangerouslySetInnerHTML={{ __html: printHtml }} />
+                                            </>
+                                        ) : (
+                                            <div className="w-full mx-auto p-6">
+                                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
+                                                    <p className="font-semibold">No default Invoice template set.</p>
+                                                    <p className="mt-2 text-sm">Go to Print Templates to create and set a default template for Invoices. Print and PDF will use that template.</p>
+                                                </div>
                                             </div>
                                         )}
-                                    </>
-                                ) : (
-                                    <div className="w-full mx-auto p-6">
-                                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
-                                            <p className="font-semibold">No default Invoice template set.</p>
-                                            <p className="mt-2 text-sm">Go to Print Templates to create and set a default template for Invoices. Print and PDF will use that template.</p>
-                                        </div>
                                     </div>
-                                )}
+                                </div>
                             </div>
                         </div>
                     </div>
