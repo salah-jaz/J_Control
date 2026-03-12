@@ -1,7 +1,9 @@
 import api from "../api/axios";
+import { apiFetchList } from "../utils/apiFetch";
 
 const toFrontend = (data) => ({
   id: data.id,
+  invoice_id: data.invoice_id,
   vendor: data.vendor,
   expenseType: data.expense_type,
   project: data.project,
@@ -111,9 +113,17 @@ const toBackend = (data) => ({
     : null,
 });
 
-export const getExpenses = async () => {
-  const response = await api.get("/expenses");
-  return response.data.map(toFrontend);
+/**
+ * List expenses with pagination and filters.
+ * @param {Object} [filters] - { search, status, category, bank_account_id, date_from, date_to, page, per_page }
+ * @returns {Promise<{ data: Array, meta: Object|null }>}
+ */
+export const getExpenses = async (filters = {}) => {
+  const params = { ...filters };
+  const result = await apiFetchList("/expenses", { params });
+  const arr = Array.isArray(result.data) ? result.data : [];
+  const data = arr.map(toFrontend);
+  return { data, meta: result.meta };
 };
 
 export const getExpenseSummary = async () => {

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
-import { getReportsSummary, getReportDetails, getReportFilters } from "../services/db";
+import React, { useState, useRef } from "react";
 import { Download, FileText, TrendingUp, TrendingDown, DollarSign, Filter, X } from "lucide-react";
 import clsx from "clsx";
 import { useReactToPrint } from "react-to-print";
 import { exportToCSV } from "../utils/csvExport";
+import { useReportsSummary, useReportDetails, useReportFilters } from "../hooks/useApiQueries";
+import { TableSkeleton } from "../components/Skeleton";
 
 // =====================================
 // Report Types
@@ -156,13 +157,15 @@ const ReportTabs = ({ active, setActive }) => (
 // =====================================
 // Report Table
 // =====================================
-const ReportTable = ({ report, data }) => {
+const ReportTable = ({ report, data, isLoading }) => {
   const componentRef = useRef();
 
   const handlePrint = useReactToPrint({
     content: () => componentRef.current,
     documentTitle: `${report.label}_Report`,
   });
+
+  const safeData = Array.isArray(data) ? data : [];
 
   return (
     <div className="card p-0 overflow-hidden" ref={componentRef}>
@@ -181,7 +184,7 @@ const ReportTable = ({ report, data }) => {
             <span className="hidden sm:inline lg:hidden">PDF</span>
           </button>
           <button
-            onClick={() => exportToCSV(data, `${report.label.replace(/\s+/g, '_')}_Report`)}
+            onClick={() => exportToCSV(safeData, `${report.label.replace(/\s+/g, '_')}_Report`)}
             className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-brand-600 transition-colors shadow-sm"
           >
             <Download size={16} />
@@ -192,45 +195,49 @@ const ReportTable = ({ report, data }) => {
       </div>
 
       <div className="overflow-x-auto custom-scrollbar">
-        <table className="min-w-[800px] w-full text-sm">
-          <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
-            <tr>
-              <th className="px-6 py-4 text-left">Date</th>
-              <th className="px-6 py-4 text-left">Description</th>
-              <th className="px-6 py-4 text-right">Debit</th>
-              <th className="px-6 py-4 text-right">Credit</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {data.length === 0 ? (
+        {isLoading ? (
+          <TableSkeleton rows={8} cols={4} />
+        ) : (
+          <table className="min-w-[800px] w-full text-sm">
+            <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
-                <td colSpan="4" className="px-6 py-12 text-center text-slate-500 italic">
-                  No records found for the selected period.
-                </td>
+                <th className="px-6 py-4 text-left">Date</th>
+                <th className="px-6 py-4 text-left">Description</th>
+                <th className="px-6 py-4 text-right">Debit</th>
+                <th className="px-6 py-4 text-right">Credit</th>
               </tr>
-            ) : (
-              data.map((row, index) => (
-                <tr key={index} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4 font-mono text-slate-600">{row.date}</td>
-                  <td className="px-6 py-4 text-slate-800 font-medium">{row.description}</td>
-                  <td className="px-6 py-4 text-right font-mono font-medium text-red-600">
-                    {row.debit !== '-' ? `₹${parseFloat(row.debit).toLocaleString()}` : '-'}
-                  </td>
-                  <td className="px-6 py-4 text-right font-mono font-medium text-emerald-600">
-                    {row.credit !== '-' ? `₹${parseFloat(row.credit).toLocaleString()}` : '-'}
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {safeData.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="px-6 py-12 text-center text-slate-500 italic">
+                    No records found for the selected period.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                safeData.map((row, index) => (
+                  <tr key={row.id || index} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4 font-mono text-slate-600">{row.date}</td>
+                    <td className="px-6 py-4 text-slate-800 font-medium">{row.description}</td>
+                    <td className="px-6 py-4 text-right font-mono font-medium text-red-600">
+                      {row.debit !== '-' ? `₹${parseFloat(row.debit).toLocaleString()}` : '-'}
+                    </td>
+                    <td className="px-6 py-4 text-right font-mono font-medium text-emerald-600">
+                      {row.credit !== '-' ? `₹${parseFloat(row.credit).toLocaleString()}` : '-'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
 };
 
 // =====================================
-// Main Reports Page (Premium)
+// Main Reports Page
 // =====================================
 const Reports = () => {
   const [active, setActive] = useState(REPORTS[0]);
@@ -242,38 +249,15 @@ const Reports = () => {
     category: "",
   });
 
-  const [stats, setStats] = useState({
-    totalIncome: 0,
-    totalExpense: 0,
-    netProfit: 0,
-    closingBalance: 0
-  });
+  const { data: stats = {} } = useReportsSummary(filters);
+  const { data: reportData, isLoading: detailsLoading } = useReportDetails(active.key, filters);
+  const { data: filterOptions = { companies: [], accounts: [], categories: [] } } = useReportFilters();
 
-  const [reportData, setReportData] = useState([]);
-  const [filterOptions, setFilterOptions] = useState({
-    companies: [],
-    accounts: [],
-    categories: []
-  });
-
-  // Load Filter Options on Mount
-  useEffect(() => {
-    getReportFilters().then(setFilterOptions);
-  }, []);
-
-  // Load Data when Filters or Active Tab changes
-  useEffect(() => {
-    const loadData = async () => {
-      // Fetch Summary
-      const s = await getReportsSummary(filters);
-      setStats(s);
-
-      // Fetch Details
-      const d = await getReportDetails(active.key, filters);
-      setReportData(d);
-    };
-    loadData();
-  }, [filters, active]);
+  const options = {
+    companies: Array.isArray(filterOptions.companies) ? filterOptions.companies : [],
+    accounts: Array.isArray(filterOptions.accounts) ? filterOptions.accounts : [],
+    categories: Array.isArray(filterOptions.categories) ? filterOptions.categories : [],
+  };
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
@@ -282,13 +266,13 @@ const Reports = () => {
         <p className="text-slate-500 mt-1 text-base md:text-lg">Gain insights into your business performance.</p>
       </div>
 
-      <FiltersBar filters={filters} setFilters={setFilters} options={filterOptions} />
+      <FiltersBar filters={filters} setFilters={setFilters} options={options} />
 
       <SummaryCards stats={stats} />
 
       <div className="space-y-4">
         <ReportTabs active={active} setActive={setActive} />
-        <ReportTable report={active} data={reportData} />
+        <ReportTable report={active} data={reportData} isLoading={detailsLoading} />
       </div>
     </div>
   );

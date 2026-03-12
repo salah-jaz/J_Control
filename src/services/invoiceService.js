@@ -1,4 +1,5 @@
 import api from '../api/axios';
+import { apiFetchList } from '../utils/apiFetch';
 
 export const getNextInvoiceNumber = async () => {
   const doFetch = () => api.get('/invoices/next-number').then((res) => res.data);
@@ -26,14 +27,8 @@ export const getInvoiceSummary = async () => {
   }
 };
 
-export const getInvoices = async () => {
-  try {
-    const response = await api.get('/invoices');
-    return response.data;
-  } catch (e) {
-    console.error('Failed to fetch invoices', e);
-    return [];
-  }
+export const getInvoices = async (params = {}) => {
+  return apiFetchList('/invoices', { params });
 };
 
 export const getInvoice = async (id) => {

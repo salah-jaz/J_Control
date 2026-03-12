@@ -45,7 +45,6 @@ const defaultSettings = {
 export default function Settings() {
   const [tab, setTab] = useState("company");
   const [settings, setSettings] = useState(defaultSettings);
-  const [loading, setLoading] = useState(true);
 
   /* LOAD */
   useEffect(() => {
@@ -53,17 +52,15 @@ export default function Settings() {
       try {
         const response = await api.get('/settings');
         if (response.data) {
-          setSettings({
-            ...defaultSettings,
+          setSettings((prev) => ({
+            ...prev,
             ...response.data,
             company: { ...defaultSettings.company, ...(response.data.company || {}) },
-          });
+          }));
         }
       } catch (error) {
         console.error("Failed to load settings", error);
         toast.error("Failed to load settings");
-      } finally {
-        setLoading(false);
       }
     };
     fetchSettings();
@@ -202,16 +199,6 @@ export default function Settings() {
   const logoDisplayUrl = useMemo(() => toAbsoluteImageUrl(settings?.company?.logo, apiOrigin), [settings?.company?.logo, apiOrigin]);
   const signatureDisplayUrl = useMemo(() => toAbsoluteImageUrl(settings?.company?.signature, apiOrigin), [settings?.company?.signature, apiOrigin]);
   const sealDisplayUrl = useMemo(() => toAbsoluteImageUrl(settings?.company?.seal, apiOrigin), [settings?.company?.seal, apiOrigin]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-slate-50">
-        <div className="relative">
-          <div className="h-16 w-16 rounded-full border-4 border-brand-100 border-t-brand-600 animate-spin"></div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">

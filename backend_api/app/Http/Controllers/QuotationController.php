@@ -25,6 +25,9 @@ class QuotationController extends Controller
 
     public function index(Request $request)
     {
+        $perPage = (int) $request->get('per_page', 20);
+        $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 20;
+
         $query = Quotation::with(['client', 'items', 'agreement']);
 
         if ($request->filled('status') && $request->status !== 'All') {
@@ -50,21 +53,21 @@ class QuotationController extends Controller
             });
         }
 
-        $quotations = $query->orderBy('created_at', 'desc')->get();
+        return $query->orderBy('created_at', 'desc')->paginate($perPage);
+    }
 
-        // Summary counts for list page
-        $summary = [
+    /**
+     * GET /quotations/summary - counts for stats cards.
+     */
+    public function summary()
+    {
+        return response()->json([
             'total' => Quotation::count(),
             'draft' => Quotation::where('status', 'Draft')->count(),
             'sent' => Quotation::where('status', 'Sent')->count(),
             'accepted' => Quotation::where('status', 'Accepted')->count(),
             'rejected' => Quotation::where('status', 'Rejected')->count(),
             'converted' => Quotation::where('status', 'Converted')->count(),
-        ];
-
-        return response()->json([
-            'quotations' => $quotations,
-            'summary' => $summary,
         ]);
     }
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Search, Upload, Image } from "lucide-react";
+import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Search, Upload, Image, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { getBankAccounts, createBankAccount, updateBankAccount, deleteBankAccount } from "../services/bankAccountService";
+import { invalidateCache } from "../utils/apiFetch";
 import clsx from "clsx";
 
 const emptyForm = {
@@ -32,6 +33,7 @@ export default function BankAccounts() {
   const [data, setData] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
   const [openForm, setOpenForm] = useState(false);
   const [openView, setOpenView] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -59,10 +61,12 @@ export default function BankAccounts() {
     setEditId(null);
     setQrPreview(null);
     setActiveTab(0);
+    setIsSaving(false);
     setOpenForm(true);
   };
 
   const openEdit = (item) => {
+    setIsSaving(false);
     setForm(item);
     setEditId(item.id);
     setErrors({});
@@ -113,19 +117,24 @@ export default function BankAccounts() {
   };
 
   const saveAccount = async () => {
+    if (isSaving) return;
     if (!validate()) return;
+    setIsSaving(true);
     try {
       if (editId) {
         await updateBankAccount(editId, form);
         toast.success("Bank account updated successfully");
       } else {
-        await createBankAccount(form);
+        const newAccount = await createBankAccount(form);
         toast.success("Bank account added successfully");
+        setData((prev) => [newAccount, ...prev]);
       }
+      invalidateCache("/bank-accounts");
       await loadData();
       setOpenForm(false);
     } catch (e) {
       console.error("Failed to save", e);
+      setIsSaving(false);
       if (e.response && e.response.data && e.response.data.errors) {
         setErrors(e.response.data.errors);
         toast.error("Validation failed. Please check the form.");
@@ -522,12 +531,21 @@ export default function BankAccounts() {
             </div>
 
             <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-white flex-shrink-0">
-              <button onClick={() => setOpenForm(false)} className="btn-secondary">Cancel</button>
+              <button onClick={() => setOpenForm(false)} className="btn-secondary" disabled={isSaving}>Cancel</button>
               <button
+                type="button"
                 onClick={saveAccount}
-                className="btn-primary"
+                disabled={isSaving}
+                className={clsx("btn-primary flex items-center gap-2", isSaving && "opacity-50 cursor-not-allowed")}
               >
-                Save Account
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Account"
+                )}
               </button>
             </div>
           </div>

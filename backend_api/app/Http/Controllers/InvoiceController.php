@@ -24,41 +24,29 @@ class InvoiceController extends Controller
     }
 
     /**
-     * GET invoice summary for dashboard cards.
+     * GET invoice summary for dashboard cards (optimized with aggregates).
      */
     public function summary()
     {
-        $invoices = Invoice::all();
-        $totalInvoices = $invoices->count();
-        $paid = 0;
-        $pending = 0;
-        $overdue = 0;
-        $totalRevenue = 0;
-
-        foreach ($invoices as $inv) {
-            $gt = (float) $inv->grand_total;
-            if ($inv->status === 'Paid') {
-                $paid++;
-                $totalRevenue += $gt;
-            } elseif ($inv->status === 'Overdue') {
-                $overdue++;
-            } else {
-                $pending++;
-            }
-        }
+        $totalInvoices = Invoice::count();
+        $paidInvoices = Invoice::where('status', 'Paid')->count();
+        $pendingInvoices = Invoice::where('status', 'Pending')->count();
+        $overdueInvoices = Invoice::where('status', 'Overdue')->count();
+        $totalRevenue = (float) Invoice::where('status', 'Paid')->sum('grand_total');
 
         return response()->json([
             'totalInvoices' => $totalInvoices,
-            'paidInvoices' => $paid,
-            'pendingInvoices' => $pending,
-            'overdueInvoices' => $overdue,
+            'paidInvoices' => $paidInvoices,
+            'pendingInvoices' => $pendingInvoices,
+            'overdueInvoices' => $overdueInvoices,
             'totalRevenue' => round($totalRevenue, 2),
         ]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        return Invoice::with('items')->orderBy('created_at', 'desc')->get();
+        $perPage = max(1, min(100, (int) $request->input('per_page', 20)));
+        return Invoice::with('items')->orderBy('created_at', 'desc')->paginate($perPage);
     }
 
     public function show(Invoice $invoice)

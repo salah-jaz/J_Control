@@ -120,28 +120,43 @@ import api from '../api/axios';
 
 // ... existing code ...
 
-export const getLeads = async () => {
-    try {
-        const response = await api.get('/leads');
-        return response.data.map(lead => {
-            const latestNote = lead.lead_notes?.[0] || lead.leadNotes?.[0];
-            return {
-                ...lead,
-                firstName: lead.first_name,
-                lastName: lead.last_name,
-                jobTitle: lead.job_title,
-                assignedTo: lead.assigned_to,
-                createdAt: lead.created_at,
-                followUps: lead.follow_ups || lead.followUps || [],
-                callLogs: lead.call_logs || lead.callLogs || [],
-                notesCount: lead.lead_notes_count ?? lead.notesCount ?? 0,
-                lastNote: latestNote ? { note: latestNote.note, noteType: latestNote.note_type, createdAt: latestNote.created_at } : null,
-            };
-        });
-    } catch (error) {
-        console.error("Failed to fetch leads:", error);
-        return [];
-    }
+/**
+ * Map raw API lead to frontend shape.
+ */
+function mapLeadToFrontend(lead) {
+    const latestNote = lead.lead_notes?.[0] || lead.leadNotes?.[0];
+    return {
+        ...lead,
+        firstName: lead.first_name ?? lead.firstName,
+        lastName: lead.last_name ?? lead.lastName,
+        jobTitle: lead.job_title ?? lead.jobTitle,
+        assignedTo: lead.assigned_to ?? lead.assignedTo,
+        createdAt: lead.created_at ?? lead.createdAt,
+        followUps: lead.follow_ups || lead.followUps || [],
+        callLogs: lead.call_logs || lead.callLogs || [],
+        notesCount: lead.lead_notes_count ?? lead.notesCount ?? 0,
+        lastNote: latestNote ? { note: latestNote.note, noteType: latestNote.note_type, createdAt: latestNote.created_at } : null,
+    };
+}
+
+/**
+ * Fetch leads with optional filters. Returns { data: [], meta: null|{} } like clients/invoices.
+ * @param {Object} [filters] - { search, status, priority, assigned_to, source, page, per_page }
+ */
+export const getLeads = async (filters = {}) => {
+    const params = {};
+    if (filters.search != null && String(filters.search).trim() !== '') params.search = filters.search.trim();
+    if (filters.status != null && filters.status !== '' && filters.status !== 'all') params.status = filters.status;
+    if (filters.priority != null && filters.priority !== '' && filters.priority !== 'all') params.priority = filters.priority;
+    if (filters.assigned_to != null && filters.assigned_to !== '' && filters.assigned_to !== 'all') params.assigned_to = filters.assigned_to;
+    if (filters.source != null && filters.source !== '' && filters.source !== 'all') params.source = filters.source;
+    if (filters.page != null) params.page = filters.page;
+    if (filters.per_page != null) params.per_page = filters.per_page;
+
+    const result = await apiFetchList('/leads', { params });
+    const arr = Array.isArray(result.data) ? result.data : [];
+    const data = arr.map(mapLeadToFrontend);
+    return { data, meta: result.meta };
 };
 
 export const saveLead = async (lead) => {
@@ -290,7 +305,35 @@ export const getDashboardStats = async () => {
             totalInvoices: 0,
             totalRevenue: 0,
             pendingAmount: 0,
-            recentInvoices: []
+            todayIncome: 0,
+            recentInvoices: [],
+            monthlyRevenue: [],
+            invoiceStatusCounts: [],
+            todaysEvents: [],
+        };
+    }
+};
+
+export const getPlannerStats = async () => {
+    try {
+        const response = await api.get('/planner/stats');
+        return response.data || {
+            total_events: 0,
+            today_events: 0,
+            completed_events: 0,
+            upcoming_events: 0,
+            cancelled_events: 0,
+            overdue_events: 0,
+        };
+    } catch (error) {
+        console.error("Failed to fetch planner stats:", error);
+        return {
+            total_events: 0,
+            today_events: 0,
+            completed_events: 0,
+            upcoming_events: 0,
+            cancelled_events: 0,
+            overdue_events: 0,
         };
     }
 };
@@ -341,35 +384,193 @@ export const deleteFollowUp = async (id) => {
     }
 };
 
-/**
- * @param {Object} [filters] - Optional: { search, status, gstType, location, dateRange, dateFrom, dateTo }
- */
-export const getClients = async (filters = {}) => {
+export const getPlannerEvents = async (params = {}) => {
+    const result = await apiFetchList('/planner-events', { params, useCache: false });
+    return Array.isArray(result.data) ? result.data : [];
+};
+
+export const getTodayPlannerEvents = async () => {
+    const result = await apiFetchList('/planner-events/today', { useCache: false });
+    return Array.isArray(result.data) ? result.data : [];
+};
+
+export const savePlannerEvent = async (event) => {
     try {
-        const params = {};
-        if (filters.search != null && String(filters.search).trim() !== '') params.search = filters.search.trim();
-        if (filters.status != null && filters.status !== '') params.status = filters.status;
-        if (filters.gstType != null && filters.gstType !== '') params.gstType = filters.gstType;
-        if (filters.location != null && filters.location !== '') params.location = filters.location;
-        if (filters.dateRange != null && filters.dateRange !== '') params.dateRange = filters.dateRange;
-        if (filters.dateFrom != null && filters.dateFrom !== '') params.dateFrom = filters.dateFrom;
-        if (filters.dateTo != null && filters.dateTo !== '') params.dateTo = filters.dateTo;
-        const response = await api.get('/clients', { params });
+        // Support FormData for file uploads
+        if (event instanceof FormData) {
+            const id = event.get('id');
+            if (id != null && id !== '' && String(id) !== 'undefined') {
+                event.append('_method', 'PUT');
+                const response = await api.post(`/planner-events/${id}`, event, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                const body = response.data;
+                return body && body.data ? body.data : body;
+            } else {
+                const response = await api.post('/planner-events', event, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
+                const body = response.data;
+                return body && body.data ? body.data : body;
+            }
+        }
+
+        const id = event.id;
+        if (id != null && id !== '' && String(id) !== 'undefined') {
+            const response = await api.put(`/planner-events/${id}`, event);
+            const body = response.data;
+            return body && body.data ? body.data : body;
+        } else {
+            const response = await api.post('/planner-events', event);
+            const body = response.data;
+            return body && body.data ? body.data : body;
+        }
+    } catch (error) {
+        console.error("Failed to save planner event:", error);
+        throw error;
+    }
+};
+
+export const deletePlannerEvent = async (id) => {
+    try {
+        if (id == null || id === '' || String(id) === 'undefined') {
+            throw new Error('Event ID is required to delete.');
+        }
+        await api.delete(`/planner-events/${id}`);
+        return true;
+    } catch (error) {
+        console.error("Failed to delete planner event:", error);
+        throw error;
+    }
+};
+
+function getPlannerActionError(error) {
+    const msg = error.response?.data?.message
+        || (error.response?.data?.errors && Object.values(error.response.data.errors).flat()[0])
+        || error.message
+        || 'Request failed';
+    const e = new Error(typeof msg === 'string' ? msg : 'Request failed');
+    e.originalError = error;
+    return e;
+}
+
+function ensureEventId(eventId) {
+    const id = eventId != null && eventId !== '' ? String(eventId) : null;
+    if (!id || id === 'undefined') {
+        throw new Error('Event ID is required for this action.');
+    }
+    return id;
+}
+
+export const completePlannerEvent = async (eventId, payload = {}) => {
+    try {
+        const id = ensureEventId(eventId);
+        const response = await api.post(`/planner-events/complete/${id}`, payload);
+        const body = response.data;
+        const event = (body && (body.data ?? body.event)) || body;
+        return event;
+    } catch (error) {
+        console.error("Failed to complete planner event:", error);
+        throw getPlannerActionError(error);
+    }
+};
+
+export const reschedulePlannerEvent = async (eventId, payload) => {
+    try {
+        const id = ensureEventId(eventId);
+        const response = await api.post(`/planner-events/reschedule/${id}`, payload || {});
+        const body = response.data;
+        const event = (body && (body.data ?? body.event)) || body;
+        return event;
+    } catch (error) {
+        console.error("Failed to reschedule planner event:", error);
+        throw getPlannerActionError(error);
+    }
+};
+
+export const createNextPlannerMeeting = async (sourceEventId, payload) => {
+    try {
+        const id = ensureEventId(sourceEventId);
+        const response = await api.post(`/planner-events/next-meeting/${id}`, payload || {});
+        const body = response.data;
+        const event = (body && (body.data ?? body.event)) || body;
+        return event;
+    } catch (error) {
+        console.error("Failed to create next planner meeting:", error);
+        throw getPlannerActionError(error);
+    }
+};
+
+export const cancelPlannerEvent = async (eventId, payload = {}) => {
+    try {
+        const id = ensureEventId(eventId);
+        const response = await api.post(`/planner-events/cancel/${id}`, payload);
+        const body = response.data;
+        const event = (body && (body.data ?? body.event)) || body;
+        return event;
+    } catch (error) {
+        console.error("Failed to cancel planner event:", error);
+        throw getPlannerActionError(error);
+    }
+};
+
+export const getPlannerNotes = async (params = {}) => {
+    try {
+        const response = await api.get('/planner-notes', { params });
         return response.data;
     } catch (error) {
-        console.error("Failed to fetch clients:", error);
+        console.error("Failed to fetch planner notes:", error);
         return [];
     }
 };
 
-export const getClientLocations = async () => {
+export const savePlannerNote = async (note) => {
     try {
-        const response = await api.get('/clients', { params: { locations_only: 1 } });
-        return Array.isArray(response.data) ? response.data : [];
+        if (note.id) {
+            const response = await api.put(`/planner-notes/${note.id}`, note);
+            return response.data;
+        } else {
+            const response = await api.post('/planner-notes', note);
+            return response.data;
+        }
     } catch (error) {
-        console.error("Failed to fetch client locations:", error);
-        return [];
+        console.error("Failed to save planner note:", error);
+        throw error;
     }
+};
+
+export const deletePlannerNote = async (id) => {
+    try {
+        await api.delete(`/planner-notes/${id}`);
+        return true;
+    } catch (error) {
+        console.error("Failed to delete planner note:", error);
+        return false;
+    }
+};
+
+import { apiFetchList } from '../utils/apiFetch';
+
+/**
+ * @param {Object} [filters] - Optional: { search, status, gstType, location, dateRange, dateFrom, dateTo, page, per_page }
+ */
+export const getClients = async (filters = {}) => {
+    const params = {};
+    if (filters.search != null && String(filters.search).trim() !== '') params.search = filters.search.trim();
+    if (filters.status != null && filters.status !== '') params.status = filters.status;
+    if (filters.gstType != null && filters.gstType !== '') params.gstType = filters.gstType;
+    if (filters.location != null && filters.location !== '') params.location = filters.location;
+    if (filters.dateRange != null && filters.dateRange !== '') params.dateRange = filters.dateRange;
+    if (filters.dateFrom != null && filters.dateFrom !== '') params.dateFrom = filters.dateFrom;
+    if (filters.dateTo != null && filters.dateTo !== '') params.dateTo = filters.dateTo;
+    if (filters.page != null) params.page = filters.page;
+    if (filters.per_page != null) params.per_page = filters.per_page;
+    return apiFetchList('/clients', { params });
+};
+
+export const getClientLocations = async () => {
+    const result = await apiFetchList('/clients', { params: { locations_only: 1 }, useCache: false });
+    return Array.isArray(result.data) ? result.data : [];
 };
 
 export const saveClient = async (client) => {
@@ -427,14 +628,10 @@ export const getReportFilters = async () => {
     }
 };
 
-export const getUsers = async () => {
-    try {
-        const response = await api.get('/users');
-        return response.data;
-    } catch (error) {
-        console.error("Failed to fetch users:", error);
-        return [];
-    }
+export const getUsers = async (filters = {}) => {
+    const params = { ...(filters || {}) };
+    const result = await apiFetchList('/users', { params, useCache: false });
+    return result;
 };
 
 export const saveUser = async (user) => {

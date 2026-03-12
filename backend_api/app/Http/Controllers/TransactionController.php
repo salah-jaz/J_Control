@@ -7,63 +7,15 @@ use Illuminate\Http\Request;
 
 class TransactionController extends Controller
 {
-    public function index()
+    private static function mapTransaction($txn)
     {
-        $transactions = \App\Models\Transaction::with(['related', 'bankAccount'])->latest()->get();
-
-        $data = $transactions->map(function ($txn) {
-            $party = '';
-            $incomeStatus = null;
-            $invoiceNo = null;
-            if ($txn->related_type === 'App\Models\Income' && $txn->related) {
-                $party = $txn->related->client;
-                $incomeStatus = $txn->related->status;
-                $invoiceNo = $txn->related->invoice_no;
-            } elseif ($txn->related_type === 'App\Models\Expense' && $txn->related) {
-                $party = $txn->related->vendor;
-            }
-
-            $bankName = $txn->bankAccount
-                ? ($txn->bankAccount->bank_name . ' - ' . $txn->bankAccount->account_number)
-                : ($txn->bank ?? null);
-
-            $filterStatus = $incomeStatus === 'Fully Paid' ? 'Paid' : ($incomeStatus === 'Partially Paid' ? 'Partial' : ($incomeStatus === 'Unpaid' ? 'Unpaid' : null));
-
-            return [
-                'id' => (int) $txn->id,
-                'relatedId' => $txn->related_id ? (int) $txn->related_id : null,
-                'transactionId' => $txn->reference_id ?? 'TXN-' . $txn->id,
-                'type' => $txn->type,
-                'date' => $txn->date,
-                'amount' => $txn->amount,
-                'currency' => $txn->currency,
-                'category' => $txn->category,
-                'method' => $txn->method,
-                'bank' => $txn->bank,
-                'bankAccountId' => $txn->bank_account_id,
-                'bankName' => $bankName,
-                'reference' => $txn->reference_id,
-                'description' => $txn->description,
-                'status' => $txn->status,
-                'party' => $party,
-                'incomeStatus' => $filterStatus,
-                'invoiceNo' => $invoiceNo,
-            ];
-        });
-
-        return response()->json($data);
-    }
-
-    /**
-     * Get a single transaction by id (primary key).
-     */
-    public function show($id)
-    {
-        $txn = \App\Models\Transaction::with(['related', 'bankAccount'])->findOrFail($id);
-
         $party = '';
+        $incomeStatus = null;
+        $invoiceNo = null;
         if ($txn->related_type === 'App\Models\Income' && $txn->related) {
             $party = $txn->related->client;
+            $incomeStatus = $txn->related->status;
+            $invoiceNo = $txn->related->invoice_no ?? null;
         } elseif ($txn->related_type === 'App\Models\Expense' && $txn->related) {
             $party = $txn->related->vendor;
         }
@@ -72,13 +24,16 @@ class TransactionController extends Controller
             ? ($txn->bankAccount->bank_name . ' - ' . $txn->bankAccount->account_number)
             : ($txn->bank ?? null);
 
-        return response()->json([
-            'id' => $txn->id,
+        $filterStatus = $incomeStatus === 'Fully Paid' ? 'Paid' : ($incomeStatus === 'Partially Paid' ? 'Partial' : ($incomeStatus === 'Unpaid' ? 'Unpaid' : null));
+
+        return [
+            'id' => (int) $txn->id,
+            'relatedId' => $txn->related_id ? (int) $txn->related_id : null,
             'transactionId' => $txn->reference_id ?? 'TXN-' . $txn->id,
             'type' => $txn->type,
             'date' => $txn->date,
             'amount' => $txn->amount,
-            'currency' => $txn->currency ?? 'INR',
+            'currency' => $txn->currency,
             'category' => $txn->category,
             'method' => $txn->method,
             'bank' => $txn->bank,
@@ -88,8 +43,80 @@ class TransactionController extends Controller
             'description' => $txn->description,
             'status' => $txn->status,
             'party' => $party,
-            'relatedId' => $txn->related_id,
-            'relatedType' => $txn->related_type,
+            'incomeStatus' => $filterStatus,
+            'invoiceNo' => $invoiceNo,
+        ];
+    }
+
+    public function index(Request $request)
+    {
+        $perPage = (int) $request->get('per_page', 20);
+        $perPage = $perPage >= 1 && $perPage <= 100 ? $perPage : 20;
+
+        $query = \App\Models\Transaction::with(['related', 'bankAccount']);
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('bank_account_id')) {
+            $query->where('bank_account_id', $request->bank_account_id);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('date', '<=', $request->date_to);
+        }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('reference_id', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereRaw('CAST(amount AS CHAR) LIKE ?', ["%{$search}%"])
+                    ->orWhereHasMorph('related', [\App\Models\Income::class], function ($m) use ($search) {
+                        $m->where('client', 'like', "%{$search}%");
+                    })
+                    ->orWhereHasMorph('related', [\App\Models\Expense::class], function ($m) use ($search) {
+                        $m->where('vendor', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $paginator = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        $paginator->getCollection()->transform(function ($txn) {
+            return self::mapTransaction($txn);
+        });
+
+        return $paginator;
+    }
+
+    /**
+     * GET /transactions/summary - for stats cards.
+     */
+    public function summary()
+    {
+        $total = \App\Models\Transaction::count();
+        $totalIncome = (float) \App\Models\Transaction::where('type', 'Income')->sum('amount');
+        $totalExpense = (float) \App\Models\Transaction::where('type', 'Expense')->sum('amount');
+        $recentCount = \App\Models\Transaction::where('date', '>=', now()->subDays(7)->toDateString())->count();
+
+        return response()->json([
+            'totalTransactions' => $total,
+            'totalIncome' => round($totalIncome, 2),
+            'totalExpense' => round($totalExpense, 2),
+            'recentCount' => $recentCount,
         ]);
+    }
+
+    /**
+     * Get a single transaction by id (primary key).
+     */
+    public function show($id)
+    {
+        $txn = \App\Models\Transaction::with(['related', 'bankAccount'])->findOrFail($id);
+        return response()->json(self::mapTransaction($txn));
     }
 }

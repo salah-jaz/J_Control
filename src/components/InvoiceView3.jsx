@@ -33,12 +33,13 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
 
     useEffect(() => {
         const loadData = async () => {
-            const [clientsData, banksData, settingsData] = await Promise.all([
-                getClients(),
+            const [clientsResult, banksData, settingsData] = await Promise.all([
+                getClients({ per_page: 100 }),
                 getBankAccounts(),
                 getSettings()
             ]);
-            setClients(clientsData);
+            const clientsData = clientsResult?.data ?? clientsResult;
+            setClients(Array.isArray(clientsData) ? clientsData : []);
             setBankAccounts(banksData);
             setCompanySettings(settingsData?.company || {});
         };

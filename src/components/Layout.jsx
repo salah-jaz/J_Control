@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom';
 import { Bell, PhoneCall, Menu, X, AlertTriangle, Package } from 'lucide-react';
 import api from '../api/axios';
 import { getProducts } from '../services/productService';
+import { prefetchAppData } from '../query/prefetch';
 
 const isAlertActive = (item) => {
     if (!item.enable_alert || !item.end_date) return false;
@@ -54,6 +55,11 @@ const Layout = ({ children }) => {
     useEffect(() => {
         setIsSidebarOpen(false);
     }, [location]);
+
+    // Prefetch frequently used data for instant module navigation
+    useEffect(() => {
+        if (user) prefetchAppData();
+    }, [user]);
 
     // Fetch Notifications (HEAD)
     useEffect(() => {

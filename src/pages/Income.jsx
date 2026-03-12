@@ -1,14 +1,17 @@
-import { useEffect, useState, useRef } from "react";
-import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark, Wallet, TrendingUp, AlertCircle, Receipt } from "lucide-react";
+import { useEffect, useState, useRef, useMemo } from "react";
+import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark, Wallet, TrendingUp, AlertCircle, Receipt, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { exportToCSV } from "../utils/csvExport";
 
-import { getIncomes, createIncome, updateIncome, deleteIncome, getIncomeSummary } from "../services/incomeService";
-import { getTransactions, getTransaction } from "../services/transactionService";
+import { createIncome, updateIncome, deleteIncome } from "../services/incomeService";
 import { getBankAccounts } from "../services/bankAccountService";
 import { getIncomeCategories, createIncomeCategory, deleteIncomeCategory } from "../services/incomeCategoryService";
-import { getClients } from "../services/db";
+import { useIncomeList, useIncomeSummary, useClients } from "../hooks/useApiQueries";
+import { invalidateCache } from "../utils/apiFetch";
+import { queryKeys } from "../query/queryKeys";
 import clsx from "clsx";
+import { TableSkeleton } from "../components/Skeleton";
 
 const emptyForm = {
   client: "",
@@ -55,30 +58,22 @@ const emptyForm = {
 };
 
 export default function Income() {
-  const [data, setData] = useState([]);
   const [bankAccounts, setBankAccounts] = useState([]);
-  const [clients, setClients] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [tab, setTab] = useState("basic");
 
   const [openForm, setOpenForm] = useState(false);
-  const [openView, setOpenView] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [transactions, setTransactions] = useState([]);
   const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [viewTransactionId, setViewTransactionId] = useState(null);
   const [viewDetail, setViewDetail] = useState(null);
-  const [viewLoading, setViewLoading] = useState(false);
 
   const [editId, setEditId] = useState(null);
-  /** When editing, number of extra installments that came from server (read-only). New rows after this are editable. */
   const [savedExtraInstallmentsCount, setSavedExtraInstallmentsCount] = useState(0);
-  const [viewItem, setViewItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [bankModalOpen, setBankModalOpen] = useState(false);
   const [bankModalFor, setBankModalFor] = useState(null);
-  /** Set when save is blocked by bank validation; used to switch tab and focus first invalid bank field. */
   const [firstInvalidBankKey, setFirstInvalidBankKey] = useState(null);
   const firstInvalidBankRef = useRef(null);
 
@@ -88,15 +83,77 @@ export default function Income() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [addCategorySaving, setAddCategorySaving] = useState(false);
 
-  const [incomeSummary, setIncomeSummary] = useState(null);
+  const [searchDebounced, setSearchDebounced] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [bankFilter, setBankFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
 
-  /* LOAD */
+  const filters = useMemo(() => {
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+    let date_from = undefined;
+    let date_to = undefined;
+    if (dateFilter === "Today") {
+      date_from = today;
+      date_to = today;
+    } else if (dateFilter === "This Week") {
+      const weekStart = new Date(now);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      date_from = weekStart.toISOString().split("T")[0];
+      date_to = today;
+    } else if (dateFilter === "This Month") {
+      date_from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      date_to = today;
+    } else if (dateFilter === "This Year") {
+      date_from = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
+      date_to = today;
+    }
+    return {
+      search: searchDebounced.trim() || undefined,
+      status: statusFilter === "All" ? undefined : statusFilter,
+      category: categoryFilter || undefined,
+      bank_account_id: bankFilter || undefined,
+      date_from,
+      date_to,
+      page: currentPage,
+      per_page: 20,
+    };
+  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, dateFilter, currentPage]);
+
+  const { data: incomeResult, isLoading: incomeLoading } = useIncomeList(filters);
+  const { data: incomeSummaryFromQuery } = useIncomeSummary();
+  const { data: clientsResult } = useClients({ per_page: 100 });
+  const queryClient = useQueryClient();
+
+  const incomeRecords = Array.isArray(incomeResult?.data) ? incomeResult.data : [];
+  const incomeMeta = incomeResult?.meta ?? null;
+  const incomeSummary = incomeSummaryFromQuery ?? null;
+  const clients = Array.isArray(clientsResult?.data) ? clientsResult.data : [];
+
   useEffect(() => {
-    loadData();
+    const t = setTimeout(() => setSearchDebounced(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, dateFilter]);
+
+  /* Load banks and categories for forms/filters */
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      getIncomeCategories().catch(() => []),
+      getBankAccounts().then((b) => b),
+    ]).then(([categories, banks]) => {
+      if (!cancelled) {
+        setIncomeCategories(categories || []);
+        setBankAccounts(Array.isArray(banks) ? banks : []);
+      }
+    });
+    return () => { cancelled = true; };
   }, []);
 
   /* Auto-focus first invalid bank field when save is blocked by bank validation */
@@ -113,20 +170,13 @@ export default function Income() {
 
   const loadData = async () => {
     try {
-      const [records, txns, categories, summary] = await Promise.all([
-        getIncomes(),
-        getTransactions(),
+      queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
+      const [categories, banks] = await Promise.all([
         getIncomeCategories().catch(() => []),
-        getIncomeSummary().catch(() => null),
+        getBankAccounts().then((b) => (Array.isArray(b) ? b : [])),
       ]);
-      setData(records);
-      setTransactions(txns || []);
       setIncomeCategories(categories || []);
-      setIncomeSummary(summary);
-      const banks = await getBankAccounts();
-      setBankAccounts(banks);
-      const clientsData = await getClients();
-      setClients(clientsData);
+      setBankAccounts(Array.isArray(banks) ? banks : []);
     } catch (e) {
       console.error("Failed to load data", e);
     }
@@ -148,6 +198,7 @@ export default function Income() {
     setSavedExtraInstallmentsCount(0);
     setFirstInvalidBankKey(null);
     setTab("basic");
+    setIsSaving(false);
     setOpenForm(true);
   };
 
@@ -176,34 +227,24 @@ export default function Income() {
     setSavedExtraInstallmentsCount(extra.length);
     setFirstInvalidBankKey(null);
     setTab("basic");
+    setIsSaving(false);
     setOpenForm(true);
   };
 
-  const openViewModal = (item) => {
-    console.log("View clicked:", item);
-    if (!item?.id) {
-      console.error("Transaction id missing");
-      return;
-    }
-    setViewDetail(null);
-    setViewTransactionId(item.id);
+  const openViewModal = (income) => {
+    if (!income?.id) return;
+    setViewDetail(income);
     setViewModalOpen(true);
   };
-
-  useEffect(() => {
-    if (!viewModalOpen || !viewTransactionId) return;
-    setViewLoading(true);
-    getTransaction(viewTransactionId)
-      .then((res) => setViewDetail(res.data))
-      .catch(console.error)
-      .finally(() => setViewLoading(false));
-  }, [viewModalOpen, viewTransactionId]);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this income record?")) return;
     try {
       await deleteIncome(id);
       toast.success("Income record deleted successfully");
+      invalidateCache("/incomes");
+      invalidateCache("/transactions");
+      queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
       loadData();
     } catch (e) {
       toast.error("Failed to delete record");
@@ -258,8 +299,10 @@ export default function Income() {
   };
 
   const handleSave = async () => {
+    if (isSaving) return;
     if (!validate()) return;
 
+    setIsSaving(true);
     try {
       if (editId) {
         await updateIncome(editId, form);
@@ -268,10 +311,13 @@ export default function Income() {
         await createIncome(form);
         toast.success("Income added successfully");
       }
+      queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
+      await queryClient.refetchQueries({ queryKey: queryKeys.income.all });
       await loadData();
       setOpenForm(false);
     } catch (e) {
       console.error("Failed to save", e);
+      setIsSaving(false);
       if (e.response && e.response.data && e.response.data.errors) {
         setErrors(e.response.data.errors);
         toast.error("Server validation failed. Please check the form.");
@@ -302,52 +348,11 @@ export default function Income() {
     </div>
   );
 
-  const isDateInRange = (dateStr, range) => {
-    if (!dateStr || range === "All") return true;
-    const d = new Date(dateStr);
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart = new Date(todayStart);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const yearStart = new Date(now.getFullYear(), 0, 1);
-    if (range === "Today") return d >= todayStart && d < new Date(todayStart.getTime() + 86400000);
-    if (range === "This Week") return d >= weekStart;
-    if (range === "This Month") return d >= monthStart;
-    if (range === "This Year") return d >= yearStart;
-    return true;
+  const displayStatus = (status) => {
+    if (status === "Fully Paid") return "Paid";
+    if (status === "Partially Paid") return "Partial";
+    return status || "—";
   };
-
-  /* FILTER DATA */
-  const filteredData = data.filter((item) =>
-    Object.values(item).some(
-      (val) =>
-        val &&
-        val.toString().toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
-
-  /* Income-type transactions for table; apply search + status, category, bank, date filters */
-  const filteredTransactions = transactions.filter((txn) => {
-    if (txn.type !== "Income") return false;
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      const match =
-        (txn.id != null && String(txn.id).toLowerCase().includes(q)) ||
-        (txn.party && txn.party.toLowerCase().includes(q)) ||
-        (txn.reference && String(txn.reference || "").toLowerCase().includes(q)) ||
-        (txn.category && String(txn.category).toLowerCase().includes(q)) ||
-        (txn.invoiceNo && String(txn.invoiceNo).toLowerCase().includes(q)) ||
-        (txn.bankName && txn.bankName.toLowerCase().includes(q)) ||
-        (txn.amount != null && String(txn.amount).includes(q));
-      if (!match) return false;
-    }
-    if (statusFilter !== "All" && txn.incomeStatus !== statusFilter) return false;
-    if (categoryFilter && txn.category !== categoryFilter) return false;
-    if (bankFilter && txn.bankAccountId != null && txn.bankAccountId !== Number(bankFilter)) return false;
-    if (!isDateInRange(txn.date, dateFilter)) return false;
-    return true;
-  });
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
@@ -454,13 +459,15 @@ export default function Income() {
       {/* TABLE */}
       <div className="card p-0 overflow-hidden">
         <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
-          <h3 className="font-bold text-slate-800">Recent Transactions</h3>
+          <h3 className="font-bold text-slate-800">Income Records</h3>
           <div className="flex flex-wrap gap-2 w-full lg:w-auto">
             <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg self-center">
-              Showing {filteredTransactions.length} of {transactions.filter((t) => t.type === "Income").length}
+              {incomeLoading ? "Loading..." : incomeMeta
+                ? `Showing ${(incomeMeta.current_page - 1) * incomeMeta.per_page + 1}–${Math.min(incomeMeta.current_page * incomeMeta.per_page, incomeMeta.total)} of ${incomeMeta.total}`
+                : `Showing ${incomeRecords.length} of ${incomeRecords.length}`}
             </span>
             <button
-              onClick={() => exportToCSV(filteredTransactions, "income_transactions")}
+              onClick={() => exportToCSV(incomeRecords.map((r) => ({ id: r.id, client: r.client, amount: r.amount, method: r.method, date: r.receivedDate, bank: r.bank, status: r.status })), "income_records")}
               className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
               title="Export to CSV"
             >
@@ -469,6 +476,9 @@ export default function Income() {
           </div>
         </div>
         <div className="overflow-x-auto custom-scrollbar">
+          {incomeLoading ? (
+            <TableSkeleton rows={6} cols={7} />
+          ) : (
           <table className="w-full text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
@@ -482,82 +492,108 @@ export default function Income() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filteredTransactions.length === 0 ? (
+              {incomeRecords.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-slate-500 italic">
-                    No income transactions found
+                  <td colSpan="7" className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-gray-400">
+                      <Receipt className="h-12 w-12 mb-3 opacity-20" />
+                      <p className="text-lg font-medium text-gray-500">No income records found</p>
+                      <p className="text-sm">Add an income record or adjust your filters.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filteredTransactions.map((txn) => {
-                  const income = txn.relatedId ? data.find((i) => i.id === txn.relatedId) : null;
-                  return (
-                    <tr key={txn.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">{txn.id}</td>
-                      <td className="px-6 py-4 font-medium text-slate-900">{txn.party || "-"}</td>
-                      <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
-                        ₹{parseFloat(txn.amount || 0).toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
-                          {txn.method || "-"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 font-mono text-xs">{txn.date || "-"}</td>
-                      <td className="px-6 py-4 text-slate-600 text-xs">{txn.bankName || txn.bank || "-"}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                          {income?.invoice_id && (
-                            <span className="px-2 py-1 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-xs font-semibold" title="Created from Invoice">
-                              Invoice Linked
-                            </span>
-                          )}
-                          <button
-                            onClick={() => openViewModal(txn)}
-                            title="View"
-                            className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                          >
-                            <Eye size={18} />
-                          </button>
-                          {income && !income.invoice_id && (
-                            <>
-                              <button
-                                onClick={() => openEdit(income)}
-                                title="Edit"
-                                className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                              >
-                                <Edit2 size={18} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(txn.relatedId)}
-                                title="Delete"
-                                className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                incomeRecords.map((income) => (
+                  <tr key={income.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">{income.id}</td>
+                    <td className="px-6 py-4 font-medium text-slate-900">{income.client || "-"}</td>
+                    <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
+                      ₹{parseFloat(income.amount || 0).toLocaleString("en-IN")}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
+                        {income.method || "-"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-slate-600 font-mono text-xs">{income.receivedDate || "-"}</td>
+                    <td className="px-6 py-4 text-slate-600 text-xs">{income.bank || "-"}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        {income.invoice_id && (
+                          <span className="px-2 py-1 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-xs font-semibold" title="Created from Invoice">
+                            Invoice Linked
+                          </span>
+                        )}
+                        <button
+                          onClick={() => openViewModal(income)}
+                          title="View"
+                          className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        {!income.invoice_id && (
+                          <>
+                            <button
+                              onClick={() => openEdit(income)}
+                              title="Edit"
+                              className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(income.id)}
+                              title="Delete"
+                              className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
+          )}
         </div>
+        {incomeMeta && incomeMeta.last_page > 1 && (
+          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <span className="text-sm text-slate-600">
+              Showing {(incomeMeta.current_page - 1) * incomeMeta.per_page + 1}–{Math.min(incomeMeta.current_page * incomeMeta.per_page, incomeMeta.total)} of {incomeMeta.total}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={incomeMeta.current_page <= 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                disabled={incomeMeta.current_page >= incomeMeta.last_page}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Transaction Details Modal - GET /transactions/{id} */}
+      {/* Income details modal - uses current list row (viewDetail) */}
       {viewModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
           <div className="bg-white max-w-lg w-full rounded-2xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
             <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Transaction Details</h2>
+              <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Income Details</h2>
               <button
                 onClick={() => {
                   setViewModalOpen(false);
-                  setViewTransactionId(null);
                   setViewDetail(null);
                 }}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all"
@@ -566,29 +602,27 @@ export default function Income() {
               </button>
             </div>
             <div className="p-4 md:p-6 overflow-y-auto">
-              {viewLoading ? (
-                <p className="text-slate-500 text-center py-8">Loading...</p>
-              ) : viewDetail ? (
+              {viewDetail ? (
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="text-slate-500">Transaction ID</div>
+                  <div className="text-slate-500">ID</div>
                   <div className="font-semibold text-slate-800">{viewDetail.id}</div>
                   <div className="text-slate-500">Amount</div>
                   <div className="font-bold text-slate-900">₹ {parseFloat(viewDetail.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
-                  <div className="text-slate-500">Bank Name</div>
-                  <div className="font-medium text-slate-800">{viewDetail.bankName || viewDetail.bank || "-"}</div>
+                  <div className="text-slate-500">Bank</div>
+                  <div className="font-medium text-slate-800">{viewDetail.bank || "-"}</div>
                   <div className="text-slate-500">Client</div>
-                  <div className="font-medium text-slate-800">{viewDetail.party || "-"}</div>
+                  <div className="font-medium text-slate-800">{viewDetail.client || "-"}</div>
                   <div className="text-slate-500">Date</div>
-                  <div className="font-medium text-slate-800">{viewDetail.date || "-"}</div>
+                  <div className="font-medium text-slate-800">{viewDetail.receivedDate || "-"}</div>
                   <div className="text-slate-500">Method</div>
                   <div className="font-medium text-slate-800">{viewDetail.method || "-"}</div>
                   <div className="text-slate-500">Status</div>
-                  <div className="font-medium text-slate-800">{viewDetail.status || "-"}</div>
+                  <div className="font-medium text-slate-800">{displayStatus(viewDetail.status)}</div>
                   <div className="text-slate-500">Reference</div>
-                  <div className="font-mono text-xs text-slate-700">{viewDetail.reference || "-"}</div>
+                  <div className="font-mono text-xs text-slate-700">{viewDetail.referenceNumber || "-"}</div>
                 </div>
               ) : (
-                <p className="text-slate-500 text-center py-8">Could not load transaction.</p>
+                <p className="text-slate-500 text-center py-8">No details available.</p>
               )}
               {viewDetail?.description && (
                 <div className="mt-4">
@@ -596,40 +630,6 @@ export default function Income() {
                   <p className="text-slate-800 text-sm">{viewDetail.description}</p>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Legacy VIEW MODAL (income key-value) - kept if needed elsewhere */}
-      {openView && viewItem && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
-          <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl animate-slide-up flex flex-col max-h-[95vh] overflow-hidden">
-            <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Transaction Details</h2>
-              <button onClick={() => setOpenView(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="p-4 md:p-8 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 overflow-y-auto">
-              {Object.entries(viewItem).map(([k, v]) => (
-                <div key={k} className="flex flex-col">
-                  <p className="text-[10px] md:text-xs font-bold text-brand-600 uppercase tracking-wider mb-1">
-                    {k.replace(/([A-Z])/g, ' $1').trim()}
-                  </p>
-                  <p className="text-sm md:text-base font-medium text-slate-800 break-words">{v || <span className="text-slate-400 italic">None</span>}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="p-4 md:p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end">
-              <button
-                onClick={() => setOpenView(false)}
-                className="btn-secondary"
-              >
-                Close Details
-              </button>
             </div>
           </div>
         </div>
@@ -1302,14 +1302,24 @@ export default function Income() {
               <button
                 onClick={() => setOpenForm(false)}
                 className="btn-secondary"
+                disabled={isSaving}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSave}
-                className="btn-primary"
+                disabled={isSaving}
+                className={clsx("btn-primary flex items-center gap-2", isSaving && "opacity-50 cursor-not-allowed")}
               >
-                Save Record
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Record"
+                )}
               </button>
             </div>
           </div>

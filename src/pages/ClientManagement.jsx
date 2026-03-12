@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { Plus, Search, Edit2, Trash2, Building2, Phone, Mail, MapPin, Eye, Users, CheckCircle, Receipt, FileText } from 'lucide-react';
-import { getClients, getClientLocations, saveClient, deleteClient } from '../services/db';
+import { useClients, useClientLocations, useSaveClient, useDeleteClient } from '../hooks/useApiQueries';
 import ClientForm from '../components/ClientForm';
 import { useLocation } from 'react-router-dom';
+import { TableSkeleton } from '../components/Skeleton';
 
 const SummaryCard = ({ title, description, value, icon: Icon, iconBgClass, iconColorClass }) => (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -31,8 +32,6 @@ const defaultFilters = {
 };
 
 const ClientManagement = () => {
-    const [clients, setClients] = useState([]);
-    const [locations, setLocations] = useState([]);
     const [search, setSearch] = useState(defaultFilters.search);
     const [statusFilter, setStatusFilter] = useState(defaultFilters.statusFilter);
     const [gstFilter, setGstFilter] = useState(defaultFilters.gstFilter);
@@ -41,20 +40,39 @@ const ClientManagement = () => {
     const [dateFrom, setDateFrom] = useState(defaultFilters.dateFrom);
     const [dateTo, setDateTo] = useState(defaultFilters.dateTo);
     const [searchDebounced, setSearchDebounced] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingClient, setEditingClient] = useState(null);
     const [isViewMode, setIsViewMode] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
 
     const location = useLocation();
+
+    const filters = useMemo(() => ({
+        search: searchDebounced || undefined,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        gstType: gstFilter === 'all' ? undefined : gstFilter,
+        location: locationFilter || undefined,
+        dateRange: dateFilter === 'all' ? undefined : dateFilter,
+        dateFrom: dateFilter === 'custom' && dateFrom ? dateFrom : undefined,
+        dateTo: dateFilter === 'custom' && dateTo ? dateTo : undefined,
+        page: currentPage,
+        per_page: 20,
+    }), [searchDebounced, statusFilter, gstFilter, locationFilter, dateFilter, dateFrom, dateTo, currentPage]);
+
+    const { data: clientsResult, isLoading } = useClients(filters);
+    const { data: locations = [] } = useClientLocations();
+    const saveClientMutation = useSaveClient();
+    const deleteClientMutation = useDeleteClient();
+
+    const clients = Array.isArray(clientsResult?.data) ? clientsResult.data : [];
+    const clientsMeta = clientsResult?.meta ?? null;
+    const totalClientsCount = clientsMeta?.total ?? clients.length;
 
     useEffect(() => {
         if (location.state && location.state.openForm) {
             setEditingClient(null);
             setIsViewMode(false);
             setIsFormOpen(true);
-
-            // Clear state so it doesn't persist on refresh/reload
             window.history.replaceState({}, document.title);
         }
     }, [location]);
@@ -64,40 +82,13 @@ const ClientManagement = () => {
         return () => clearTimeout(t);
     }, [search]);
 
-    const buildFilters = () => ({
-        search: searchDebounced || undefined,
-        status: statusFilter === 'all' ? undefined : statusFilter,
-        gstType: gstFilter === 'all' ? undefined : gstFilter,
-        location: locationFilter || undefined,
-        dateRange: dateFilter === 'all' ? undefined : dateFilter,
-        dateFrom: dateFilter === 'custom' && dateFrom ? dateFrom : undefined,
-        dateTo: dateFilter === 'custom' && dateTo ? dateTo : undefined,
-    });
-
-    const fetchClients = async () => {
-        setIsLoading(true);
-        try {
-            const data = await getClients(buildFilters());
-            setClients(Array.isArray(data) ? data : []);
-        } catch (error) {
-            console.error("Error fetching clients", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchClients();
+        setCurrentPage(1);
     }, [searchDebounced, statusFilter, gstFilter, locationFilter, dateFilter, dateFrom, dateTo]);
-
-    useEffect(() => {
-        getClientLocations().then(setLocations);
-    }, []);
 
     const handleSave = async (clientData) => {
         try {
-            await saveClient(clientData);
-            await fetchClients();
+            await saveClientMutation.mutateAsync(clientData);
             setIsFormOpen(false);
             setEditingClient(null);
             toast.success("Client saved successfully");
@@ -108,15 +99,15 @@ const ClientManagement = () => {
                 || (data?.errors && Object.values(data.errors).flat()[0])
                 || "Failed to save client. Please try again.";
             toast.error(typeof message === 'string' ? message : "Failed to save client. Please try again.");
+            throw error;
         }
     };
 
     const handleDelete = async (id) => {
         if (confirm('Are you sure you want to delete this client company?')) {
             try {
-                await deleteClient(id);
+                await deleteClientMutation.mutateAsync(id);
                 toast.success("Client deleted successfully");
-                await fetchClients();
             } catch (error) {
                 console.error("Failed to delete client", error);
                 toast.error("Failed to delete client");
@@ -142,7 +133,7 @@ const ClientManagement = () => {
         setIsFormOpen(true);
     };
 
-    const totalClients = clients.length;
+    const totalClients = totalClientsCount;
     const activeClients = clients.filter(c => !c.status || c.status === 'active').length;
     const gstClients = clients.filter(c => c.gst_number && String(c.gst_number).trim()).length;
     const nonGstClients = totalClients - gstClients;
@@ -290,6 +281,9 @@ const ClientManagement = () => {
 
             <div className="card p-0 overflow-hidden min-h-[500px]">
                 <div className="overflow-x-auto">
+                    {isLoading ? (
+                        <TableSkeleton rows={8} cols={5} />
+                    ) : (
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                             <tr>
@@ -301,13 +295,7 @@ const ClientManagement = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {isLoading ? (
-                                <tr>
-                                    <td colSpan="5" className="px-6 py-8 text-center text-gray-500 animate-pulse">
-                                        Loading clients...
-                                    </td>
-                                </tr>
-                            ) : clients.length > 0 ? clients.map((client) => (
+                            {clients.length > 0 ? clients.map((client) => (
                                 <tr key={client.id} className="hover:bg-gray-50/80 transition-colors group">
                                     <td className="px-6 py-4 text-gray-900">
                                         <div className="flex items-center gap-3">
@@ -383,7 +371,33 @@ const ClientManagement = () => {
                             )}
                         </tbody>
                     </table>
+                    )}
                 </div>
+                {clientsMeta && (clientsMeta.last_page > 1) && (
+                    <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+                        <span className="text-sm text-slate-600">
+                            Showing {(clientsMeta.current_page - 1) * clientsMeta.per_page + 1}–{Math.min(clientsMeta.current_page * clientsMeta.per_page, clientsMeta.total)} of {clientsMeta.total}
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                disabled={clientsMeta.current_page <= 1}
+                                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage((p) => p + 1)}
+                                disabled={clientsMeta.current_page >= clientsMeta.last_page}
+                                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <ClientForm

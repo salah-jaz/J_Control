@@ -110,36 +110,8 @@ export default function AgreementPreviewModal({
     }
   }, [isOpen, templateProp]);
 
-  // Auto-scaling logic to fit content nicely on one A4 page without cutting off
-  useEffect(() => {
-    if (!isOpen || !contentRef.current) return;
-    const resizeTimeout = setTimeout(() => {
-      const container = contentRef.current;
-      const contentWrap = container.querySelector('.print-scale-content');
-      if (contentWrap) {
-        // Reset scale and width for accurate measurement
-        contentWrap.style.transform = 'none';
-        contentWrap.style.width = '100%';
-        contentWrap.style.transformOrigin = 'top left';
-        
-        const contentHeight = contentWrap.scrollHeight;
-        const a4InnerHeight = 1125; // Standard A4 height @ 96DPI is ~1123px
-        
-        if (contentHeight > a4InnerHeight) {
-          const scaleRatio = a4InnerHeight / contentHeight;
-          const factor = scaleRatio - 0.01;
-          
-          // Proportional scale to fit content within the A4 height
-          contentWrap.style.transform = `scale(${factor.toFixed(4)})`;
-          contentWrap.style.transformOrigin = 'top center';
-          contentWrap.style.width = '100%';
-        }
-      }
-    }, 300); // allow fonts and layout to settle
-    return () => clearTimeout(resizeTimeout);
-  }, [isOpen, agreementForPrint, activeTemplate, companySettings, selectedPreviewId]);
-
   // Normalized agreement so buildAgreementPrintData gets content blocks and Body renders via {{agreement.agreement_content}}
+  // MUST be declared before any useEffect that references it in dependency arrays
   const agreementForPrint = useMemo(() => {
     const source =
       agreementProp ??
@@ -170,6 +142,35 @@ export default function AgreementPreviewModal({
       agreement_content: blocks,
     };
   }, [agreementProp, selectedAgreement, agreementData, agreementRecord]);
+
+  // Auto-scaling logic to fit content nicely on one A4 page without cutting off
+  useEffect(() => {
+    if (!isOpen || !contentRef.current) return;
+    const resizeTimeout = setTimeout(() => {
+      const container = contentRef.current;
+      const contentWrap = container.querySelector('.print-scale-content');
+      if (contentWrap) {
+        // Reset scale and width for accurate measurement
+        contentWrap.style.transform = 'none';
+        contentWrap.style.width = '100%';
+        contentWrap.style.transformOrigin = 'top left';
+        
+        const contentHeight = contentWrap.scrollHeight;
+        const a4InnerHeight = 1125; // Standard A4 height @ 96DPI is ~1123px
+        
+        if (contentHeight > a4InnerHeight) {
+          const scaleRatio = a4InnerHeight / contentHeight;
+          const factor = scaleRatio - 0.01;
+          
+          // Proportional scale to fit content within the A4 height
+          contentWrap.style.transform = `scale(${factor.toFixed(4)})`;
+          contentWrap.style.transformOrigin = 'top center';
+          contentWrap.style.width = '100%';
+        }
+      }
+    }, 300); // allow fonts and layout to settle
+    return () => clearTimeout(resizeTimeout);
+  }, [isOpen, agreementForPrint, activeTemplate, companySettings, selectedPreviewId]);
 
   const generateHtmlForTemplate = useCallback((tpl, agreementSource) => {
     if (!agreementSource) return null;

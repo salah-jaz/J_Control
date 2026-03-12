@@ -89,8 +89,8 @@ function Agreements() {
     };
 
     const loadClients = async () => {
-        const data = await getClients();
-        setClients(data);
+        const result = await getClients({ per_page: 200 });
+        setClients(Array.isArray(result?.data) ? result.data : []);
     };
 
     const loadData = async () => {

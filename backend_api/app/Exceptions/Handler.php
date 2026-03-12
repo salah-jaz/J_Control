@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
 
@@ -46,5 +47,20 @@ class Handler extends ExceptionHandler
         $this->reportable(function (Throwable $e) {
             //
         });
+    }
+
+    /**
+     * Return JSON for ModelNotFoundException (e.g. invalid/undefined id) instead of raw message.
+     */
+    public function render($request, Throwable $e)
+    {
+        if ($e instanceof ModelNotFoundException && $request->expectsJson()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Event not found.',
+            ], 404);
+        }
+
+        return parent::render($request, $e);
     }
 }

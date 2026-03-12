@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { Plus, Eye, Edit2, Trash2, X, Package, Search, ShoppingBag, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { Plus, Eye, Edit2, Trash2, X, Package, Search, ShoppingBag, AlertTriangle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { getProducts, createProduct, updateProduct, deleteProduct } from "../services/productService";
+import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "../hooks/useApiQueries";
 import clsx from "clsx";
+import { TableSkeleton } from "../components/Skeleton";
 
 const emptyForm = {
     name: "",
@@ -32,9 +33,9 @@ const isAlertActive = (item) => {
 const tabs = ["Basic Info", "Details"];
 
 export default function Products() {
-    const [data, setData] = useState([]);
     const [form, setForm] = useState(emptyForm);
     const [errors, setErrors] = useState({});
+    const [isSaving, setIsSaving] = useState(false);
     const [openForm, setOpenForm] = useState(false);
     const [openView, setOpenView] = useState(false);
     const [editId, setEditId] = useState(null);
@@ -42,24 +43,18 @@ export default function Products() {
     const [activeTab, setActiveTab] = useState(0);
     const [searchQuery, setSearchQuery] = useState("");
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
-        try {
-            const records = await getProducts();
-            setData(records);
-        } catch (e) {
-            console.error("Failed to load products", e);
-        }
-    };
+    const { data: dataRecords = [], isLoading } = useProducts();
+    const data = Array.isArray(dataRecords) ? dataRecords : [];
+    const createMutation = useCreateProduct();
+    const updateMutation = useUpdateProduct();
+    const deleteMutation = useDeleteProduct();
 
     const openAdd = () => {
         setForm(emptyForm);
         setErrors({});
         setEditId(null);
         setActiveTab(0);
+        setIsSaving(false);
         setOpenForm(true);
     };
 
@@ -68,6 +63,7 @@ export default function Products() {
         setEditId(item.id);
         setErrors({});
         setActiveTab(0);
+        setIsSaving(false);
         setOpenForm(true);
     };
 
@@ -80,9 +76,8 @@ export default function Products() {
     const deleteItem = async (id) => {
         if (!window.confirm("Delete this product/service?")) return;
         try {
-            await deleteProduct(id);
+            await deleteMutation.mutateAsync(id);
             toast.success("Item deleted successfully");
-            loadData();
         } catch (e) {
             console.error("Failed to delete", e);
             toast.error("Failed to delete");
@@ -104,19 +99,21 @@ export default function Products() {
     };
 
     const saveItem = async () => {
+        if (isSaving) return;
         if (!validate()) return;
+        setIsSaving(true);
         try {
             if (editId) {
-                await updateProduct(editId, form);
+                await updateMutation.mutateAsync({ id: editId, data: form });
                 toast.success("Item updated successfully");
             } else {
-                await createProduct(form);
+                await createMutation.mutateAsync(form);
                 toast.success("Item added successfully");
             }
-            await loadData();
             setOpenForm(false);
         } catch (e) {
             console.error("Failed to save", e);
+            setIsSaving(false);
             if (e.response && e.response.data && e.response.data.errors) {
                 setErrors(e.response.data.errors);
                 toast.error("Validation failed. Please check the form.");
@@ -179,6 +176,9 @@ export default function Products() {
                     </div>
                 </div>
                 <div className="overflow-x-auto">
+                    {isLoading ? (
+                        <TableSkeleton rows={6} cols={5} />
+                    ) : (
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                             <tr>
@@ -269,6 +269,7 @@ export default function Products() {
                             )}
                         </tbody>
                     </table>
+                    )}
                 </div>
             </div>
 
@@ -425,12 +426,21 @@ export default function Products() {
                         </div>
 
                         <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-white flex-shrink-0">
-                            <button onClick={() => setOpenForm(false)} className="btn-secondary">Cancel</button>
+                            <button onClick={() => setOpenForm(false)} className="btn-secondary" disabled={isSaving}>Cancel</button>
                             <button
+                                type="button"
                                 onClick={saveItem}
-                                className="btn-primary"
+                                disabled={isSaving}
+                                className={clsx("btn-primary flex items-center gap-2", isSaving && "opacity-50 cursor-not-allowed")}
                             >
-                                Save Item
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    "Save Item"
+                                )}
                             </button>
                         </div>
                     </div>

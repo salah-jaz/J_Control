@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, Users, FileText, Activity, ArrowUpRight, ArrowDownRight, ArrowRight } from 'lucide-react';
-import { getDashboardStats, getReportsSummary } from '../services/db';
+import { useDashboardData } from '../hooks/useApiQueries';
 import clsx from 'clsx';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { StatCardsSkeleton } from '../components/Skeleton';
 
 const StatCard = ({ title, value, icon: Icon, trend, color, subValue = null, subLabel = null }) => (
     <div className="card min-h-[190px] h-auto flex flex-col justify-between group cursor-default relative">
@@ -54,53 +54,40 @@ const COLORS = ['#10B981', '#F59E0B', '#EF4444', '#3B82F6'];
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const [stats, setStats] = useState({
-        totalClients: 0,
-        activeClients: 0,
-        totalInvoices: 0,
-        totalRevenue: 0,
-        pendingAmount: 0,
-        recentInvoices: [],
-        monthlyRevenue: [],
-        invoiceStatusCounts: []
-    });
-    const [todayIncome, setTodayIncome] = useState(0);
+    const { stats, todayIncome, todaysEvents, isLoading, isFetching } = useDashboardData();
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            const data = await getDashboardStats();
-            setStats(data);
-
-            // Fetch today's income
-            const today = new Date().toISOString().split('T')[0];
-            const summaryData = await getReportsSummary({ startDate: today, endDate: today });
-            if (summaryData) {
-                setTodayIncome(summaryData.totalIncome || 0);
-            }
-        };
-        fetchStats();
-    }, []);
-
-    // Prepare data for Pie Chart
-    const pieData = stats.invoiceStatusCounts?.map(item => ({
+    // Prepare data for Pie Chart (safe defaults)
+    const pieData = (stats.invoiceStatusCounts ?? []).map(item => ({
         name: item.status,
         value: item.count
-    })) || [];
+    }));
+
+    if (isLoading) {
+        return (
+            <div className="p-4 md:p-6 lg:p-10 w-full mx-auto space-y-6 md:space-y-8 animate-fade-in">
+                <StatCardsSkeleton />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="card lg:col-span-2 h-[400px] animate-pulse rounded-2xl bg-gray-100/50" />
+                    <div className="card h-[400px] animate-pulse rounded-2xl bg-gray-100/50" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 md:p-6 lg:p-10 w-full mx-auto space-y-6 md:space-y-8 animate-fade-in">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
                     title="Total Revenue"
-                    value={`₹${stats.totalRevenue.toLocaleString('en-IN')}`}
+                    value={`₹${(stats.totalRevenue ?? 0).toLocaleString('en-IN')}`}
                     icon={DollarSign}
                     trend={12.5}
                     color="bg-emerald-500"
                 />
                 <StatCard
                     title="Active Clients"
-                    value={stats.activeClients}
-                    subValue={stats.totalClients}
+                    value={stats.activeClients ?? 0}
+                    subValue={stats.totalClients ?? 0}
                     subLabel="Total Registered"
                     icon={Users}
                     color="bg-blue-500"
@@ -108,7 +95,7 @@ const Dashboard = () => {
                 />
                 <StatCard
                     title="Pending Invoices"
-                    value={`₹${stats.pendingAmount.toLocaleString('en-IN')}`}
+                    value={`₹${(stats.pendingAmount ?? 0).toLocaleString('en-IN')}`}
                     icon={FileText}
                     trend={-2.4}
                     color="bg-amber-500"
@@ -147,7 +134,7 @@ const Dashboard = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {stats.recentInvoices.map((inv) => (
+                                {(stats.recentInvoices ?? []).map((inv) => (
                                     <tr key={inv.id} className="group hover:bg-gray-50/80 transition-colors">
                                         <td className="px-4 py-4 font-mono font-medium text-brand-600 group-hover:text-brand-700">{inv.id}</td>
                                         <td className="px-4 py-4 font-semibold text-slate-700">{inv.client_name}</td>
@@ -165,7 +152,7 @@ const Dashboard = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {stats.recentInvoices.length === 0 && (
+                                {(stats.recentInvoices ?? []).length === 0 && (
                                     <tr>
                                         <td colSpan="5" className="px-4 py-8 text-center text-gray-400 italic">No recent activity</td>
                                     </tr>
@@ -218,8 +205,8 @@ const Dashboard = () => {
                         <div className="grid grid-cols-2 gap-3">
                             <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100/50">
                                 <p className="text-xs font-semibold text-emerald-600 mb-1">Income</p>
-                                <p className="text-lg font-bold text-slate-800 truncate" title={`₹${todayIncome}`}>
-                                    ₹{todayIncome.toLocaleString('en-IN')}
+                                <p className="text-lg font-bold text-slate-800 truncate" title={`₹${todayIncome ?? 0}`}>
+                                    ₹{(todayIncome ?? 0).toLocaleString('en-IN')}
                                 </p>
                             </div>
                             <div
@@ -233,6 +220,52 @@ const Dashboard = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Today's Commitments */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100/60 p-6 flex flex-col h-full">
+                        <h3 className="text-lg font-bold text-slate-800 mb-3">Today&apos;s Commitments</h3>
+                        {(todaysEvents ?? []).length === 0 ? (
+                            <p className="text-sm text-slate-400">No events scheduled for today.</p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {(todaysEvents ?? []).map((ev) => {
+                                    const status = ev.status || 'scheduled';
+                                    const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+                                    const color =
+                                        status === 'completed' ? '#10B981' :
+                                            status === 'cancelled' ? '#EF4444' :
+                                                status === 'missed' ? '#FB923C' :
+                                                    status === 'rescheduled' ? '#F59E0B' :
+                                                        ev.category === 'payment' ? '#10B981' :
+                                                            ev.category === 'deadline' ? '#EF4444' :
+                                                                ev.category === 'reminder' ? '#FACC15' :
+                                                                    '#3B82F6';
+
+                                    return (
+                                        <li key={ev.id} className="flex items-start gap-3">
+                                            <div
+                                                className="mt-1 h-2 w-2 rounded-full"
+                                                style={{ backgroundColor: color }}
+                                            ></div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-800">
+                                                    {ev.title} <span className="text-xs text-slate-500">– {statusLabel}</span>
+                                                </p>
+                                                <p className="text-xs text-slate-500">
+                                                    {ev.start_time
+                                                        ? new Date(`1970-01-01T${ev.start_time}`).toLocaleTimeString([], {
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                        })
+                                                        : 'All day'}
+                                                </p>
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -242,7 +275,7 @@ const Dashboard = () => {
                     <h3 className="text-lg font-bold text-slate-800 mb-6">Revenue Overview</h3>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.monthlyRevenue || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <BarChart data={stats.monthlyRevenue ?? []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                 <XAxis
                                     dataKey="month"
