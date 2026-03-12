@@ -236,7 +236,7 @@ export function setStoredPrintConfig(moduleKey, selectedKeys) {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(PRINT_CONFIG_STORAGE_PREFIX + moduleKey, JSON.stringify(selectedKeys));
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 export const MODULE_FIELDS = {
@@ -519,18 +519,25 @@ export function parseTemplateFromHtml(html, moduleKey) {
 
 /** Minimal CSS for dynamic print layout – only styles used when HTML is built strictly from Builder fields. */
 export const MINIMAL_PRINT_STYLES = `
-  .print-doc-dynamic { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; max-width: 800px; margin: 0 auto; padding: 16px; }
+  .print-doc-dynamic { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; width: 210mm; max-width: 210mm; margin: 0; padding: 0; min-height: 297mm; height: auto; overflow: hidden; background: #fff; box-sizing: border-box; }
   .print-doc-dynamic .print-section { margin-bottom: 1rem; }
   .print-doc-dynamic .print-field { display: block; margin-bottom: 0.5rem; }
   .print-doc-dynamic .print-field:last-child { margin-bottom: 0; }
   .print-doc-dynamic .seal-image-wrap { display: block; margin-bottom: 0.5rem; }
   .print-doc-dynamic .seal-image-wrap .seal-image { max-height: 48px; max-width: 80px; display: inline-block; vertical-align: middle; object-fit: contain; }
-  @media print { .print-doc-dynamic { max-width: 100%; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  @media print { 
+    @page { size: A4; margin: 0 !important; } 
+    html, body { width: 210mm !important; height: 297mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
+    .print-doc-dynamic { width: 210mm !important; max-width: 210mm !important; padding: 0 !important; margin: 0 !important; height: auto !important; min-height: 297mm !important; max-height: none !important; overflow: hidden !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box !important; page-break-after: avoid !important; page-break-inside: avoid !important; border: none !important; box-shadow: none !important; }
+    .print-section, .print-field, .seal-image-wrap { page-break-inside: avoid; break-inside: avoid; }
+    h1, h2, h3, h4, h5, h6 { page-break-after: avoid; break-after: avoid; }
+  }
 `;
 
 /** Shared CSS for print preview – full invoice layout (legacy; used only with custom template_html). */
 export const PRINT_PREVIEW_STYLES = `
-  .print-doc { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; max-width: 210mm; margin: 0 auto; padding: 0 16px; }
+  .print-doc { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; width: 210mm; max-width: 210mm; min-height: 297mm; height: auto; overflow: hidden; margin: 0; padding: 0; box-sizing: border-box; }
+  .print-doc * { box-sizing: border-box; }
   .print-header { border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
   .print-header .header-left { flex: 1; min-width: 180px; }
   .print-header .header-right { text-align: right; }
@@ -585,13 +592,35 @@ export const PRINT_PREVIEW_STYLES = `
   .print-doc-agreement .agreement-signatures .sig-block { margin-top: 8px; }
   .print-doc-agreement .agreement-signatures .sig-image { max-height: 48px; max-width: 140px; display: block; margin-bottom: 4px; }
   .print-doc-agreement .agreement-signatures .sig-label { font-size: 12px; color: #64748b; }
+
+  @media print {
+    @page { size: A4; margin: 0 !important; }
+    html, body { width: 210mm !important; height: 297mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
+    .print-doc {
+      width: 210mm !important; max-width: 210mm !important; margin: 0 !important; padding: 0 !important;
+      height: auto !important; min-height: 297mm !important; max-height: none !important;
+      overflow: hidden !important; box-sizing: border-box !important; page-break-after: avoid !important; page-break-inside: avoid !important; border: none !important; box-shadow: none !important;
+      -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+    }
+    .print-doc-agreement { overflow: hidden !important; height: auto !important; min-height: 297mm !important; max-height: none !important; box-sizing: border-box !important; }
+    .print-header { page-break-after: avoid; break-after: avoid; }
+    .print-customer, .print-bank, .print-totals-wrap, .print-signature, .print-footer, tr, .party-block, .sig-box { page-break-inside: avoid; break-inside: avoid; }
+    h1, h2, h3, h4, h5, h6 { page-break-after: avoid; break-after: avoid; }
+  }
 `;
 
 /** Warner & Spencer style: professional letterhead agreement – red badge, curved shapes, 800px doc. */
 export const AGREEMENT_LETTERHEAD_CSS = `
   .letterhead-doc { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; max-width: 800px; margin: 0 auto; background: #fff; position: relative; padding: 0; min-height: 100vh; box-sizing: border-box; }
   .letterhead-doc * { box-sizing: border-box; }
-  @media print { .letterhead-doc { max-width: 800px; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  @media print { 
+    @page { size: A4; margin: 10mm 15mm; }
+    .letterhead-doc { max-width: none !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } 
+    .letterhead-inner { padding: 0 !important; }
+    .letterhead-curve-top-red, .letterhead-curve-grey-1, .letterhead-curve-grey-2, .letterhead-curve-grey-3, .letterhead-curve-bottom-red, .letterhead-curve-grey-b1, .letterhead-curve-grey-b2, .letterhead-curve-grey-b3 { position: fixed !important; }
+    tr, .letterhead-recipient, .letterhead-greeting, .letterhead-table-wrap, .letterhead-signature { page-break-inside: avoid; break-inside: avoid; }
+    .letterhead-heading, .letterhead-subheading, .letterhead-header-modern { page-break-after: avoid; break-after: avoid; }
+  }
   .letterhead-curves { pointer-events: none; position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 0; overflow: hidden; }
   .letterhead-curve-top-red { position: absolute; top: -80px; right: -120px; width: 420px; height: 420px; border-radius: 50%; background: #b91c1c; z-index: 1; }
   .letterhead-curve-grey-1 { position: absolute; top: 100px; right: -60px; width: 380px; height: 200px; border-radius: 50% 50% 0 0; background: #e5e7eb; z-index: 2; }
@@ -602,15 +631,23 @@ export const AGREEMENT_LETTERHEAD_CSS = `
   .letterhead-curve-grey-b2 { position: absolute; bottom: 140px; left: -40px; width: 340px; height: 180px; border-radius: 0 0 50% 50%; background: #d1d5db; z-index: 3; }
   .letterhead-curve-grey-b3 { position: absolute; bottom: 175px; left: -20px; width: 300px; height: 160px; border-radius: 0 0 50% 50%; background: #f3f4f6; z-index: 4; }
   .letterhead-inner { position: relative; z-index: 10; padding: 24px 40px 48px; }
-  .letterhead-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; flex-wrap: wrap; gap: 16px; }
-  .letterhead-header:has(.letterhead-badge:only-child) .letterhead-badge { margin-right: auto; }
-  .letterhead-header:has(.letterhead-contact:only-child) .letterhead-contact { margin-left: auto; }
-  .letterhead-badge { background: #b91c1c; color: #fff; padding: 16px 20px; max-width: 220px; clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%); border-radius: 4px; }
-  .letterhead-badge .letterhead-logo { max-height: 40px; max-width: 120px; display: block; margin-bottom: 6px; }
-  .letterhead-badge .letterhead-company-name { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.3; }
-  .letterhead-contact { text-align: right; font-size: 13px; color: #6b7280; }
-  .letterhead-contact .letterhead-contact-row { margin-bottom: 8px; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-  .letterhead-contact .letterhead-contact-row::before { content: ''; width: 12px; height: 12px; background: #b91c1c; border-radius: 50%; flex-shrink: 0; }
+  .letterhead-header-modern { margin-bottom: 32px; }
+  .letterhead-gradient-bar { 
+    display: flex; 
+    align-items: center; 
+    gap: 16px; 
+    padding: 20px 24px; 
+    background: linear-gradient(90deg, #eff6ff 0%, #ffffff 40%, #fdf2f8 100%);
+    border-radius: 100px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    margin-bottom: 12px;
+  }
+  .letterhead-logo-wrap { shrink-0; }
+  .letterhead-logo-wrap img { max-height: 40px; display: block; }
+  .letterhead-brand-info { flex: 1; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .letterhead-company-name-bold { font-size: 22px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: -0.01em; }
+  .letterhead-tagline-text { font-size: 13px; color: #64748b; font-weight: 500; font-style: italic; }
+  .letterhead-contact { text-align: center; font-size: 11px; color: #6b7280; letter-spacing: 0.02em; }
   .letterhead-body { margin: 28px 0; }
   .letterhead-recipient { margin-bottom: 24px; }
   .letterhead-recipient .letterhead-recipient-name { font-weight: 700; font-size: 15px; margin: 0 0 4px 0; }
@@ -645,15 +682,16 @@ function getAgreementLetterheadHtml(prefix = 'agreement') {
     <div class="letterhead-curve-grey-b3"></div>
   </div>
   <div class="letterhead-inner">
-    <header class="letterhead-header">
-      <div class="letterhead-badge print-section">
-        <div class="letterhead-logo">{{${prefix}.company_logo}}</div>
-        <div class="letterhead-company-name">{{${prefix}.company_name}}</div>
+    <header class="letterhead-header-modern">
+      <div class="letterhead-gradient-bar">
+        <div class="letterhead-logo-wrap">{{${prefix}.company_logo}}</div>
+        <div class="letterhead-brand-info">
+          <span class="letterhead-company-name-bold">{{${prefix}.company_name}}</span>
+          <span class="letterhead-tagline-text">{{${prefix}.tagline}}</span>
+        </div>
       </div>
       <div class="letterhead-contact print-section">
-        <div class="letterhead-contact-row">{{${prefix}.company_phone}}</div>
-        <div class="letterhead-contact-row">{{${prefix}.company_email}}</div>
-        <div class="letterhead-contact-row">{{${prefix}.company_address}}</div>
+        <span>{{${prefix}.company_phone}}</span> | <span>{{${prefix}.company_email}}</span> | <span>{{${prefix}.company_address}}</span>
       </div>
     </header>
     <main class="letterhead-body">
@@ -662,11 +700,9 @@ function getAgreementLetterheadHtml(prefix = 'agreement') {
         <p class="letterhead-recipient-address">{{${prefix}.client_address}}</p>
       </div>
       <p class="letterhead-greeting">Greetings!</p>
-      <div class="print-section"><h2 class="letterhead-heading">{{${prefix}.agreement_heading}}</h2></div>
-      <div class="print-section"><h3 class="letterhead-subheading">{{${prefix}.agreement_subheading}}</h3></div>
-      <div class="letterhead-paragraph print-section">{{${prefix}.agreement_paragraph}}</div>
-      <div class="letterhead-bullets print-section">{{${prefix}.agreement_bullet_points}}</div>
-      <div class="letterhead-table-wrap print-section">{{${prefix}.agreement_table}}</div>
+      <div class="print-section agreement-doc-body">
+        {{${prefix}.agreement_content}}
+      </div>
     </main>
     <div class="letterhead-signature print-section">
       <p class="letterhead-sig-label">Sincerely,</p>
@@ -1462,37 +1498,72 @@ function renderAgreementTable(block) {
  * Uses normalizeBlock so blocks work regardless of case (HEADING vs heading) or property (value vs content).
  * When styles is provided, terms block uses inline styles so template.styles always apply in Preview and Print.
  */
-function renderOneAgreementBlock(b, styles) {
+function renderOneAgreementBlock(b, styles, sectionCounter = { val: 0 }) {
   const normalized = normalizeBlock(b);
   if (!normalized || !normalized.type) return '';
   const { type, content, original } = normalized;
 
   switch (type) {
+    case 'section':
+      sectionCounter.val++;
+      return `<h2 class="agreement-section" style="font-size: 20px; font-weight: bold; color: #0f172a; margin-top: 24px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">${sectionCounter.val}: ${escapeHtml(String(content || ''))}</h2>`;
+    case 'subsection':
+      return `<h3 class="agreement-subsection" style="font-size: 16px; font-weight: bold; color: #334155; margin-top: 16px; margin-bottom: 8px;">${escapeHtml(String(content || ''))}</h3>`;
     case 'heading':
-      return `<h2 class="agreement-heading">${escapeHtml(String(content || ''))}</h2>`;
+      return `<h2 class="agreement-heading" style="font-size: 24px; font-weight: bold; color: #0f172a; margin-top: 32px; margin-bottom: 16px; text-align: center;">${escapeHtml(String(content || ''))}</h2>`;
     case 'subheading':
-      return `<h3 class="agreement-subheading">${escapeHtml(String(content || ''))}</h3>`;
+      return `<h3 class="agreement-subheading" style="font-size: 18px; font-weight: 600; color: #334155; margin-top: 20px; margin-bottom: 10px;">${escapeHtml(String(content || ''))}</h3>`;
     case 'paragraph':
-      return `<p class="agreement-paragraph">${escapeHtml(String(content || '').replace(/\n/g, '<br/>'))}</p>`;
+      return `<p class="agreement-paragraph" style="font-size: 14px; color: #475569; line-height: 1.6; margin-bottom: 12px; white-space: pre-wrap;">${escapeHtml(String(content || ''))}</p>`;
     case 'bullets': {
       const items = Array.isArray(original.items) ? original.items
         : Array.isArray(original.content) ? original.content
-        : Array.isArray(original.value) ? original.value
-        : [];
+          : Array.isArray(original.value) ? original.value
+            : [];
       const list = items.filter(Boolean);
       if (list.length === 0) return '';
-      return `<ul class="agreement-bullets">${list.map((i) => `<li>${escapeHtml(String(i))}</li>`).join('')}</ul>`;
+      return `<ul class="agreement-bullets" style="font-size: 14px; color: #475569; margin-bottom: 12px; padding-left: 20px;">${list.map((i) => `<li style="margin-bottom: 4px;">${escapeHtml(String(i))}</li>`).join('')}</ul>`;
     }
     case 'table':
       return renderAgreementTable(original);
+    case 'signature': {
+      const provider = content?.provider || 'Service Provider';
+      const client = content?.client || 'Client';
+      return `
+        <div class="agreement-signature" style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 48px;">
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 8px;">
+            <p style="font-size: 12px; font-weight: bold; color: #1e293b; margin: 0;">${escapeHtml(provider)}</p>
+            <p style="font-size: 10px; color: #64748b; margin: 0;">Name & Signature</p>
+          </div>
+          <div style="border-top: 1px solid #cbd5e1; padding-top: 8px; text-align: right;">
+            <p style="font-size: 12px; font-weight: bold; color: #1e293b; margin: 0;">${escapeHtml(client)}</p>
+            <p style="font-size: 10px; color: #64748b; margin: 0;">Name & Signature</p>
+          </div>
+        </div>
+      `;
+    }
+    case 'approval':
+      return `
+        <div class="agreement-approval" style="margin-top: 32px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <p style="font-size: 13px; font-weight: bold; color: #1e293b; margin-bottom: 8px; text-decoration: underline;">Approval Required</p>
+          <p style="font-size: 13px; color: #475569; font-style: italic; margin: 0;">${escapeHtml(String(content || ''))}</p>
+        </div>
+      `;
     case 'terms': {
       const text = typeof content === 'string' ? content : (content?.text ?? content ?? '');
       if (!text) return '';
-      return `<div class="agreement-terms">
-  <div class="agreement-terms-title">Terms and Conditions</div>
-  <div class="agreement-terms-text">${escapeHtml(String(text).replace(/\n/g, '<br/>'))}</div>
+      return `<div class="agreement-terms" style="margin-top: 24px;">
+  <div class="agreement-terms-title" style="font-size: 16px; font-weight: bold; color: #334155; margin-bottom: 8px;">Terms and Conditions</div>
+  <div class="agreement-terms-text" style="font-size: 12px; color: #475569; line-height: 1.5; white-space: pre-wrap;">${escapeHtml(String(text))}</div>
 </div>`;
     }
+    case 'wysiwyg':
+      return `<div class="agreement-wysiwyg ql-editor" style="margin-top: 24px; padding: 0;">${content || ''}</div>`;
+    case 'policy':
+      return `<div class="agreement-policy" style="margin-top: 24px; padding: 0;">
+  <h4 style="font-size: 14px; font-weight: bold; color: #0f172a; border-bottom: 2px solid #0f172a; display: inline-block; margin-bottom: 4px;">Company Policy Note</h4>
+  <p style="font-size: 14px; color: #334155; line-height: 1.6;">${escapeHtml(String(content || ''))}</p>
+</div>`;
     default:
       return '';
   }
@@ -1521,7 +1592,8 @@ function normalizeAgreementBlocks(raw) {
  */
 export function renderAgreementBodyInOrder(blocks, styles) {
   const list = normalizeAgreementBlocks(blocks);
-  return list.map((b) => renderOneAgreementBlock(b, styles)).filter(Boolean).join('');
+  const sectionCounter = { val: 0 };
+  return list.map((b) => renderOneAgreementBlock(b, styles, sectionCounter)).filter(Boolean).join('');
 }
 
 /**
@@ -1606,7 +1678,27 @@ export function buildAgreementPrintData(agreement, company = {}, client = null, 
 </div>`
     : '';
   const templateHasBodySection = options.templateHasBodySection === true;
-  const fullBodyHtml = templateHasBodySection ? bodyBlocksHtml : bodyBlocksHtml + termsHtml;
+  let fullBodyHtml = templateHasBodySection ? bodyBlocksHtml : bodyBlocksHtml + termsHtml;
+
+  // Process any placeholders entered by the user in the WYSIWYG editor
+  // These might be things like {{client_name}} or {{items_table}} or {{quotation.total}}
+  if (agreement?.quotation) {
+    const qData = buildQuotationPrintData(agreement.quotation, company, null);
+    // Add additional flat data
+    const replacementData = {
+      ...qData,
+      customer_name: qData.client_name,
+      quotation_number: qData.quotation_number,
+      quotation: qData
+    };
+    fullBodyHtml = fullBodyHtml.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
+      const cleanPath = path.trim();
+      const strippedPath = cleanPath.startsWith('quotation.') ? cleanPath.substring(10) : cleanPath;
+      const val = getByPath(replacementData, strippedPath);
+      return val != null ? String(val) : match;
+    });
+  }
+
   const footerTermsText = templateHasBodySection ? termsText : '';
   const { headingHtml, subheadingHtml, paragraphHtml, bulletsHtml, tableHtml } = renderAgreementBlocksToHtml(blocks);
   const dateStr = agreement?.date ? (typeof agreement.date === 'string' ? agreement.date.split('T')[0] : new Date(agreement.date).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0];
@@ -1618,12 +1710,17 @@ export function buildAgreementPrintData(agreement, company = {}, client = null, 
   const useTemplateVisibility = template != null && typeof template === 'object';
   const inHeader = (v) => templateHasField(template, 'header', v);
   const inProvider = (v) => templateHasField(template, 'partyDetailsProvider', v);
+
+  const companyNameVal = agreement?.override_company_name || company?.name || '';
+  const taglineVal = agreement?.tagline || '';
+
   const companyAddressVal = useTemplateVisibility ? (inHeader('company_address') ? (company?.address || '') : '') : (templateHtml.includes('{{agreement.company_address}}') ? (company?.address || '') : '');
   const companyEmailVal = useTemplateVisibility ? (inHeader('company_email') ? (company?.email || '') : '') : (templateHtml.includes('{{agreement.company_email}}') ? (company?.email || '') : '');
   const companyPhoneVal = useTemplateVisibility ? (inHeader('company_phone') ? (company?.phone || '') : '') : (templateHtml.includes('{{agreement.company_phone}}') ? (company?.phone || '') : '');
   return {
     company_logo: useTemplateVisibility ? (inHeader('company_logo') ? companyLogo : '') : companyLogo,
-    company_name: useTemplateVisibility ? (inHeader('company_name') ? (company?.name || '') : '') : (company?.name || ''),
+    company_name: useTemplateVisibility ? (inHeader('company_name') ? companyNameVal : '') : companyNameVal,
+    tagline: taglineVal,
     company_address: companyAddressVal,
     agreement_title: agreement?.title || 'Agreement',
     agreement_reference_number: agreement?.id || agreement?.reference || '',

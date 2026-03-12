@@ -18,24 +18,15 @@ import { Toaster, toast } from 'react-hot-toast';
 import Settings from "./pages/Settings";
 import User from "./pages/User";
 import Products from "./pages/Products";
-import PrintTemplateBuilder from "./pages/PrintTemplateBuilder";
-import PrintTemplatesList from "./pages/PrintTemplatesList";
+import Agreements from "./pages/Agreements";
+import ModernPrintTemplateBuilder from "./pages/ModernPrintTemplateBuilder";
+import ModernPrintTemplatesList from "./pages/ModernPrintTemplatesList";
 import Planner from "./pages/Planner";
 import { useEffect, useRef } from 'react';
 import { getTodayPlannerEvents } from './services/db';
 
 const NOTIFICATION_SOUND_PATH = '/notification.mp3';
 const REMINDER_SOUND_PATH = '/sounds/reminder.mp3';
-
-function playNotificationSound() {
-  try {
-    const audio = new Audio(NOTIFICATION_SOUND_PATH);
-    audio.volume = 0.6;
-    audio.play().catch(() => {});
-  } catch {
-    // Sound file may be missing; toast still shows
-  }
-}
 
 function PlannerReminderListener() {
   const navigate = useNavigate();
@@ -80,9 +71,6 @@ function PlannerReminderListener() {
 
   useEffect(() => {
     let intervalId;
-    let startTimeIntervalId;
-
-    const pad = (n) => String(n).padStart(2, '0');
 
     const checkReminders = async () => {
       try {
@@ -177,6 +165,7 @@ function PlannerReminderListener() {
   return null;
 }
 
+
 function App() {
   return (
     <AuthProvider>
@@ -236,6 +225,14 @@ function App() {
               }
             />
             <Route
+              path="/agreements"
+              element={
+                <Layout title="Agreement Management">
+                  <Agreements />
+                </Layout>
+              }
+            />
+            <Route
               path="/income"
               element={
                 <Layout title="Income">
@@ -291,7 +288,7 @@ function App() {
               path="/print-templates"
               element={
                 <Layout title="Print Templates">
-                  <PrintTemplatesList />
+                  <ModernPrintTemplatesList />
                 </Layout>
               }
             />
@@ -299,7 +296,7 @@ function App() {
               path="/print-templates/new"
               element={
                 <Layout title="New Print Template">
-                  <PrintTemplateBuilder />
+                  <ModernPrintTemplateBuilder />
                 </Layout>
               }
             />
@@ -307,7 +304,7 @@ function App() {
               path="/print-templates/edit/:id"
               element={
                 <Layout title="Edit Print Template">
-                  <PrintTemplateBuilder />
+                  <ModernPrintTemplateBuilder />
                 </Layout>
               }
             />

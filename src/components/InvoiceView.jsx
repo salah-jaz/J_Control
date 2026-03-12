@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, Edit2, Trash2, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
-import TemplateSwitcher from './TemplateSwitcher';
 import { getClients, getSettings } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
 import clsx from 'clsx';
 import { useReactToPrint } from 'react-to-print';
-import { getDefaultTemplate } from '../utils/printTemplateStorage';
+import { getTemplates } from '../utils/printTemplateStorage';
 import {
     buildFullTemplateHtml,
     getEffectiveTemplateHtml,
@@ -18,18 +17,20 @@ import {
 } from '../config/printTemplateModules';
 import { getApiOrigin } from '../api/axios';
 import PrintConfigModal from './PrintConfigModal';
-import AgreementContentDisplay from './AgreementContentDisplay';
 
-const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChange }) => {
+const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
     const [clients, setClients] = useState([]);
     const [bankAccounts, setBankAccounts] = useState([]);
     const [companySettings, setCompanySettings] = useState(null);
     const [showPrintConfig, setShowPrintConfig] = useState(false);
     const [printConfig, setPrintConfig] = useState(null);
+    const [scaleFactor, setScaleFactor] = useState(1);
     const componentRef = useRef();
     const pendingPrintRef = useRef(false);
-    const defaultTemplate = useMemo(() => getDefaultTemplate('invoices'), []);
-
+    const templates = useMemo(() => getTemplates().filter(t => t.module === 'invoices'), []);
+    const [activeTemplate, setActiveTemplate] = useState(
+        () => templates.find(t => t.isDefault) || templates[0] || null
+    );
     useEffect(() => {
         const loadData = async () => {
             const [clientsResult, banksData, settingsData] = await Promise.all([
@@ -47,21 +48,104 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
         }
     }, [isOpen]);
 
+    // Auto-scaling logic to fit content nicely on one A4 page without cutting off
+    useEffect(() => {
+        if (!isOpen || !componentRef.current) return;
+        const calculateScale = () => {
+            const container = componentRef.current;
+            const contentWrap = container.querySelector('.print-scale-content');
+            if (contentWrap) {
+                // Reset scale and width for accurate measurement
+                contentWrap.style.transform = 'none';
+                contentWrap.style.width = '210mm';
+                contentWrap.style.transformOrigin = 'top left';
+                
+                const contentHeight = contentWrap.scrollHeight;
+                const a4InnerHeight = 1120; // Standard A4 height @ 96DPI is ~1123px. 1120 gives a tiny safety margin.
+                
+                if (contentHeight > a4InnerHeight) {
+                    const factor = a4InnerHeight / contentHeight;
+                    // Proportional scale to fit content within the A4 height
+                    setScaleFactor(parseFloat(factor.toFixed(4)));
+                } else {
+                    setScaleFactor(1);
+                }
+            }
+        };
+
+        const resizeTimeout = setTimeout(calculateScale, 400);
+        return () => clearTimeout(resizeTimeout);
+    }, [isOpen, invoice, activeTemplate, companySettings, printConfig]);
+
     const handlePrintTrigger = useReactToPrint({
         contentRef: componentRef,
         documentTitle: invoice?.id ? `Invoice_${invoice.id}` : 'Invoice',
+        pageStyle: `
+            @page {
+                size: A4;
+                margin: 0 !important;
+            }
+            @media print {
+                html, body {
+                    width: 210mm !important;
+                    height: 297mm !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    overflow: hidden !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .invoice-a4 {
+                    width: 210mm !important;
+                    height: 297mm !important;
+                    min-height: 297mm !important;
+                    max-height: 297mm !important;
+                    overflow: hidden !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    position: relative !important;
+                    display: block !important;
+                    background: white !important;
+                }
+                .print-scale-container {
+                    width: 100% !important;
+                    height: 100% !important;
+                    overflow: visible !important;
+                }
+                /* Do NOT force transform none here; let the inline style handle scaling */
+                .print-scale-content {
+                    width: 210mm !important;
+                    height: auto !important;
+                }
+                /* Target common template wrappers to allow stretch before scale */
+                .jaz-doc, .jaz-inner, .print-doc, .print-doc-dynamic, .invoice, .quotation, .agreement-print-root, .print-container, .letterhead-doc, .letterhead-inner {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    width: 210mm !important;
+                    max-width: 210mm !important;
+                    height: auto !important;
+                    min-height: 297mm !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                }
+                .jaz-footer-branding, .jaz-company-contact, .print-footer, footer {
+                    margin-top: auto !important;
+                }
+                .no-print {
+                    display: none !important;
+                }
+            }
+        `
     });
 
-    const handlePrint = () => {
+    const handlePrint = useCallback(() => {
         if (handlePrintTrigger) {
             handlePrintTrigger();
         }
-    };
+    }, [handlePrintTrigger]);
 
-    if (!isOpen || !invoice) return null;
-
-    const client = clients.find(c => c.id == (invoice.client_id || invoice.clientId));
-    const bank = bankAccounts.find(b => b.id == (invoice.bank_account_id || invoice.bankAccountId));
+    const client = clients.find(c => c.id == (invoice?.client_id || invoice?.clientId));
+    const bank = bankAccounts.find(b => b.id == (invoice?.bank_account_id || invoice?.bankAccountId));
 
     const getPrintConfigKeys = useCallback(
         () => printConfig || getStoredPrintConfig('invoices') || getDefaultPrintConfigKeys(),
@@ -69,26 +153,26 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
     );
 
     const printHtml = useMemo(() => {
-        if (!defaultTemplate || !companySettings) return null;
+        if (!activeTemplate || !companySettings || !invoice) return null;
         const keys = getPrintConfigKeys();
-        const html = defaultTemplate.template_html
-            ? getEffectiveTemplateHtml(defaultTemplate, 'invoices')
-            : buildFullTemplateHtml(filterTemplateByPrintConfig(defaultTemplate, keys), 'invoices');
+        const html = activeTemplate.template_html
+            ? getEffectiveTemplateHtml(activeTemplate, 'invoices')
+            : buildFullTemplateHtml(filterTemplateByPrintConfig(activeTemplate, keys), 'invoices');
         const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
         return resolveTemplateHtmlWithData(html, 'invoices', data);
-    }, [defaultTemplate, companySettings, invoice, client, bank, getPrintConfigKeys]);
+    }, [activeTemplate, companySettings, invoice, client, bank, getPrintConfigKeys]);
 
     const buildPreviewForConfig = useCallback(
         (selectedKeys) => {
-            if (!defaultTemplate || !companySettings) return '';
-            const filtered = filterTemplateByPrintConfig(defaultTemplate, selectedKeys);
-            const html = defaultTemplate.template_html
-                ? getEffectiveTemplateHtml(defaultTemplate, 'invoices')
+            if (!activeTemplate || !companySettings || !invoice) return '';
+            const filtered = filterTemplateByPrintConfig(activeTemplate, selectedKeys);
+            const html = activeTemplate.template_html
+                ? getEffectiveTemplateHtml(activeTemplate, 'invoices')
                 : buildFullTemplateHtml(filtered, 'invoices');
             const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
             return resolveTemplateHtmlWithData(html, 'invoices', data);
         },
-        [defaultTemplate, companySettings, invoice, client, bank]
+        [activeTemplate, companySettings, invoice, client, bank]
     );
 
     useEffect(() => {
@@ -97,7 +181,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
             const t = setTimeout(() => handlePrint(), 150);
             return () => clearTimeout(t);
         }
-    }, [printConfig]);
+    }, [printConfig, handlePrint]);
 
     const openPrintConfig = () => setShowPrintConfig(true);
     const onPrintWithConfig = (selectedKeys) => {
@@ -106,54 +190,12 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
         pendingPrintRef.current = true;
     };
 
-    const items = invoice.items || [];
-    const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0) || parseFloat(invoice.amount) || 0;
-    const gst = parseFloat(invoice.gst) || 0;
-    const discount = parseFloat(invoice.discount) || 0;
-    const gstAmount = subtotal * (gst / 100);
-    const grandTotal = Math.max(0, subtotal + gstAmount - discount);
+    if (!isOpen || !invoice) return null;
 
-    const hasFinance = invoice.initial_deposit_enabled || (invoice.extra_installments && invoice.extra_installments.length > 0);
-    const initialDeposit = hasFinance ? (parseFloat(invoice.initial_deposit_amount) || 0) : 0;
-    const installmentsSum = (invoice.extra_installments || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
-    let paidAmount = 0;
-    let balanceAmount = grandTotal;
-
-    if (hasFinance) {
-        paidAmount = Math.min(initialDeposit + installmentsSum, grandTotal);
-        balanceAmount = Math.max(0, grandTotal - paidAmount);
-    } else {
-        if (invoice.status === 'Paid') {
-            paidAmount = grandTotal;
-            balanceAmount = 0;
-        } else {
-            const itemsPaidTotal = items
-                .filter(item => item.payment_status === 'Paid')
-                .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-            if (subtotal > 0) {
-                const ratio = itemsPaidTotal / subtotal;
-                paidAmount = Math.min(grandTotal, Math.max(0, itemsPaidTotal + (gstAmount * ratio) - (discount * ratio)));
-            }
-            balanceAmount = Math.max(0, grandTotal - paidAmount);
-        }
-    }
-
-    // QR Code URL Construction
-    // QR Code URL Construction
-    const API_BASE_URL = 'http://localhost:8000';
-
-    // Determine QR Path: Invoice override exists? Use it. Else use Bank default.
-    const qrPath = invoice.qr_code || (bank ? bank.qrCode : null);
-
-    const qrCodeUrl = qrPath
-        ? (qrPath.startsWith('http') ? qrPath : `${API_BASE_URL}/storage/${qrPath}`)
-        : null;
-
-    // Styles for unified A4 look (Screen & Print)
     const pageStyles = `
         @page {
             size: A4;
-            margin: 0;
+            margin: 0 !important;
         }
         
         /* Force background graphics everywhere */
@@ -164,37 +206,42 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
 
         .invoice-a4 {
             width: 210mm;
-            min-height: 296.5mm; /* Fixed A4 Height -> Min Height */
+            height: 297mm;
             background-color: white;
             margin: 0 auto;
             display: flex;
             flex-direction: column;
             position: relative;
             box-sizing: border-box;
-            overflow: visible; 
+            overflow: hidden; 
         }
 
         /* Print Override */
         @media print {
             html, body {
-                height: auto !important;
-                width: 100%;
+                height: 297mm !important;
+                width: 210mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                overflow: visible !important;
+                overflow: hidden !important;
+                box-sizing: border-box !important;
             }
             
             .invoice-a4 {
-                margin: 0;
+                margin: 0 !important;
+                padding: 0 !important;
                 box-shadow: none !important;
-                /* Match screen rules explicitly */
-                width: 210mm;
-                min-height: 296.5mm;
-                overflow: visible;
-                /* Remove absolute positioning to keep flow identical to screen */
+                width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                overflow: hidden !important;
                 position: relative; 
                 left: 0;
                 top: 0;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                border: none !important;
+                box-sizing: border-box !important;
             }
 
             .no-print {
@@ -220,54 +267,153 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
             <style>{pageStyles}</style>
 
             {/* Modal Container */}
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden animate-fade-in-up print:shadow-none print:w-full print:max-w-none print:max-h-none print:h-auto print:rounded-none print:overflow-visible">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-[1400px] h-[95vh] flex flex-col lg:flex-row-reverse overflow-hidden animate-fade-in-up print:shadow-none print:w-full print:max-w-none print:max-h-none print:h-auto print:rounded-none print:overflow-visible">
 
-                {/* Header Actions */}
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white print:hidden shrink-0">
-                    <h3 className="text-lg font-bold text-slate-800 tracking-tight">Invoice Preview</h3>
-                    <div className="flex gap-2">
-                        <TemplateSwitcher activeTemplate={activeTemplate} onTemplateChange={onTemplateChange} />
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (!defaultTemplate) {
-                                    toast.error('No default Invoice template set. Create one in Print Templates.');
-                                    return;
+                {/* Templates Visual Selector (Sidebar Desktop / Top Rail Mobile) */}
+                <div className="w-full lg:w-[360px] bg-gradient-to-b from-slate-50 to-slate-100 border-b lg:border-b-0 lg:border-l border-slate-200 flex flex-col shrink-0 overflow-hidden print:hidden relative z-10">
+                    <div className="p-4 lg:p-6 border-b border-slate-200 bg-white shrink-0 shadow-sm relative z-20">
+                        <h3 className="font-extrabold text-slate-900 text-lg tracking-tight">Select Design</h3>
+                        <p className="text-sm text-slate-500 mt-1 hidden lg:block">Click any layout to instantly apply it to this invoice.</p>
+                    </div>
+
+                    <div className="flex-1 overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto p-4 lg:p-5 grid grid-flow-col auto-cols-[140px] lg:grid-flow-row lg:grid-cols-2 gap-4 lg:content-start [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 pb-10">
+                        {templates.map(t => {
+                            const isActive = activeTemplate?.id === t.id;
+                            const previewHtml = (() => {
+                                const keys = getPrintConfigKeys();
+                                const html = t.template_html ? getEffectiveTemplateHtml(t, "invoices") : buildFullTemplateHtml(filterTemplateByPrintConfig(t, keys), "invoices");
+                                let data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
+                                // Downscale items for miniature preview
+                                if (data.invoice && data.invoice.items && data.invoice.items.length > 5) {
+                                    data.invoice.items = data.invoice.items.slice(0, 5);
                                 }
-                                openPrintConfig();
-                            }}
-                            className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30 py-2 text-sm"
-                        >
-                            <Printer className="w-4 h-4" /> Print
-                        </button>
-                        <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
-                            <X className="w-5 h-5" />
-                        </button>
+                                return resolveTemplateHtmlWithData(html, "invoices", data);
+                            })();
+
+                            return (
+                                <div
+                                    key={t.id}
+                                    onClick={() => setActiveTemplate(t)}
+                                    className={clsx(
+                                        "shrink-0 cursor-pointer rounded-xl border-2 overflow-hidden transition-all flex flex-col group w-full relative",
+                                        isActive
+                                            ? "border-orange-500 bg-orange-50/30 shadow-lg shadow-orange-500/10 z-10"
+                                            : "border-transparent ring-1 ring-slate-200 bg-white hover:ring-slate-300 hover:-translate-y-0.5 hover:shadow-md"
+                                    )}
+                                >
+                                    <div className={clsx(
+                                        "h-32 lg:h-48 overflow-hidden relative pointer-events-none flex justify-center items-center border-b w-full rounded-t-xl transition-colors",
+                                        isActive ? "bg-orange-100/40 border-orange-100" : "bg-slate-50 border-slate-100"
+                                    )}>
+                                        {/* Miniature A4 Document Holder */}
+                                        <div className="relative shadow-md border border-slate-300 bg-white overflow-hidden rounded-[2px] transition-transform duration-300 group-hover:scale-105" style={{ width: '100px', height: '141px' }}>
+                                            <div className="absolute top-0 left-0 w-[794px] bg-white transform origin-top-left" style={{ transform: 'scale(0.126)' }} dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                                            <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.02] transition-colors z-10" />
+                                        </div>
+                                    </div>
+                                    <div className="p-3.5 text-center text-sm font-bold text-slate-800 flex-shrink-0 relative flex lg:flex-row flex-col items-center justify-center gap-1.5">
+                                        {t.name}
+                                        {t.isDefault && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">Default</span>}
+                                    </div>
+                                    {isActive && (
+                                        <div className="absolute top-2 right-2 bg-orange-500 text-white p-1.5 rounded-full shadow-sm z-20 flex items-center justify-center">
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
-                {/* Printable Content Scroll Area */}
-                <div className="flex-1 overflow-auto bg-gray-100 print:bg-white print:overflow-visible print:h-auto">
+                {/* Main Interface */}
+                <div className="flex-1 flex flex-col min-w-0 bg-white">
+                    {/* Header Actions */}
+                    <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white print:hidden shrink-0">
+                        <h3 className="text-lg font-bold text-slate-800 tracking-tight">Invoice {invoice.invoice_number || invoice.id}</h3>
+                        <div className="flex gap-2">
+                            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
 
-                    {/* The A4 Paper */}
-                    <div ref={componentRef} className="invoice-a4">
-                        {printHtml ? (
-                            <>
-                            <div className="max-w-[210mm] mx-auto text-slate-800 p-4 print:p-0" dangerouslySetInnerHTML={{ __html: printHtml }} />
-                            {invoice?.agreement_content?.length > 0 && (
-                              <div className="max-w-[210mm] mx-auto px-4 mt-6 print:mt-4">
-                                <AgreementContentDisplay blocks={invoice.agreement_content} className="print:block" />
-                              </div>
-                            )}
-                            </>
-                        ) : (
-                            <div className="max-w-[210mm] mx-auto p-6">
-                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
-                                    <p className="font-semibold">No default Invoice template set.</p>
-                                    <p className="mt-2 text-sm">Go to Print Templates to create and set a default template for Invoices. Print and PDF will use that template.</p>
+                    {/* Printable Content Scroll Area */}
+                    <div className="flex-1 overflow-auto bg-slate-200/50 print:bg-white print:overflow-visible print:h-auto shadow-inner">
+
+                        {/* The A4 Paper */}
+                        <div className="flex flex-col items-center w-full py-8 lg:py-12">
+                            <div ref={componentRef} className="invoice-a4 w-[210mm] h-[297mm] shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:max-w-none print:rounded-none bg-white">
+                                <div className="print-scale-container w-full h-full" style={{ overflow: 'visible', width: '100%', height: '100%' }}>
+                                    <div className="print-scale-content" style={{ 
+                                        transform: scaleFactor !== 1 ? `scale(${scaleFactor})` : 'none',
+                                        transformOrigin: 'top center',
+                                        width: '210mm'
+                                    }}>
+                                        {printHtml ? (
+                                            <>
+                                                <div className="w-[210mm] print:m-0 mx-auto text-slate-800 p-0" dangerouslySetInnerHTML={{ __html: printHtml }} />
+                                            </>
+                                        ) : (
+                                            <div className="w-full mx-auto p-6">
+                                                <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-800">
+                                                    <p className="font-semibold">No default Invoice template set.</p>
+                                                    <p className="mt-2 text-sm">Go to Print Templates to create and set a default template for Invoices. Print and PDF will use that template.</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        )}
+                        </div>
+                    </div>
+
+                    {/* Modal Footer (Action Buttons) */}
+                    <div className="p-5 border-t border-slate-100 bg-slate-50 flex flex-wrap gap-3 items-center justify-between shrink-0 print:hidden rounded-b-xl lg:rounded-br-xl lg:rounded-bl-none">
+                        <div className="flex flex-wrap gap-2">
+                            {onEdit && (
+                                <button onClick={onEdit} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+                                    <Edit2 size={16} /> Edit
+                                </button>
+                            )}
+                            {onDelete && (
+                                <button onClick={onDelete} className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 bg-white hover:bg-red-50 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+                                    <Trash2 size={16} /> Delete
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                onClick={() => {
+                                    if (!activeTemplate) {
+                                        toast.error('No Invoice template set. Create one in Print Templates.');
+                                        return;
+                                    }
+                                    openPrintConfig();
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                            >
+                                <Download size={16} /> Download PDF
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!activeTemplate) {
+                                        toast.error('No Invoice template set. Create one in Print Templates.');
+                                        return;
+                                    }
+                                    openPrintConfig();
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-[#f59e0b] text-white hover:bg-[#d97706] rounded-lg text-sm font-semibold transition-all shadow-sm shadow-amber-500/20"
+                            >
+                                <Printer size={16} /> Print
+                            </button>
+                            <button onClick={onClose} className="inline-flex items-center gap-2 px-4 py-2 ml-2 border border-slate-200 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-semibold transition-colors">
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -279,6 +425,9 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                 moduleLabel="Invoice"
                 getPreviewHtml={buildPreviewForConfig}
                 onPrint={onPrintWithConfig}
+                templates={templates}
+                selectedTemplate={activeTemplate}
+                onSelectTemplate={setActiveTemplate}
             />
         </div>
     );

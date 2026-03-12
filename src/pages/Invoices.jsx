@@ -9,6 +9,7 @@ import { invalidateCache } from '../utils/apiFetch';
 import { useClients } from '../hooks/useApiQueries';
 import { queryKeys } from '../query/queryKeys';
 import InvoiceView from '../components/InvoiceViewer';
+
 import InvoiceForm from '../components/InvoiceForm';
 import { TableSkeleton } from '../components/Skeleton';
 
@@ -337,6 +338,15 @@ export default function Invoices() {
           isOpen={!!viewingInvoice}
           onClose={() => setViewingInvoice(null)}
           invoice={viewingInvoice}
+          onEdit={() => {
+            setViewingInvoice(null);
+            setEditingInvoice(viewingInvoice);
+            setIsFormOpen(true);
+          }}
+          onDelete={() => {
+            handleDelete(viewingInvoice.id);
+            setViewingInvoice(null);
+          }}
         />
       )}
     </div>

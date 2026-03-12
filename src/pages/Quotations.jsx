@@ -99,6 +99,7 @@ function Quotations() {
     queryClient.invalidateQueries({ queryKey: queryKeys.quotations.all });
   };
 
+
   const subtotalForm = (form.items || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
   const discountForm = parseFloat(form.discount) || 0;
   const taxForm = parseFloat(form.tax) || 0;
@@ -111,7 +112,6 @@ function Quotations() {
       ...emptyForm,
       date: new Date().toISOString().split("T")[0],
       items: [{ item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 }],
-      agreement_content: [],
     });
     setErrors({});
     setEditId(null);
@@ -131,13 +131,6 @@ function Quotations() {
       amount: parseFloat(i.amount) || 0,
     }));
     if (items.length === 0) items.push({ item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 });
-    let agreementContent = [];
-    try {
-      const agr = q.agreement_content;
-      agreementContent = Array.isArray(agr) ? agr : (typeof agr === "string" ? JSON.parse(agr || "[]") : []);
-    } catch {
-      agreementContent = [];
-    }
     setForm({
       client_id: q.client_id || "",
       quotation_no: q.quotation_no || "",
@@ -154,7 +147,7 @@ function Quotations() {
       total: parseFloat(q.total) || 0,
       initial_deposit: q.initial_deposit != null ? q.initial_deposit : "",
       items,
-      agreement_content: agreementContent,
+      agreement_content: q.agreement?.content ? (Array.isArray(q.agreement.content) ? q.agreement.content : []) : [],
     });
     setErrors({});
     setEditId(q.id);
@@ -262,7 +255,7 @@ function Quotations() {
         tax: parseFloat(i.tax) || 0,
         amount: parseFloat(i.amount) || 0,
       })),
-      agreement_content: Array.isArray(form.agreement_content) ? form.agreement_content : [],
+      agreement_content: form.agreement_content,
     };
     try {
       if (editId) {
@@ -433,7 +426,7 @@ function Quotations() {
                       {q.expiry_date ? (typeof q.expiry_date === "string" ? q.expiry_date.split("T")[0] : q.expiry_date) : "—"}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-end gap-1 transition-opacity">
                         <button
                           onClick={() => openViewModal(q)}
                           title="View"
@@ -515,7 +508,7 @@ function Quotations() {
               {[
                 { id: "basic", label: "Basic Info", icon: User },
                 { id: "items", label: "Items / Services", icon: Layers },
-                { id: "agreement", label: "Agreement", icon: FileText },
+                { id: "agreement", label: "Agreement Content", icon: FileText },
               ].map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
@@ -756,6 +749,7 @@ function Quotations() {
                   </Suspense>
                 </div>
               )}
+
             </div>
             <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
               <p className="text-sm text-slate-500 font-bold uppercase">Total: ₹{totalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
