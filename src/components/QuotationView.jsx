@@ -30,6 +30,8 @@ const QuotationView = ({
   const [companySettings, setCompanySettings] = useState({});
   const [showPrintConfig, setShowPrintConfig] = useState(false);
   const [printConfig, setPrintConfig] = useState(null);
+  const [scaleFactor, setScaleFactor] = useState(1);
+  const [selectedPreviewId, setSelectedPreviewId] = useState('standard');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -40,7 +42,6 @@ const QuotationView = ({
   const [activeTemplate, setActiveTemplate] = useState(
     () => templates.find(t => t.isDefault) || templates[0] || null
   );
-  const [selectedPreviewId, setSelectedPreviewId] = useState('standard');
 
   useEffect(() => {
     setActiveTemplate(templates.find(t => t.isDefault) || templates[0] || null);
@@ -73,6 +74,37 @@ const QuotationView = ({
     },
     [quotation, activeTemplate, companySettings]
   );
+
+    // Auto-scaling logic to fit ENTIRE layout on one A4 page
+    useEffect(() => {
+        if (!isOpen || !printRef.current || (selectedPreviewId !== 'standard' && !printHtml)) {
+            setScaleFactor(1);
+            return;
+        }
+        
+        const calculateScale = () => {
+            const container = printRef.current;
+            const contentWrap = container.querySelector('.print-scale-content');
+            if (!contentWrap) return;
+
+            // Reset for calculation
+            contentWrap.style.transform = 'none';
+            contentWrap.style.width = '210mm';
+            
+            const contentHeight = contentWrap.scrollHeight;
+            const a4Height = 1115; 
+
+            if (contentHeight > a4Height) {
+                setScaleFactor(parseFloat((a4Height / contentHeight).toFixed(4)));
+            } else {
+                setScaleFactor(1);
+            }
+        };
+
+        const timer = setTimeout(calculateScale, 400);
+        return () => clearTimeout(timer);
+    }, [isOpen, quotation, activeTemplate, selectedPreviewId, printConfig, printHtml]);
+
 
     const handlePrintTrigger = useReactToPrint({
         contentRef: printRef,
@@ -126,35 +158,6 @@ const QuotationView = ({
         `
     });
 
-    // Auto-scaling logic to fit content nicely on one A4 page without cutting off
-    useEffect(() => {
-        if (!isOpen || !printRef.current) return;
-        const resizeTimeout = setTimeout(() => {
-            const container = printRef.current;
-            const contentWrap = container.querySelector('.print-scale-content');
-            if (contentWrap) {
-                // Reset scale and width for accurate measurement
-                contentWrap.style.transform = 'none';
-                contentWrap.style.width = '100%';
-                contentWrap.style.transformOrigin = 'top left';
-                
-                const contentHeight = contentWrap.scrollHeight;
-                const a4InnerHeight = 1125; // Standard A4 height @ 96DPI is ~1123px
-                
-                if (contentHeight > a4InnerHeight) {
-                    const scaleRatio = a4InnerHeight / contentHeight;
-                    const factor = scaleRatio - 0.01; // Safety margin
-                    
-                    // Proportional scale to fit content within the A4 height
-                    contentWrap.style.transform = `scale(${factor.toFixed(4)})`;
-                    contentWrap.style.transformOrigin = 'top center';
-                    contentWrap.style.width = '100%';
-                }
-            }
-        }, 300);
-        return () => clearTimeout(resizeTimeout);
-    }, [isOpen, quotation, selectedPreviewId, companySettings]);
-
     const handlePrint = useCallback(() => {
         if (handlePrintTrigger) {
             handlePrintTrigger();
@@ -178,14 +181,6 @@ const QuotationView = ({
     pendingPrintRef.current = true;
   };
 
-  const handleDownloadPDF = () => {
-    if (!activeTemplate) {
-      toast.error("No Quotation template available. Create one in Print Templates.");
-      return;
-    }
-    openPrintConfig();
-  };
-
   if (!isOpen) return null;
   if (!quotation) {
     return (
@@ -202,10 +197,7 @@ const QuotationView = ({
   const discount = parseFloat(quotation.discount) || 0;
   const tax = parseFloat(quotation.tax) || 0;
   const total = parseFloat(quotation.total) || 0;
-  const initialDeposit = parseFloat(quotation.initial_deposit) || 0;
-  const balanceDue = Math.max(0, total - initialDeposit);
   const dateStr = quotation.date ? (typeof quotation.date === "string" ? quotation.date.split("T")[0] : quotation.date) : "—";
-  const expiryStr = quotation.expiry_date ? (typeof quotation.expiry_date === "string" ? quotation.expiry_date.split("T")[0] : quotation.expiry_date) : "—";
 
   const pageStyles = `
     @page { size: A4; margin: 0 !important; }
@@ -251,7 +243,6 @@ const QuotationView = ({
                 selectedPreviewId === 'standard' ? "bg-orange-100/40 border-orange-100" : "bg-slate-50 border-slate-100"
               )}>
                 <div className="relative shadow-md border border-slate-300 bg-white overflow-hidden rounded-[2px] transition-transform duration-300 group-hover:scale-105" style={{ width: '100px', height: '141px' }}>
-                  {/* Abstract standard form visual */}
                   <div className="w-full h-full bg-white border border-slate-200 shadow-sm rounded flex flex-col p-3 space-y-3" style={{ transform: 'scale(0.8)', transformOrigin: 'top left', width: '125%', height: '125%' }}>
                     <div className="flex justify-between items-start">
                       <div className="w-12 h-3 lg:w-16 lg:h-4 rounded bg-slate-200"></div>
@@ -285,7 +276,6 @@ const QuotationView = ({
                 const keys = getPrintConfigKeys();
                 const html = t.template_html ? getEffectiveTemplateHtml(t, "quotations") : buildFullTemplateHtml(filterTemplateByPrintConfig(t, keys), "quotations");
                 let data = buildQuotationPrintData(quotation, companySettings);
-                // If items are too long, limit them so the preview doesn't break aspect ratio terribly
                 if (data.quotation && data.quotation.items && data.quotation.items.length > 5) {
                   data.quotation.items = data.quotation.items.slice(0, 5);
                 }
@@ -307,7 +297,6 @@ const QuotationView = ({
                     "h-32 lg:h-48 overflow-hidden relative pointer-events-none flex justify-center items-center border-b w-full rounded-t-xl transition-colors",
                     isActive ? "bg-orange-100/40 border-orange-100" : "bg-slate-50 border-slate-100"
                   )}>
-                    {/* Miniature A4 Document Holder */}
                     <div className="relative shadow-md border border-slate-300 bg-white overflow-hidden rounded-[2px] transition-transform duration-300 group-hover:scale-105" style={{ width: '100px', height: '141px' }}>
                       <div className="absolute top-0 left-0 w-[794px] bg-white transform origin-top-left" style={{ transform: 'scale(0.126)' }} dangerouslySetInnerHTML={{ __html: previewHtml }} />
                       <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.02] transition-colors z-10" />
@@ -350,7 +339,11 @@ const QuotationView = ({
             <div className="w-full py-8 lg:py-12 flex flex-col items-center">
               <div ref={printRef} className={clsx("quotation-a4 bg-white transition-all relative mx-auto print:h-auto print:min-h-[297mm] print:overflow-visible", selectedPreviewId === 'standard' ? "w-[210mm] h-[297mm] p-6 md:p-10 shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:p-0 print:rounded-none" : "w-[210mm] h-[297mm] shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:p-0 print:rounded-none")}>
                 <div className="print-scale-container" style={{ overflow: 'visible', width: '100%', height: '100%' }}>
-                  <div className="print-scale-content" style={{ transformOrigin: 'top left' }}>
+                  <div className="print-scale-content" style={{ 
+                    transform: scaleFactor !== 1 ? `scale(${scaleFactor})` : 'none',
+                    transformOrigin: 'top center',
+                    width: '210mm' 
+                  }}>
                 {selectedPreviewId === 'standard' ? (
                   <>
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6 p-0">
@@ -364,10 +357,8 @@ const QuotationView = ({
                       </div>
                     </div>
 
-                    {/* Divider */}
                     <div className="h-0.5 w-full bg-amber-400 mb-6 rounded-full" />
 
-                    {/* Addresses */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                       <div>
                         <h3 className="text-amber-500 font-bold mb-3">Bill To</h3>
@@ -389,7 +380,6 @@ const QuotationView = ({
                       </div>
                     </div>
 
-                    {/* Items Table */}
                     <div className="overflow-x-auto rounded-lg border border-slate-200 mb-6">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-[#1e293b] text-white">
@@ -423,7 +413,6 @@ const QuotationView = ({
                       </table>
                     </div>
 
-                    {/* Totals Section */}
                     <div className="flex justify-end mb-4">
                       <div className="w-full max-w-sm space-y-3 text-sm">
                         <div className="flex justify-between items-center px-4">
@@ -452,9 +441,9 @@ const QuotationView = ({
                 ) : (
                   <div className="text-slate-800 w-full min-h-[297mm]">
                     {printHtml ? (
-                      <>
-                        <div dangerouslySetInnerHTML={{ __html: printHtml }} />
-                      </>
+                      <div className="relative isolate" style={{ transform: 'translateZ(0)' }}>
+                        <div className="w-[210mm] mx-auto p-0" dangerouslySetInnerHTML={{ __html: printHtml }} />
+                      </div>
                     ) : (
                       <div className="p-12 text-center text-slate-500">
                         <p className="font-semibold text-lg">No Template Selected</p>
@@ -487,7 +476,7 @@ const QuotationView = ({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <button onClick={handleDownloadPDF} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+              <button onClick={() => openPrintConfig()} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-lg text-sm font-semibold transition-colors shadow-sm">
                 <Download size={16} /> Download PDF
               </button>
               <button

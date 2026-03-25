@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Building2, User, MapPin, FileText, Landmark, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { X, Save, Building2, User, MapPin, FileText, Landmark, Plus, Pencil, Trash2, Loader2, Edit2, ChevronDown, Check, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import clsx from 'clsx';
 
 const emptyBankForm = () => ({
     bank_name: '',
@@ -20,6 +21,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
     const [editingBankIndex, setEditingBankIndex] = useState(null);
     const [bankForm, setBankForm] = useState(emptyBankForm());
     const [bankFormError, setBankFormError] = useState('');
+    const [touched, setTouched] = useState({});
     const [formData, setFormData] = useState({
         // Basic
         client_name: '',
@@ -64,13 +66,21 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
     });
 
     useEffect(() => {
+        const sanitise = (obj) => {
+            const newObj = { ...obj };
+            Object.keys(newObj).forEach(key => {
+                if (newObj[key] === null) newObj[key] = '';
+            });
+            return newObj;
+        };
+
         if (client) {
-            setFormData({ ...client, company_type: client.company_type || 'Proprietorship' });
+            setFormData({ ...sanitise(client), company_type: client.company_type || 'Proprietorship' });
             // Initialize bank list: prefer bank_details array, else legacy single bank
             if (client.bank_details && Array.isArray(client.bank_details) && client.bank_details.length > 0) {
-                setBankList(client.bank_details);
+                setBankList(client.bank_details.map(b => sanitise(b)));
             } else if (client.bank_name && client.bank_name.trim()) {
-                setBankList([{
+                setBankList([sanitise({
                     bank_name: client.bank_name || '',
                     account_holder_name: client.account_holder_name || '',
                     account_number: client.account_number || '',
@@ -78,7 +88,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                     upi_id: client.upi_id || '',
                     mobile_number: client.mobile_number || '',
                     cheque_print_name: client.cheque_print_name || ''
-                }]);
+                })]);
             } else {
                 setBankList([]);
             }
@@ -98,6 +108,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
             setEditingBankIndex(null);
             setBankFormError('');
             setErrors({});
+            setTouched({});
             setActiveTab('basic');
         }
         // Always reset saving state when modal opens / client changes
@@ -111,14 +122,17 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
         const hasClientName = !!data.client_name?.trim();
         const hasCompanyName = !!data.company_name?.trim();
         if (!hasClientName && !hasCompanyName) {
-            newErrors.client_or_company = "Please enter Client Name or Company Name";
+            newErrors.client_or_company = "This field is required";
         }
-        // Contact fields are optional; validate email format only when provided
+        // Email format validation
         if (data.email_address?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email_address)) {
-            newErrors.email_address = "Invalid email address";
+            newErrors.email_address = "Please enter a valid email address";
         }
 
-        // Address and Tax & Compliance sections are fully optional — no validation
+        // Phone length validation (standard 10 digits as baseline)
+        if (data.mobile_number?.trim() && data.mobile_number.length < 10) {
+            newErrors.mobile_number = "Phone number must be at least 10 digits";
+        }
 
         return newErrors;
     };
@@ -132,6 +146,14 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
 
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
+            // Mark all potentially erroneous fields as touched to show errors
+            const allTouched = {};
+            Object.keys(validationErrors).forEach(key => allTouched[key] = true);
+            if (validationErrors.client_or_company) {
+                allTouched.client_name = true;
+                allTouched.company_name = true;
+            }
+            setTouched(prev => ({ ...prev, ...allTouched }));
             toast.error("Please fix the validation errors");
             return;
         }
@@ -151,36 +173,31 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
         if (readOnly) return;
         const { name, value } = e.target;
 
-        // Restrict mobile numbers and account_number to integers only
         if (['mobile_number', 'secondary_mobile_number', 'account_number'].includes(name)) {
             if (value && !/^\d*$/.test(value)) return;
         }
 
         let updatedData = { ...formData, [name]: value };
 
-        // Conditional Logic: Unregistered -> Clear GST Number
         if (name === 'gst_registration_type' && value === 'Unregistered') {
             updatedData.gst_number = '';
         }
 
         setFormData(updatedData);
 
-        // Real-time validation for the changed field
+        // Real-time validation
         const currentErrors = validate(updatedData);
-        if (currentErrors[name]) {
-            setErrors(prev => ({ ...prev, [name]: currentErrors[name] }));
-        } else {
-            setErrors(prev => {
-                const newErrs = { ...prev };
-                delete newErrs[name];
-                return newErrs;
-            });
-        }
+        setErrors(currentErrors);
 
-        // Also re-validate dependencies (including client/company name pair)
-        if (['gst_registration_type', 'company_type', 'gst_number', 'client_name', 'company_name'].includes(name)) {
-            setErrors(currentErrors);
+        // Instant success transition if it was already touched or becomes valid
+        if (value.length > (name === 'mobile_number' ? 9 : 2)) {
+            setTouched(prev => ({ ...prev, [name]: true }));
         }
+    };
+
+    const handleBlur = (e) => {
+        const { name } = e.target;
+        setTouched(prev => ({ ...prev, [name]: true }));
     };
 
     const handleBankFormChange = (e) => {
@@ -259,484 +276,483 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
         { id: 'address', label: 'Address', icon: MapPin },
         { id: 'tax', label: 'Tax & Compliance', icon: FileText },
         { id: 'bank', label: 'Bank Details', icon: Landmark },
-    ];
+    ];    // Updated Input Class Helper
+    const getInputClassName = (fieldName, value, alsoErrorKey) => {
+        const isTouched = touched[fieldName] || (alsoErrorKey && touched[alsoErrorKey]);
+        const error = errors[fieldName] || (alsoErrorKey && errors[alsoErrorKey]);
+        const hasError = isTouched && error;
+        const hasSuccess = isTouched && !error && value?.toString().trim();
 
-    // Helper to get input classes based on error state (optional: alsoErrorKey for shared validation e.g. client_or_company)
-    const getInputClassName = (fieldName, alsoErrorKey) => {
-        const hasError = errors[fieldName] || (alsoErrorKey && errors[alsoErrorKey]);
-        return `
-        input
-        ${hasError ? '!border-red-500 bg-red-50 focus:!ring-red-200 focus:!border-red-500' : ''}
-        ${readOnly ? 'bg-gray-100 text-slate-500 cursor-not-allowed' : ''}
-    `;
+        return clsx(
+            "w-full px-4 py-3 bg-white border rounded-lg text-sm transition-all duration-300 outline-none placeholder:text-slate-400 placeholder:font-normal pr-10",
+            hasError 
+                ? "border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" 
+                : hasSuccess
+                    ? "border-emerald-400 bg-emerald-50/20 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    : "border-slate-200 text-slate-700 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 hover:border-slate-300",
+            readOnly ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-100" : ""
+        );
     };
 
-    // Helper to render error message
-    const ErrorMsg = ({ field }) => errors[field] ? (
-        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1.5 font-medium animate-fadeIn">
-            <span className="w-1 h-1 rounded-full bg-red-500"></span> {errors[field]}
-        </p>
-    ) : null;
+    const ValidationIcon = ({ fieldName, value, alsoErrorKey }) => {
+        const isTouched = touched[fieldName] || (alsoErrorKey && touched[alsoErrorKey]);
+        const error = errors[fieldName] || (alsoErrorKey && errors[alsoErrorKey]);
+        
+        if (!isTouched || readOnly) return null;
+        if (error) return <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-rose-500 animate-in fade-in zoom-in duration-200" />;
+        if (value?.toString().trim()) return <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500 animate-in fade-in zoom-in duration-200" />;
+        return null;
+    };
 
-    // Helper for Label with Mandatory Mark
+    const ErrorMsg = ({ field }) => {
+        const isTouched = touched[field] || (field === 'client_or_company' && (touched.client_name || touched.company_name));
+        return isTouched && errors[field] ? (
+            <p className="text-[11px] text-rose-500 mt-1.5 flex items-center gap-2 font-bold uppercase tracking-wider animate-in slide-in-from-top-1">
+                <span className="h-1 w-1 rounded-full bg-rose-500"></span> {errors[field]}
+            </p>
+        ) : null;
+    };
+
+    // Premium Label Component
     const Label = ({ children, required }) => (
-        <label className="block text-sm font-semibold text-slate-700 mb-2">
-            {children} {required && <span className="text-red-500 ml-1">*</span>}
+        <label className="block text-[13px] font-medium text-slate-700 mb-1.5 ml-0.5">
+            {children} {required && <span className="text-rose-500 ml-1 font-bold text-sm">*</span>}
         </label>
     );
 
+    // Section Header for grouping
+    const SectionHeader = ({ title, subtitle }) => (
+        <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4 mb-6 mt-2">
+            <h4 className="text-[18px] font-semibold text-slate-900">{title}</h4>
+            {subtitle && <p className="text-[13px] font-medium text-slate-500">{subtitle}</p>}
+        </div>
+    );
+
+    const renderTabContent = () => {
+        switch (activeTab) {
+            case 'basic':
+                return (
+                    <div className="space-y-8">
+                        <SectionHeader title="Basic Information" subtitle="Legal identity and core configuration" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                            <div className="col-span-2 md:col-span-1">
+                                <Label required>Client Name</Label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        name="client_name"
+                                        value={formData.client_name}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                        className={getInputClassName('client_name', formData.client_name, 'client_or_company')}
+                                        placeholder="Enter client name"
+                                    />
+                                    <ValidationIcon fieldName="client_name" value={formData.client_name} alsoErrorKey="client_or_company" />
+                                </div>
+                                <ErrorMsg field="client_or_company" />
+                            </div>
+                            <div className="col-span-2 md:col-span-1">
+                                <Label required>Company Name</Label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        name="company_name"
+                                        value={formData.company_name}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                        className={getInputClassName('company_name', formData.company_name, 'client_or_company')}
+                                        placeholder="Enter company name"
+                                    />
+                                    <ValidationIcon fieldName="company_name" value={formData.company_name} alsoErrorKey="client_or_company" />
+                                </div>
+                            </div>
+                            <div className="col-span-2 md:col-span-1">
+                                <Label>Client Type</Label>
+                                <div className="relative">
+                                    <select
+                                        name="company_type"
+                                        value={formData.company_type}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                        className={clsx(getInputClassName('company_type', formData.company_type), "appearance-none")}
+                                    >
+                                        <option value="Proprietorship">Proprietorship</option>
+                                        <option value="Partnership">Partnership</option>
+                                        <option value="LLP">LLP</option>
+                                        <option value="Private Limited">Private Limited</option>
+                                        <option value="Public Limited">Public Limited</option>
+                                        <option value="Trust">Trust/Society</option>
+                                        <option value="HUF">HUF</option>
+                                        <option value="Global">Global</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+                            <div className="col-span-2 md:col-span-1">
+                                <Label>Default Currency</Label>
+                                <div className="relative">
+                                    <select name="default_currency" value={formData.default_currency} onBlur={handleBlur} onChange={handleChange} className={clsx(getInputClassName('default_currency', formData.default_currency), "appearance-none")}>
+                                        <option value="INR">INR (₹) - Indian Rupee</option>
+                                        <option value="USD">USD ($) - US Dollar</option>
+                                        <option value="EUR">EUR (€) - Euro</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'contact':
+                return (
+                    <div className="space-y-8">
+                        <SectionHeader title="Contact Details" subtitle="Communication channels and digital reach" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                            <div>
+                                <Label>Contact Person</Label>
+                                <div className="relative">
+                                    <input type="text" name="contact_person_name" value={formData.contact_person_name} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('contact_person_name', formData.contact_person_name)} placeholder="Enter contact person name" />
+                                    <ValidationIcon fieldName="contact_person_name" value={formData.contact_person_name} />
+                                </div>
+                            </div>
+                            <div>
+                                <Label>Email Address</Label>
+                                <div className="relative">
+                                    <input type="email" name="email_address" value={formData.email_address} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('email_address', formData.email_address)} placeholder="Enter email address" />
+                                    <ValidationIcon fieldName="email_address" value={formData.email_address} />
+                                </div>
+                                <ErrorMsg field="email_address" />
+                            </div>
+                            <div>
+                                <Label>Phone Number</Label>
+                                <div className="relative">
+                                    <input type="tel" name="mobile_number" value={formData.mobile_number} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('mobile_number', formData.mobile_number)} placeholder="Enter phone number" />
+                                    <ValidationIcon fieldName="mobile_number" value={formData.mobile_number} />
+                                </div>
+                                <ErrorMsg field="mobile_number" />
+                            </div>
+                            <div>
+                                <Label>Secondary Phone</Label>
+                                <div className="relative">
+                                    <input type="tel" name="secondary_mobile_number" value={formData.secondary_mobile_number} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('secondary_mobile_number', formData.secondary_mobile_number)} placeholder="Alternative phone number" />
+                                    <ValidationIcon fieldName="secondary_mobile_number" value={formData.secondary_mobile_number} />
+                                </div>
+                            </div>
+                            <div className="col-span-2">
+                                <Label>Corporate Website</Label>
+                                <div className="relative">
+                                    <input type="url" name="website_url" value={formData.website_url} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('website_url', formData.website_url)} placeholder="https://www.example.com" />
+                                    <ValidationIcon fieldName="website_url" value={formData.website_url} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'address':
+                return (
+                    <div className="space-y-8">
+                        <SectionHeader title="Location Details" subtitle="Physical headquarters and operational centers" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                            <div className="col-span-2">
+                                <Label>Full Address</Label>
+                                <div className="relative">
+                                    <input type="text" name="address_line_1" value={formData.address_line_1} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('address_line_1', formData.address_line_1)} placeholder="Street address, building number, etc." />
+                                    <ValidationIcon fieldName="address_line_1" value={formData.address_line_1} />
+                                </div>
+                            </div>
+                            <div className="col-span-2">
+                                <div className="relative">
+                                    <input type="text" name="address_line_2" value={formData.address_line_2} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('address_line_2', formData.address_line_2)} placeholder="Additional address details (optional)" />
+                                    <ValidationIcon fieldName="address_line_2" value={formData.address_line_2} />
+                                </div>
+                            </div>
+                            <div>
+                                <Label>City</Label>
+                                <div className="relative">
+                                    <input type="text" name="city" value={formData.city} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('city', formData.city)} placeholder="City name" />
+                                    <ValidationIcon fieldName="city" value={formData.city} />
+                                </div>
+                            </div>
+                            <div>
+                                <Label>State</Label>
+                                <div className="relative">
+                                    <input type="text" name="state" value={formData.state} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('state', formData.state)} placeholder="State / Province" />
+                                    <ValidationIcon fieldName="state" value={formData.state} />
+                                </div>
+                            </div>
+                            <div>
+                                <Label>Country</Label>
+                                <div className="relative">
+                                    <input type="text" name="country" value={formData.country} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('country', formData.country)} placeholder="Country name" />
+                                    <ValidationIcon fieldName="country" value={formData.country} />
+                                </div>
+                            </div>
+                            <div>
+                                <Label>Postal Pincode</Label>
+                                <div className="relative">
+                                    <input type="text" name="pincode" value={formData.pincode} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('pincode', formData.pincode)} placeholder="Pincode / ZIP" />
+                                    <ValidationIcon fieldName="pincode" value={formData.pincode} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'tax':
+                return (
+                    <div className="space-y-8">
+                        <SectionHeader title="Tax Information" subtitle="Regulatory compliance and tax identifiers" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                            <div>
+                                <Label>Tax Status</Label>
+                                <div className="relative">
+                                    <select name="gst_registration_type" value={formData.gst_registration_type} onChange={handleChange} onBlur={handleBlur} className={clsx(getInputClassName('gst_registration_type', formData.gst_registration_type), "appearance-none")}>
+                                        <option value="Regular">Regular Taxpayer</option>
+                                        <option value="Composition">Composition Scheme</option>
+                                        <option value="Unregistered">Unregistered Entity</option>
+                                        <option value="Overseas">Overseas Professional</option>
+                                        <option value="Consumer">Direct Consumer</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+                            <div>
+                                <Label>GST Number (GSTIN)</Label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        name="gst_number"
+                                        value={formData.gst_number}
+                                        onChange={handleChange}
+                                        onBlur={handleBlur}
+                                        className={getInputClassName('gst_number', formData.gst_number)}
+                                        disabled={formData.gst_registration_type === 'Unregistered'}
+                                        placeholder={formData.gst_registration_type === 'Unregistered' ? 'NOT APPLICABLE' : 'Enter GSTIN'}
+                                    />
+                                    <ValidationIcon fieldName="gst_number" value={formData.gst_number} />
+                                </div>
+                            </div>
+                            <div>
+                                <Label>PAN Number</Label>
+                                <div className="relative">
+                                    <input type="text" name="pan_number" value={formData.pan_number} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('pan_number', formData.pan_number)} placeholder="Enter PAN number" />
+                                    <ValidationIcon fieldName="pan_number" value={formData.pan_number} />
+                                </div>
+                            </div>
+                            <div>
+                                <Label>Corporate ID (CIN)</Label>
+                                <div className="relative">
+                                    <input type="text" name="cin_number" value={formData.cin_number} onChange={handleChange} onBlur={handleBlur} className={getInputClassName('cin_number', formData.cin_number)} placeholder="For Private/Public entities" />
+                                    <ValidationIcon fieldName="cin_number" value={formData.cin_number} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            case 'bank':
+                return (
+                    <div className="space-y-10">
+                        <SectionHeader title="Bank Details" subtitle="Financial nodes for transactions and payments" />
+                        
+                        {!readOnly && (
+                            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-[0_4px_20px_rgba(0,0,0,0.03)] relative overflow-hidden group hover:border-violet-200 transition-colors duration-300">
+                                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-600 to-fuchsia-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <h5 className="text-[16px] font-semibold text-slate-900 mb-6 flex items-center gap-3">
+                                    <div className="h-8 w-8 bg-violet-50 text-violet-600 rounded-lg flex items-center justify-center font-bold shadow-sm">
+                                        <Plus className="h-4 w-4" />
+                                    </div>
+                                    Register New Account
+                                </h5>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                                    <div className="sm:col-span-2">
+                                        <Label required>Bank Name</Label>
+                                        <input
+                                            type="text"
+                                            value={bankForm.bank_name}
+                                            onChange={handleBankFormChange}
+                                            name="bank_name"
+                                            className={clsx(
+                                                "w-full px-5 py-4 bg-white border rounded-lg text-sm transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none",
+                                                bankFormError ? "border-rose-300 ring-2 ring-rose-500/20" : "border-slate-200"
+                                            )}
+                                            placeholder="Enter bank name"
+                                        />
+                                        {bankFormError && <p className="text-[10px] text-rose-500 mt-2 font-bold uppercase tracking-wider flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-rose-500"></span> {bankFormError}</p>}
+                                    </div>
+                                    <div>
+                                        <Label>Account Holder Title</Label>
+                                        <input type="text" name="account_holder_name" value={bankForm.account_holder_name} onChange={handleBankFormChange} className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500 transition-all font-medium" placeholder="E.g. Acme Corp" />
+                                    </div>
+                                    <div>
+                                        <Label>Account Identifier</Label>
+                                        <input type="text" name="account_number" value={bankForm.account_number} onChange={handleBankFormChange} className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500 transition-all font-medium" placeholder="Digits only" />
+                                    </div>
+                                    <div>
+                                        <Label>Swift / IFSC Code</Label>
+                                        <input type="text" name="ifsc_code" value={bankForm.ifsc_code} onChange={handleBankFormChange} className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500 transition-all font-medium" placeholder="RTGS/NEFT Code" />
+                                    </div>
+                                    <div>
+                                        <Label>UPI Alias</Label>
+                                        <input type="text" name="upi_id" value={bankForm.upi_id} onChange={handleBankFormChange} className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500 transition-all font-medium" placeholder="payment@bank" />
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-4 mt-8 pt-6 border-t border-slate-100">
+                                    <button
+                                        type="button"
+                                        onClick={handleAddOrUpdateBank}
+                                        className="px-6 py-2.5 bg-violet-50 text-violet-700 hover:bg-violet-100 rounded-xl text-[14px] font-medium shadow-sm active:scale-[0.98] flex items-center gap-2 transition-all duration-[250ms] border border-violet-100"
+                                    >
+                                        {editingBankIndex !== null ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                        {editingBankIndex !== null ? 'Sync Changes' : 'Commit Bank'}
+                                    </button>
+                                    {editingBankIndex !== null && (
+                                        <button type="button" onClick={handleCancelEditBank} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:bg-slate-50 transition-all duration-[250ms] active:scale-[0.98] shadow-sm">
+                                            Abort
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {bankList.length > 0 && (
+                            <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm mt-8">
+                                <div className="px-8 py-5 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
+                                    <h5 className="text-[14px] font-semibold text-slate-700">Validated Portfolios</h5>
+                                    <span className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[12px] font-medium text-slate-500 shadow-sm">{bankList.length} Active</span>
+                                </div>
+                                <div className="divide-y divide-slate-100">
+                                    {bankList.map((row, index) => (
+                                        <div key={index} className="px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-all group">
+                                            <div className="flex items-center gap-5">
+                                                <div className="h-12 w-12 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm border border-violet-100/50">
+                                                    {row.bank_name.charAt(0)}
+                                                </div>
+                                                <div className="flex flex-col space-y-1">
+                                                    <span className="text-[15px] font-semibold text-slate-800">{row.bank_name}</span>
+                                                    <span className="text-[13px] font-medium text-slate-500">
+                                                        AC: <span className="text-slate-700">{row.account_number || 'HIDDEN'}</span> • IFSC: <span className="text-slate-700">{row.ifsc_code || 'NA'}</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {!readOnly && (
+                                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button type="button" onClick={() => handleEditBank(index)} className="h-9 w-9 flex items-center justify-center text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all" title="Edit Bank">
+                                                        <Pencil className="h-4 w-4" />
+                                                    </button>
+                                                    <button type="button" onClick={() => handleDeleteBank(index)} className="h-9 w-9 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="Delete Bank">
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
+
     return (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-hidden">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-100 animate-slide-up">
-                {/* Header */}
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
-                    <div>
-                        <h3 className="text-xl font-bold text-slate-900 tracking-tight">
-                            {readOnly ? 'Company Details' : (client ? 'Edit Company' : 'New Client Company')}
-                        </h3>
-                        <p className="text-sm text-slate-500 mt-1">
-                            {readOnly ? 'View client and tax information' : 'Fill in the details below to manage client.'}
-                        </p>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
+            <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-white/40 animate-in zoom-in-[0.98] duration-[250ms] ease-out">
+                
+                {/* Fixed Header */}
+                <div className="px-10 py-6 border-b border-slate-100 flex justify-between items-center bg-white z-20">
+                    <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] group-hover:scale-105 transition-transform duration-[250ms]">
+                            {readOnly ? <FileText className="h-5 w-5" /> : (client ? <Edit2 className="h-5 w-5" /> : <Plus className="h-5 w-5 stroke-[2.5]" />)}
+                        </div>
+                        <div>
+                            <h3 className="text-[22px] font-bold text-slate-900 tracking-tight">
+                                {readOnly ? 'Company Overview' : (client ? 'Edit Client Profile' : 'Add Client Profile')}
+                            </h3>
+                            <p className="text-[13px] font-medium text-slate-500 mt-1">
+                                {readOnly ? 'Strategic Account Intelligence' : 'Account Onboarding & Configuration'}
+                            </p>
+                        </div>
                     </div>
 
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+                    <button onClick={onClose} className="h-10 w-10 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all flex items-center justify-center active:scale-95 shadow-sm border border-slate-100">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
-                {/* Body */}
-                <div className="flex flex-1 overflow-hidden">
+                {/* Body with Sidebar */}
+                <div className="flex flex-1 overflow-hidden relative">
                     {/* Sidebar Tabs */}
-                    <div className="w-64 bg-slate-50 border-r border-gray-100 overflow-y-auto hidden md:block py-6">
-                        <nav className="px-4 space-y-1">
-                            {tabs.map(tab => {
-                                // Check if tab has errors
-                                const hasTabErrors = (
-                                    (tab.id === 'basic' && (errors.client_or_company || errors.company_name || errors.company_type)) ||
-                                    (tab.id === 'contact' && errors.email_address)
-                                );
-
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setActiveTab(tab.id)}
-                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === tab.id
-                                            ? 'bg-white text-brand-700 shadow-sm ring-1 ring-gray-200/50'
-                                            : 'text-slate-500 hover:bg-white/50 hover:text-slate-900'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <tab.icon className={`h-[18px] w-[18px] ${hasTabErrors ? 'text-red-500' : (activeTab === tab.id ? 'text-brand-600' : 'text-slate-400')}`} />
-                                            {tab.label}
-                                        </div>
-                                        {hasTabErrors && <span className="h-1.5 w-1.5 rounded-full bg-red-500 shadow-sm"></span>}
-                                    </button>
-                                );
-                            })}
-                        </nav>
+                    <div className="w-72 bg-slate-50/50 border-r border-slate-100 overflow-y-auto hidden md:block py-8">
+                        <div className="relative flex flex-col px-4 gap-2">
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={clsx(
+                                        "relative flex items-center gap-4 px-5 py-3 rounded-xl text-[14px] font-medium transition-all duration-[250ms] ease-out group overflow-hidden focus:outline-none",
+                                        activeTab === tab.id
+                                            ? "text-violet-800 bg-violet-100/50"
+                                            : "text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm"
+                                    )}
+                                >
+                                    {/* Sliding Indicator visually represented by a subtle left border/glow effect inside active item */}
+                                    {activeTab === tab.id && (
+                                        <div className="absolute left-0 top-[10%] bottom-[10%] w-1.5 bg-violet-600 rounded-r-full shadow-[0_0_12px_rgba(124,58,237,0.4)] animate-in slide-in-from-left-2 duration-[250ms]"></div>
+                                    )}
+                                    <tab.icon className={clsx("h-[18px] w-[18px] transition-colors duration-[250ms] relative z-10", activeTab === tab.id ? "text-violet-600" : "text-slate-400 group-hover:text-violet-500")} />
+                                    <span className="relative z-10">{tab.label}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Content Area */}
-                    <div className="flex-1 overflow-y-auto bg-white p-6 md:p-8">
-                        {/* Mobile Tab Select */}
-                        <div className="md:hidden mb-6">
-                            <select
-                                value={activeTab}
-                                onChange={(e) => setActiveTab(e.target.value)}
-                                className="input"
-                            >
-                                {tabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
-                            </select>
-                        </div>
-
-                        <form id="client-form" onSubmit={handleSubmit} className="space-y-8 max-w-3xl mx-auto">
+                    <div className="flex-1 overflow-y-auto bg-white p-10 relative">
+                        <form id="client-form" onSubmit={handleSubmit} className="max-w-3xl mx-auto pb-10 min-h-[550px]">
                             <fieldset disabled={readOnly} className="contents">
-
-                                {activeTab === 'basic' && (
-                                    <div className="space-y-6 animate-fadeIn">
-                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4 mb-2">
-                                            <h4 className="text-lg font-bold text-slate-800">Company Information</h4>
-                                            <p className="text-sm text-slate-500">Legal entity details and branding.</p>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                            <div className="col-span-2">
-                                                <Label>Client Name</Label>
-                                                <input
-                                                    type="text"
-                                                    name="client_name"
-                                                    value={formData.client_name}
-                                                    onChange={handleChange}
-                                                    className={getInputClassName('client_name', 'client_or_company')}
-                                                    placeholder="e.g. John Doe"
-                                                />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <Label>Company Name</Label>
-                                                <input
-                                                    type="text"
-                                                    name="company_name"
-                                                    value={formData.company_name}
-                                                    onChange={handleChange}
-                                                    className={getInputClassName('company_name', 'client_or_company')}
-                                                    placeholder="e.g. Acme Corp"
-                                                />
-                                                <p className="text-xs text-slate-500 mt-2 flex items-center gap-1.5">
-                                                    <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                                    For individual clients use Client Name, for business clients use Company Name.
-                                                </p>
-                                                <ErrorMsg field="client_or_company" />
-                                            </div>
-                                            <div>
-                                                <Label>Company Type</Label>
-                                                <select
-                                                    name="company_type"
-                                                    value={formData.company_type}
-                                                    onChange={handleChange}
-                                                    className={getInputClassName('company_type')}
-                                                >
-                                                    <option value="Proprietorship">Proprietorship</option>
-                                                    <option value="Partnership">Partnership</option>
-                                                    <option value="LLP">LLP</option>
-                                                    <option value="Private Limited">Private Limited</option>
-                                                    <option value="Public Limited">Public Limited</option>
-                                                    <option value="Trust">Trust/Society</option>
-                                                    <option value="HUF">HUF</option>
-                                                    <option value="Global">Global</option>
-                                                    <option value="Other">Other</option>
-                                                </select>
-                                                <ErrorMsg field="company_type" />
-                                            </div>
-                                            <div>
-                                                <Label>Default Currency</Label>
-                                                <select name="default_currency" value={formData.default_currency} onChange={handleChange} className={getInputClassName('default_currency')}>
-                                                    <option value="INR">INR (₹)</option>
-                                                    <option value="USD">USD ($)</option>
-                                                    <option value="EUR">EUR (€)</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <Label>Financial Year</Label>
-                                                <input type="text" name="financial_year" value={formData.financial_year} onChange={handleChange} className={getInputClassName('financial_year')} placeholder="e.g. 2024-2025" />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <Label>Company Logo URL</Label>
-                                                <input type="text" name="company_logo" value={formData.company_logo} onChange={handleChange} className={getInputClassName('company_logo')} placeholder="https://example.com/logo.png" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'contact' && (
-                                    <div className="space-y-6 animate-fadeIn">
-                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4 mb-2">
-                                            <h4 className="text-lg font-bold text-slate-800">Contact Details</h4>
-                                            <p className="text-sm text-slate-500">All fields are optional. Add contact information when available.</p>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                            <div>
-                                                <Label>Contact Person Name</Label>
-                                                <input type="text" name="contact_person_name" value={formData.contact_person_name} onChange={handleChange} className={getInputClassName('contact_person_name')} placeholder="Optional" />
-                                                <ErrorMsg field="contact_person_name" />
-                                            </div>
-                                            <div>
-                                                <Label>Primary Mobile Number</Label>
-                                                <input type="tel" name="mobile_number" value={formData.mobile_number} onChange={handleChange} className={getInputClassName('mobile_number')} placeholder="Optional" />
-                                                <ErrorMsg field="mobile_number" />
-                                            </div>
-                                            <div>
-                                                <Label>Secondary Mobile Number</Label>
-                                                <input type="tel" name="secondary_mobile_number" value={formData.secondary_mobile_number} onChange={handleChange} className={getInputClassName('secondary_mobile_number')} placeholder="Optional" />
-                                            </div>
-                                            <div>
-                                                <Label>Email Address</Label>
-                                                <input type="email" name="email_address" value={formData.email_address} onChange={handleChange} className={getInputClassName('email_address')} placeholder="Optional" />
-                                                <ErrorMsg field="email_address" />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <Label>Website URL</Label>
-                                                <input type="url" name="website_url" value={formData.website_url} onChange={handleChange} className={getInputClassName('website_url')} placeholder="https://" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'address' && (
-                                    <div className="space-y-6 animate-fadeIn">
-                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4 mb-2">
-                                            <h4 className="text-lg font-bold text-slate-800">Address Details</h4>
-                                            <p className="text-sm text-slate-500">Billing and shipping locations.</p>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                            <div className="col-span-2">
-                                                <Label>Address Line 1</Label>
-                                                <input type="text" name="address_line_1" value={formData.address_line_1} onChange={handleChange} className={getInputClassName('address_line_1')} />
-                                            </div>
-                                            <div className="col-span-2">
-                                                <Label>Address Line 2</Label>
-                                                <input type="text" name="address_line_2" value={formData.address_line_2} onChange={handleChange} className={getInputClassName('address_line_2')} />
-                                            </div>
-                                            <div>
-                                                <Label>City</Label>
-                                                <input type="text" name="city" value={formData.city} onChange={handleChange} className={getInputClassName('city')} />
-                                            </div>
-                                            <div>
-                                                <Label>State</Label>
-                                                <input type="text" name="state" value={formData.state} onChange={handleChange} className={getInputClassName('state')} />
-                                            </div>
-                                            <div>
-                                                <Label>Country</Label>
-                                                <input type="text" name="country" value={formData.country} onChange={handleChange} className={getInputClassName('country')} />
-                                            </div>
-                                            <div>
-                                                <Label>Pincode</Label>
-                                                <input type="text" name="pincode" value={formData.pincode} onChange={handleChange} className={getInputClassName('pincode')} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'tax' && (
-                                    <div className="space-y-6 animate-fadeIn">
-                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4 mb-2">
-                                            <h4 className="text-lg font-bold text-slate-800">Tax & Compliance</h4>
-                                            <p className="text-sm text-slate-500">GST, PAN, and other regulatory details.</p>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                            <div>
-                                                <Label>GST Registration Type</Label>
-                                                <select name="gst_registration_type" value={formData.gst_registration_type} onChange={handleChange} className={getInputClassName('gst_registration_type')}>
-                                                    <option value="Regular">Regular</option>
-                                                    <option value="Composition">Composition</option>
-                                                    <option value="Unregistered">Unregistered</option>
-                                                    <option value="Overseas">Overseas</option>
-                                                    <option value="Consumer">Consumer</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <Label>GST State Code</Label>
-                                                <input type="text" name="gst_state_code" value={formData.gst_state_code} onChange={handleChange} className={getInputClassName('gst_state_code')} />
-                                            </div>
-                                            <div>
-                                                <Label>GST Number</Label>
-                                                <input
-                                                    type="text"
-                                                    name="gst_number"
-                                                    value={formData.gst_number}
-                                                    onChange={handleChange}
-                                                    className={getInputClassName('gst_number')}
-                                                    disabled={formData.gst_registration_type === 'Unregistered'}
-                                                    placeholder={formData.gst_registration_type === 'Unregistered' ? 'Not Applicable' : ''}
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label>PAN Number</Label>
-                                                <input type="text" name="pan_number" value={formData.pan_number} onChange={handleChange} className={getInputClassName('pan_number')} />
-                                            </div>
-                                            <div>
-                                                <Label>CIN Number</Label>
-                                                <input
-                                                    type="text"
-                                                    name="cin_number"
-                                                    value={formData.cin_number}
-                                                    onChange={handleChange}
-                                                    className={getInputClassName('cin_number')}
-                                                    placeholder="For Pvt Ltd"
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label>MSME Number</Label>
-                                                <input type="text" name="msme_number" value={formData.msme_number} onChange={handleChange} className={getInputClassName('msme_number')} />
-                                            </div>
-                                            <div>
-                                                <Label>TAN Number</Label>
-                                                <input type="text" name="tan_number" value={formData.tan_number} onChange={handleChange} className={getInputClassName('tan_number')} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {activeTab === 'bank' && (
-                                    <div className="space-y-8 animate-fadeIn max-w-3xl">
-                                        <div className="flex flex-col gap-1 border-b border-gray-100 pb-4">
-                                            <h4 className="text-lg font-bold text-slate-800">Bank Details</h4>
-                                            <p className="text-sm text-slate-500">Add one or more bank accounts for invoicing and payments. Changes are saved when you save the client.</p>
-                                        </div>
-
-                                        {/* Add Bank Form - Top Section */}
-                                        {!readOnly && (
-                                            <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-6 shadow-sm">
-                                                <h5 className="text-sm font-bold text-slate-700 uppercase tracking-wide mb-4">Add Bank</h5>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div className="sm:col-span-2">
-                                                        <Label required>Bank Name</Label>
-                                                        <input
-                                                            type="text"
-                                                            value={bankForm.bank_name}
-                                                            onChange={handleBankFormChange}
-                                                            name="bank_name"
-                                                            className={`input w-full ${bankFormError ? '!border-red-500 bg-red-50 focus:!ring-red-200' : ''} ${readOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                            placeholder="e.g. State Bank of India"
-                                                        />
-                                                        {bankFormError && <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1.5 font-medium"><span className="w-1 h-1 rounded-full bg-red-500"></span> {bankFormError}</p>}
-                                                    </div>
-                                                    <div>
-                                                        <Label>Account Holder Name</Label>
-                                                        <input type="text" name="account_holder_name" value={bankForm.account_holder_name} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
-                                                    </div>
-                                                    <div>
-                                                        <Label>Account Number</Label>
-                                                        <input type="text" name="account_number" value={bankForm.account_number} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
-                                                    </div>
-                                                    <div>
-                                                        <Label>IFSC Code</Label>
-                                                        <input type="text" name="ifsc_code" value={bankForm.ifsc_code} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
-                                                    </div>
-                                                    <div>
-                                                        <Label>UPI ID</Label>
-                                                        <input type="text" name="upi_id" value={bankForm.upi_id} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
-                                                    </div>
-                                                    <div>
-                                                        <Label>Mobile Number</Label>
-                                                        <input type="text" name="mobile_number" value={bankForm.mobile_number} onChange={handleBankFormChange} className="input w-full" placeholder="Mobile Number" />
-                                                    </div>
-                                                    <div>
-                                                        <Label>Cheque Print Name</Label>
-                                                        <input type="text" name="cheque_print_name" value={bankForm.cheque_print_name} onChange={handleBankFormChange} className="input w-full" placeholder="Optional" />
-                                                    </div>
-                                                </div>
-                                                <div className="flex flex-wrap items-center gap-3 mt-5 pt-4 border-t border-slate-200">
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleAddOrUpdateBank}
-                                                        className="btn-primary flex items-center gap-2 h-10 px-4"
-                                                    >
-                                                        {editingBankIndex !== null ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                                        {editingBankIndex !== null ? 'Update Bank' : '+ Add Bank'}
-                                                    </button>
-                                                    {editingBankIndex !== null && (
-                                                        <button type="button" onClick={handleCancelEditBank} className="btn-secondary h-10 px-4">
-                                                            Cancel
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Bank List - View: cards with all fields; Edit: table */}
-                                        <div className="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                                            <h5 className="text-sm font-bold text-slate-700 uppercase tracking-wide px-5 py-4 bg-slate-50 border-b border-slate-200">Bank List</h5>
-                                            {bankList.length === 0 ? (
-                                                <div className="px-5 py-10 text-center text-slate-500">
-                                                    <Landmark className="h-10 w-10 mx-auto mb-2 text-slate-300" />
-                                                    <p className="font-medium">No banks added</p>
-                                                    {!readOnly && <p className="text-sm mt-1">Use the form above to add bank details.</p>}
-                                                </div>
-                                            ) : readOnly ? (
-                                                <div className="p-5 space-y-4">
-                                                    {bankList.map((row, index) => (
-                                                        <div key={index} className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-                                                                <div>
-                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Bank Name</p>
-                                                                    <p className="font-medium text-slate-800">{row.bank_name || '—'}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Account Holder Name</p>
-                                                                    <p className="font-medium text-slate-800">{row.account_holder_name || '—'}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Account Number</p>
-                                                                    <p className="font-medium text-slate-800">{row.account_number || '—'}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">IFSC Code</p>
-                                                                    <p className="font-medium text-slate-800">{row.ifsc_code || '—'}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Mobile Number</p>
-                                                                    <p className="font-medium text-slate-800">{row.mobile_number || '—'}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">UPI ID</p>
-                                                                    <p className="font-medium text-slate-800">{row.upi_id || '—'}</p>
-                                                                </div>
-                                                                <div className="sm:col-span-2">
-                                                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Cheque Print Name</p>
-                                                                    <p className="font-medium text-slate-800">{row.cheque_print_name || '—'}</p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <div className="overflow-x-auto">
-                                                    <table className="w-full text-left">
-                                                        <thead>
-                                                            <tr className="bg-slate-100/80 text-slate-600 text-xs font-semibold uppercase tracking-wider">
-                                                                <th className="px-5 py-3">Bank Name</th>
-                                                                <th className="px-5 py-3">Account Number</th>
-                                                                <th className="px-5 py-3">IFSC Code</th>
-                                                                <th className="px-5 py-3 text-right w-28">Actions</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-slate-100">
-                                                            {bankList.map((row, index) => (
-                                                                <tr key={index} className="hover:bg-slate-50/50 transition-colors">
-                                                                    <td className="px-5 py-3 font-medium text-slate-800">{row.bank_name || '—'}</td>
-                                                                    <td className="px-5 py-3 text-slate-600">{row.account_number || '—'}</td>
-                                                                    <td className="px-5 py-3 text-slate-600">{row.ifsc_code || '—'}</td>
-                                                                    <td className="px-5 py-3 text-right">
-                                                                        <div className="flex items-center justify-end gap-1">
-                                                                            <button type="button" onClick={() => handleEditBank(index)} className="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="Edit">
-                                                                                <Pencil className="h-4 w-4" />
-                                                                            </button>
-                                                                            <button type="button" onClick={() => handleDeleteBank(index)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                                                                                <Trash2 className="h-4 w-4" />
-                                                                            </button>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
+                                <div key={activeTab} className="animate-in fade-in slide-in-from-right-4 duration-500 ease-out">
+                                    {renderTabContent()}
+                                </div>
                             </fieldset>
                         </form>
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="p-6 border-t border-gray-100 flex justify-between gap-3 bg-white flex-shrink-0">
-                    <div className="text-xs text-gray-500 italic mt-2">
-                        {!readOnly && <span className="text-red-500">* Required fields</span>}
-                    </div>
-                    <div className="flex gap-4">
-                        <button onClick={onClose} className="btn-secondary">
-                            {readOnly ? 'Close' : 'Cancel'}
+                {/* Fixed Footer */}
+                <div className="px-10 py-5 border-t border-slate-100 flex justify-end items-center bg-slate-50/50 z-20">
+                    <div className="flex items-center gap-4">
+                        <button 
+                            type="button"
+                            onClick={onClose} 
+                            className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 transition-all duration-[250ms] shadow-sm active:scale-[0.98]"
+                        >
+                            {readOnly ? 'Dismiss' : 'Reset & Exit'}
                         </button>
                         {!readOnly && (
                             <button
                                 form="client-form"
                                 type="submit"
                                 disabled={Object.keys(errors).length > 0 || isSaving}
-                                className={`btn-primary flex items-center gap-2
-                                    ${Object.keys(errors).length > 0 || isSaving ? 'opacity-50 cursor-not-allowed shadow-none' : ''}`}
-                            >
-                                {isSaving ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="h-4 w-4" />
-                                        Save Client
-                                    </>
+                                className={clsx(
+                                    "px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-xl text-[14px] font-medium shadow-[0_8px_20px_rgba(124,58,237,0.25)] hover:shadow-[0_12px_24px_rgba(124,58,237,0.35)] transition-all duration-[250ms] hover:-translate-y-[2px] active:scale-[0.98] group flex items-center justify-center min-w-[160px]",
+                                    (Object.keys(errors).length > 0 || isSaving) && "opacity-60 grayscale cursor-not-allowed shadow-none hover:translate-y-0 active:scale-100"
                                 )}
+                            >
+                                <div className="flex items-center gap-2">
+                                    {isSaving ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="h-4 w-4 stroke-[2.5]" />
+                                            Commit Account
+                                        </>
+                                    )}
+                                </div>
                             </button>
                         )}
                     </div>

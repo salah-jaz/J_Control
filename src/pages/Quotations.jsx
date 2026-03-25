@@ -11,6 +11,15 @@ import {
   User,
   Layers,
   Loader2,
+  Filter,
+  Building2,
+  Calendar as CalendarIcon,
+  Clock,
+  Target,
+  MessageSquare,
+  Save,
+  ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -62,6 +71,7 @@ function Quotations() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const filters = useMemo(
     () => ({
@@ -276,96 +286,171 @@ function Quotations() {
   };
 
   const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="card hover:border-brand-200/50 group h-36 flex flex-col justify-between p-6">
-      <div className="flex justify-between items-start">
-        <div className={`p-3.5 rounded-xl ${color}`}>
-          <Icon className="w-6 h-6 text-white" />
+    <div className="card group relative overflow-hidden cursor-default !border-0 p-5 h-[140px] flex flex-col justify-between">
+        {/* Top Gradient Line */}
+        <div className={clsx("absolute top-0 left-0 right-0 h-[2px]", "bg-gradient-to-r from-brand-500 to-brand-300")} />
+        
+        <div className="flex items-start justify-between">
+            <div className="flex flex-col gap-0.5">
+                <p className="text-[12px] font-semibold text-slate-500 capitalize">{title.toLowerCase()}</p>
+                <h3 className="text-[26px] font-bold text-slate-900 leading-none mt-1">{value}</h3>
+            </div>
+            <div className={clsx(
+                "h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110",
+                color.replace('bg-', 'bg-opacity-10 '),
+                color.replace('bg-', 'text-')
+            )}>
+                <Icon className="w-5 h-5 font-bold" />
+            </div>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
-          <h3 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">{value}</h3>
+        
+        <div className="space-y-2 mt-4">
+            <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                <div className={clsx("h-full rounded-full transition-all duration-1000", color)} style={{ width: '70%' }}></div>
+            </div>
+            <p className="text-[11px] text-slate-400 font-medium tracking-tight">Sales pipeline metrics</p>
         </div>
-      </div>
-      <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
-        <div className={`h-full rounded-full ${color} opacity-30`} style={{ width: "70%" }} />
-      </div>
     </div>
   );
 
   const inputClass = (f) => `input ${errors[f] ? "border-red-500 focus:border-red-500 focus:ring-red-200" : ""}`;
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Quotation Management</h1>
-          <p className="text-slate-500 mt-1 text-base md:text-lg">Create and manage quotations.</p>
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Header Background Strip */}
+      <div className="absolute top-0 left-0 right-0 h-80 bg-gradient-to-b from-brand-50/50 to-transparent pointer-events-none" />
+
+      <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-gradient-to-br from-brand-600 to-brand-400 rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] relative group overflow-hidden">
+                <FileOutput className="h-5 w-5 text-white relative z-10" />
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+              </div>
+              <h1 className="text-[28px] font-bold text-slate-900">Quotations</h1>
+            </div>
+            <p className="text-slate-500 font-medium text-[14px]">Create and manage quotations for your clients.</p>
+          </div>
+          <button
+            onClick={openAdd}
+            className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+          >
+            {/* Shimmer Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
+            
+            <Plus size={20} className="relative z-10" />
+            <span className="relative z-10">Create Quotation</span>
+          </button>
         </div>
-        <button
-          onClick={openAdd}
-          className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 shadow-lg shadow-brand-500/30"
-        >
-          <Plus size={20} />
-          Create Quotation
-        </button>
-      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
-        <StatCard title="Total Quotations" value={summary.total ?? 0} icon={FileText} color="bg-slate-600" />
-        <StatCard title="Draft" value={summary.draft ?? 0} icon={FileText} color="bg-amber-600" />
-        <StatCard title="Sent" value={summary.sent ?? 0} icon={FileText} color="bg-blue-600" />
-        <StatCard title="Accepted" value={summary.accepted ?? 0} icon={FileText} color="bg-emerald-600" />
-        <StatCard title="Rejected" value={summary.rejected ?? 0} icon={FileText} color="bg-rose-600" />
+        <StatCard title="Total" value={summary.total ?? 0} icon={FileText} color="bg-slate-500" />
+        <StatCard title="Draft" value={summary.draft ?? 0} icon={FileText} color="bg-amber-500" />
+        <StatCard title="Sent" value={summary.sent ?? 0} icon={FileText} color="bg-blue-500" />
+        <StatCard title="Accepted" value={summary.accepted ?? 0} icon={FileText} color="bg-emerald-500" />
+        <StatCard title="Rejected" value={summary.rejected ?? 0} icon={FileText} color="bg-rose-500" />
       </div>
 
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-        <div className="flex flex-col lg:flex-row gap-4 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+      {/* Filters Bar */}
+      <div className="space-y-3">
+        <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[240px] relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
             <input
               type="text"
-              placeholder="Search by Quotation Number or Client Name"
+              placeholder="Search quotation number, client..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full"
+              className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[120px]"
-          >
-            <option value="All">All Status</option>
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-          <select
-            value={clientFilter}
-            onChange={(e) => setClientFilter(e.target.value)}
-            className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[160px]"
-          >
-            <option value="">All Clients</option>
-            {safeClients.map((c, idx) => (
-              <option key={c?.id ?? `client-${idx}`} value={c?.id ?? ""}>{c?.company_name || c?.client_name || "—"}</option>
-            ))}
-          </select>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="px-4 py-2 border border-gray-100 rounded-xl text-sm min-w-[140px]"
-            placeholder="From"
-          />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="px-4 py-2 border border-gray-100 rounded-xl text-sm min-w-[140px]"
-            placeholder="To"
-          />
+          
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
+              <Layers className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
+              >
+                <option value="All">All Status</option>
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={clsx(
+                "flex items-center gap-2 px-4 h-10 rounded-lg text-[13px] font-bold transition-all border shadow-sm",
+                showAdvancedFilters 
+                  ? "bg-brand-50 border-brand-200 text-brand-700" 
+                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+              )}
+            >
+              <Filter className={clsx("w-4 h-4 transition-transform", showAdvancedFilters && "rotate-180")} />
+              Filters
+            </button>
+
+            {(searchQuery || statusFilter !== "All" || clientFilter || dateFrom || dateTo) && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("All");
+                  setClientFilter("");
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+                className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
+              >
+                <X size={14} /> Clear
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Advanced Filters */}
+        {showAdvancedFilters && (
+          <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
+              <User className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <select
+                value={clientFilter}
+                onChange={(e) => setClientFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
+              >
+                <option value="">All Clients</option>
+                {safeClients.map((c, idx) => (
+                  <option key={c?.id ?? `client-${idx}`} value={c?.id ?? ""}>
+                    {c?.company_name || c?.client_name || "ΓÇö"}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-2">Period:</span>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 outline-none focus:border-brand-400 h-10 shadow-sm"
+              />
+              <span className="text-slate-400 text-xs font-bold px-1">ΓÇô</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 outline-none focus:border-brand-400 h-10 shadow-sm"
+              />
+            </div>
+          </div>
+        )}
       </div>
+
 
       <div className="card p-0 overflow-hidden">
         <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
@@ -494,281 +579,435 @@ function Quotations() {
       </div>
 
       {openForm && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[95vh] animate-slide-up overflow-hidden">
-            <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
-              <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
-                {editId ? "Edit Quotation" : "Create Quotation"}
-              </h2>
-              <button onClick={() => setOpenForm(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
+          <div className="bg-white/90 backdrop-blur-xl w-full max-w-6xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-[0.98] duration-[250ms] border border-white/40 overflow-hidden">
+            
+            {/* Header */}
+            <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white z-20">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] animate-pulse-subtle">
+                  <FileText className="h-5 w-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-[20px] font-bold text-slate-900 tracking-tight">
+                    {editId ? "Customize Quotation Document" : "Draft New Proposal"}
+                  </h3>
+                  <p className="text-[12px] font-medium text-slate-500 mt-0.5">
+                    {editId ? `Editing ${form.quotation_no || "Quotation"}` : "Configure business proposal and service parameters"}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setOpenForm(false)} 
+                className="h-10 w-10 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all flex items-center justify-center active:scale-95 shadow-sm border border-slate-100"
+              >
                 <X size={20} />
               </button>
             </div>
-            <div className="flex px-4 md:px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto flex-shrink-0">
-              {[
-                { id: "basic", label: "Basic Info", icon: User },
-                { id: "items", label: "Items / Services", icon: Layers },
-                { id: "agreement", label: "Agreement Content", icon: FileText },
-              ].map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setTab(id)}
-                  className={clsx(
-                    "px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap flex items-center gap-2",
-                    tab === id ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-800"
-                  )}
-                >
-                  <Icon size={18} />
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 md:p-8">
-              {tab === "basic" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="label">Client *</label>
-                    <select
-                      value={form.client_id}
-                      onChange={(e) => setForm({ ...form, client_id: e.target.value })}
-                      className={inputClass("client_id")}
-                    >
-                      <option value="">Select client</option>
-                      {safeClients.map((c) => (
-                        <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Quotation Number</label>
-                    <input
-                      type="text"
-                      readOnly
-                      className="input bg-gray-50"
-                      value={editId ? form.quotation_no : "Auto-generated (e.g. QT-2026-001)"}
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Quotation Date *</label>
-                    <input
-                      type="date"
-                      value={form.date}
-                      onChange={(e) => setForm({ ...form, date: e.target.value })}
-                      className={inputClass("date")}
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Expiry Date</label>
-                    <input
-                      type="date"
-                      value={form.expiry_date}
-                      onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
-                      className="input"
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Reference Number</label>
-                    <input
-                      type="text"
-                      value={form.reference_number}
-                      onChange={(e) => setForm({ ...form, reference_number: e.target.value })}
-                      className="input"
-                      placeholder="Optional"
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Sales Person</label>
-                    <input
-                      type="text"
-                      value={form.sales_person}
-                      onChange={(e) => setForm({ ...form, sales_person: e.target.value })}
-                      className="input"
-                      placeholder="Optional"
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Status</label>
-                    <select
-                      value={form.status}
-                      onChange={(e) => setForm({ ...form, status: e.target.value })}
-                      className="input"
-                    >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="label">Notes (visible to client)</label>
-                    <textarea
-                      value={form.notes}
-                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                      className="input min-h-[80px]"
-                      placeholder="Optional"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="label">Internal notes</label>
-                    <textarea
-                      value={form.internal_notes}
-                      onChange={(e) => setForm({ ...form, internal_notes: e.target.value })}
-                      className="input min-h-[80px]"
-                      placeholder="Optional (not shown to client)"
-                    />
-                  </div>
-                </div>
-              )}
 
-              {tab === "items" && (
-                <div className="space-y-4">
-                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
-                        <tr>
-                          <th className="px-4 py-3">Item</th>
-                          <th className="px-4 py-3">Description</th>
-                          <th className="px-4 py-3 w-28 min-w-[7rem]">Qty</th>
-                          <th className="px-4 py-3 w-28">Price</th>
-                          <th className="px-4 py-3 w-20">Tax %</th>
-                          <th className="px-4 py-3 w-28">Amount</th>
-                          <th className="px-4 py-3 w-10"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {(form.items || []).map((row, index) => (
-                          <tr key={index}>
-                            <td className="px-4 py-2">
-                              <input
-                                type="text"
-                                value={row.item}
-                                onChange={(e) => updateItem(index, "item", e.target.value)}
-                                className="input"
-                                placeholder="Item name"
-                              />
-                            </td>
-                            <td className="px-4 py-2">
-                              <input
-                                type="text"
-                                value={row.description}
-                                onChange={(e) => updateItem(index, "description", e.target.value)}
-                                className="input"
-                                placeholder="Description"
-                              />
-                            </td>
-                            <td className="px-4 py-2">
-                              <input
-                                type="number"
-                                min="0"
-                                step="any"
-                                inputMode="decimal"
-                                value={row.qty === "" || row.qty == null ? "" : row.qty}
-                                onChange={(e) => updateItem(index, "qty", e.target.value === "" ? "" : e.target.value)}
-                                className="input min-w-[6rem] w-full max-w-[7rem] py-2.5 text-base"
-                              />
-                            </td>
-                            <td className="px-4 py-2">
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={row.price}
-                                onChange={(e) => updateItem(index, "price", e.target.value)}
-                                className="input"
-                              />
-                            </td>
-                            <td className="px-4 py-2">
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={row.tax}
-                                onChange={(e) => updateItem(index, "tax", e.target.value)}
-                                className="input w-16"
-                              />
-                            </td>
-                            <td className="px-4 py-2 font-medium text-slate-800">
-                              ₹{(parseFloat(row.amount) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                            </td>
-                            <td className="px-4 py-2">
-                              {(form.items || []).length > 1 && (
-                                <button type="button" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700 p-1">
-                                  <Trash2 size={18} />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <button type="button" onClick={addItem} className="flex items-center gap-2 text-brand-600 font-bold hover:text-brand-700">
-                    <Plus size={18} /> Add Item
+            <div className="flex flex-1 overflow-hidden">
+              {/* Sidebar Tabs */}
+              <div className="w-64 bg-slate-50/50 border-r border-slate-100 p-4 flex flex-col gap-1.5 overflow-y-auto">
+                {[
+                  { id: "basic", label: "Business Intelligence", icon: Building2, desc: "Entity & Timeline" },
+                  { id: "items", label: "Service Catalog", icon: Layers, desc: "Inventory & Pricing" },
+                  { id: "agreement", label: "Legal Framework", icon: FileText, desc: "Terms & Scope" },
+                ].map(({ id, label, icon: Icon, desc }) => (
+                  <button
+                    key={id}
+                    onClick={() => setTab(id)}
+                    className={clsx(
+                      "flex items-start gap-3.5 px-4 py-3.5 rounded-xl transition-all duration-[250ms] text-left group",
+                      tab === id 
+                        ? "bg-white text-violet-600 shadow-sm border border-slate-200/60 ring-1 ring-violet-100/50" 
+                        : "text-slate-500 hover:bg-white hover:text-slate-900 border border-transparent"
+                    )}
+                  >
+                    <div className={clsx(
+                      "mt-0.5 p-2 rounded-lg transition-colors",
+                      tab === id ? "bg-violet-50 text-violet-600" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600"
+                    )}>
+                      <Icon size={18} />
+                    </div>
+                    <div>
+                      <span className="block text-[14px] font-bold tracking-tight">{label}</span>
+                      <span className="block text-[11px] font-medium opacity-70 mt-0.5 uppercase tracking-wider">{desc}</span>
+                    </div>
                   </button>
-                  <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 max-w-md space-y-3 mt-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">Subtotal</span>
-                      <span className="font-medium">₹{subtotalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                ))}
+
+                <div className="mt-auto pt-6 px-1">
+                  <div className="bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-2xl p-4 text-white shadow-lg shadow-violet-200/50 overflow-hidden relative group">
+                    <div className="relative z-10">
+                      <p className="text-[11px] font-bold text-violet-100 uppercase tracking-widest mb-1">Live Valuation</p>
+                      <p className="text-[22px] font-black tracking-tight flex items-baseline gap-1.5">
+                        <span className="text-[14px] font-bold opacity-80">₹</span>
+                        {totalForm.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
+                      </p>
                     </div>
-                    <div>
-                      <label className="label text-xs">Discount (₹)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="input"
-                        placeholder="0.00"
-                        value={form.discount}
-                        onChange={(e) => setForm({ ...form, discount: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="label text-xs">Tax (₹)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="input"
-                        placeholder="0.00"
-                        value={form.tax}
-                        onChange={(e) => setForm({ ...form, tax: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex justify-between text-base font-bold border-t border-gray-200 pt-2">
-                      <span>Total</span>
-                      <span>₹{totalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                    <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity rotate-12">
+                      <Target size={120} />
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {tab === "agreement" && (
-                <div className="max-w-3xl">
-                  <Suspense fallback={<div className="py-8 text-center text-slate-500">Loading agreement...</div>}>
-                    <AgreementTab
-                      value={form.agreement_content || []}
-                      onChange={(v) => setForm({ ...form, agreement_content: v })}
-                    />
-                  </Suspense>
+              {/* Main Content Area */}
+              <div className="flex-1 overflow-y-auto bg-white p-8 custom-scrollbar relative">
+                <div className="max-w-4xl mx-auto">
+                  {tab === "basic" && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-[350ms]">
+                      <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4 mb-2">
+                        <h4 className="text-[16px] font-bold text-slate-900 flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-violet-500" />
+                          Business Entity & Timeline
+                        </h4>
+                        <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Identify stakeholders and procedural dates</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <div className="space-y-1.5">
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Contracting Client <span className="text-rose-500 font-black ml-1">*</span></label>
+                          <select
+                            value={form.client_id}
+                            onChange={(e) => setForm({ ...form, client_id: e.target.value })}
+                            className={clsx("input-premium appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M2.22%204.47a.75.75%200%200%201%201.06%200L6%207.19l2.72-2.72a.75.75%200%201%201%201.06%201.06L6.53%208.81a.75.75%200%200%201-1.06%200L2.22%205.53a.75.75%200%200%201%200-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-[right_1rem_center] bg-no-repeat", inputClass("client_id"))}
+                          >
+                            <option value="">Select organizational entity</option>
+                            {safeClients.map((c) => (
+                              <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Reference Document Identifier</label>
+                          <input
+                            type="text"
+                            readOnly
+                            className="input-premium bg-slate-50/80 text-slate-500 border-slate-200/60 font-mono text-[14px]"
+                            value={editId ? form.quotation_no : "QT-YYYY-#### (AUTO)"}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Execution Date <span className="text-rose-500 font-black ml-1">*</span></label>
+                          <div className="relative">
+                            <CalendarIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <input
+                              type="date"
+                              value={form.date}
+                              onChange={(e) => setForm({ ...form, date: e.target.value })}
+                              className={clsx("input-premium pl-10", inputClass("date"))}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Maturity / Expiry Date</label>
+                          <div className="relative">
+                            <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <input
+                              type="date"
+                              value={form.expiry_date}
+                              onChange={(e) => setForm({ ...form, expiry_date: e.target.value })}
+                              className="input-premium pl-10"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Internal Reference Code</label>
+                          <input
+                            type="text"
+                            value={form.reference_number}
+                            onChange={(e) => setForm({ ...form, reference_number: e.target.value })}
+                            className="input-premium placeholder:text-slate-300"
+                            placeholder="e.g. PO-8892-X"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Designated Account Manager</label>
+                          <div className="relative">
+                            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <input
+                              type="text"
+                              value={form.sales_person}
+                              onChange={(e) => setForm({ ...form, sales_person: e.target.value })}
+                              className="input-premium pl-10 placeholder:text-slate-300"
+                              placeholder="Name of account executive"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Lifecycle Status</label>
+                          <select
+                            value={form.status}
+                            onChange={(e) => setForm({ ...form, status: e.target.value })}
+                            className="input-premium appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M2.22%204.47a.75.75%200%200%201%201.06%200L6%207.19l2.72-2.72a.75.75%200%201%201%201.06%201.06L6.53%208.81a.75.75%200%200%201-1.06%200L2.22%205.53a.75.75%200%200%201%200-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-[right_1rem_center] bg-no-repeat"
+                          >
+                            {STATUS_OPTIONS.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5 flex items-center gap-1.5">
+                            <MessageSquare className="h-3.5 w-3.5 text-slate-400" />
+                            Stakeholder Communiqué
+                          </label>
+                          <textarea
+                            value={form.notes}
+                            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                            className="input-premium min-h-[120px] pt-3 text-[14px] placeholder:text-slate-300"
+                            placeholder="Add strategic context or special considerations visible to the client..."
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5 flex items-center gap-1.5">
+                            <Target className="h-3.5 w-3.5 text-slate-400" />
+                            Intelligence & Internal Logs
+                          </label>
+                          <textarea
+                            value={form.internal_notes}
+                            onChange={(e) => setForm({ ...form, internal_notes: e.target.value })}
+                            className="input-premium min-h-[120px] pt-3 text-[14px] bg-slate-50/30 placeholder:text-slate-300"
+                            placeholder="Document internal negotiation strategy or background intelligence (invisible to client)..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {tab === "items" && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-[350ms]">
+                      <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-2">
+                        <div className="flex flex-col gap-1.5">
+                          <h4 className="text-[16px] font-bold text-slate-900 flex items-center gap-2">
+                            <Layers className="h-4 w-4 text-violet-500" />
+                            Inventory & Service Allocation
+                          </h4>
+                          <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Detail service units and unit economics</p>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={addItem} 
+                          className="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[13px] font-bold hover:bg-white hover:text-violet-600 hover:border-violet-200 transition-all flex items-center gap-2 active:scale-95 group shadow-sm"
+                        >
+                          <Plus className="h-3.5 w-3.5 stroke-[2.5] group-hover:scale-110 transition-transform" />
+                          Expand Line Items
+                        </button>
+                      </div>
+
+                      <div className="bg-slate-50/30 rounded-2xl border border-slate-100 overflow-hidden">
+                        <table className="w-full text-sm text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-[0.1em] border-b border-slate-100">
+                              <th className="px-5 py-4 w-[25%]">Service/Product</th>
+                              <th className="px-5 py-4 w-[25%]">Description</th>
+                              <th className="px-5 py-4 w-[12%] text-center">Quantity</th>
+                              <th className="px-5 py-4 w-[15%]">Rate (₹)</th>
+                              <th className="px-5 py-4 w-[10%] text-center">Tax %</th>
+                              <th className="px-5 py-4 w-[13%] text-right bg-slate-100/30 font-bold">Aggregate</th>
+                              <th className="px-5 py-4 w-[5%]"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 bg-white">
+                            {(form.items || []).map((row, index) => (
+                              <tr key={index} className="group hover:bg-slate-50/50 transition-colors">
+                                <td className="px-4 py-3 align-top">
+                                  <input
+                                    type="text"
+                                    value={row.item}
+                                    onChange={(e) => updateItem(index, "item", e.target.value)}
+                                    className="w-full bg-transparent border-0 border-b border-transparent focus:border-violet-500 focus:ring-0 text-[14px] font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-300 transition-all"
+                                    placeholder="e.g. ERP Implementation"
+                                  />
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  <textarea
+                                    value={row.description}
+                                    onChange={(e) => updateItem(index, "description", e.target.value)}
+                                    className="w-full bg-transparent border-0 border-b border-transparent focus:border-violet-500 focus:ring-0 text-[13px] text-slate-600 placeholder:text-slate-300 resize-none py-0 min-h-[24px]"
+                                    placeholder="Enter technical scope..."
+                                    rows={1}
+                                  />
+                                </td>
+                                <td className="px-4 py-3 text-center align-top">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={row.qty === "" || row.qty == null ? "" : row.qty}
+                                    onChange={(e) => updateItem(index, "qty", e.target.value)}
+                                    className="w-full text-center bg-slate-50/50 border-slate-100 rounded-lg focus:ring-violet-500 focus:border-violet-500 text-[14px] font-black text-slate-800 p-1.5"
+                                  />
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={row.price}
+                                    onChange={(e) => updateItem(index, "price", e.target.value)}
+                                    className="w-full bg-slate-50/50 border-slate-100 rounded-lg focus:ring-violet-500 focus:border-violet-500 text-[14px] font-bold text-slate-800 p-1.5"
+                                  />
+                                </td>
+                                <td className="px-4 py-3 text-center align-top">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={row.tax}
+                                    onChange={(e) => updateItem(index, "tax", e.target.value)}
+                                    className="w-full text-center bg-slate-50/50 border-slate-100 rounded-lg focus:ring-violet-500 focus:border-violet-500 text-[13px] text-slate-600 p-1.5"
+                                  />
+                                </td>
+                                <td className="px-5 py-4 text-right align-top bg-slate-50/30 border-l border-slate-100/50">
+                                  <span className="text-[14px] font-black text-slate-900">₹{(parseFloat(row.amount) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                                </td>
+                                <td className="px-4 py-3 text-center align-top">
+                                  {(form.items || []).length > 1 && (
+                                    <button 
+                                      type="button" 
+                                      onClick={() => removeItem(index)} 
+                                      className="h-8 w-8 rounded-lg text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="flex justify-end pt-4">
+                        <div className="w-full max-w-sm bg-slate-50/80 rounded-2xl border border-slate-100 p-6 space-y-4 shadow-sm">
+                          <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
+                            <span className="text-[13px] font-bold text-slate-500 uppercase tracking-widest">Gross Subtotal</span>
+                            <span className="text-[16px] font-bold text-slate-900">₹{subtotalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-4">
+                              <label className="text-[12px] font-bold text-slate-600 flex-1 uppercase tracking-wider">Adjustment / Discount (₹)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="w-32 bg-white border-slate-200 rounded-xl focus:ring-violet-500 focus:border-violet-500 text-[14px] font-bold text-slate-800 text-right p-2.5 shadow-inner"
+                                placeholder="0.00"
+                                value={form.discount}
+                                onChange={(e) => setForm({ ...form, discount: e.target.value })}
+                              />
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <label className="text-[12px] font-bold text-slate-600 flex-1 uppercase tracking-wider">Lump-sum Taxation (₹)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="w-32 bg-white border-slate-200 rounded-xl focus:ring-violet-500 focus:border-violet-500 text-[14px] font-bold text-slate-800 text-right p-2.5 shadow-inner"
+                                placeholder="0.00"
+                                value={form.tax}
+                                onChange={(e) => setForm({ ...form, tax: e.target.value })}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="pt-4 border-t-2 border-slate-200 flex justify-between items-center">
+                            <div className="flex flex-col">
+                              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Net Valuation</span>
+                              <span className="text-[12px] font-bold text-violet-600">(Grand Total)</span>
+                            </div>
+                            <span className="text-[24px] font-black tracking-tight text-slate-900">
+                              <span className="text-[14px] font-bold opacity-60 mr-1.5 uppercase tracking-normal">INR</span>
+                              {totalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {tab === "agreement" && (
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-[350ms]">
+                      <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4 mb-8">
+                        <h4 className="text-[16px] font-bold text-slate-900 flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-violet-500" />
+                          Compliance & Legal Terms
+                        </h4>
+                        <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Standardize terms of service and legal agreement</p>
+                      </div>
+
+                      <div className="bg-white border-2 border-slate-100 rounded-2xl shadow-inner min-h-[400px]">
+                        <Suspense fallback={
+                          <div className="py-20 flex flex-col items-center justify-center gap-4">
+                            <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
+                            <p className="text-[13px] font-bold text-slate-400 uppercase tracking-widest">Protocol Initializing...</p>
+                          </div>
+                        }>
+                          <AgreementTab
+                            value={form.agreement_content || []}
+                            onChange={(v) => setForm({ ...form, agreement_content: v })}
+                          />
+                        </Suspense>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-
+              </div>
             </div>
-            <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex justify-between items-center">
-              <p className="text-sm text-slate-500 font-bold uppercase">Total: ₹{totalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => setOpenForm(false)} className="btn-secondary" disabled={isSaving}>Cancel</button>
+
+            {/* Premium Footer */}
+            <div className="px-8 py-5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 z-20">
+              <div className="hidden md:flex items-center gap-6">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Total Impact</span>
+                  <p className="text-[18px] font-black text-slate-900 tracking-tight leading-none">₹{totalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div className="h-8 w-px bg-slate-200"></div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Status Code</span>
+                  <span className={clsx(
+                    "inline-flex items-center text-[11px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider",
+                    form.status === 'Accepted' ? 'bg-emerald-100 text-emerald-700' : 
+                    form.status === 'Rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                  )}>
+                    {form.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 ml-auto w-full md:w-auto">
+                <button 
+                  type="button" 
+                  onClick={() => setOpenForm(false)} 
+                  className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 hover:bg-slate-50 transition-all duration-[250ms] shadow-sm active:scale-[0.98] flex-1 md:flex-none"
+                >
+                  Discard Draft
+                </button>
                 <button
                   type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className={clsx("btn-primary shadow-lg shadow-brand-500/30 flex items-center gap-2", isSaving && "opacity-50 cursor-not-allowed")}
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Quotation"
+                  className={clsx(
+                    "px-8 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-xl text-[14px] font-medium shadow-[0_8px_20px_rgba(124,58,237,0.25)] hover:shadow-[0_12px_24px_rgba(124,58,237,0.35)] transition-all duration-[250ms] hover:-translate-y-[2px] active:scale-[0.98] group flex items-center justify-center min-w-[180px] flex-1 md:flex-none",
+                    isSaving && "opacity-60 grayscale cursor-not-allowed shadow-none hover:translate-y-0 active:scale-100"
                   )}
+                >
+                  <div className="flex items-center gap-2">
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Finalizing...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 stroke-[2.5]" />
+                        Commit Quotation
+                      </>
+                    )}
+                  </div>
                 </button>
               </div>
             </div>
@@ -789,6 +1028,7 @@ function Quotations() {
           />
         </Suspense>
       )}
+      </div>
     </div>
   );
 }

@@ -1,18 +1,8 @@
 import { useState, useEffect } from "react";
 import {
-    FileText,
-    Plus,
-    Search,
-    Eye,
-    X,
-    User,
-    Layout,
-    Calendar,
-    Filter,
-    Sparkles,
-    ShieldAlert,
-    Pencil,
-    Trash2,
+    Plus, Search, Eye, X, User, Layout, Calendar, Filter, Sparkles, ShieldAlert,
+    Pencil, Trash2, ChevronRight, ChevronLeft, Building2, Target, StickyNote,
+    Layers, Briefcase, Info, Image as ImageIcon, Check, Loader2, Save, FileText
 } from "lucide-react";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -58,6 +48,8 @@ function Agreements() {
     // Live preview state added
     const [templates, setTemplates] = useState([]);
     const [livePreviewTemplateId, setLivePreviewTemplateId] = useState("standard");
+    const [showPreview, setShowPreview] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -226,18 +218,25 @@ function Agreements() {
             setTab("basic");
             return;
         }
+        setIsSaving(true);
         try {
+            const payload = {
+                ...form,
+                client_id: Number(form.client_id)
+            };
             if (editId) {
-                await agreementService.update(editId, form);
+                await agreementService.update(editId, payload);
                 toast.success("Agreement updated");
             } else {
-                await agreementService.create(form);
+                await agreementService.create(payload);
                 toast.success("Agreement created");
             }
             loadData();
             setOpenForm(false);
         } catch (err) {
             toast.error(err.response?.data?.message || "Failed to save agreement");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -247,13 +246,29 @@ function Agreements() {
     };
 
     const StatCard = ({ title, value, icon: Icon, color }) => (
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 transition-all hover:shadow-md">
-            <div className={`p-3 rounded-xl ${color} bg-opacity-10`}>
-                <Icon className={`w-6 h-6 ${color.replace('bg-', 'text-')}`} />
+        <div className="card group relative overflow-hidden cursor-default !border-0 p-5 h-[140px] flex flex-col justify-between">
+            {/* Top Gradient Line */}
+            <div className={clsx("absolute top-0 left-0 right-0 h-[2px]", "bg-gradient-to-r from-violet-500 to-fuchsia-500")} />
+            
+            <div className="flex items-start justify-between">
+                <div className="flex flex-col gap-0.5">
+                    <p className="text-[12px] font-semibold text-slate-500 capitalize">{title.toLowerCase()}</p>
+                    <h3 className="text-[26px] font-bold text-slate-900 leading-none mt-1">{value}</h3>
+                </div>
+                <div className={clsx(
+                    "h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110",
+                    color.replace('bg-', 'bg-opacity-10 '),
+                    color.replace('bg-', 'text-')
+                )}>
+                    <Icon className="w-5 h-5 font-bold" />
+                </div>
             </div>
-            <div>
-                <p className="text-sm font-medium text-slate-500">{title}</p>
-                <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
+            
+            <div className="space-y-2 mt-4">
+                <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                    <div className={clsx("h-full rounded-full transition-all duration-1000", color)} style={{ width: '70%' }}></div>
+                </div>
+                <p className="text-[11px] text-slate-400 font-medium tracking-tight">Contractual status metrics</p>
             </div>
         </div>
     );
@@ -266,60 +281,106 @@ function Agreements() {
     const summary = listData.summary || {};
     const agreements = listData.agreements || [];
 
-    return (
-        <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Agreement Module</h1>
-                    <p className="text-slate-500 mt-1">Manage and generate professional agreements.</p>
+    const SectionHeader = ({ icon: Icon, title, color }) => {
+        const colors = {
+            violet: "from-violet-600 to-fuchsia-500 shadow-violet-500/20",
+            indigo: "from-indigo-600 to-blue-500 shadow-indigo-500/20",
+            rose: "from-rose-600 to-pink-500 shadow-rose-500/20"
+        };
+        return (
+            <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                    <div className={clsx("h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white shadow-lg", colors[color] || colors.violet)}>
+                        <Icon size={16} className="stroke-[2.5]" />
+                    </div>
+                    <h4 className="text-[14px] font-bold text-slate-900 uppercase tracking-widest leading-none">
+                        {title}
+                    </h4>
                 </div>
-                <button
-                    onClick={openAdd}
-                    className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/20"
-                >
-                    <Plus size={20} />
-                    Create Agreement
-                </button>
+            </div>
+        );
+    };
+
+    const Label = ({ text, required }) => (
+        <label className="text-[13px] font-bold text-slate-700 ml-0.5 flex items-center gap-1">
+            {text}
+            {required && <span className="text-rose-500 font-black">*</span>}
+        </label>
+    );
+
+    return (
+        <div className="min-h-screen bg-[#F8FAFC]">
+            {/* Header Background Strip */}
+            <div className="absolute top-0 left-0 right-0 h-80 bg-gradient-to-b from-violet-50/50 to-transparent pointer-events-none" />
+
+            <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] relative group overflow-hidden">
+                                <FileText className="h-5 w-5 text-white relative z-10" />
+                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                            </div>
+                            <h1 className="text-[28px] font-bold text-slate-900">Agreements</h1>
+                        </div>
+                        <p className="text-slate-500 font-medium text-[14px]">Manage and generate professional agreements for your clients.</p>
+                    </div>
+                    <button
+                        onClick={openAdd}
+                        className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+                    >
+                        {/* Shimmer Effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
+
+                        <Plus size={20} className="relative z-10" />
+                        <span className="relative z-10">Create Agreement</span>
+                    </button>
+                </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
+                <StatCard title="Total" value={summary.total ?? 0} icon={FileText} color="bg-slate-500" />
+                <StatCard title="Draft" value={summary.draft ?? 0} icon={FileText} color="bg-amber-500" />
+                <StatCard title="Sent" value={summary.sent ?? 0} icon={FileText} color="bg-blue-500" />
+                <StatCard title="Signed" value={summary.signed ?? 0} icon={FileText} color="bg-emerald-500" />
+                <StatCard title="Expired" value={summary.expired ?? 0} icon={FileText} color="bg-rose-500" />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <StatCard title="Total Agreements" value={summary.total ?? 0} icon={FileText} color="bg-slate-600" />
-                <StatCard title="Draft" value={summary.draft ?? 0} icon={FileText} color="bg-amber-600" />
-                <StatCard title="Sent" value={summary.sent ?? 0} icon={FileText} color="bg-blue-600" />
-                <StatCard title="Signed" value={summary.signed ?? 0} icon={FileText} color="bg-emerald-600" />
-                <StatCard title="Expired" value={summary.expired ?? 0} icon={FileText} color="bg-rose-600" />
-            </div>
-
-            {/* Filters */}
-            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-wrap gap-4 items-center">
-                <div className="relative flex-1 min-w-[240px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            {/* Filters Bar */}
+            <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
+                <div className="flex-1 min-w-[300px] relative group">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors w-4 h-4" />
                     <input
                         type="text"
-                        placeholder="Search by ID, Title or Client..."
+                        placeholder="Search agreements..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm w-full focus:ring-2 focus:ring-brand-500/20"
+                        className="w-full pl-10 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-violet-400 focus:ring-[3px] focus:ring-violet-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300"
                     />
                 </div>
-                <div className="flex items-center gap-2">
-                    <Filter size={16} className="text-slate-400" />
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="bg-gray-50 border-none rounded-xl text-sm py-2 px-4 focus:ring-2 focus:ring-brand-500/20 min-w-[120px]"
-                    >
-                        <option value="All">All Status</option>
-                        {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                    <select
-                        value={clientFilter}
-                        onChange={(e) => setClientFilter(e.target.value)}
-                        className="bg-gray-50 border-none rounded-xl text-sm py-2 px-4 focus:ring-2 focus:ring-brand-500/20 min-w-[160px]"
-                    >
-                        <option value="">All Clients</option>
-                        {clients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
-                    </select>
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-9">
+                        <Filter className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
+                        >
+                            <option value="All">All Status</option>
+                            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-9">
+                        <User className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
+                        <select
+                            value={clientFilter}
+                            onChange={(e) => setClientFilter(e.target.value)}
+                            className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
+                        >
+                            <option value="">All Clients</option>
+                            {clients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -382,7 +443,7 @@ function Agreements() {
                                                 </button>
                                                 <button
                                                     onClick={() => openPreviewModal(a)}
-                                                    className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                                                    className="p-2 text-slate-400 hover:text-violet-600 hover:bg-brand-50 rounded-lg transition-colors"
                                                     title="Preview & Print"
                                                 >
                                                     <Eye size={18} />
@@ -399,201 +460,304 @@ function Agreements() {
 
             {/* Create/Edit Modal */}
             {openForm && (
-                <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white w-full max-w-[1600px] xl:w-[95vw] rounded-2xl shadow-2xl flex flex-col max-h-[95vh] animate-slide-up overflow-hidden transition-all duration-300">
-                        <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-white z-10">
-                            <div>
-                                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-                                    {editId ? "Edit Agreement" : "Create Agreement"}
-                                </h2>
-                                <p className="text-sm text-slate-400 mt-0.5">{form.agreement_no}</p>
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[6px] animate-in fade-in duration-[300ms]">
+                    <div className="bg-white w-full max-w-[1100px] xl:w-[85vw] rounded-[24px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border border-slate-200/50">
+                        {/* Improved Modal Header */}
+                        <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white z-20">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20">
+                                    <FileText className="h-6 w-6 stroke-[2.5]" />
+                                </div>
+                                <div>
+                                    <h3 className="text-[20px] font-bold text-slate-900">
+                                        {editId ? "Modify Agreement" : "Draft New Agreement"}
+                                    </h3>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-bold uppercase tracking-wider border border-slate-200">
+                                            {form.agreement_no || "DRAFT-SYS-ID"}
+                                        </span>
+                                        <div className="h-1 w-1 rounded-full bg-slate-300" />
+                                        <p className="text-[12px] font-medium text-slate-400 font-mono italic">
+                                            {form.date}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
-                            <button onClick={() => setOpenForm(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <div className="flex px-4 md:px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto">
-                            {[
-                                { id: "basic", label: "General Details", icon: Layout },
-                                { id: "content", label: "Agreement Content", icon: FileText },
-                            ].map(({ id, label, icon: Icon }) => (
-                                <button
-                                    key={id}
-                                    onClick={() => setTab(id)}
-                                    className={clsx(
-                                        "px-6 py-4 text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 border-b-2",
-                                        tab === id ? "border-brand-600 text-brand-600" : "border-transparent text-slate-400 hover:text-slate-600"
-                                    )}
-                                >
-                                    <Icon size={18} />
-                                    {label}
+                            <div className="flex items-center gap-3">
+                                {tab === "content" && (
+                                    <button 
+                                        onClick={() => setShowPreview(!showPreview)}
+                                        className={clsx(
+                                            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border",
+                                            showPreview 
+                                              ? "bg-violet-50 border-violet-200 text-violet-700 shadow-sm" 
+                                              : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                                        )}
+                                    >
+                                        <Eye size={16} />
+                                        {showPreview ? "Hide Preview" : "Show Preview"}
+                                    </button>
+                                )}
+                                <button onClick={() => setOpenForm(false)} className="h-10 w-10 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                                    <X size={20} />
                                 </button>
-                            ))}
+                            </div>
                         </div>
 
-                        <div className={clsx(
-                            "flex-1 overflow-y-auto bg-slate-50/30",
-                            tab === "basic" ? "p-4 md:p-8" : "p-0"
-                        )}>
-                            {tab === "basic" && (
-                                <div className="max-w-4xl mx-auto space-y-8">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="md:col-span-2">
-                                            <label className="label text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Agreement Title *</label>
-                                            <input
-                                                type="text"
-                                                value={form.title}
-                                                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                                className={clsx(inputClass("title"), "text-lg font-bold py-3")}
-                                                placeholder="e.g. Website Development Agreement"
-                                            />
-                                        </div>
-                                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div>
-                                                <label className="label text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Company Name (Header)</label>
-                                                <input
-                                                    type="text"
-                                                    value={form.override_company_name}
-                                                    onChange={(e) => setForm({ ...form, override_company_name: e.target.value })}
-                                                    className="input w-full"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="label text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Tagline (Header)</label>
-                                                <input
-                                                    type="text"
-                                                    value={form.tagline}
-                                                    onChange={(e) => setForm({ ...form, tagline: e.target.value })}
-                                                    className="input w-full"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="label text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Logo URL</label>
-                                                <input
-                                                    type="text"
-                                                    value={form.company_logo || ''}
-                                                    onChange={(e) => setForm({ ...form, company_logo: e.target.value })}
-                                                    className="input w-full"
-                                                    placeholder="URL or base64..."
-                                                />
-                                            </div>
+                        <div className="flex flex-1 overflow-hidden">
+                            {/* NEW Sidebar Navigation */}
+                            <div className="w-64 border-r border-slate-100 bg-slate-50/50 p-4 flex flex-col gap-1.5 shrink-0">
+                                {[
+                                    { id: 'basic', label: 'General Identity', icon: Layout, desc: 'Identity & Metrics' },
+                                    { id: 'content', label: 'Letter Construction', icon: Pencil, desc: 'Interactive Builder' },
+                                ].map((t) => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => setTab(t.id)}
+                                        className={clsx(
+                                            "flex items-center gap-3 p-3 rounded-xl transition-all group text-left relative overflow-hidden",
+                                            tab === t.id 
+                                                ? "bg-white text-violet-600 shadow-md ring-1 ring-slate-100" 
+                                                : "text-slate-500 hover:bg-white/60 hover:text-slate-900"
+                                        )}
+                                    >
+                                        {tab === t.id && <div className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-violet-600 rounded-full" />}
+                                        <div className={clsx(
+                                            "h-9 w-9 rounded-lg flex items-center justify-center transition-all",
+                                            tab === t.id ? "bg-violet-50 text-violet-600" : "bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-600"
+                                        )}>
+                                            <t.icon size={20} />
                                         </div>
                                         <div>
-                                            <label className="label text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Client *</label>
-                                            <select
-                                                value={form.client_id}
-                                                onChange={(e) => setForm({ ...form, client_id: e.target.value })}
-                                                className={inputClass("client_id")}
-                                            >
-                                                <option value="">Select client</option>
-                                                {clients.map((c) => (
-                                                    <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
-                                                ))}
-                                            </select>
+                                            <p className="text-[14px] font-bold leading-tight">{t.label}</p>
+                                            <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-1">{t.desc}</p>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="label text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Date *</label>
-                                                <input
-                                                    type="date"
-                                                    value={form.date}
-                                                    onChange={(e) => setForm({ ...form, date: e.target.value })}
-                                                    className={inputClass("date")}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="flex-1 overflow-hidden relative flex flex-col bg-white">
+                                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                    {tab === "basic" && (
+                                        <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                                            <div className="space-y-8">
+                                                <section className="space-y-5">
+                                                   <SectionHeader icon={ShieldAlert} title="Agreement Foundations" color="violet" />
+                                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                       <div className="md:col-span-2 space-y-1.5">
+                                                           <Label text="Contract Heading / Title" required />
+                                                           <input
+                                                               type="text"
+                                                               value={form.title}
+                                                               onChange={(e) => setForm({ ...form, title: e.target.value })}
+                                                               className={clsx("input-premium font-bold py-3.5", errors.title && "border-rose-400")}
+                                                               placeholder="e.g. Master Service Agreement - 2026"
+                                                           />
+                                                       </div>
+                                                       <div className="space-y-1.5">
+                                                           <Label text="Assign Client Party" required />
+                                                           <select
+                                                               value={form.client_id}
+                                                               onChange={(e) => setForm({ ...form, client_id: e.target.value })}
+                                                               className={clsx("input-premium", errors.client_id && "border-rose-400")}
+                                                           >
+                                                               <option value="">Select organizational entity...</option>
+                                                               {clients.map((c) => (
+                                                                   <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
+                                                               ))}
+                                                           </select>
+                                                       </div>
+                                                       <div className="grid grid-cols-2 gap-3">
+                                                           <div className="space-y-1.5">
+                                                               <Label text="Effective Date" required />
+                                                               <input
+                                                                   type="date"
+                                                                   value={form.date}
+                                                                   onChange={(e) => setForm({ ...form, date: e.target.value })}
+                                                                   className={clsx("input-premium", errors.date && "border-rose-400")}
+                                                               />
+                                                           </div>
+                                                           <div className="space-y-1.5">
+                                                               <Label text="Lifecycle Status" />
+                                                               <select
+                                                                   value={form.status}
+                                                                   onChange={(e) => setForm({ ...form, status: e.target.value })}
+                                                                   className="input-premium"
+                                                               >
+                                                                   {STATUS_OPTIONS.map((s) => (
+                                                                       <option key={s} value={s}>{s}</option>
+                                                                   ))}
+                                                               </select>
+                                                           </div>
+                                                       </div>
+                                                   </div>
+                                                </section>
+
+                                                <section className="space-y-5 bg-slate-50/50 p-6 rounded-[24px] border border-slate-100">
+                                                   <SectionHeader icon={Building2} title="Header Branding Overrides" color="indigo" />
+                                                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                                       <div className="space-y-1.5">
+                                                           <Label text="Issuer Unit Name" />
+                                                           <input
+                                                               type="text"
+                                                               value={form.override_company_name}
+                                                               onChange={(e) => setForm({ ...form, override_company_name: e.target.value })}
+                                                               className="input-premium h-10"
+                                                           />
+                                                       </div>
+                                                       <div className="space-y-1.5">
+                                                           <Label text="Promotional Tagline" />
+                                                           <input
+                                                               type="text"
+                                                               value={form.tagline}
+                                                               onChange={(e) => setForm({ ...form, tagline: e.target.value })}
+                                                               className="input-premium h-10"
+                                                           />
+                                                       </div>
+                                                       <div className="space-y-1.5">
+                                                            <Label text="Letterhead Graphic" />
+                                                            <div className="flex gap-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={form.company_logo || ''}
+                                                                    onChange={(e) => setForm({ ...form, company_logo: e.target.value })}
+                                                                    className="input-premium h-10"
+                                                                    placeholder="Logo URL..."
+                                                                />
+                                                                <button className="h-10 w-10 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-400 hover:text-violet-600 transition-colors shadow-sm">
+                                                                    <ImageIcon size={16} />
+                                                                </button>
+                                                            </div>
+                                                       </div>
+                                                   </div>
+                                                </section>
+
+                                                <section className="space-y-5">
+                                                   <SectionHeader icon={StickyNote} title="Administrative Audit Notes" color="rose" />
+                                                   <div className="space-y-1.5">
+                                                       <Label text="Internal Log Context" />
+                                                       <textarea
+                                                           value={form.notes}
+                                                           onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                                                           className="input-premium min-h-[100px] py-3 text-[13px]"
+                                                           placeholder="Private records, audit trails, or restricted context notes..."
+                                                       />
+                                                   </div>
+                                                </section>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {tab === "content" && (
+                                        <div className="h-full flex flex-col bg-slate-50 relative overflow-hidden lg:flex-row">
+                                            <div className={clsx(
+                                                "transition-all duration-500 flex flex-col",
+                                                showPreview ? "flex-1 lg:max-w-[55%] xl:max-w-[50%] border-r border-slate-200" : "flex-1"
+                                            )}>
+                                                <AgreementBuilder
+                                                    value={form.content || []}
+                                                    onChange={(v) => setForm({ ...form, content: v })}
                                                 />
                                             </div>
-                                            <div>
-                                                <label className="label text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Status</label>
-                                                <select
-                                                    value={form.status}
-                                                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                                    className="input w-full"
-                                                >
-                                                    {STATUS_OPTIONS.map((s) => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div className="md:col-span-2">
-                                            <label className="label text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Internal Notes</label>
-                                            <textarea
-                                                value={form.notes}
-                                                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                                                className="input min-h-[100px] w-full"
-                                                placeholder="Private notes for team only..."
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {tab === "content" && (
-                                <div className="h-full flex flex-col lg:flex-row bg-slate-50/50">
-                                    <div className="flex-1 lg:max-w-[60%] border-b lg:border-b-0 lg:border-r border-gray-200">
-                                        <AgreementBuilder
-                                            value={form.content || []}
-                                            onChange={(v) => setForm({ ...form, content: v })}
-                                        />
-                                    </div>
-                                    <div className="hidden lg:flex flex-1 flex-col bg-slate-100 overflow-hidden relative">
-                                        <div className="p-3 border-b border-gray-200 bg-white shadow-sm z-10 flex justify-between items-center shrink-0">
-                                            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                                <Eye size={14} className="text-brand-500" /> Live Preview
-                                            </span>
-                                            <select
-                                                value={livePreviewTemplateId}
-                                                onChange={e => setLivePreviewTemplateId(e.target.value)}
-                                                className="text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none"
-                                            >
-                                                <option value="standard">Standard Form</option>
-                                                {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="flex-1 overflow-y-auto p-4 flex justify-center perspective-[1000px] bg-slate-200/50 custom-scrollbar">
-                                            <div className="bg-white border border-slate-200 shadow-md rounded-[2px] w-[210mm] max-w-none origin-top transform scale-[0.6] 2xl:scale-[0.75] transition-transform duration-300 min-h-[297mm] pointer-events-none">
-                                                {livePreviewTemplateId === 'standard' ? (
-                                                    <div className="p-12 text-slate-800">
-                                                        <div className="flex justify-between items-start mb-8 gap-4">
-                                                            <div className="text-slate-600">
-                                                                <p className="font-bold text-xl text-slate-800 tracking-tight">{form.override_company_name}</p>
-                                                            </div>
-                                                            <div className="text-right text-slate-500">
-                                                                <p className="text-sm"><span className="font-bold text-slate-700">Agreement No:</span> {form.agreement_no || "Draft"}</p>
-                                                                <p className="text-sm"><span className="font-bold text-slate-700">Date:</span> {form.date}</p>
-                                                            </div>
+                                            
+                                            {showPreview && (
+                                                <div className="flex-1 flex flex-col bg-slate-100 overflow-hidden animate-in slide-in-from-right-10 duration-500">
+                                                    <div className="p-3 border-b border-slate-200 bg-white shadow-sm z-10 flex justify-between items-center shrink-0">
+                                                        <div className="flex items-center gap-2 px-3 py-1 bg-violet-50 rounded-lg">
+                                                            <Eye size={12} className="text-violet-600 font-black" />
+                                                            <span className="text-[10px] font-black text-violet-700 uppercase tracking-widest">
+                                                                Optical Live Preview
+                                                            </span>
                                                         </div>
-                                                        <div className="w-full h-1 bg-amber-400 mb-8 rounded-full" />
-                                                        <h1 className="text-3xl font-extrabold text-slate-900 mb-8 mt-4 pb-4 border-b border-gray-200 text-center uppercase tracking-tight">
-                                                            {form.title || "Untitled Agreement"}
-                                                        </h1>
-                                                        {form.content?.length > 0 ? (
-                                                            <AgreementContentDisplay blocks={form.content} />
-                                                        ) : (
-                                                            <p className="text-center text-slate-400 italic mt-8">Start adding content to see preview...</p>
-                                                        )}
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-bold text-slate-400 uppercase mr-1">Renderer:</span>
+                                                            <select
+                                                                value={livePreviewTemplateId}
+                                                                onChange={e => setLivePreviewTemplateId(e.target.value)}
+                                                                className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-violet-500/20 transition-all cursor-pointer"
+                                                            >
+                                                                <option value="standard">Legacy Standard</option>
+                                                                {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                                            </select>
+                                                        </div>
                                                     </div>
-                                                ) : (
-                                                    (() => {
-                                                        const previewProps = {
-                                                            ...form,
-                                                            client: clients.find(c => c.id === Number(form.client_id)) || {},
-                                                            content: form.content
-                                                        };
-                                                        const html = getLivePreviewHtml(previewProps);
-                                                        return html ? <div dangerouslySetInnerHTML={{ __html: html }} /> : <div className="p-12 text-center text-slate-500">Preview not available</div>;
-                                                    })()
-                                                )}
-                                            </div>
+                                                    <div className="flex-1 overflow-y-auto p-8 flex justify-center perspective-[1000px] bg-slate-200/40 custom-scrollbar scroll-smooth">
+                                                        <div className="bg-white border border-slate-200 shadow-2xl rounded-[1px] w-[210mm] max-w-none origin-top hover:scale-[0.8] transform scale-[0.6] 2xl:scale-[0.7] transition-all duration-500 min-h-[297mm] ring-1 ring-slate-900/5 relative mb-40">
+                                                            {livePreviewTemplateId === 'standard' ? (
+                                                                <div className="p-16 text-slate-800">
+                                                                    <div className="flex justify-between items-start mb-12 gap-8">
+                                                                        <div className="space-y-1">
+                                                                            <p className="font-extrabold text-[24px] text-slate-900 tracking-tighter leading-none">{form.override_company_name}</p>
+                                                                            <p className="text-[12px] font-bold text-slate-400 uppercase tracking-[0.2em]">{form.tagline}</p>
+                                                                        </div>
+                                                                        <div className="text-right flex flex-col items-end gap-1 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100">
+                                                                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Descriptor</p>
+                                                                            <p className="text-[13px] font-bold text-slate-800 tracking-tight">{form.agreement_no || "PROVISIONAL"}</p>
+                                                                            <p className="text-[11px] font-medium text-slate-500 mt-1">{form.date}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="w-full h-[6px] bg-gradient-to-r from-violet-600 via-fuchsia-500 to-amber-400 mb-12 rounded-full shadow-lg shadow-violet-500/10" />
+                                                                    <h1 className="text-[40px] font-black text-slate-900 mb-12 mt-4 pb-8 border-b border-slate-100 text-center uppercase tracking-tighter leading-none">
+                                                                        {form.title || "Untitled Document"}
+                                                                    </h1>
+                                                                    {form.content?.length > 0 ? (
+                                                                        <AgreementContentDisplay blocks={form.content} />
+                                                                    ) : (
+                                                                        <div className="flex flex-col items-center justify-center py-40 text-slate-300">
+                                                                            <Layers size={48} className="opacity-20 mb-4" />
+                                                                            <p className="text-lg font-bold italic tracking-tight uppercase opacity-40">Assemble Matrix Blocks</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                (() => {
+                                                                    const previewProps = {
+                                                                        ...form,
+                                                                        client: clients.find(c => String(c.id) === String(form.client_id)) || {},
+                                                                        content: form.content
+                                                                    };
+                                                                    const html = getLivePreviewHtml(previewProps);
+                                                                    return html ? <div dangerouslySetInnerHTML={{ __html: html }} className="animate-in fade-in zoom-in-95 duration-700" /> : <div className="p-20 text-center text-slate-400 font-bold italic">Module Execution Error</div>;
+                                                                })()
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
+                                    )}
+                                </div>
+
+                                <div className="px-8 py-5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 z-20">
+                                    <button 
+                                        onClick={() => setOpenForm(false)} 
+                                        className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-bold hover:bg-slate-50 hover:text-slate-900 transition-all active:scale-95 shadow-sm"
+                                    >
+                                        Discard Changes
+                                    </button>
+                                    <div className="flex items-center gap-3">
+                                        {tab === "basic" && (
+                                            <button 
+                                                onClick={() => setTab("content")} 
+                                                className="px-6 py-2.5 bg-violet-50 text-violet-700 rounded-xl text-[14px] font-bold hover:bg-violet-100 transition-all active:scale-95 flex items-center gap-2"
+                                            >
+                                                Next Construction <ChevronRight size={16} />
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={handleSave}
+                                            disabled={isSaving}
+                                            className="px-10 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-xl text-[14px] font-bold shadow-xl shadow-violet-500/25 hover:shadow-violet-500/35 transition-all hover:-translate-y-[2px] active:scale-95 group relative overflow-hidden"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                                            <div className="flex items-center gap-2 relative z-10">
+                                                {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                                                <span>{isSaving ? 'Processing...' : (editId ? 'Commit Update' : 'Finalize Agreement')}</span>
+                                            </div>
+                                        </button>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-
-                        <div className="p-6 border-t border-gray-100 bg-white flex justify-end items-center gap-3">
-                            <button type="button" onClick={() => setOpenForm(false)} className="btn-secondary h-11 px-8">Discard</button>
-                            <button type="button" onClick={handleSave} className="btn-primary h-11 px-10 shadow-lg shadow-brand-500/30">Save Agreement</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -615,13 +779,13 @@ function Agreements() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
-                                { id: 'quotation', name: 'Quotation Based', desc: 'Optimized for project proposals', icon: FileText, color: 'bg-brand-500' },
+                                { id: 'quotation', name: 'Quotation Based', desc: 'Optimized for project proposals', icon: FileText, color: 'bg-violet-500' },
                                 { id: 'invoice', name: 'Invoice Format', desc: 'Focus on payments & terms', icon: Sparkles, color: 'bg-indigo-500' }
                             ].map(t => (
                                 <button
                                     key={t.id}
                                     onClick={() => confirmAdd(t.id)}
-                                    className="group flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50 border-2 border-transparent hover:border-brand-500 hover:bg-white hover:shadow-xl hover:shadow-brand-500/10 transition-all"
+                                    className="group flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50 border-2 border-transparent hover:border-violet-500 hover:bg-white hover:shadow-xl hover:shadow-violet-500/10 transition-all"
                                 >
                                     <div className={clsx("w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-current/10 transition-transform group-hover:rotate-6 group-hover:scale-110", t.color)}>
                                         <t.icon size={24} />
@@ -654,6 +818,7 @@ function Agreements() {
                     }}
                 />
             )}
+            </div>
         </div>
     );
 }

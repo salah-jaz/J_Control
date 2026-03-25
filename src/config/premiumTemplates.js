@@ -4,17 +4,17 @@
  */
 
 const SHARED_STYLES = `
-  .jaz-doc { font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #1e293b; line-height: 1.5; width: 210mm; max-width: 210mm; min-height: 297mm; height: 297mm; overflow: hidden; margin: 0 auto; padding: 0; background: #fff; box-sizing: border-box; position: relative; }
+  .jaz-doc { font-family: 'Inter', Arial, sans-serif; font-size: 13px; color: #1e293b; line-height: 1.5; width: 210mm; max-width: 210mm; min-height: 297mm; margin: 0 auto; padding: 0; background: #fff; box-sizing: border-box; position: relative; }
   .jaz-doc * { box-sizing: border-box; }
   @media print { 
     @page { size: A4; margin: 0 !important; } 
-    html, body { width: 210mm !important; height: 297mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
+    html, body { width: 210mm !important; height: auto !important; min-height: 297mm !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; box-sizing: border-box !important; }
     .jaz-doc { 
       width: 210mm !important; 
       max-width: 210mm !important; 
       min-height: 297mm !important; 
-      height: 297mm !important;
-      max-height: 297mm !important;
+      height: auto !important;
+      max-height: none !important;
       margin: 0 !important; 
       padding: 0 !important; 
       border: none !important;
@@ -22,16 +22,16 @@ const SHARED_STYLES = `
       -webkit-print-color-adjust: exact !important; 
       print-color-adjust: exact !important; 
       color-adjust: exact !important;
-      overflow: hidden !important;
+      overflow: visible !important;
       box-sizing: border-box !important;
-      page-break-after: avoid !important;
-      page-break-inside: avoid !important;
+      page-break-after: auto !important;
+      page-break-inside: auto !important;
     } 
     .jaz-acc-tl, .jaz-acc-tr, .jaz-acc-bl {
        position: fixed !important;
        -webkit-print-color-adjust: exact !important;
     }
-    .jaz-inner { padding: 0 !important; overflow: hidden !important; box-sizing: border-box !important; height: 100%; }
+    .jaz-inner { padding: 20mm 15mm !important; overflow: visible !important; box-sizing: border-box !important; height: auto !important; }
     h1, h2, h3, h4, h5, h6, .jaz-header { page-break-after: avoid; break-after: avoid; }
     .jaz-table-container, .jaz-summary, .jaz-payment-info, .jaz-signature-block, .jaz-agreement-body, tr, .jaz-total-row {
       page-break-inside: avoid;
@@ -44,7 +44,7 @@ const SHARED_STYLES = `
   .jaz-acc-tr { position: absolute; top: 0; right: 0; width: 300px; height: 40px; background: linear-gradient(-135deg, #3f36a6 0%, #1e1b4b 100%); clip-path: polygon(0 0, 100% 0, 100% 100%, 15% 100%); z-index: 5; }
   .jaz-acc-bl { position: absolute; bottom: 0; left: 0; width: 200px; height: 30px; background: #3f36a6; clip-path: polygon(0 0, 100% 100%, 0 100%); z-index: 5; }
   
-  .jaz-inner { position: relative; z-index: 10; padding: 0; }
+  .jaz-inner { position: relative; z-index: 10; padding: 20mm 15mm; }
 
   .jaz-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
   .jaz-logo-wrap { display: flex; align-items: center; gap: 12px; }

@@ -1,5 +1,10 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark, Wallet, TrendingUp, AlertCircle, Receipt, Loader2 } from "lucide-react";
+import { 
+  Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark, Wallet, 
+  TrendingUp, AlertCircle, Receipt, Loader2, Save, Layers, User, Target, 
+  Building2, Calendar as CalendarIcon, Phone, Mail, BadgeCheck, Activity, 
+  Briefcase, Filter, MessageSquare, CreditCard, Banknote, CheckCircle2 
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { exportToCSV } from "../utils/csvExport";
@@ -57,6 +62,37 @@ const emptyForm = {
   extraInstallments: [],
 };
 
+const SectionHeader = ({ icon: Icon, title, color }) => {
+  const colors = {
+    blue: "from-blue-600 to-cyan-500 shadow-blue-500/20",
+    indigo: "from-indigo-600 to-blue-500 shadow-indigo-500/20",
+    violet: "from-violet-600 to-purple-500 shadow-violet-500/20",
+    fuchsia: "from-fuchsia-600 to-pink-500 shadow-fuchsia-500/20",
+    rose: "from-rose-600 to-pink-500 shadow-rose-500/20",
+    amber: "from-amber-500 to-orange-400 shadow-amber-500/20"
+  };
+  
+  return (
+    <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
+      <div className="flex items-center gap-3">
+        <div className={clsx("h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white shadow-lg", colors[color] || colors.blue)}>
+          <Icon size={16} className="stroke-[2.5]" />
+        </div>
+        <h4 className="text-[14px] font-bold text-slate-900 uppercase tracking-widest leading-none">
+          {title}
+        </h4>
+      </div>
+    </div>
+  );
+};
+
+const Label = ({ text, required }) => (
+  <label className="text-[13px] font-bold text-slate-700 ml-0.5 flex items-center gap-1">
+    {text}
+    {required && <span className="text-rose-500 font-black">*</span>}
+  </label>
+);
+
 export default function Income() {
   const [bankAccounts, setBankAccounts] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -87,8 +123,12 @@ export default function Income() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [bankFilter, setBankFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("All");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const filters = useMemo(() => {
     const now = new Date();
@@ -109,18 +149,22 @@ export default function Income() {
     } else if (dateFilter === "This Year") {
       date_from = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
       date_to = today;
+    } else if (dateFrom || dateTo) {
+      date_from = dateFrom || undefined;
+      date_to = dateTo || undefined;
     }
     return {
       search: searchDebounced.trim() || undefined,
       status: statusFilter === "All" ? undefined : statusFilter,
       category: categoryFilter || undefined,
       bank_account_id: bankFilter || undefined,
+      client: clientFilter || undefined,
       date_from,
       date_to,
       page: currentPage,
       per_page: 20,
     };
-  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, dateFilter, currentPage]);
+  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, clientFilter, dateFilter, dateFrom, dateTo, currentPage]);
 
   const { data: incomeResult, isLoading: incomeLoading } = useIncomeList(filters);
   const { data: incomeSummaryFromQuery } = useIncomeSummary();
@@ -139,7 +183,7 @@ export default function Income() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, dateFilter]);
+  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, clientFilter, dateFilter, dateFrom, dateTo]);
 
   /* Load banks and categories for forms/filters */
   useEffect(() => {
@@ -332,18 +376,29 @@ export default function Income() {
   const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
   const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="card hover:border-brand-200/50 group h-36 flex flex-col justify-between p-6">
-      <div className="flex justify-between items-start">
-        <div className={`p-3.5 rounded-xl ${color}`}>
-          <Icon className="w-6 h-6 text-white" />
+    <div className="card group relative overflow-hidden cursor-default !border-0 p-5 h-[140px] flex flex-col justify-between">
+      {/* Top Gradient Line */}
+      <div className={clsx("absolute top-0 left-0 right-0 h-[2px]", "bg-gradient-to-r from-brand-500 to-brand-300")} />
+      
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-0.5">
+          <p className="text-[12px] font-semibold text-slate-500 capitalize">{title.toLowerCase()}</p>
+          <h3 className="text-[26px] font-bold text-slate-900 leading-none mt-1">{value}</h3>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
-          <h3 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">{value}</h3>
+        <div className={clsx(
+          "h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110",
+          color.replace('bg-', 'bg-opacity-10 '),
+          color.replace('bg-', 'text-')
+        )}>
+          <Icon className="w-5 h-5 font-bold" />
         </div>
       </div>
-      <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
-        <div className={`h-full rounded-full ${color} opacity-30`} style={{ width: "70%" }} />
+      
+      <div className="space-y-2 mt-4">
+        <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+          <div className={clsx("h-full rounded-full transition-all duration-1000", color)} style={{ width: '70%' }}></div>
+        </div>
+        <p className="text-[11px] text-slate-400 font-medium tracking-tight">Financial metrics</p>
       </div>
     </div>
   );
@@ -364,10 +419,12 @@ export default function Income() {
         </div>
         <button
           onClick={openAdd}
-          className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 shadow-lg shadow-brand-500/30"
+          className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
         >
-          <Plus size={20} />
-          Add Income
+          {/* Shimmer Effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
+          <Plus size={20} className="relative z-10" />
+          <span className="relative z-10">Add Income</span>
         </button>
       </div>
 
@@ -399,61 +456,150 @@ export default function Income() {
         />
       </div>
 
-      {/* SEARCH & FILTERS */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-        <div className="flex flex-col lg:flex-row gap-4 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+      {/* Filters Bar */}
+      <div className="space-y-3">
+        <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[240px] relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
             <input
               type="text"
-              placeholder="Search income..."
+              placeholder="Search income by ID, invoice, or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all shadow-sm"
+              className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[120px]"
-          >
-            <option value="All">All</option>
-            <option value="Paid">Paid</option>
-            <option value="Partial">Partial</option>
-            <option value="Unpaid">Unpaid</option>
-          </select>
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
-          >
-            <option value="">All Categories</option>
-            {incomeCategories.map((c) => (
-              <option key={c.id} value={c.name}>{c.name}</option>
-            ))}
-          </select>
-          <select
-            value={bankFilter}
-            onChange={(e) => setBankFilter(e.target.value)}
-            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[160px]"
-          >
-            <option value="">All Banks</option>
-            {bankAccounts.map((b) => (
-              <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>
-            ))}
-          </select>
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[120px]"
-          >
-            <option value="All">All Time</option>
-            <option value="Today">Today</option>
-            <option value="This Week">This Week</option>
-            <option value="This Month">This Month</option>
-            <option value="This Year">This Year</option>
-          </select>
+          
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
+              <Receipt className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
+              >
+                <option value="All">All Status</option>
+                <option value="Paid">Paid</option>
+                <option value="Partial">Partial</option>
+                <option value="Unpaid">Unpaid</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
+              <CalendarIcon className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
+              >
+                <option value="All">All Time</option>
+                <option value="Today">Today</option>
+                <option value="This Week">This Week</option>
+                <option value="This Month">This Month</option>
+                <option value="This Year">This Year</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={clsx(
+                "flex items-center gap-2 px-4 h-10 rounded-lg text-[13px] font-bold transition-all border shadow-sm",
+                showAdvancedFilters 
+                  ? "bg-brand-50 border-brand-200 text-brand-700" 
+                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+              )}
+            >
+              <Filter className={clsx("w-4 h-4 transition-transform", showAdvancedFilters && "rotate-180")} />
+              Filters
+            </button>
+
+            {(searchQuery || statusFilter !== "All" || categoryFilter || bankFilter || clientFilter || dateFilter !== "All" || dateFrom || dateTo) && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("All");
+                  setCategoryFilter("");
+                  setBankFilter("");
+                  setClientFilter("");
+                  setDateFilter("All");
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+                className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
+              >
+                <X size={14} /> Clear
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Advanced Filters */}
+        {showAdvancedFilters && (
+          <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[180px]">
+              <Check className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
+              >
+                <option value="">All Categories</option>
+                {incomeCategories.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
+              <Landmark className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <select
+                value={bankFilter}
+                onChange={(e) => setBankFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
+              >
+                <option value="">All Banks</option>
+                {bankAccounts.map((b) => (
+                  <option key={b.id} value={b.id}>{b.bankName}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
+              <Wallet className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <select
+                value={clientFilter}
+                onChange={(e) => setClientFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
+              >
+                <option value="">All Clients</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.company_name || c.client_name}>
+                    {c.company_name || c.client_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {(dateFilter === "All" || dateFilter === "") && (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-2">Period:</span>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 outline-none focus:border-brand-400 h-10 shadow-sm"
+                />
+                <span className="text-slate-400 text-xs font-bold px-1">-</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 outline-none focus:border-brand-400 h-10 shadow-sm"
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* TABLE */}
@@ -480,7 +626,7 @@ export default function Income() {
             <TableSkeleton rows={6} cols={7} />
           ) : (
           <table className="w-full text-sm text-left min-w-[800px]">
-            <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
+            <thead className="bg-slate-50/80 text-[13px] font-semibold text-slate-600 capitalize tracking-normal border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">Client</th>
@@ -527,7 +673,7 @@ export default function Income() {
                         <button
                           onClick={() => openViewModal(income)}
                           title="View"
-                          className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                          className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-brand-50 transition-colors"
                         >
                           <Eye size={18} />
                         </button>
@@ -637,561 +783,421 @@ export default function Income() {
 
       {/* FORM MODAL */}
       {openForm && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[95vh] animate-slide-up overflow-hidden">
-            <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
-              <div>
-                <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
-                  {editId ? "Edit Transaction" : "New Income Entry"}
-                </h2>
-                <p className="text-xs md:text-sm text-slate-500 mt-1">Fill in the details for this transaction.</p>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
+          <div className="bg-white/90 backdrop-blur-xl w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-[0.98] duration-[250ms] border border-white/40 overflow-hidden">
+            
+            {/* Header */}
+            <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white z-20">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-gradient-to-br from-violet-600 to-indigo-500 text-white rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] animate-pulse-subtle">
+                  <TrendingUp className="h-5 w-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-[20px] font-bold text-slate-900 tracking-tight">
+                    {editId ? "Modify Revenue Record" : "Capture New Inflow"}
+                  </h3>
+                  <p className="text-[12px] font-medium text-slate-500 mt-0.5">
+                    {editId ? `Updating transaction #${editId}` : "Record business income and manage fiscal installments"}
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setOpenForm(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+              <button onClick={() => setOpenForm(false)} className="h-10 w-10 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all flex items-center justify-center active:scale-95 shadow-sm border border-slate-100">
                 <X size={20} />
               </button>
             </div>
 
-            {/* TABS */}
-            <div className="flex px-4 md:px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto custom-scrollbar flex-shrink-0">
-              {[
-                { id: "basic", label: "Basic" },
-                { id: "financial", label: "Financial Summary" },
-                { id: "installments", label: "Extra Installments" },
-                { id: "internal", label: "Internal" },
-              ].map(({ id, label }) => (
-                <button
-                  key={id}
-                  onClick={() => setTab(id)}
-                  className={clsx(
-                    "px-4 md:px-6 py-3 md:py-4 text-[10px] md:text-sm font-bold uppercase tracking-wide border-b-2 transition-all whitespace-nowrap",
-                    tab === id ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
+            <div className="flex flex-1 overflow-hidden">
+              {/* Sidebar Tabs */}
+              <div className="w-64 border-r border-slate-100 bg-slate-50/50 p-4 flex flex-col gap-2">
+                {[
+                  { id: 'basic', label: 'Primary Context', icon: User, desc: 'Client & Project' },
+                  { id: 'financial', label: 'Fiscal Summary', icon: Wallet, desc: 'Valuation & Tax' },
+                  { id: 'installments', label: 'Payment Splits', icon: Layers, desc: 'Installment Logic' },
+                  { id: 'internal', label: 'Internal Ops', icon: Briefcase, desc: 'Staff & Notes' },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    className={clsx(
+                      "flex items-center gap-3 p-3.5 rounded-xl transition-all duration-[250ms] group text-left relative overflow-hidden",
+                      tab === t.id 
+                        ? "bg-white text-violet-600 shadow-md shadow-violet-500/5 ring-1 ring-slate-200" 
+                        : "text-slate-500 hover:bg-white hover:text-slate-900"
+                    )}
+                  >
+                    {tab === t.id && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-violet-600 rounded-full" />
+                    )}
+                    <t.icon className={clsx("h-5 w-5 transition-transform duration-300", tab === t.id && "scale-110")} />
+                    <div>
+                      <p className="text-[14px] font-bold leading-none">{t.label}</p>
+                      <p className="text-[10px] font-medium opacity-60 mt-1 uppercase tracking-wider">{t.desc}</p>
+                    </div>
+                  </button>
+                ))}
+
+                {/* Live Valuation Summary */}
+                <div className="mt-auto bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-5 text-white shadow-lg space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Target className="h-4 w-4 text-violet-400" />
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-violet-200">Revenue Lock</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center text-[13px]">
+                       <span className="opacity-60">Subtotal</span>
+                       <span className="font-medium">₹{Number(form.amount || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[16px]">
+                       <span className="font-bold">Total Inflow</span>
+                       <span className="font-black text-violet-400">₹{totalAmount.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Content */}
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-white">
+                <div className="space-y-8 max-w-3xl mx-auto">
+                  {tab === "basic" && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <SectionHeader icon={Building2} title="Entity Relationship" color="blue" />
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5Col">
+                          <Label text="Source Entity (Client)" required />
+                          <select className={clsx("input-premium", errors.client && "border-rose-400")} value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })}>
+                            <option value="">Select Target Entity</option>
+                            {clients.map((c) => (
+                              <option key={c.id} value={c.company_name || c.client_name}>{c.company_name || c.client_name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label text="Income Classification" />
+                          <div className="flex gap-2">
+                             <select className={clsx("input-premium flex-1", errors.category && "border-rose-400")} value={form.category} onChange={(e) => {
+                               if (e.target.value === "__add__") return setAddCategoryModalOpen(true);
+                               if (e.target.value === "__manage__") return setManageCategoriesModalOpen(true);
+                               setForm({ ...form, category: e.target.value });
+                             }}>
+                               <option value="">Select logic channel</option>
+                               {incomeCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                               <option value="__add__">— Define New Channel —</option>
+                               <option value="__manage__">— Audit Channels —</option>
+                             </select>
+                             <button type="button" onClick={() => setAddCategoryModalOpen(true)} className="h-[42px] px-4 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl transition-all active:scale-95 border border-slate-100 flex items-center justify-center">
+                               <Plus size={18} />
+                             </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                          <Label text="Service Line / Project" />
+                          <input className="input-premium" placeholder="e.g. Infrastructure Audit" value={form.project} onChange={(e) => setForm({ ...form, project: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label text="Invoice Identifier" />
+                          <input className="input-premium" placeholder="Internal/Ref No" value={form.invoiceNo} onChange={(e) => setForm({ ...form, invoiceNo: e.target.value })} />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 pt-4">
+                        <SectionHeader icon={MessageSquare} title="Operational Narrative" color="indigo" />
+                        <Label text="Transactional Intelligence" />
+                        <textarea className="input-premium min-h-[100px] py-3" placeholder="Define the scope and nature of this revenue inflow..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6 pt-4">
+                        <div className="space-y-1.5">
+                           <Label text="Client Email Corridor" />
+                           <div className="relative">
+                              <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <input type="email" className="input-premium pl-11" placeholder="entity@domain.com" value={form.clientEmail} onChange={(e) => setForm({ ...form, clientEmail: e.target.value })} />
+                           </div>
+                        </div>
+                        <div className="space-y-1.5">
+                           <Label text="Direct Dial" />
+                           <div className="relative">
+                              <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <input className="input-premium pl-11" placeholder="Secure line" value={form.clientPhone} onChange={(e) => setForm({ ...form, clientPhone: e.target.value })} />
+                           </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
 
-            {/* FORM CONTENT */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {tab === "basic" && (
-                  <>
-                    <div>
-                      <label className="label">
-                        Client <Req />
-                      </label>
-                      <select
-                        className={inputClass("client")}
-                        value={form.client}
-                        onChange={(e) =>
-                          setForm({ ...form, client: e.target.value })
-                        }
-                      >
-                        <option value="">Select Client</option>
-                        {clients.map((c) => (
-                          <option key={c.id} value={c.company_name || c.client_name}>
-                            {c.company_name || c.client_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label">
-                        Income Source
-                      </label>
-                      <input
-                        className={inputClass("source")}
-                        placeholder="e.g. Consulting"
-                        value={form.source}
-                        onChange={(e) =>
-                          setForm({ ...form, source: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">
-                        Project / Service
-                      </label>
-                      <input
-                        className="input"
-                        value={form.project}
-                        onChange={(e) =>
-                          setForm({ ...form, project: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Category</label>
-                      <div className="flex gap-2">
-                        <select
-                          className={clsx("input flex-1", errors.category && "border-red-500 focus:border-red-500 focus:ring-red-200")}
-                          value={form.category}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "__add__") {
-                              setAddCategoryModalOpen(true);
-                              return;
-                            }
-                            if (v === "__manage__") {
-                              setManageCategoriesModalOpen(true);
-                              return;
-                            }
-                            setForm({ ...form, category: v });
-                          }}
-                        >
-                          <option value="">Select Category</option>
-                          {incomeCategories.map((c) => (
-                            <option key={c.id} value={c.name}>
-                              {c.name}
-                            </option>
-                          ))}
-                          <option value="__add__">— Add New Category —</option>
-                          <option value="__manage__">— Manage Categories —</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => setAddCategoryModalOpen(true)}
-                          className="btn-primary whitespace-nowrap flex items-center gap-1"
-                          title="Add category"
-                        >
-                          <Plus className="w-4 h-4" /> Add
-                        </button>
-                      </div>
-                      {errors.category && <p className="text-sm text-red-500 mt-1">{errors.category}</p>}
-                    </div>
-                    <div>
-                      <label className="label">
-                        Invoice No
-                      </label>
-                      <input
-                        className="input"
-                        value={form.invoiceNo}
-                        onChange={(e) =>
-                          setForm({ ...form, invoiceNo: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">
-                        Subtotal (₹) <Req />
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className={inputClass("amount")}
-                        placeholder="0.00"
-                        value={form.amount}
-                        onChange={(e) =>
-                          setForm({ ...form, amount: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label">
-                        Description
-                      </label>
-                      <textarea
-                        className="input min-h-[80px]"
-                        placeholder="Detailed description of the income"
-                        value={form.description}
-                        onChange={(e) =>
-                          setForm({ ...form, description: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label">
-                        Reference Number
-                      </label>
-                      <input
-                        className="input"
-                        placeholder="Internal reference or PO number"
-                        value={form.referenceNumber}
-                        onChange={(e) =>
-                          setForm({ ...form, referenceNumber: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label">
-                        Invoice Date
-                      </label>
-                      <input
-                        type="date"
-                        className="input"
-                        value={form.invoiceDate}
-                        onChange={(e) =>
-                          setForm({ ...form, invoiceDate: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label">
-                        Client Email
-                      </label>
-                      <input
-                        type="email"
-                        className="input"
-                        placeholder="client@example.com"
-                        value={form.clientEmail}
-                        onChange={(e) =>
-                          setForm({ ...form, clientEmail: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label">
-                        Client Phone
-                      </label>
-                      <input
-                        className="input"
-                        placeholder="+91-9876543210"
-                        value={form.clientPhone}
-                        onChange={(e) =>
-                          setForm({ ...form, clientPhone: e.target.value })
-                        }
-                      />
-                    </div>
-                  </>
-                )}
-
-                {tab === "financial" && (
-                  <div className="md:col-span-2 space-y-6">
-                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                      <h3 className="text-base font-bold text-slate-800 mb-4">Financial Summary</h3>
-                      <div className="flex items-center gap-2 mb-4">
-                        <input
-                          type="checkbox"
-                          id="autoCalc"
-                          checked={form.autoCalculateAmount}
-                          onChange={(e) => setForm({ ...form, autoCalculateAmount: e.target.checked })}
-                          className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                        />
-                        <label htmlFor="autoCalc" className="text-sm font-medium text-slate-700">Auto-calculate Amount</label>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">Subtotal (₹)</label>
-                          <input type="text" readOnly className="input bg-gray-50" value={form.amount ? `₹${Number(form.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "₹0.00"} />
+                  {tab === "financial" && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <SectionHeader icon={CreditCard} title="Fiscal Architecture" color="rose" />
+                      <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl space-y-4">
+                        <div className="grid grid-cols-2 gap-6 pb-4 border-b border-white/10 opacity-70">
+                           <div className="flex justify-between items-center text-[14px]">
+                              <span>Base Revenue</span>
+                              <span className="font-bold font-mono text-white">₹{Number(form.amount || 0).toLocaleString()}</span>
+                           </div>
+                           <div className="flex justify-between items-center text-[14px]">
+                              <span>Unified Tax</span>
+                              <span className="font-bold font-mono text-white">₹{Number(form.taxAmount || 0).toLocaleString()}</span>
+                           </div>
                         </div>
-                        <div>
-                          <label className="label">Discount (₹)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="input"
-                            placeholder="0.00"
-                            value={form.discount}
-                            onChange={(e) => setForm({ ...form, discount: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Tax Amount (₹)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="input"
-                            placeholder="0.00"
-                            value={form.taxAmount}
-                            onChange={(e) => setForm({ ...form, taxAmount: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Total Amount (₹)</label>
-                          <input type="text" readOnly className="input bg-brand-50 font-bold" value={`₹${totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`} />
-                        </div>
-                      </div>
-                      <div className="mt-6 pt-4 border-t border-gray-100">
-                        <div className="flex items-center gap-2 mb-4">
-                          <input
-                            type="checkbox"
-                            id="initialDeposit"
-                            checked={form.initialDepositEnabled}
-                            onChange={(e) => setForm({ ...form, initialDepositEnabled: e.target.checked, initialDepositAmount: e.target.checked ? form.initialDepositAmount : "", initialDepositBankId: e.target.checked ? form.initialDepositBankId : null, initialDepositBankName: e.target.checked ? form.initialDepositBankName : "" })}
-                            className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                          />
-                          <label htmlFor="initialDeposit" className="text-sm font-medium text-slate-700">Initial Deposit</label>
-                        </div>
-                        {form.initialDepositEnabled && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="label">Initial Deposit Amount (₹)</label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                readOnly={isSavedRecord}
-                                className="input"
-                                placeholder="0.00"
-                                value={form.initialDepositAmount}
-                                onChange={(e) => setForm({ ...form, initialDepositAmount: e.target.value })}
-                              />
-                            </div>
-                            <div>
-                              <label className="label">Bank Account</label>
-                              <div className="flex gap-2">
-                                <button
-                                  ref={firstInvalidBankKey === "initialDepositBank" ? firstInvalidBankRef : null}
-                                  type="button"
-                                  onClick={() => { setBankModalFor("initial"); setBankModalOpen(true); }}
-                                  disabled={isSavedRecord}
-                                  className={clsx("btn-secondary flex-1", errors.initialDepositBank && "border-red-500 focus:border-red-500 focus:ring-red-200")}
-                                >
-                                  {form.initialDepositBankName || "Select Bank"}
-                                </button>
+                        <div className="flex justify-between items-center pt-2">
+                           <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 bg-violet-500/20 text-violet-400 rounded-lg flex items-center justify-center">
+                                 <Banknote className="h-5 w-5" />
                               </div>
-                              {errors.initialDepositBank && (
-                                <p className="text-sm text-red-500 mt-1">{errors.initialDepositBank}</p>
-                              )}
+                              <div>
+                                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Aggregate Valuation</p>
+                                 <h4 className="text-[24px] font-black text-violet-400 font-mono">₹{totalAmount.toLocaleString()}</h4>
+                              </div>
+                           </div>
+                           <div className="text-right">
+                              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Outstanding Balance</p>
+                              <h4 className="text-[20px] font-extrabold text-amber-400 font-mono">₹{Math.max(0, balanceDue).toLocaleString()}</h4>
+                           </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                           <Label text="Base Valuation (Subtotal)" required />
+                           <input type="number" step="0.01" className={clsx("input-premium", errors.amount && "border-rose-400")} placeholder="0.00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                           <Label text="Applied Deduction (Discount)" />
+                           <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-50 mt-4">
+                        <div className="space-y-1.5">
+                           <Label text="Calculated Tax Amount" />
+                           <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.taxAmount} onChange={(e) => setForm({ ...form, taxAmount: e.target.value })} />
+                        </div>
+                        <div className="flex items-center gap-3 h-full pt-6">
+                           <button onClick={() => setForm({ ...form, autoCalculateAmount: !form.autoCalculateAmount })} className="flex items-center gap-2 group cursor-pointer">
+                              <div className={clsx("h-5 w-5 rounded border-2 flex items-center justify-center transition-all", form.autoCalculateAmount ? "bg-violet-600 border-violet-600" : "bg-white border-slate-200")}>
+                                {form.autoCalculateAmount && <Check size={14} className="text-white" />}
+                              </div>
+                              <span className="text-[13px] font-bold text-slate-600 group-hover:text-violet-600 transition-colors">Auto-Algorithmic Logic</span>
+                           </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-6 pt-6 border-t border-slate-100">
+                        <div className="flex items-center gap-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-100 hover:border-violet-100 transition-all cursor-pointer group" onClick={() => setForm({ ...form, initialDepositEnabled: !form.initialDepositEnabled })}>
+                          <div className={clsx("h-6 w-6 rounded-md border-2 flex items-center justify-center transition-all", form.initialDepositEnabled ? "bg-violet-600 border-violet-600" : "bg-white border-slate-200")}>
+                            {form.initialDepositEnabled && <CheckCircle2 className="h-4 w-4 text-white" />}
+                          </div>
+                          <span className="text-[14px] font-bold text-slate-700 uppercase tracking-tight">Activate Initial Liquidity (Deposit)</span>
+                        </div>
+
+                        {form.initialDepositEnabled && (
+                          <div className="grid grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-300 ml-9 pb-4">
+                            <div className="space-y-1.5">
+                               <Label text="Injection Quantum (₹)" />
+                               <input type="number" step="0.01" readOnly={editId && savedExtraInstallmentsCount > 0} className="input-premium" placeholder="0.00" value={form.initialDepositAmount} onChange={(e) => setForm({ ...form, initialDepositAmount: e.target.value })} />
+                            </div>
+                            <div className="space-y-1.5">
+                               <Label text="Target Vault / Bank" />
+                               <button type="button" onClick={() => { setBankModalFor("initial"); setBankModalOpen(true); }} disabled={editId && savedExtraInstallmentsCount > 0} className={clsx("input-premium text-left relative", errors.initialDepositBank && "border-rose-400")}>
+                                 {form.initialDepositBankName || 'Select Reserve Entity'}
+                                 <Landmark className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                               </button>
                             </div>
                           </div>
                         )}
-                        <div className="mt-4">
-                          <label className="label">Balance Due (₹)</label>
-                          <input type="text" readOnly className="input bg-amber-50 font-bold text-slate-800" value={`₹${Math.max(0, balanceDue).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`} />
-                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {tab === "installments" && (
-                  <div className="md:col-span-2 space-y-6">
-                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-base font-bold text-slate-800">Extra Installments (Split Payments)</h3>
-                        <button type="button" onClick={() => setForm({ ...form, extraInstallments: [...(form.extraInstallments || []), { date: "", amount: "", bankAccountId: null, bankName: "", note: "" }] })} className="btn-primary flex items-center gap-2">
-                          <Plus className="w-4 h-4" /> Add Payment
+                  {tab === "installments" && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                        <SectionHeader icon={Layers} title="Sequential Liquidation (Installments)" color="indigo" />
+                        <button type="button" onClick={() => setForm({ ...form, extraInstallments: [...(form.extraInstallments || []), { date: "", amount: "", bankAccountId: null, bankName: "", note: "" }] })} className="h-[40px] px-6 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-[13px] font-bold transition-all shadow-lg shadow-violet-500/20 active:scale-95 flex items-center gap-2">
+                           <Plus size={16} /> Append Breakpoint
                         </button>
                       </div>
-                      <p className="text-sm text-slate-500 mb-4">Track multiple income payments. {isSavedRecord && "Saved payments are read-only; you can only add new ones."}</p>
-                      <div className="space-y-4">
-                        {(form.extraInstallments || []).length === 0 ? (
-                          <p className="text-sm text-slate-400 py-6 text-center">No payments added yet. Click &quot;+ Add Payment&quot; to add one.</p>
+                      <div className="space-y-4 pt-4">
+                        {(!form.extraInstallments || form.extraInstallments.length === 0) ? (
+                          <div className="py-20 flex flex-col items-center justify-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                             <div className="h-16 w-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-300 mb-4">
+                               <Layers size={32} />
+                             </div>
+                             <p className="text-[14px] font-medium text-slate-400">No installment logic defined for this revenue stream.</p>
+                          </div>
                         ) : (
-                          (form.extraInstallments || []).map((row, idx) => {
-                            const rowIsSaved = isSavedRecord && idx < savedExtraInstallmentsCount;
+                          form.extraInstallments.map((row, idx) => {
+                            const rowIsSaved = editId && idx < savedExtraInstallmentsCount;
                             return (
-                            <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 items-end">
-                              <div className="md:col-span-2">
-                                <label className="label text-xs">Date</label>
-                                <input
-                                  type="date"
-                                  readOnly={rowIsSaved}
-                                  className="input"
-                                  value={row.date}
-                                  onChange={(e) => {
-                                    const next = [...(form.extraInstallments || [])];
-                                    next[idx] = { ...next[idx], date: e.target.value };
-                                    setForm({ ...form, extraInstallments: next });
-                                  }}
-                                />
+                              <div key={idx} className={clsx("p-5 rounded-2xl border transition-all grid grid-cols-12 gap-5 items-end animate-in slide-in-from-right-2 duration-300 group", rowIsSaved ? "bg-slate-50 border-slate-100 opacity-80" : "bg-white border-slate-200 hover:border-violet-200 hover:shadow-md shadow-violet-500/5")}>
+                                <div className="col-span-3 space-y-1.5">
+                                   <Label text="Temporal Date" />
+                                   <div className="relative">
+                                      <CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                      <input type="date" readOnly={rowIsSaved} className="input-premium pl-9 py-2 text-[13px]" value={row.date} onChange={(e) => {
+                                        const next = [...form.extraInstallments];
+                                        next[idx].date = e.target.value;
+                                        setForm({ ...form, extraInstallments: next });
+                                      }} />
+                                   </div>
+                                </div>
+                                <div className="col-span-3 space-y-1.5">
+                                   <Label text="Quantum (₹)" />
+                                   <input type="number" readOnly={rowIsSaved} className="input-premium py-2 text-[13px] font-bold" placeholder="0.00" value={row.amount} onChange={(e) => {
+                                      const next = [...form.extraInstallments];
+                                      next[idx].amount = e.target.value;
+                                      setForm({ ...form, extraInstallments: next });
+                                   }} />
+                                </div>
+                                <div className="col-span-3 space-y-1.5">
+                                   <Label text="Target Vault" />
+                                   <button type="button" disabled={rowIsSaved} onClick={() => { setBankModalFor({ type: "installment", index: idx }); setBankModalOpen(true); }} className={clsx("input-premium py-2 text-[12px] font-bold text-left truncate relative", errors[`installmentBank_${idx}`] && "border-rose-400")}>
+                                     {row.bankName || 'Assign Vault'}
+                                     <Landmark className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                   </button>
+                                </div>
+                                <div className="col-span-2 space-y-1.5">
+                                   <Label text="Codename/Note" />
+                                   <input type="text" readOnly={rowIsSaved} className="input-premium py-2 text-[13px]" placeholder="Optional..." value={row.note} onChange={(e) => {
+                                      const next = [...form.extraInstallments];
+                                      next[idx].note = e.target.value;
+                                      setForm({ ...form, extraInstallments: next });
+                                   }} />
+                                </div>
+                                <div className="col-span-1 flex justify-end pb-1.5">
+                                   {!rowIsSaved && (
+                                     <button type="button" onClick={() => setForm({ ...form, extraInstallments: form.extraInstallments.filter((_, i) => i !== idx) })} className="h-8 w-8 text-rose-400 hover:bg-rose-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                                        <Trash2 size={16} />
+                                     </button>
+                                   )}
+                                </div>
                               </div>
-                              <div className="md:col-span-2">
-                                <label className="label text-xs">Amount (₹)</label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  readOnly={rowIsSaved}
-                                  className="input"
-                                  placeholder="0.00"
-                                  value={row.amount}
-                                  onChange={(e) => {
-                                    const next = [...(form.extraInstallments || [])];
-                                    next[idx] = { ...next[idx], amount: e.target.value };
-                                    setForm({ ...form, extraInstallments: next });
-                                  }}
-                                />
-                              </div>
-                              <div className="md:col-span-3">
-                                <label className="label text-xs">Bank Account</label>
-                                <button
-                                  ref={firstInvalidBankKey === `installmentBank_${idx}` ? firstInvalidBankRef : null}
-                                  type="button"
-                                  disabled={rowIsSaved}
-                                  onClick={() => { setBankModalFor({ type: "installment", index: idx }); setBankModalOpen(true); }}
-                                  className={clsx("input w-full text-left truncate bg-white", errors[`installmentBank_${idx}`] && "border-red-500 focus:border-red-500 focus:ring-red-200")}
-                                >
-                                  {row.bankName || "Select Bank"}
-                                </button>
-                                {errors[`installmentBank_${idx}`] && (
-                                  <p className="text-sm text-red-500 mt-1">{errors[`installmentBank_${idx}`]}</p>
-                                )}
-                              </div>
-                              <div className="md:col-span-3">
-                                <label className="label text-xs">Note</label>
-                                <input
-                                  type="text"
-                                  readOnly={rowIsSaved}
-                                  className="input"
-                                  placeholder="Optional"
-                                  value={row.note}
-                                  onChange={(e) => {
-                                    const next = [...(form.extraInstallments || [])];
-                                    next[idx] = { ...next[idx], note: e.target.value };
-                                    setForm({ ...form, extraInstallments: next });
-                                  }}
-                                />
-                              </div>
-                              <div className="md:col-span-2 flex justify-end">
-                                {!rowIsSaved && (
-                                  <button type="button" onClick={() => setForm({ ...form, extraInstallments: (form.extraInstallments || []).filter((_, i) => i !== idx) })} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
                             );
                           })
                         )}
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {tab === "internal" && (
-                  <>
-                    <div>
-                      <label className="label">
-                        Account Manager / Staff
-                      </label>
-                      <input
-                        className="input"
-                        placeholder="Name of staff"
-                        value={form.staff}
-                        onChange={(e) =>
-                          setForm({ ...form, staff: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">
-                        Department
-                      </label>
-                      <input
-                        className="input"
-                        placeholder="Sales / Ops"
-                        value={form.department}
-                        onChange={(e) =>
-                          setForm({ ...form, department: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="label">
-                        Internal Notes
-                      </label>
-                      <textarea
-                        className="input min-h-[120px]"
-                        placeholder="Add specific details about this transaction..."
-                        value={form.notes}
-                        onChange={(e) =>
-                          setForm({ ...form, notes: e.target.value })
-                        }
-                      />
-                    </div>
+                  {tab === "internal" && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                       <SectionHeader icon={Briefcase} title="Managerial Assignments" color="fuchsia" />
+                       <div className="grid grid-cols-2 gap-6">
+                         <div className="space-y-1.5Col">
+                            <Label text="Primary Custodian (Staff)" />
+                            <div className="relative">
+                               <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                               <input className="input-premium pl-11" placeholder="Lead agent" value={form.staff} onChange={(e) => setForm({ ...form, staff: e.target.value })} />
+                            </div>
+                         </div>
+                         <div className="space-y-1.5">
+                            <Label text="Strategic Department" />
+                            <input className="input-premium" placeholder="Sales/Ops/Treasury" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+                         </div>
+                       </div>
 
-                    <div>
-                      <label className="label">
-                        Collection Status
-                      </label>
-                      <select
-                        className="input"
-                        value={form.collectionStatus}
-                        onChange={(e) =>
-                          setForm({ ...form, collectionStatus: e.target.value })
-                        }
-                      >
-                        <option>Collected</option>
-                        <option>Overdue</option>
-                        <option>Partially Paid</option>
-                        <option>Written Off</option>
-                      </select>
-                    </div>
+                       <div className="grid grid-cols-2 gap-6 pt-4">
+                         <div className="space-y-1.5">
+                            <Label text="Collection Framework Status" />
+                            <select className="input-premium" value={form.collectionStatus} onChange={(e) => setForm({ ...form, collectionStatus: e.target.value })}>
+                               <option>Collected</option>
+                               <option>Overdue</option>
+                               <option>Partially Paid</option>
+                               <option>Written Off</option>
+                            </select>
+                         </div>
+                         <div className="space-y-1.5">
+                            <Label text="Incentive Schema (Commission)" />
+                            <div className="relative">
+                               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px] font-bold text-slate-400 font-mono">₹</span>
+                               <input type="number" className="input-premium pl-11" placeholder="0.00" value={form.commission} onChange={(e) => setForm({ ...form, commission: e.target.value })} />
+                            </div>
+                         </div>
+                       </div>
 
-                    <div>
-                      <label className="label">
-                        Follow-up Date
-                      </label>
-                      <input
-                        type="date"
-                        className="input"
-                        value={form.followUpDate}
-                        onChange={(e) =>
-                          setForm({ ...form, followUpDate: e.target.value })
-                        }
-                      />
-                    </div>
+                       <div className="space-y-1.5 pt-4">
+                          <SectionHeader icon={Activity} title="Internal Intelligence" color="amber" />
+                          <Label text="Confidential Audit Notes" />
+                          <textarea className="input-premium min-h-[120px] py-3" placeholder="Restricted tactical notes for internal audit only..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                       </div>
 
-                    <div>
-                      <label className="label">
-                        Commission (₹)
-                      </label>
-                      <input
-                        type="number"
-                        className="input"
-                        placeholder="If applicable"
-                        value={form.commission}
-                        onChange={(e) =>
-                          setForm({ ...form, commission: e.target.value })
-                        }
-                      />
+                       <div className="pt-4">
+                          <Label text="Scheduled Protocol Follow-up" />
+                          <div className="relative max-w-sm mt-1.5">
+                             <CalendarIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                             <input type="date" className="input-premium pl-11" value={form.followUpDate} onChange={(e) => setForm({ ...form, followUpDate: e.target.value })} />
+                          </div>
+                       </div>
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Select Bank Account Modal */}
+            {/* Footer */}
+            <div className="px-8 py-5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 z-20">
+              <button onClick={() => setOpenForm(false)} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+                Discard Updates
+              </button>
+              <div className="flex gap-4">
+                 <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="px-8 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-500 text-white rounded-xl text-[14px] font-medium shadow-lg shadow-violet-500/20 hover:shadow-xl hover:shadow-violet-500/30 transition-all hover:-translate-y-[2px] active:scale-95 group relative overflow-hidden"
+                 >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                    <div className="flex items-center gap-2 relative z-10">
+                       {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} className="stroke-[2.5]" />}
+                       <span>{isSaving ? 'Processing Protocol...' : (editId ? 'Commit Financial Update' : 'Authorize Revenue Entry')}</span>
+                    </div>
+                 </button>
+              </div>
+            </div>
+
+            {/* Nested Modals: Bank, Category Add/Manage */}
             {bankModalOpen && (
-              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
-                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-slate-800">Select Bank Account</h3>
-                    <button type="button" onClick={() => { setBankModalOpen(false); setBankModalFor(null); }} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
-                      <X className="w-5 h-5" />
+              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-[0.95] duration-200">
+                  <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                    <h3 className="text-[16px] font-bold text-slate-800">Assign Treasury Channel</h3>
+                    <button onClick={() => { setBankModalOpen(false); setBankModalFor(null); }} className="h-8 w-8 text-slate-400 hover:text-rose-500 transition-colors">
+                      <X size={18} />
                     </button>
                   </div>
-                  <div className="overflow-y-auto p-4 space-y-2">
+                  <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
                     {bankAccounts.length === 0 ? (
-                      <p className="text-sm text-slate-500">No bank accounts found. Add one in Bank Accounts.</p>
+                      <div className="p-12 text-center text-slate-400 text-[14px]">No reserve vaults found.</div>
                     ) : (
                       bankAccounts.map((b) => (
                         <button
                           key={b.id}
                           type="button"
                           onClick={() => {
-                            const name = `${b.bankName} - ${b.accountNumber}`;
+                            const name = `${b.bankName} – ${b.accountNumber}`;
                             if (bankModalFor === "initial") {
                               setForm((prev) => ({ ...prev, initialDepositBankId: b.id, initialDepositBankName: name }));
-                              setErrors((prev) => {
-                                const next = { ...prev };
-                                delete next.initialDepositBank;
-                                return next;
-                              });
-                            } else if (bankModalFor && bankModalFor.type === "installment" && typeof bankModalFor.index === "number") {
-                              const idx = bankModalFor.index;
-                              const next = [...(form.extraInstallments || [])];
-                              next[idx] = { ...next[idx], bankAccountId: b.id, bankName: name };
+                              setErrors((prev) => { const n = { ...prev }; delete n.initialDepositBank; return n; });
+                            } else if (bankModalFor?.type === "installment") {
+                              const next = [...form.extraInstallments];
+                              next[bankModalFor.index] = { ...next[bankModalFor.index], bankAccountId: b.id, bankName: name };
                               setForm((prev) => ({ ...prev, extraInstallments: next }));
-                              setErrors((prev) => {
-                                const nextErr = { ...prev };
-                                delete nextErr[`installmentBank_${idx}`];
-                                return nextErr;
-                              });
+                              setErrors((prev) => { const n = { ...prev }; delete n[`installmentBank_${bankModalFor.index}`]; return n; });
                             }
                             setBankModalOpen(false);
                             setBankModalFor(null);
                           }}
-                          className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50/50 text-left transition-colors"
+                          className="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-100 hover:border-violet-200 hover:bg-violet-50/50 text-left transition-all group"
                         >
-                          <Landmark className="w-5 h-5 text-brand-600" />
-                          <span className="font-medium text-slate-800">{b.bankName} - {b.accountNumber}</span>
+                          <div className="h-10 w-10 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center group-hover:bg-violet-100 group-hover:text-violet-600 transition-colors">
+                            <Landmark size={20} />
+                          </div>
+                          <div>
+                            <p className="text-[14px] font-bold text-slate-800 tracking-tight">{b.bankName}</p>
+                            <p className="text-[12px] font-medium text-slate-400 font-mono italic">Account: {b.accountNumber}</p>
+                          </div>
                         </button>
                       ))
                     )}
@@ -1200,128 +1206,77 @@ export default function Income() {
               </div>
             )}
 
-            {/* Add New Category Modal */}
             {addCategoryModalOpen && (
-              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col">
-                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-slate-800">Add New Category</h3>
-                    <button type="button" onClick={() => { setAddCategoryModalOpen(false); setNewCategoryName(""); }} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="p-4 space-y-4">
-                    <div>
-                      <label className="label">Category name</label>
-                      <input
-                        type="text"
-                        className="input"
-                        placeholder="Enter category name"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                      />
+              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100 animate-in zoom-in-[0.95] duration-200">
+                    <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                       <h3 className="text-[16px] font-bold text-slate-800">New Logic Classification</h3>
+                       <button onClick={() => setAddCategoryModalOpen(false)} className="h-8 w-8 text-slate-400 hover:text-rose-500 transition-colors">
+                          <X size={18} />
+                       </button>
                     </div>
-                  </div>
-                  <div className="p-4 border-t border-gray-100 flex justify-end gap-2">
-                    <button type="button" onClick={() => { setAddCategoryModalOpen(false); setNewCategoryName(""); }} className="btn-secondary">Cancel</button>
-                    <button
-                      type="button"
-                      disabled={!newCategoryName.trim() || addCategorySaving}
-                      className="btn-primary"
-                      onClick={async () => {
-                        const name = newCategoryName.trim();
-                        if (!name) return;
-                        setAddCategorySaving(true);
-                        try {
-                          const created = await createIncomeCategory(name);
-                          const list = await getIncomeCategories();
-                          setIncomeCategories(list);
-                          setForm((prev) => ({ ...prev, category: created.name }));
-                          setAddCategoryModalOpen(false);
-                          setNewCategoryName("");
-                          toast.success("Category added");
-                        } catch (e) {
-                          toast.error(e.response?.data?.message || "Failed to add category");
-                        } finally {
-                          setAddCategorySaving(false);
-                        }
-                      }}
-                    >
-                      {addCategorySaving ? "Saving..." : "Save"}
-                    </button>
-                  </div>
-                </div>
+                    <div className="p-6 space-y-4">
+                       <div className="space-y-1.5">
+                          <Label text="Classification Name" />
+                          <input type="text" className="input-premium" placeholder="e.g. Asset Liquidation" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} />
+                       </div>
+                       <button 
+                         onClick={async () => {
+                            const name = newCategoryName.trim();
+                            if (!name) return;
+                            setAddCategorySaving(true);
+                            try {
+                              const created = await createIncomeCategory(name);
+                              const list = await getIncomeCategories();
+                              setIncomeCategories(list);
+                              setForm(prev => ({ ...prev, category: created.name }));
+                              setAddCategoryModalOpen(false);
+                              setNewCategoryName("");
+                              toast.success("Logic channel established");
+                            } catch (e) {
+                              toast.error(e.response?.data?.message || "Protocol Failure");
+                            } finally { setAddCategorySaving(false); }
+                         }}
+                         disabled={!newCategoryName.trim() || addCategorySaving}
+                         className="w-full py-3 bg-violet-600 text-white rounded-xl text-[14px] font-bold shadow-lg shadow-violet-500/20 active:scale-95 transition-all disabled:opacity-50"
+                       >
+                         {addCategorySaving ? "Initializing Channel..." : "Establish Logic Channel"}
+                       </button>
+                    </div>
+                 </div>
               </div>
             )}
 
-            {/* Manage Categories Modal */}
             {manageCategoriesModalOpen && (
-              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
-                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-slate-800">Manage Categories</h3>
-                    <button type="button" onClick={() => setManageCategoriesModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="overflow-y-auto p-4 space-y-2">
-                    {incomeCategories.length === 0 ? (
-                      <p className="text-sm text-slate-500">No categories yet. Add one from the dropdown.</p>
-                    ) : (
-                      incomeCategories.map((c) => (
-                        <div key={c.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/50">
-                          <span className="font-medium text-slate-800">{c.name}</span>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                await deleteIncomeCategory(c.id);
-                                const list = await getIncomeCategories();
-                                setIncomeCategories(list);
-                                if (form.category === c.name) setForm((prev) => ({ ...prev, category: "" }));
-                                toast.success("Category removed");
-                              } catch (e) {
-                                toast.error(e.response?.data?.message || "Failed to delete");
-                              }
-                            }}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
+              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-[0.95] duration-200">
+                    <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                       <h3 className="text-[16px] font-bold text-slate-800">Audit Classification Channels</h3>
+                       <button onClick={() => setManageCategoriesModalOpen(false)} className="h-8 w-8 text-slate-400 hover:text-rose-500 transition-colors">
+                          <X size={18} />
+                       </button>
+                    </div>
+                    <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                       {incomeCategories.map(c => (
+                         <div key={c.id} className="flex items-center justify-between p-3.5 px-5 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-violet-100 hover:bg-white transition-all">
+                            <span className="text-[14px] font-bold text-slate-700">{c.name}</span>
+                            <button onClick={async () => {
+                               try {
+                                 await deleteIncomeCategory(c.id);
+                                 const list = await getIncomeCategories();
+                                 setIncomeCategories(list);
+                                 if (form.category === c.name) setForm(prev => ({ ...prev, category: "" }));
+                                 toast.success("Classification Decommissioned");
+                               } catch (e) { toast.error("Audit Constraint: Active usage detected"); }
+                            }} className="h-8 w-8 text-rose-400 hover:bg-rose-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                               <Trash2 size={16} />
+                            </button>
+                         </div>
+                       ))}
+                    </div>
+                 </div>
               </div>
             )}
-
-            {/* FOOTER */}
-            <div className="flex justify-end gap-3 p-4 md:p-6 border-t border-gray-100 bg-white flex-shrink-0">
-              <button
-                onClick={() => setOpenForm(false)}
-                className="btn-secondary"
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-                className={clsx("btn-primary flex items-center gap-2", isSaving && "opacity-50 cursor-not-allowed")}
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Record"
-                )}
-              </button>
-            </div>
           </div>
         </div>
       )}

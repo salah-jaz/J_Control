@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Eye, Edit2, Trash2, X, Package, Search, ShoppingBag, AlertTriangle, Loader2 } from "lucide-react";
+import { Plus, Eye, Edit2, Trash2, X, Package, Search, ShoppingBag, AlertTriangle, Loader2, Filter, Activity, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "../hooks/useApiQueries";
 import clsx from "clsx";
@@ -42,6 +42,9 @@ export default function Products() {
     const [viewItem, setViewItem] = useState(null);
     const [activeTab, setActiveTab] = useState(0);
     const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [typeFilter, setTypeFilter] = useState("all");
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
     const { data: dataRecords = [], isLoading } = useProducts();
     const data = Array.isArray(dataRecords) ? dataRecords : [];
@@ -135,52 +138,126 @@ export default function Products() {
 
     const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
-    const filteredData = data.filter((item) =>
-        Object.values(item).some(
-            (val) =>
-                val &&
-                val.toString().toLowerCase().includes(searchQuery.toLowerCase())
-        )
-    );
+    const filteredData = data.filter((item) => {
+        const matchesSearch = !searchQuery || Object.values(item).some(
+            (val) => val && val.toString().toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+        const matchesType = typeFilter === 'all' || item.type === typeFilter;
+        
+        return matchesSearch && matchesStatus && matchesType;
+    });
 
     return (
-        <div className="p-6 lg:p-10 w-full mx-auto animate-fade-in space-y-8 overflow-hidden">
-            {/* HEADER */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Products & Services</h1>
-                    <p className="text-slate-500 mt-1 text-lg">Manage your products and services catalogue.</p>
-                </div>
-                <button
-                    onClick={openAdd}
-                    className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
-                >
-                    <Plus size={20} />
-                    Add Item
-                </button>
-            </div>
+        <div className="min-h-screen bg-[#F8FAFC]">
+            {/* Header Background Strip */}
+            <div className="absolute top-0 left-0 right-0 h-80 bg-gradient-to-b from-violet-50/50 to-transparent pointer-events-none" />
 
-            {/* TABLE */}
-            <div className="card p-0 overflow-hidden">
-                <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                    <h3 className="font-bold text-slate-800">Catalogue</h3>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] relative group overflow-hidden">
+                                <ShoppingBag className="h-5 w-5 text-white relative z-10" />
+                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                            </div>
+                            <h1 className="text-[28px] font-bold text-slate-900">Products & Services</h1>
+                        </div>
+                        <p className="text-slate-500 font-medium text-[14px]">Manage your products and services catalogue efficiently.</p>
+                    </div>
+                    <button
+                        onClick={openAdd}
+                        className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+                    >
+                        {/* Shimmer Effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
+
+                        <Plus size={20} className="relative z-10" />
+                        <span className="relative z-10">Add Item</span>
+                    </button>
+                </div>
+
+            <div className="sticky top-[88px] z-30 space-y-3">
+                <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
+                    <div className="flex-1 min-w-[240px] relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors w-4 h-4" />
                         <input
                             type="text"
-                            placeholder="Search items..."
-                            className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all"
+                            placeholder="Search products by name or description..."
+                            className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-violet-400 focus:ring-[3px] focus:ring-violet-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pr-1">
+                        <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-10">
+                            <Activity className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
+                            >
+                                <option value="all">All Status</option>
+                                <option value="Active">Active Only</option>
+                                <option value="Inactive">Inactive Only</option>
+                            </select>
+                        </div>
+
+                        <button 
+                            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                            className={clsx(
+                                "h-10 px-3.5 border rounded-lg flex items-center gap-2 transition-all active:scale-[0.98] group/adv shadow-sm text-[13px] font-bold",
+                                showAdvancedFilters 
+                                    ? "bg-violet-50 border-violet-200 text-violet-700" 
+                                    : "bg-white border-slate-200 text-slate-600 hover:border-violet-300 hover:bg-slate-50"
+                            )}
+                        >
+                            <Filter size={16} className={clsx("transition-transform", showAdvancedFilters && "rotate-180")} />
+                            Filters
+                        </button>
+
+                        {(searchQuery || statusFilter !== 'all' || typeFilter !== 'all') && (
+                            <button
+                                onClick={() => {
+                                    setSearchQuery("");
+                                    setStatusFilter("all");
+                                    setTypeFilter("all");
+                                }}
+                                className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
+                            >
+                                <X size={14} /> Clear
+                            </button>
+                        )}
+                    </div>
                 </div>
+
+                {showAdvancedFilters && (
+                    <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[160px]">
+                            <Package className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
+                            <select
+                                value={typeFilter}
+                                onChange={(e) => setTypeFilter(e.target.value)}
+                                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
+                            >
+                                <option value="all">Project Type (Any)</option>
+                                <option value="Product">Product</option>
+                                <option value="Service">Service</option>
+                            </select>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <div className="card p-0 overflow-hidden">
                 <div className="overflow-x-auto">
                     {isLoading ? (
                         <TableSkeleton rows={6} cols={5} />
                     ) : (
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
+                        <thead className="bg-slate-50/80 text-[13px] font-semibold text-slate-600 capitalize tracking-normal border-b border-gray-100">
                             <tr>
                                 <th className="px-6 py-4">Name</th>
                                 <th className="px-6 py-4">Price</th>
@@ -244,7 +321,7 @@ export default function Products() {
                                                 <button
                                                     onClick={() => openViewModal(item)}
                                                     title="View"
-                                                    className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                                                    className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-brand-50 transition-colors"
                                                 >
                                                     <Eye size={18} />
                                                 </button>
@@ -285,12 +362,12 @@ export default function Products() {
                         </div>
 
                         <div className="p-8 grid grid-cols-1 gap-6">
-                            <div className="flex items-center gap-4 p-4 bg-brand-50 rounded-xl border border-brand-100 mb-2">
-                                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-brand-600 shadow-sm shrink-0">
+                            <div className="flex items-center gap-4 p-4 bg-brand-50 rounded-xl border border-violet-100 mb-2">
+                                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-violet-600 shadow-sm shrink-0">
                                     {viewItem.type === 'Product' ? <Package size={24} /> : <ShoppingBag size={24} />}
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-brand-600 uppercase tracking-wide">Price</p>
+                                    <p className="text-xs font-bold text-violet-600 uppercase tracking-wide">Price</p>
                                     <p className="text-2xl font-bold text-slate-900">
                                         ₹ {parseFloat(viewItem.price || 0).toLocaleString()}
                                     </p>
@@ -339,113 +416,202 @@ export default function Products() {
 
             {/* FORM MODAL */}
             {openForm && (
-                <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up overflow-hidden">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
-                            <div>
-                                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-                                    {editId ? "Edit Item" : "Add Item"}
-                                </h2>
-                                <p className="text-sm text-slate-500 mt-1">Manage product or service details.</p>
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
+                    <div className="bg-white/90 backdrop-blur-xl w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-[0.98] duration-[250ms] border border-white/40 overflow-hidden">
+                        
+                        {/* Header */}
+                        <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white z-20">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] animate-pulse-subtle">
+                                    <Package className="h-5 w-5 stroke-[2.5]" />
+                                </div>
+                                <div>
+                                    <h3 className="text-[20px] font-bold text-slate-900 tracking-tight">
+                                        {editId ? "Update Item Profile" : "Create New Catalog Entry"}
+                                    </h3>
+                                    <p className="text-[12px] font-medium text-slate-500 mt-0.5">
+                                        {editId ? `Editing ${form.name || "Item"}` : "Configure service/product offering parameters"}
+                                    </p>
+                                </div>
                             </div>
-                            <button onClick={() => setOpenForm(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+                            <button 
+                                onClick={() => setOpenForm(false)} 
+                                className="h-10 w-10 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all flex items-center justify-center active:scale-95 shadow-sm border border-slate-100"
+                            >
                                 <X size={20} />
                             </button>
                         </div>
 
-                        {/* TAB CONTENT */}
-                        <div className="flex-1 overflow-y-auto p-8 space-y-6">
-                            <div>
-                                <label className="label">Name <Req /></label>
-                                {input("name", "text", "Item Name")}
-                            </div>
+                        {/* Content Area */}
+                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                           <div className="space-y-8">
+                                {/* Core Identity Section */}
+                                <div className="space-y-6">
+                                    <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
+                                        <h4 className="text-[14px] font-bold text-slate-900 flex items-center gap-2 uppercase tracking-widest">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-violet-500"></div>
+                                            Core Parameters
+                                        </h4>
+                                    </div>
 
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <label className="label">Price <Req /></label>
-                                    {input("price", "number", "0.00")}
+                                    <div className="space-y-1.5">
+                                        <label className="text-[13px] font-bold text-slate-700 ml-0.5">Service/Product Name <span className="text-rose-500 font-black ml-1">*</span></label>
+                                        <div className="relative">
+                                            <Package className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                            <input
+                                                type="text"
+                                                value={form.name}
+                                                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                                className={clsx("input-premium pl-10", errors.name && "border-rose-400 ring-rose-100")}
+                                                placeholder="Enter entry name"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[13px] font-bold text-slate-700 ml-0.5">Valuation / Price <span className="text-rose-500 font-black ml-1">*</span></label>
+                                            <div className="relative">
+                                                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px] font-black text-slate-400">₹</div>
+                                                <input
+                                                    type="number"
+                                                    value={form.price}
+                                                    onChange={(e) => setForm({ ...form, price: e.target.value })}
+                                                    className={clsx("input-premium pl-10", errors.price && "border-rose-400 ring-rose-100")}
+                                                    placeholder="0.00"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[13px] font-bold text-slate-700 ml-0.5">Catalog Classification</label>
+                                            <select
+                                                className="input-premium appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M2.22%204.47a.75.75%200%200%201%201.06%200L6%207.19l2.72-2.72a.75.75%200%201%201%201.06%201.06L6.53%208.81a.75.75%200%200%201-1.06%200L2.22%205.53a.75.75%200%200%201%200-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-[right_1rem_center] bg-no-repeat"
+                                                value={form.type}
+                                                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                                            >
+                                                <option>Service</option>
+                                                <option>Product</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <label className="text-[13px] font-bold text-slate-700 ml-0.5">Execution Details / Scope</label>
+                                        <div className="relative">
+                                            <textarea
+                                                className="input-premium h-32 pt-3"
+                                                value={form.description}
+                                                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                                placeholder="Describe service parameters or technical scope..."
+                                            ></textarea>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="label">Type</label>
-                                    <select
-                                        className="input"
-                                        value={form.type}
-                                        onChange={(e) => setForm({ ...form, type: e.target.value })}
-                                    >
-                                        <option>Service</option>
-                                        <option>Product</option>
-                                    </select>
+
+                                {/* Lifecycle & Temporal Section */}
+                                <div className="space-y-6 pt-4">
+                                    <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
+                                        <h4 className="text-[14px] font-bold text-slate-900 flex items-center gap-2 uppercase tracking-widest">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-fuchsia-500"></div>
+                                            Lifecycle & Temporal
+                                        </h4>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[13px] font-bold text-slate-700 ml-0.5">Operational Status</label>
+                                            <select
+                                                className="input-premium appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M2.22%204.47a.75.75%200%200%201%201.06%200L6%207.19l2.72-2.72a.75.75%200%201%201%201.06%201.06L6.53%208.81a.75.75%200%200%201-1.06%200L2.22%205.53a.75.75%200%200%201%200-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-[right_1rem_center] bg-no-repeat"
+                                                value={form.status}
+                                                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                                            >
+                                                <option>Active</option>
+                                                <option>Inactive</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <div className="flex items-center gap-2.5 h-full mt-7 ml-1">
+                                                <label className="relative inline-flex items-center cursor-pointer group">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={form.enable_alert} 
+                                                        onChange={(e) => setForm({ ...form, enable_alert: e.target.checked })} 
+                                                        className="sr-only peer" 
+                                                    />
+                                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+                                                    <span className="ms-3 text-[13px] font-bold text-slate-700 select-none">Maturity Alerts</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6 pb-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[13px] font-bold text-slate-700 ml-0.5">Deployment/Start Date</label>
+                                            <div className="relative">
+                                                <Activity className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                                <input
+                                                    type="date"
+                                                    value={form.start_date}
+                                                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                                                    className="input-premium pl-10"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[13px] font-bold text-slate-700 ml-0.5 text-rose-600">Maturity/End Date</label>
+                                            <div className="relative">
+                                                <AlertTriangle className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-rose-400" />
+                                                <input
+                                                    type="date"
+                                                    value={form.end_date}
+                                                    onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                                                    className="input-premium pl-10 border-rose-100 bg-rose-50/10 focus:ring-rose-100"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="label">Description</label>
-                                <textarea
-                                    className="input h-32"
-                                    value={form.description}
-                                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                    placeholder="Description..."
-                                ></textarea>
-                            </div>
-
-                            <div>
-                                <label className="label">Status</label>
-                                <select
-                                    className="input"
-                                    value={form.status}
-                                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                >
-                                    <option>Active</option>
-                                    <option>Inactive</option>
-                                </select>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <label className="label">Start Date</label>
-                                    {input("start_date", "date")}
-                                </div>
-                                <div>
-                                    <label className="label">End Date</label>
-                                    {input("end_date", "date")}
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    id="enable_alert"
-                                    checked={form.enable_alert}
-                                    onChange={(e) => setForm({ ...form, enable_alert: e.target.checked })}
-                                    className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                                />
-                                <label htmlFor="enable_alert" className="text-sm font-medium text-slate-700">
-                                    Enable Alert (1 week before end date)
-                                </label>
-                            </div>
+                           </div>
                         </div>
 
-                        <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-white flex-shrink-0">
-                            <button onClick={() => setOpenForm(false)} className="btn-secondary" disabled={isSaving}>Cancel</button>
+                        {/* Premium Footer */}
+                        <div className="px-8 py-5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 z-20">
+                            <button 
+                                type="button" 
+                                onClick={() => setOpenForm(false)} 
+                                className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 hover:bg-slate-50 transition-all duration-[250ms] shadow-sm active:scale-[0.98]"
+                            >
+                                Discard Changes
+                            </button>
                             <button
                                 type="button"
                                 onClick={saveItem}
                                 disabled={isSaving}
-                                className={clsx("btn-primary flex items-center gap-2", isSaving && "opacity-50 cursor-not-allowed")}
-                            >
-                                {isSaving ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    "Save Item"
+                                className={clsx(
+                                    "px-8 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-xl text-[14px] font-medium shadow-[0_8px_20px_rgba(124,58,237,0.25)] hover:shadow-[0_12px_24px_rgba(124,58,237,0.35)] transition-all duration-[250ms] hover:-translate-y-[2px] active:scale-[0.98] group flex items-center justify-center min-w-[150px]",
+                                    isSaving && "opacity-60 grayscale cursor-not-allowed shadow-none hover:translate-y-0 active:scale-100"
                                 )}
+                            >
+                                <div className="flex items-center gap-2">
+                                    {isSaving ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Synchronizing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="h-4 w-4 stroke-[2.5]" />
+                                            Commit Entry
+                                        </>
+                                    )}
+                                </div>
                             </button>
                         </div>
                     </div>
                 </div>
             )}
         </div>
-    );
+    </div>
+);
 }

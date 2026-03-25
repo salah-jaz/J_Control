@@ -337,7 +337,7 @@ export default function PrintTemplateBuilder() {
 
   const DropZone = ({ zone, title }) => (
     <div
-      className={`min-h-[140px] p-6 rounded-xl border-2 border-dashed transition-colors ${isDragging ? 'border-brand-400 bg-brand-50/50' : 'border-slate-200 bg-slate-50/50'}`}
+      className={`min-h-[140px] p-6 rounded-xl border-2 border-dashed transition-colors ${isDragging ? 'border-violet-400 bg-brand-50/50' : 'border-slate-200 bg-slate-50/50'}`}
       onDragOver={handleDragOver}
       onDrop={(e) => handleDrop(e, zone)}
     >
@@ -421,7 +421,7 @@ export default function PrintTemplateBuilder() {
                   draggable
                   onDragStart={(e) => handleDragStart(e, field)}
                   onDragEnd={handleDragEnd}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white cursor-grab active:cursor-grabbing hover:border-brand-300 hover:bg-brand-50/30 text-sm font-medium text-slate-700 select-none"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white cursor-grab active:cursor-grabbing hover:border-violet-300 hover:bg-brand-50/30 text-sm font-medium text-slate-700 select-none"
                 >
                   <GripVertical className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   {field.label}
@@ -437,21 +437,21 @@ export default function PrintTemplateBuilder() {
             <button
               type="button"
               onClick={() => setActiveTab('builder')}
-              className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px ${activeTab === 'builder' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500'}`}
+              className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px ${activeTab === 'builder' ? 'border-violet-600 text-violet-600' : 'border-transparent text-slate-500'}`}
             >
               Builder
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('preview')}
-              className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px flex items-center gap-1 ${activeTab === 'preview' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500'}`}
+              className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px flex items-center gap-1 ${activeTab === 'preview' ? 'border-violet-600 text-violet-600' : 'border-transparent text-slate-500'}`}
             >
               <Eye className="w-4 h-4" /> Preview
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('code')}
-              className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px flex items-center gap-1 ${activeTab === 'code' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500'}`}
+              className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px flex items-center gap-1 ${activeTab === 'code' ? 'border-violet-600 text-violet-600' : 'border-transparent text-slate-500'}`}
             >
               <Code className="w-4 h-4" /> HTML &amp; CSS
             </button>
@@ -459,7 +459,7 @@ export default function PrintTemplateBuilder() {
               <button
                 type="button"
                 onClick={() => setActiveTab('styles')}
-                className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px flex items-center gap-1 ${activeTab === 'styles' ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500'}`}
+                className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px flex items-center gap-1 ${activeTab === 'styles' ? 'border-violet-600 text-violet-600' : 'border-transparent text-slate-500'}`}
               >
                 <Palette className="w-4 h-4" /> Styles
               </button>

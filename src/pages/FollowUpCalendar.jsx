@@ -143,7 +143,7 @@ const FollowUpCalendar = () => {
             </div>
 
             <div className="flex flex-col lg:flex-row gap-8 min-h-[600px] lg:h-[calc(100vh-320px)]">
-                <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[500px]">
+                <div className="flex-1 card !border-0 overflow-hidden flex flex-col min-h-[500px]">
                     <div className="p-4 md:p-6 flex justify-between items-center border-b border-gray-100">
                         <div className="flex items-center gap-4">
                             <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -151,8 +151,8 @@ const FollowUpCalendar = () => {
                             </h2>
                         </div>
                         <div className="flex gap-2">
-                            <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-gray-50 rounded-xl border border-gray-200 text-slate-500 hover:text-brand-600 transition-colors"><ChevronLeft className="h-5 w-5" /></button>
-                            <button onClick={() => changeMonth(1)} className="p-2 hover:bg-gray-50 rounded-xl border border-gray-200 text-slate-500 hover:text-brand-600 transition-colors"><ChevronRight className="h-5 w-5" /></button>
+                            <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-gray-50 rounded-xl border border-gray-200 text-slate-500 hover:text-violet-600 transition-colors"><ChevronLeft className="h-5 w-5" /></button>
+                            <button onClick={() => changeMonth(1)} className="p-2 hover:bg-gray-50 rounded-xl border border-gray-200 text-slate-500 hover:text-violet-600 transition-colors"><ChevronRight className="h-5 w-5" /></button>
                         </div>
                     </div>
 
@@ -178,14 +178,14 @@ const FollowUpCalendar = () => {
                                     className={clsx(
                                         "p-2 cursor-pointer transition-all relative flex flex-col items-start gap-1 group bg-white",
                                         d.type !== 'current' && "bg-gray-50/50 text-gray-300",
-                                        isSelected && "ring-2 ring-inset ring-brand-500 z-10",
+                                        isSelected && "ring-2 ring-inset ring-violet-500 z-10",
                                         !isSelected && d.type === 'current' && "hover:bg-slate-50"
                                     )}
                                 >
                                     <span className={clsx(
                                         "text-sm font-semibold w-8 h-8 flex items-center justify-center rounded-full transition-colors",
-                                        isToday ? "bg-brand-600 text-white shadow-md shadow-brand-200" :
-                                            isSelected ? "bg-brand-50 text-brand-700" :
+                                        isToday ? "bg-violet-600 text-white shadow-md shadow-violet-200" :
+                                            isSelected ? "bg-brand-50 text-violet-700" :
                                                 "text-slate-600 group-hover:bg-gray-200"
                                     )}>
                                         {d.day}
@@ -196,7 +196,7 @@ const FollowUpCalendar = () => {
                                             <div key={i} className={clsx(
                                                 "h-1.5 rounded-full w-full",
                                                 f.status === 'completed' ? "bg-emerald-200/50" :
-                                                    new Date(f.scheduled_at) < new Date() ? "bg-red-400" : "bg-brand-400"
+                                                    new Date(f.scheduled_at) < new Date() ? "bg-red-400" : "bg-violet-400"
                                             )}></div>
                                         ))}
                                         {dateFollowUps.length > 3 && (
@@ -209,9 +209,9 @@ const FollowUpCalendar = () => {
                     </div>
                 </div>
 
-                <div className="w-full lg:w-96 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[400px] lg:h-full overflow-hidden">
+                <div className="w-full lg:w-96 card !border-0 flex flex-col min-h-[400px] lg:h-full overflow-hidden">
                     <div className="p-4 md:p-6 border-b border-gray-100 bg-gray-50/30">
-                        <p className="text-xs font-bold text-brand-600 uppercase tracking-wider mb-1">
+                        <p className="text-xs font-bold text-violet-600 uppercase tracking-wider mb-1">
                             {selectedDate.toLocaleDateString('en-US', { weekday: 'long' })}
                         </p>
                         <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
@@ -235,7 +235,7 @@ const FollowUpCalendar = () => {
                             <div className="space-y-4">
                                 {getFollowUpsForDate(selectedDate).map(f => (
                                     <div key={f.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${f.status === 'completed' ? 'bg-emerald-500' : new Date(f.scheduled_at) < new Date() ? 'bg-red-500' : 'bg-brand-500'}`}></div>
+                                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${f.status === 'completed' ? 'bg-emerald-500' : new Date(f.scheduled_at) < new Date() ? 'bg-red-500' : 'bg-violet-500'}`}></div>
                                         <div className="flex justify-between items-start mb-2 pl-3">
                                             <span className={`text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide border ${f.status === 'completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                                                 'bg-yellow-50 text-yellow-700 border-yellow-100'

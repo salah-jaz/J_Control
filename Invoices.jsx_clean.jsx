@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Calendar, Filter, Plus, Search, Trash2, Edit2, Eye, X, User, Layers, Landmark, Wallet, FileText, AlertCircle, TrendingUp, Receipt } from 'lucide-react';
+import { Plus, Search, Trash2, Edit2, Eye, X, User, Layers, Landmark, Wallet, FileText, AlertCircle, TrendingUp, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { useLocation } from 'react-router-dom';
@@ -30,31 +30,20 @@ function isDateInRange(dateStr, range) {
 }
 
 const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="card group relative overflow-hidden cursor-default !border-0 p-5 h-[140px] flex flex-col justify-between">
-        {/* Top Gradient Line */}
-        <div className={clsx("absolute top-0 left-0 right-0 h-[2px]", "bg-gradient-to-r from-brand-500 to-brand-300")} />
-        
-        <div className="flex items-start justify-between">
-            <div className="flex flex-col gap-0.5">
-                <p className="text-[12px] font-semibold text-slate-500 capitalize">{title.toLowerCase()}</p>
-                <h3 className="text-[26px] font-bold text-slate-900 leading-none mt-1">{value}</h3>
-            </div>
-            <div className={clsx(
-                "h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110",
-                color.replace('bg-', 'bg-opacity-10 '),
-                color.replace('bg-', 'text-')
-            )}>
-                <Icon className="w-5 h-5 font-bold" />
-            </div>
-        </div>
-        
-        <div className="space-y-2 mt-4">
-            <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-                <div className={clsx("h-full rounded-full transition-all duration-1000", color)} style={{ width: '70%' }}></div>
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium tracking-tight">Financial metrics</p>
-        </div>
+  <div className="card hover:border-brand-200/50 group h-36 flex flex-col justify-between p-6">
+    <div className="flex justify-between items-start">
+      <div className={`p-3.5 rounded-xl ${color}`}>
+        <Icon className="w-6 h-6 text-white" />
+      </div>
+      <div className="text-right">
+        <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
+        <h3 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">{value}</h3>
+      </div>
     </div>
+    <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
+      <div className={`h-full rounded-full ${color} opacity-30`} style={{ width: '70%' }} />
+    </div>
+  </div>
 );
 
 export default function Invoices() {
@@ -66,7 +55,6 @@ export default function Invoices() {
   const [clientFilter, setClientFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [dateFilter, setDateFilter] = useState('All');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const location = useLocation();
 
   const invoiceParams = { page: currentPage, per_page: 20 };
@@ -128,159 +116,94 @@ export default function Invoices() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      {/* Header Background Strip */}
-      <div className="absolute top-0 left-0 right-0 h-80 bg-gradient-to-b from-brand-50/50 to-transparent pointer-events-none" />
-
-      <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-brand-600 to-brand-400 rounded-xl shadow-[0_4px_12px_rgba(234,88,12,0.3)] relative group overflow-hidden">
-                <FileText className="h-5 w-5 text-white relative z-10" />
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-              </div>
-              <h1 className="text-[28px] font-bold text-slate-900">Invoices</h1>
-            </div>
-            <p className="text-slate-500 font-medium text-[14px]">Manage billing and payments effectively.</p>
-          </div>
-          <button
-            onClick={() => {
-              setEditingInvoice(null);
-              setIsFormOpen(true);
-            }}
-            className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
-          >
-            {/* Shimmer Effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
-
-            <Plus size={20} className="relative z-10" />
-            <span className="relative z-10">New Invoice</span>
-          </button>
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Invoices</h1>
+          <p className="text-slate-500 mt-1 text-base md:text-lg">Manage billing and payments.</p>
         </div>
+        <button
+          onClick={() => {
+            setEditingInvoice(null);
+            setIsFormOpen(true);
+          }}
+          className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 shadow-lg shadow-brand-500/30"
+        >
+          <Plus size={20} /> New Invoice
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         <StatCard
           title="Total Invoices"
           value={invoiceSummary != null ? String(invoiceSummary.totalInvoices ?? 0) : '—'}
           icon={FileText}
-          color="bg-slate-500"
+          color="bg-slate-600"
         />
         <StatCard
           title="Paid Invoices"
           value={invoiceSummary != null ? String(invoiceSummary.paidInvoices ?? 0) : '—'}
           icon={Receipt}
-          color="bg-emerald-500"
+          color="bg-emerald-600"
         />
         <StatCard
-          title="Pending"
+          title="Pending / Overdue"
           value={invoiceSummary != null ? String((invoiceSummary.pendingInvoices ?? 0) + (invoiceSummary.overdueInvoices ?? 0)) : '—'}
           icon={AlertCircle}
-          color="bg-amber-500"
+          color="bg-amber-600"
         />
         <StatCard
-          title="Revenue"
-          value={invoiceSummary != null ? `₹${Number(invoiceSummary.totalRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })}` : '—'}
+          title="Total Revenue"
+          value={invoiceSummary != null ? `₹${Number(invoiceSummary.totalRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '—'}
           icon={TrendingUp}
-          color="bg-blue-500"
+          color="bg-blue-600"
         />
       </div>
 
-      {/* Filters Bar */}
-      <div className="space-y-3">
-        <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[240px] relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search invoice number, client..."
+              placeholder="Search invoice..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
+              className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full"
             />
           </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-              <Receipt className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-              >
-                <option value="All">All Status</option>
-                <option value="Paid">Paid</option>
-                <option value="Pending">Pending</option>
-                <option value="Overdue">Overdue</option>
-                <option value="Draft">Draft</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-              <Calendar className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-              >
-                <option value="All">All Time</option>
-                <option value="Today">Today</option>
-                <option value="This Week">This Week</option>
-                <option value="This Month">This Month</option>
-                <option value="This Year">This Year</option>
-              </select>
-            </div>
-
-            <button
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={clsx(
-                "flex items-center gap-2 px-4 h-10 rounded-lg text-[13px] font-bold transition-all border shadow-sm",
-                showAdvancedFilters 
-                  ? "bg-brand-50 border-brand-200 text-brand-700" 
-                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-              )}
-            >
-              <Filter className={clsx("w-4 h-4 transition-transform", showAdvancedFilters && "rotate-180")} />
-              Filters
-            </button>
-
-            {(searchQuery || statusFilter !== "All" || clientFilter || dateFilter !== "All") && (
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter("All");
-                  setClientFilter("");
-                  setDateFilter("All");
-                }}
-                className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-              >
-                <X size={14} /> Clear
-              </button>
-            )}
-          </div>
+          <select
+            value={clientFilter}
+            onChange={(e) => setClientFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[160px]"
+          >
+            <option value="">All Clients</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.company_name || c.client_name}>{c.company_name || c.client_name}</option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[120px]"
+          >
+            <option value="All">All</option>
+            <option value="Paid">Paid</option>
+            <option value="Pending">Pending</option>
+            <option value="Overdue">Overdue</option>
+          </select>
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[120px]"
+          >
+            <option value="All">All Time</option>
+            <option value="Today">Today</option>
+            <option value="This Week">This Week</option>
+            <option value="This Month">This Month</option>
+            <option value="This Year">This Year</option>
+          </select>
         </div>
-
-        {/* Advanced Filters */}
-        {showAdvancedFilters && (
-          <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
-              <User className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={clientFilter}
-                onChange={(e) => setClientFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-              >
-                <option value="">All Clients</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.company_name || c.client_name}>
-                    {c.company_name || c.client_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="card p-0 overflow-hidden">
@@ -297,7 +220,7 @@ export default function Invoices() {
             <TableSkeleton rows={6} cols={6} />
           ) : (
           <table className="w-full text-sm text-left min-w-[700px]">
-            <thead className="bg-slate-50/80 text-[13px] font-semibold text-slate-600 capitalize tracking-normal border-b border-gray-100">
+            <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4">Invoice ID</th>
                 <th className="px-6 py-4">Client</th>
@@ -426,7 +349,6 @@ export default function Invoices() {
           }}
         />
       )}
-      </div>
     </div>
   );
 }
