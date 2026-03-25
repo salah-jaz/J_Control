@@ -1,19 +1,10 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import {
-  Eye,
-  Edit2,
-  Trash2,
-  Plus,
-  Download,
-  Search,
-  X,
-  Landmark,
-  CreditCard,
-  TrendingDown,
-  AlertCircle,
-  Receipt,
-  Calendar,
-  Loader2,
+import { 
+  Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark, Wallet, 
+  TrendingUp, TrendingDown, AlertCircle, Receipt, Loader2, Save, Layers, User, Target, 
+  Building2, Calendar as CalendarIcon, Phone, Mail, BadgeCheck, Activity, 
+  Briefcase, Filter, MessageSquare, CreditCard, Banknote, CheckCircle2,
+  ShoppingCart, Truck, MapPin
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -69,6 +60,37 @@ const emptyForm = {
   extraInstallments: [],
 };
 
+const SectionHeader = ({ icon: Icon, title, color }) => {
+  const colors = {
+    blue: "from-blue-600 to-cyan-500 shadow-blue-500/20",
+    indigo: "from-indigo-600 to-blue-500 shadow-indigo-500/20",
+    violet: "from-violet-600 to-purple-500 shadow-violet-500/20",
+    fuchsia: "from-fuchsia-600 to-pink-500 shadow-fuchsia-500/20",
+    rose: "from-rose-600 to-pink-500 shadow-rose-500/20",
+    amber: "from-amber-500 to-orange-400 shadow-amber-500/20"
+  };
+  
+  return (
+    <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
+      <div className="flex items-center gap-3">
+        <div className={clsx("h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white shadow-lg", colors[color] || colors.blue)}>
+          <Icon size={16} className="stroke-[2.5]" />
+        </div>
+        <h4 className="text-[14px] font-bold text-slate-900 uppercase tracking-widest leading-none">
+          {title}
+        </h4>
+      </div>
+    </div>
+  );
+};
+
+const Label = ({ text, required }) => (
+  <label className="text-[13px] font-bold text-slate-700 ml-0.5 flex items-center gap-1">
+    {text}
+    {required && <span className="text-rose-500 font-black">*</span>}
+  </label>
+);
+
 export default function Expense() {
   const queryClient = useQueryClient();
   const [bankAccounts, setBankAccounts] = useState([]);
@@ -95,10 +117,12 @@ export default function Expense() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [bankFilter, setBankFilter] = useState("");
+  const [vendorFilter, setVendorFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("All");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
   const filters = useMemo(() => {
@@ -128,12 +152,13 @@ export default function Expense() {
       status: statusFilter === "All" ? undefined : statusFilter,
       category: categoryFilter || undefined,
       bank_account_id: bankFilter || undefined,
+      vendor: vendorFilter || undefined,
       date_from,
       date_to,
       page: currentPage,
       per_page: 20,
     };
-  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, dateFilter, dateFrom, dateTo, currentPage, today]);
+  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, vendorFilter, dateFilter, dateFrom, dateTo, currentPage, today]);
 
   const { data: expenseResult, isLoading: expenseLoading } = useExpenseList(filters);
   const { data: expenseSummary } = useExpenseSummary();
@@ -148,7 +173,7 @@ export default function Expense() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, dateFilter, dateFrom, dateTo]);
+  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, vendorFilter, dateFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     const loadSupport = async () => {
@@ -190,7 +215,6 @@ export default function Expense() {
     0
   );
   const balanceDue = Math.max(0, totalAmount - initialDeposit - sumInstallments);
-  const isSavedRecord = !!editId;
 
   const getBankDisplayName = (bankId) => {
     const b = bankAccounts.find((x) => x.id === bankId);
@@ -343,28 +367,29 @@ export default function Expense() {
     }
   };
 
-  const inputClass = (f) =>
-    `input ${errors[f] ? "border-red-500 focus:border-red-500 focus:ring-red-200" : ""}`;
-  const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
-
   const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="card hover:border-brand-200/50 group h-36 flex flex-col justify-between p-6">
-      <div className="flex justify-between items-start">
-        <div className={`p-3.5 rounded-xl ${color}`}>
-          <Icon className="w-6 h-6 text-white" />
+    <div className="card group relative overflow-hidden cursor-default !border-0 p-5 h-[140px] flex flex-col justify-between">
+      <div className={clsx("absolute top-0 left-0 right-0 h-[2px]", "bg-gradient-to-r from-indigo-500 to-blue-300")} />
+      
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-0.5">
+          <p className="text-[12px] font-semibold text-slate-500 capitalize">{title.toLowerCase()}</p>
+          <h3 className="text-[26px] font-bold text-slate-900 leading-none mt-1">{value}</h3>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
-          <h3 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">
-            {value}
-          </h3>
+        <div className={clsx(
+          "h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110",
+          color.replace('bg-', 'bg-opacity-10 '),
+          color.replace('bg-', 'text-')
+        )}>
+          <Icon className="w-5 h-5 font-bold" />
         </div>
       </div>
-      <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
-        <div
-          className={`h-full rounded-full ${color} opacity-30`}
-          style={{ width: "70%" }}
-        />
+      
+      <div className="space-y-2 mt-4">
+        <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+          <div className={clsx("h-full rounded-full transition-all duration-1000", color)} style={{ width: '70%' }}></div>
+        </div>
+        <p className="text-[11px] text-slate-400 font-medium tracking-tight">Expense metrics</p>
       </div>
     </div>
   );
@@ -382,14 +407,14 @@ export default function Expense() {
         </div>
         <button
           onClick={openAdd}
-          className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
+          className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
         >
-          <Plus size={20} />
-          Add Expense
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
+          <Plus size={20} className="relative z-10" />
+          <span className="relative z-10">Add Expense</span>
         </button>
       </div>
 
-      {/* SUMMARY CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         <StatCard
           title="Total Expenses"
@@ -436,87 +461,150 @@ export default function Expense() {
                 })}`
               : "—"
           }
-          icon={Calendar}
+          icon={CalendarIcon}
           color="bg-blue-600"
         />
       </div>
 
-      {/* SEARCH & FILTERS */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-        <div className="flex flex-col lg:flex-row gap-4 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+      <div className="space-y-3">
+        <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
+          <div className="flex-1 min-w-[240px] relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
             <input
               type="text"
-              placeholder="Search by vendor, amount, bank..."
+              placeholder="Search expenses..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full"
+              className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[120px]"
-          >
-            <option value="All">All</option>
-            <option value="Paid">Paid</option>
-            <option value="Partial">Partial</option>
-            <option value="Pending">Pending</option>
-          </select>
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[140px]"
-          >
-            <option value="">All Categories</option>
-            {expenseCategories.map((c) => (
-              <option key={c.id} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={bankFilter}
-            onChange={(e) => setBankFilter(e.target.value)}
-            className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[160px]"
-          >
-            <option value="">All Banks</option>
-            {bankAccounts.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.bankName} - {b.accountNumber}
-              </option>
-            ))}
-          </select>
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 min-w-[120px]"
-          >
-            <option value="All">All Time</option>
-            <option value="Today">Today</option>
-            <option value="This Week">This Week</option>
-            <option value="This Month">This Month</option>
-            <option value="This Year">This Year</option>
-          </select>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="px-4 py-2 border border-gray-100 rounded-xl text-sm min-w-[140px]"
-            placeholder="From"
-          />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="px-4 py-2 border border-gray-100 rounded-xl text-sm min-w-[140px]"
-            placeholder="To"
-          />
+          
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
+              <Receipt className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
+              >
+                <option value="All">All Status</option>
+                <option value="Paid">Paid</option>
+                <option value="Partial">Partial</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
+              <CalendarIcon className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
+              >
+                <option value="All">All Time</option>
+                <option value="Today">Today</option>
+                <option value="This Week">This Week</option>
+                <option value="This Month">This Month</option>
+                <option value="This Year">This Year</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={clsx(
+                "flex items-center gap-2 px-4 h-10 rounded-lg text-[13px] font-bold transition-all border shadow-sm",
+                showAdvancedFilters 
+                  ? "bg-brand-50 border-brand-200 text-brand-700" 
+                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+              )}
+            >
+              <Filter className={clsx("w-4 h-4 transition-transform", showAdvancedFilters && "rotate-180")} />
+              Filters
+            </button>
+
+            {(searchQuery || statusFilter !== "All" || categoryFilter || bankFilter || vendorFilter || dateFilter !== "All" || dateFrom || dateTo) && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("All");
+                  setCategoryFilter("");
+                  setBankFilter("");
+                  setVendorFilter("");
+                  setDateFilter("All");
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+                className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
+              >
+                <X size={14} /> Clear
+              </button>
+            )}
+          </div>
         </div>
+
+        {showAdvancedFilters && (
+          <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[180px]">
+              <Check className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
+              >
+                <option value="">All Categories</option>
+                {expenseCategories.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
+              <Landmark className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <select
+                value={bankFilter}
+                onChange={(e) => setBankFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
+              >
+                <option value="">All Banks</option>
+                {bankAccounts.map((b) => (
+                  <option key={b.id} value={b.id}>{b.bankName}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
+              <AlertCircle className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
+              <input
+                type="text"
+                placeholder="Vendor..."
+                value={vendorFilter}
+                onChange={(e) => setVendorFilter(e.target.value)}
+                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none w-full"
+              />
+            </div>
+
+            {(dateFilter === "All" || dateFilter === "") && (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-2">Period:</span>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 outline-none focus:border-brand-400 h-10 shadow-sm"
+                />
+                <span className="text-slate-400 text-xs font-bold px-1">-</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 outline-none focus:border-brand-400 h-10 shadow-sm"
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* TABLE */}
       <div className="card p-0 overflow-hidden">
         <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
           <h3 className="font-bold text-slate-800">Expense Records</h3>
@@ -538,7 +626,7 @@ export default function Expense() {
             <TableSkeleton rows={6} cols={7} />
           ) : (
           <table className="w-full text-sm text-left min-w-[800px]">
-            <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
+            <thead className="bg-slate-50/80 text-[13px] font-semibold text-slate-600 capitalize tracking-normal border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4">ID</th>
                 <th className="px-6 py-4">Vendor</th>
@@ -556,7 +644,6 @@ export default function Expense() {
                     <div className="flex flex-col items-center justify-center text-gray-400">
                       <Receipt className="h-12 w-12 mb-3 opacity-20" />
                       <p className="text-lg font-medium text-gray-500">No expense records found</p>
-                      <p className="text-sm">Add an expense or adjust your filters.</p>
                     </div>
                   </td>
                 </tr>
@@ -568,45 +655,14 @@ export default function Expense() {
                     <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
                       ₹{parseFloat(expense.amount || 0).toLocaleString("en-IN")}
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
-                        {expense.method || "—"}
-                      </span>
-                    </td>
+                    <td className="px-6 py-4 text-slate-600">{expense.method || "—"}</td>
                     <td className="px-6 py-4 text-slate-600 font-mono text-xs">{expense.paidDate || "—"}</td>
                     <td className="px-6 py-4 text-slate-600 text-xs">{expense.bank || "—"}</td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        {expense.invoice_id && (
-                          <span className="px-2 py-1 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-xs font-semibold" title="Created from Invoice">
-                            Invoice Linked
-                          </span>
-                        )}
-                        <button
-                          onClick={() => openViewModal(expense)}
-                          title="View"
-                          className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                        >
-                          <Eye size={18} />
-                        </button>
-                        {!expense.invoice_id && (
-                          <>
-                            <button
-                              onClick={() => openEdit(expense)}
-                              title="Edit"
-                              className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                            >
-                              <Edit2 size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(expense.id)}
-                              title="Delete"
-                              className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </>
-                        )}
+                      <div className="flex justify-end items-center gap-2">
+                        <button onClick={() => openViewModal(expense)} className="p-2 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors"><Eye size={18} /></button>
+                        <button onClick={() => openEdit(expense)} className="p-2 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"><Edit2 size={18} /></button>
+                        <button onClick={() => handleDelete(expense.id)} className="p-2 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={18} /></button>
                       </div>
                     </td>
                   </tr>
@@ -616,926 +672,372 @@ export default function Expense() {
           </table>
           )}
         </div>
-        {expenseMeta && expenseMeta.last_page > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <span className="text-sm text-slate-600">
-              Showing {(expenseMeta.current_page - 1) * expenseMeta.per_page + 1}–{Math.min(expenseMeta.current_page * expenseMeta.per_page, expenseMeta.total)} of {expenseMeta.total}
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={expenseMeta.current_page <= 1}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={expenseMeta.current_page >= expenseMeta.last_page}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* View Expense Details Modal */}
       {viewModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
-          <div className="bg-white max-w-lg w-full rounded-2xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
-            <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
-                Expense Details
-              </h2>
-              <button
-                onClick={() => {
-                  setViewModalOpen(false);
-                  setViewDetail(null);
-                }}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all"
-              >
-                <X size={20} />
-              </button>
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white max-w-lg w-full rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-slate-900">Expense Details</h2>
+              <button onClick={() => setViewModalOpen(false)} className="p-2 text-slate-400 hover:text-rose-500"><X size={20} /></button>
             </div>
-            <div className="p-4 md:p-6 overflow-y-auto">
-              {viewDetail ? (
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="text-slate-500">ID</div>
-                  <div className="font-semibold text-slate-800">{viewDetail.id}</div>
-                  <div className="text-slate-500">Vendor</div>
-                  <div className="font-medium text-slate-800">{viewDetail.vendor || "—"}</div>
-                  <div className="text-slate-500">Amount</div>
-                  <div className="font-bold text-slate-900">
-                    ₹ {parseFloat(viewDetail.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </div>
-                  <div className="text-slate-500">Bank</div>
-                  <div className="font-medium text-slate-800">{viewDetail.bank || "—"}</div>
-                  <div className="text-slate-500">Method</div>
-                  <div className="font-medium text-slate-800">{viewDetail.method || "—"}</div>
-                  <div className="text-slate-500">Date</div>
-                  <div className="font-medium text-slate-800">{viewDetail.paidDate || "—"}</div>
-                  <div className="text-slate-500">Status</div>
-                  <div className="font-medium text-slate-800">{viewDetail.status || "—"}</div>
-                  <div className="text-slate-500">Category</div>
-                  <div className="font-medium text-slate-800">{viewDetail.category || "—"}</div>
-                  {viewDetail.description && (
-                    <>
-                      <div className="text-slate-500">Description</div>
-                      <div className="font-medium text-slate-800 col-span-2">{viewDetail.description}</div>
-                    </>
-                  )}
+            <div className="p-6 space-y-4">
+              {viewDetail && Object.entries(viewDetail).map(([key, val]) => (
+                <div key={key} className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-slate-500 capitalize">{key.replace(/_/g, ' ')}</span>
+                  <span className="font-medium text-slate-800">{String(val || '—')}</span>
                 </div>
-              ) : (
-                <p className="text-slate-500 text-center py-8">No details available.</p>
-              )}
+              ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* FORM MODAL */}
       {openForm && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[95vh] animate-slide-up overflow-hidden">
-            <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
-              <div>
-                <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
-                  {editId ? "Edit Expense" : "New Expense Entry"}
-                </h2>
-                <p className="text-xs md:text-sm text-slate-500 mt-1">
-                  Record the details of this expenditure.
-                </p>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
+          <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white z-20">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-gradient-to-br from-indigo-600 to-blue-500 text-white rounded-xl flex items-center justify-center shadow-lg">
+                  <TrendingUp className="h-5 w-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-[20px] font-bold text-slate-900">
+                    {editId ? "Modify Expenditure" : "New Expenditure"}
+                  </h3>
+                  <p className="text-[12px] font-medium text-slate-500 mt-0.5">Capture operational outflow records</p>
+                </div>
               </div>
-              <button
-                onClick={() => setOpenForm(false)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all"
-              >
-                <X size={20} />
-              </button>
+              <button onClick={() => setOpenForm(false)} className="p-2 text-slate-400 hover:text-rose-500"><X size={20} /></button>
             </div>
 
-            <div className="flex px-4 md:px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto flex-shrink-0">
-              {[
-                { id: "basic", label: "Basic" },
-                { id: "summary", label: "Financial Summary" },
-                { id: "installments", label: "Extra Installments" },
-                { id: "internal", label: "Internal" },
-              ].map(({ id, label }) => (
-                <button
-                  key={id}
-                  onClick={() => setTab(id)}
-                  className={clsx(
-                    "px-4 md:px-6 py-3 md:py-4 text-[10px] md:text-sm font-bold uppercase tracking-wide border-b-2 transition-all whitespace-nowrap",
-                    tab === id
-                      ? "border-brand-600 text-brand-600"
-                      : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 md:p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {tab === "basic" && (
-                  <>
-                    <div>
-                      <label className="label">Vendor <Req /></label>
-                      <input
-                        className={inputClass("vendor")}
-                        placeholder="e.g. AWS, Office Depot"
-                        value={form.vendor}
-                        onChange={(e) => setForm({ ...form, vendor: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Expense Type <Req /></label>
-                      <input
-                        className={inputClass("expenseType")}
-                        placeholder="e.g. Software, Office Supplies"
-                        value={form.expenseType}
-                        onChange={(e) =>
-                          setForm({ ...form, expenseType: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Project / Purpose</label>
-                      <input
-                        className="input"
-                        value={form.project}
-                        onChange={(e) =>
-                          setForm({ ...form, project: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Category</label>
-                      <div className="flex gap-2">
-                        <select
-                          className={clsx(
-                            "input flex-1",
-                            errors.category && "border-red-500"
-                          )}
-                          value={form.category}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "__add__") {
-                              setAddCategoryModalOpen(true);
-                              return;
-                            }
-                            if (v === "__manage__") {
-                              setManageCategoriesModalOpen(true);
-                              return;
-                            }
-                            setForm({ ...form, category: v });
-                          }}
-                        >
-                          <option value="">Select Category</option>
-                          {expenseCategories.map((c) => (
-                            <option key={c.id} value={c.name}>
-                              {c.name}
-                            </option>
-                          ))}
-                          <option value="__add__">— Add New Category —</option>
-                          <option value="__manage__">— Manage Categories —</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => setAddCategoryModalOpen(true)}
-                          className="btn-primary whitespace-nowrap flex items-center gap-1"
-                          title="Add category"
-                        >
-                          <Plus className="w-4 h-4" /> Add
-                        </button>
-                      </div>
-                      {errors.category && (
-                        <p className="text-sm text-red-500 mt-1">{errors.category}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="label">Bill / Invoice No</label>
-                      <input
-                        className="input"
-                        value={form.billNo}
-                        onChange={(e) =>
-                          setForm({ ...form, billNo: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Subtotal (₹) <Req /></label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className={inputClass("amount")}
-                        placeholder="0.00"
-                        value={form.amount}
-                        onChange={(e) =>
-                          setForm({ ...form, amount: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Payment Date</label>
-                      <input
-                        type="date"
-                        className="input"
-                        value={form.paidDate}
-                        onChange={(e) =>
-                          setForm({ ...form, paidDate: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Description</label>
-                      <textarea
-                        className="input min-h-[80px]"
-                        placeholder="Detailed description of the expense"
-                        value={form.description}
-                        onChange={(e) =>
-                          setForm({ ...form, description: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Reference Number</label>
-                      <input
-                        className="input"
-                        placeholder="Internal reference or PO number"
-                        value={form.referenceNumber}
-                        onChange={(e) =>
-                          setForm({ ...form, referenceNumber: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Due Date</label>
-                      <input
-                        type="date"
-                        className="input"
-                        value={form.dueDate}
-                        onChange={(e) =>
-                          setForm({ ...form, dueDate: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Vendor Email</label>
-                      <input
-                        type="email"
-                        className="input"
-                        placeholder="vendor@example.com"
-                        value={form.vendorEmail}
-                        onChange={(e) =>
-                          setForm({ ...form, vendorEmail: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Vendor Phone</label>
-                      <input
-                        className="input"
-                        placeholder="+91-9876543210"
-                        value={form.vendorPhone}
-                        onChange={(e) =>
-                          setForm({ ...form, vendorPhone: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Location</label>
-                      <input
-                        className="input"
-                        placeholder="e.g. Office, Online"
-                        value={form.location}
-                        onChange={(e) =>
-                          setForm({ ...form, location: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <label className="label">Recurring</label>
-                      <select
-                        className="input"
-                        value={form.recurring}
-                        onChange={(e) =>
-                          setForm({ ...form, recurring: e.target.value })
-                        }
-                      >
-                        <option value="No">No</option>
-                        <option value="Yes">Yes</option>
-                      </select>
-                    </div>
-                    {form.recurring === "Yes" && (
-                      <div>
-                        <label className="label">Frequency</label>
-                        <select
-                          className="input"
-                          value={form.frequency}
-                          onChange={(e) =>
-                            setForm({ ...form, frequency: e.target.value })
-                          }
-                        >
-                          <option value="">Select</option>
-                          <option value="Monthly">Monthly</option>
-                          <option value="Quarterly">Quarterly</option>
-                          <option value="Yearly">Yearly</option>
-                          <option value="Weekly">Weekly</option>
-                        </select>
-                      </div>
+            <div className="flex flex-1 overflow-hidden">
+              <div className="w-64 border-r border-slate-100 bg-slate-50/50 p-4 flex flex-col gap-2">
+                {[
+                  { id: 'basic', label: 'Primary Context', icon: ShoppingCart, desc: 'Vendor & Project' },
+                  { id: 'summary', label: 'Fiscal Summary', icon: Wallet, desc: 'Valuation & Tax' },
+                  { id: 'installments', label: 'Payment Splits', icon: Layers, desc: 'Installment Logic' },
+                  { id: 'internal', label: 'Internal Ops', icon: Briefcase, desc: 'Staff & Notes' },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    className={clsx(
+                      "flex items-center gap-3 p-3.5 rounded-xl transition-all group text-left relative overflow-hidden",
+                      tab === t.id ? "bg-white text-indigo-600 shadow-md ring-1 ring-slate-200" : "text-slate-500 hover:bg-white hover:text-slate-900"
                     )}
-                  </>
-                )}
+                  >
+                    {tab === t.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-full" />}
+                    <t.icon className="h-5 w-5" />
+                    <div>
+                      <p className="text-[14px] font-bold">{t.label}</p>
+                      <p className="text-[10px] font-medium opacity-60 uppercase">{t.desc}</p>
+                    </div>
+                  </button>
+                ))}
+                
+                <div className="mt-auto bg-slate-900 rounded-xl p-5 text-white shadow-lg space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Target className="h-4 w-4 text-indigo-400" />
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-200">Summary</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center text-[13px]">
+                       <span className="opacity-60">Total Amount</span>
+                       <span className="font-black text-indigo-400">₹{totalAmount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[13px]">
+                       <span className="opacity-60">Balance Due</span>
+                       <span className="font-bold text-amber-400">₹{balanceDue.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                {tab === "summary" && (
-                  <div className="md:col-span-2 space-y-6">
-                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                      <h3 className="text-base font-bold text-slate-800 mb-4">
-                        Financial Summary
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">Subtotal (₹)</label>
-                          <input
-                            type="text"
-                            readOnly
-                            className="input bg-gray-50"
-                            value={
-                              form.amount
-                                ? `₹${Number(form.amount).toLocaleString("en-IN", {
-                                    minimumFractionDigits: 2,
-                                  })}`
-                                : "₹0.00"
-                            }
-                          />
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-white">
+                <div className="space-y-8 max-w-3xl mx-auto">
+                  {tab === "basic" && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <SectionHeader icon={Truck} title="Vendor Relationship" color="blue" />
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                          <Label text="Vendor" required />
+                          <input className={clsx("input-premium", errors.vendor && "border-rose-400")} placeholder="e.g. AWS" value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
                         </div>
-                        <div>
-                          <label className="label">Discount (₹)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="input"
-                            placeholder="0.00"
-                            value={form.discount}
-                            onChange={(e) =>
-                              setForm({ ...form, discount: e.target.value })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Tax Amount (₹)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="input"
-                            placeholder="0.00"
-                            value={form.gstAmount}
-                            onChange={(e) =>
-                              setForm({ ...form, gstAmount: e.target.value })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Total Amount (₹)</label>
-                          <input
-                            type="text"
-                            readOnly
-                            className="input bg-brand-50 font-bold"
-                            value={`₹${totalAmount.toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                            })}`}
-                          />
+                        <div className="space-y-1.5">
+                          <Label text="Category" />
+                          <div className="flex gap-2">
+                             <select className="input-premium flex-1" value={form.category} onChange={(e) => {
+                               if (e.target.value === "__add__") return setAddCategoryModalOpen(true);
+                               if (e.target.value === "__manage__") return setManageCategoriesModalOpen(true);
+                               setForm({ ...form, category: e.target.value });
+                             }}>
+                               <option value="">Select category</option>
+                               {expenseCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                               <option value="__add__">+ Add New</option>
+                               <option value="__manage__">Manage List</option>
+                             </select>
+                          </div>
                         </div>
                       </div>
-                      <div className="mt-6 pt-4 border-t border-gray-100">
-                        <div className="flex items-center gap-2 mb-4">
-                          <input
-                            type="checkbox"
-                            id="initialDeposit"
-                            checked={form.initialDepositEnabled}
-                            onChange={(e) =>
-                              setForm({
-                                ...form,
-                                initialDepositEnabled: e.target.checked,
-                                initialDepositAmount: e.target.checked
-                                  ? form.initialDepositAmount
-                                  : "",
-                                initialDepositBankId: e.target.checked
-                                  ? form.initialDepositBankId
-                                  : null,
-                                initialDepositBankName: e.target.checked
-                                  ? form.initialDepositBankName
-                                  : "",
-                              })
-                            }
-                            className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                          />
-                          <label
-                            htmlFor="initialDeposit"
-                            className="text-sm font-medium text-slate-700"
-                          >
-                            Initial Deposit
-                          </label>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                           <Label text="Service / Project" />
+                           <input className="input-premium" placeholder="e.g. Hosting" value={form.project} onChange={(e) => setForm({ ...form, project: e.target.value })} />
                         </div>
+                        <div className="space-y-1.5">
+                           <Label text="Bill Number" />
+                           <input className="input-premium" placeholder="Ref No" value={form.billNo} onChange={(e) => setForm({ ...form, billNo: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label text="Description" />
+                        <textarea className="input-premium min-h-[100px] py-3" placeholder="Briefly describe the expense..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+                      </div>
+                    </div>
+                  )}
+
+                  {tab === "summary" && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <SectionHeader icon={CreditCard} title="Fiscal Architecture" color="rose" />
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                           <Label text="Amount (Subtotal)" required />
+                           <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                           <Label text="Discount" />
+                           <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                           <Label text="GST Amount" />
+                           <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.gstAmount} onChange={(e) => setForm({ ...form, gstAmount: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                           <Label text="Payment Date" />
+                           <input type="date" className="input-premium" value={form.paidDate} onChange={(e) => setForm({ ...form, paidDate: e.target.value })} />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4 pt-4 border-t border-slate-100">
+                        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setForm({ ...form, initialDepositEnabled: !form.initialDepositEnabled })}>
+                          <div className={clsx("h-6 w-6 rounded border-2 flex items-center justify-center transition-all", form.initialDepositEnabled ? "bg-indigo-600 border-indigo-600" : "bg-white border-slate-200")}>
+                            {form.initialDepositEnabled && <Check size={14} className="text-white" />}
+                          </div>
+                          <span className="text-[14px] font-bold text-slate-700">Initial Down Payment</span>
+                        </div>
+                        
                         {form.initialDepositEnabled && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="label">Initial Deposit Amount (₹)</label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                readOnly={isSavedRecord}
-                                className="input"
-                                placeholder="0.00"
-                                value={form.initialDepositAmount}
-                                onChange={(e) =>
-                                  setForm({
-                                    ...form,
-                                    initialDepositAmount: e.target.value,
-                                  })
-                                }
-                              />
+                          <div className="grid grid-cols-2 gap-6 animate-in slide-in-from-top-2">
+                            <div className="space-y-1.5">
+                               <Label text="Amount" />
+                               <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.initialDepositAmount} onChange={(e) => setForm({ ...form, initialDepositAmount: e.target.value })} />
                             </div>
-                            <div>
-                              <label className="label">Bank Account</label>
-                              <div className="flex gap-2">
-                                <button
-                                  ref={
-                                    firstInvalidBankKey === "initialDepositBank"
-                                      ? firstInvalidBankRef
-                                      : null
-                                  }
-                                  type="button"
-                                  onClick={() => {
-                                    setBankModalFor("initial");
-                                    setBankModalOpen(true);
-                                  }}
-                                  disabled={isSavedRecord}
-                                  className={clsx(
-                                    "btn-secondary flex-1",
-                                    errors.initialDepositBank && "border-red-500"
-                                  )}
-                                >
-                                  {form.initialDepositBankName || "Select Bank"}
-                                </button>
-                              </div>
-                              {errors.initialDepositBank && (
-                                <p className="text-sm text-red-500 mt-1">
-                                  {errors.initialDepositBank}
-                                </p>
-                              )}
+                            <div className="space-y-1.5">
+                               <Label text="Source Bank" />
+                               <button type="button" onClick={() => { setBankModalFor("initial"); setBankModalOpen(true); }} className="input-premium text-left relative h-[42px]">
+                                 {form.initialDepositBankName || 'Select Bank'}
+                                 <Landmark className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                               </button>
                             </div>
                           </div>
                         )}
-                        <div className="mt-4">
-                          <label className="label">Balance Due (₹)</label>
-                          <input
-                            type="text"
-                            readOnly
-                            className="input bg-amber-50 font-bold text-slate-800"
-                            value={`₹${Math.max(0, balanceDue).toLocaleString("en-IN", {
-                              minimumFractionDigits: 2,
-                            })}`}
-                          />
-                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {tab === "installments" && (
-                  <div className="md:col-span-2 space-y-6">
-                    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-base font-bold text-slate-800">
-                          Extra Installments (Split Payments)
-                        </h3>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForm({
-                              ...form,
-                              extraInstallments: [
-                                ...(form.extraInstallments || []),
-                                {
-                                  date: "",
-                                  amount: "",
-                                  bankAccountId: null,
-                                  bankName: "",
-                                  note: "",
-                                },
-                              ],
-                            })
-                          }
-                          className="btn-primary flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" /> Add Payment
+                  {tab === "installments" && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                        <SectionHeader icon={Layers} title="Sequential Liability" color="indigo" />
+                        <button type="button" onClick={() => setForm({ ...form, extraInstallments: [...(form.extraInstallments || []), { date: "", amount: "", bankAccountId: null, bankName: "", note: "" }] })} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-indigo-500/20">
+                           <Plus size={14} /> Add Installment
                         </button>
                       </div>
-                      <p className="text-sm text-slate-500 mb-4">
-                        {isSavedRecord &&
-                          "Saved payments are read-only; you can only add new ones."}
-                      </p>
                       <div className="space-y-4">
-                        {(form.extraInstallments || []).length === 0 ? (
-                          <p className="text-sm text-slate-400 py-6 text-center">
-                            No payments added yet. Click &quot;+ Add Payment&quot; to add one.
-                          </p>
-                        ) : (
-                          (form.extraInstallments || []).map((row, idx) => {
-                            const rowIsSaved =
-                              isSavedRecord && idx < savedExtraInstallmentsCount;
-                            return (
-                              <div
-                                key={idx}
-                                className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 items-end"
-                              >
-                                <div className="md:col-span-2">
-                                  <label className="label text-xs">Date</label>
-                                  <input
-                                    type="date"
-                                    readOnly={rowIsSaved}
-                                    className="input"
-                                    value={row.date}
-                                    onChange={(e) => {
-                                      const next = [
-                                        ...(form.extraInstallments || []),
-                                      ];
-                                      next[idx] = { ...next[idx], date: e.target.value };
-                                      setForm({ ...form, extraInstallments: next });
-                                    }}
-                                  />
-                                </div>
-                                <div className="md:col-span-2">
-                                  <label className="label text-xs">Amount (₹)</label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    readOnly={rowIsSaved}
-                                    className="input"
-                                    placeholder="0.00"
-                                    value={row.amount}
-                                    onChange={(e) => {
-                                      const next = [
-                                        ...(form.extraInstallments || []),
-                                      ];
-                                      next[idx] = {
-                                        ...next[idx],
-                                        amount: e.target.value,
-                                      };
-                                      setForm({ ...form, extraInstallments: next });
-                                    }}
-                                  />
-                                </div>
-                                <div className="md:col-span-3">
-                                  <label className="label text-xs">Bank Account</label>
-                                  <button
-                                    ref={
-                                      firstInvalidBankKey === `installmentBank_${idx}`
-                                        ? firstInvalidBankRef
-                                        : null
-                                    }
-                                    type="button"
-                                    disabled={rowIsSaved}
-                                    onClick={() => {
-                                      setBankModalFor({
-                                        type: "installment",
-                                        index: idx,
-                                      });
-                                      setBankModalOpen(true);
-                                    }}
-                                    className={clsx(
-                                      "input w-full text-left truncate bg-white",
-                                      errors[`installmentBank_${idx}`] && "border-red-500"
-                                    )}
-                                  >
-                                    {row.bankName || "Select Bank"}
-                                  </button>
-                                  {errors[`installmentBank_${idx}`] && (
-                                    <p className="text-sm text-red-500 mt-1">
-                                      {errors[`installmentBank_${idx}`]}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="md:col-span-3">
-                                  <label className="label text-xs">Note</label>
-                                  <input
-                                    type="text"
-                                    readOnly={rowIsSaved}
-                                    className="input"
-                                    placeholder="Optional"
-                                    value={row.note}
-                                    onChange={(e) => {
-                                      const next = [
-                                        ...(form.extraInstallments || []),
-                                      ];
-                                      next[idx] = { ...next[idx], note: e.target.value };
-                                      setForm({ ...form, extraInstallments: next });
-                                    }}
-                                  />
-                                </div>
-                                <div className="md:col-span-2 flex justify-end">
-                                  {!rowIsSaved && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setForm({
-                                          ...form,
-                                          extraInstallments: (
-                                            form.extraInstallments || []
-                                          ).filter((_, i) => i !== idx),
-                                        })
-                                      }
-                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
+                        {form.extraInstallments.map((row, idx) => (
+                          <div key={idx} className="p-4 rounded-xl border border-slate-200 grid grid-cols-12 gap-4 items-end bg-slate-50/30 group">
+                            <div className="col-span-3 space-y-1.5">
+                               <Label text="Date" />
+                               <input type="date" className="input-premium py-1.5 text-xs" value={row.date} onChange={(e) => {
+                                 const next = [...form.extraInstallments];
+                                 next[idx].date = e.target.value;
+                                 setForm({ ...form, extraInstallments: next });
+                               }} />
+                            </div>
+                            <div className="col-span-3 space-y-1.5">
+                               <Label text="Amount" />
+                               <input type="number" className="input-premium py-1.5 text-xs" placeholder="0.00" value={row.amount} onChange={(e) => {
+                                  const next = [...form.extraInstallments];
+                                  next[idx].amount = e.target.value;
+                                  setForm({ ...form, extraInstallments: next });
+                               }} />
+                            </div>
+                            <div className="col-span-3 space-y-1.5">
+                               <Label text="Bank" />
+                               <button type="button" onClick={() => { setBankModalFor({ type: "installment", index: idx }); setBankModalOpen(true); }} className="input-premium py-1.5 text-xs text-left h-[34px] relative">
+                                 {row.bankName || 'Select'}
+                                 <Landmark className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                               </button>
+                            </div>
+                            <div className="col-span-2 space-y-1.5">
+                               <Label text="Note" />
+                               <input type="text" className="input-premium py-1.5 text-xs" placeholder="Note" value={row.note} onChange={(e) => {
+                                  const next = [...form.extraInstallments];
+                                  next[idx].note = e.target.value;
+                                  setForm({ ...form, extraInstallments: next });
+                               }} />
+                            </div>
+                            <div className="col-span-1 flex justify-end">
+                               <button type="button" onClick={() => setForm({ ...form, extraInstallments: form.extraInstallments.filter((_, i) => i !== idx) })} className="p-2 text-rose-400 hover:bg-rose-50 rounded-lg group-hover:opacity-100 opacity-0 transition-opacity">
+                                  <Trash2 size={16} />
+                               </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {tab === "internal" && (
-                  <>
-                    <div>
-                      <label className="label">Staff</label>
-                      <input
-                        className="input"
-                        placeholder="Name of staff"
-                        value={form.staff}
-                        onChange={(e) =>
-                          setForm({ ...form, staff: e.target.value })
-                        }
-                      />
+                  {tab === "internal" && (
+                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                      <SectionHeader icon={Briefcase} title="Managerial Assignments" color="fuchsia" />
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1.5">
+                           <Label text="Assigned Staff" />
+                           <input className="input-premium" placeholder="Staff Name" value={form.staff} onChange={(e) => setForm({ ...form, staff: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                           <Label text="Department" />
+                           <input className="input-premium" placeholder="e.g. Sales" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label text="Internal Notes" />
+                        <textarea className="input-premium min-h-[120px] py-3" placeholder="Restricted audit notes..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                      </div>
                     </div>
-                    <div>
-                      <label className="label">Department</label>
-                      <input
-                        className="input"
-                        placeholder="e.g. Ops"
-                        value={form.department}
-                        onChange={(e) =>
-                          setForm({ ...form, department: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="label">Internal Notes</label>
-                      <textarea
-                        className="input min-h-[120px]"
-                        placeholder="Add specific details about this expense..."
-                        value={form.notes}
-                        onChange={(e) =>
-                          setForm({ ...form, notes: e.target.value })
-                        }
-                      />
-                    </div>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Bank selection modal */}
-            {bankModalOpen && (
-              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
-                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-slate-800">
-                      Select Bank Account
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBankModalOpen(false);
-                        setBankModalFor(null);
-                      }}
-                      className="p-2 text-slate-400 hover:text-slate-600 rounded-full"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="overflow-y-auto p-4 space-y-2">
-                    {bankAccounts.length === 0 ? (
-                      <p className="text-sm text-slate-500">
-                        No bank accounts found. Add one in Bank Accounts.
-                      </p>
-                    ) : (
-                      bankAccounts.map((b) => (
-                        <button
-                          key={b.id}
-                          type="button"
-                          onClick={() => {
-                            const name = `${b.bankName} - ${b.accountNumber}`;
-                            if (bankModalFor === "initial") {
-                              setForm((prev) => ({
-                                ...prev,
-                                initialDepositBankId: b.id,
-                                initialDepositBankName: name,
-                              }));
-                              setErrors((prev) => {
-                                const next = { ...prev };
-                                delete next.initialDepositBank;
-                                return next;
-                              });
-                            } else if (
-                              bankModalFor?.type === "installment" &&
-                              typeof bankModalFor.index === "number"
-                            ) {
-                              const idx = bankModalFor.index;
-                              const next = [...(form.extraInstallments || [])];
-                              next[idx] = {
-                                ...next[idx],
-                                bankAccountId: b.id,
-                                bankName: name,
-                              };
-                              setForm((prev) => ({ ...prev, extraInstallments: next }));
-                              setErrors((prev) => {
-                                const nextErr = { ...prev };
-                                delete nextErr[`installmentBank_${idx}`];
-                                return nextErr;
-                              });
-                            }
-                            setBankModalOpen(false);
-                            setBankModalFor(null);
-                          }}
-                          className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50/50 text-left transition-colors"
-                        >
-                          <Landmark className="w-5 h-5 text-brand-600" />
-                          <span className="font-medium text-slate-800">
-                            {b.bankName} - {b.accountNumber}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Add Category modal */}
-            {addCategoryModalOpen && (
-              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col">
-                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-slate-800">
-                      Add New Category
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddCategoryModalOpen(false);
-                        setNewCategoryName("");
-                      }}
-                      className="p-2 text-slate-400 hover:text-slate-600 rounded-full"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="p-4 space-y-4">
-                    <div>
-                      <label className="label">Category name</label>
-                      <input
-                        type="text"
-                        className="input"
-                        placeholder="Enter category name"
-                        value={newCategoryName}
-                        onChange={(e) => setNewCategoryName(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="p-4 border-t border-gray-100 flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddCategoryModalOpen(false);
-                        setNewCategoryName("");
-                      }}
-                      className="btn-secondary"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!newCategoryName.trim() || addCategorySaving}
-                      className="btn-primary"
-                      onClick={async () => {
-                        const name = newCategoryName.trim();
-                        if (!name) return;
-                        setAddCategorySaving(true);
-                        try {
-                          const created = await createExpenseCategory(name);
-                          const list = await getExpenseCategories();
-                          setExpenseCategories(list);
-                          setForm((prev) => ({ ...prev, category: created.name }));
-                          setAddCategoryModalOpen(false);
-                          setNewCategoryName("");
-                          toast.success("Category added");
-                        } catch (e) {
-                          toast.error(
-                            e.response?.data?.message || "Failed to add category"
-                          );
-                        } finally {
-                          setAddCategorySaving(false);
-                        }
-                      }}
-                    >
-                      {addCategorySaving ? "Saving..." : "Save"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Manage Categories modal */}
-            {manageCategoriesModalOpen && (
-              <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
-                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
-                  <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-slate-800">
-                      Manage Categories
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => setManageCategoriesModalOpen(false)}
-                      className="p-2 text-slate-400 hover:text-slate-600 rounded-full"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="overflow-y-auto p-4 space-y-2">
-                    {expenseCategories.length === 0 ? (
-                      <p className="text-sm text-slate-500">
-                        No categories yet. Add one from the dropdown.
-                      </p>
-                    ) : (
-                      expenseCategories.map((c) => (
-                        <div
-                          key={c.id}
-                          className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/50"
-                        >
-                          <span className="font-medium text-slate-800">{c.name}</span>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                await deleteExpenseCategory(c.id);
-                                const list = await getExpenseCategories();
-                                setExpenseCategories(list);
-                                if (form.category === c.name)
-                                  setForm((prev) => ({ ...prev, category: "" }));
-                                toast.success("Category removed");
-                              } catch (e) {
-                                toast.error(
-                                  e.response?.data?.message || "Failed to delete"
-                                );
-                              }
-                            }}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 p-4 md:p-6 border-t border-gray-100 bg-white flex-shrink-0">
-              <button onClick={() => setOpenForm(false)} className="btn-secondary" disabled={isSaving}>
-                Cancel
+            <div className="px-8 py-5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 z-20">
+              <button onClick={() => setOpenForm(false)} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
+                Discard Changes
               </button>
               <button
-                type="button"
                 onClick={handleSave}
                 disabled={isSaving}
-                className={clsx("btn-primary flex items-center gap-2", isSaving && "opacity-50 cursor-not-allowed")}
+                className="px-10 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-500 text-white rounded-xl text-[14px] font-bold shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30 transition-all hover:-translate-y-[2px] active:scale-95 group relative overflow-hidden"
               >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Record"
-                )}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                <div className="flex items-center gap-2 relative z-10">
+                   {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                   <span>{isSaving ? 'Processing...' : (editId ? 'Commit Update' : 'Authorize Expense')}</span>
+                </div>
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {bankModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-[0.95]">
+            <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center">
+              <h3 className="text-base font-bold text-slate-800">Assign Bank Account</h3>
+              <button onClick={() => setBankModalOpen(false)} className="p-1 text-slate-400 hover:text-rose-500"><X size={18} /></button>
+            </div>
+            <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+              {bankAccounts.map((b) => (
+                <button
+                  key={b.id}
+                  onClick={() => {
+                    const name = `${b.bankName} - ${b.accountNumber}`;
+                    if (bankModalFor === "initial") {
+                      setForm((prev) => ({ ...prev, initialDepositBankId: b.id, initialDepositBankName: name }));
+                    } else if (bankModalFor?.type === "installment") {
+                      const next = [...form.extraInstallments];
+                      next[bankModalFor.index] = { ...next[bankModalFor.index], bankAccountId: b.id, bankName: name };
+                      setForm((prev) => ({ ...prev, extraInstallments: next }));
+                    }
+                    setBankModalOpen(false);
+                  }}
+                  className="w-full text-left p-4 rounded-xl border border-slate-100 hover:bg-slate-50 transition-all flex items-center gap-3"
+                >
+                  <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500"><Landmark size={16} /></div>
+                  <div>
+                    <p className="font-bold text-slate-800 text-sm">{b.bankName}</p>
+                    <p className="text-xs text-slate-400 uppercase">{b.accountNumber}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addCategoryModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center">
+              <h3 className="font-bold text-slate-800">New Category Channel</h3>
+              <button onClick={() => setAddCategoryModalOpen(false)}><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <Label text="Name" />
+                <input type="text" className="input-premium" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} />
+              </div>
+              <button 
+                onClick={async () => {
+                  setAddCategorySaving(true);
+                  try {
+                    const created = await createExpenseCategory(newCategoryName);
+                    const list = await getExpenseCategories();
+                    setExpenseCategories(list);
+                    setForm(prev => ({ ...prev, category: created.name }));
+                    setAddCategoryModalOpen(false);
+                    setNewCategoryName("");
+                    toast.success("Category added");
+                  } catch (e) { toast.error("Error adding category"); }
+                  finally { setAddCategorySaving(false); }
+                }}
+                disabled={!newCategoryName || addCategorySaving}
+                className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg"
+              >
+                {addCategorySaving ? 'Saving...' : 'Add Channel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {manageCategoriesModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[70] flex items-center justify-center p-4">
+           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center">
+                 <h3 className="font-bold text-slate-800">Manage Logic Channels</h3>
+                 <button onClick={() => setManageCategoriesModalOpen(false)}><X size={18} /></button>
+              </div>
+              <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+                 {expenseCategories.map(c => (
+                   <div key={c.id} className="flex items-center justify-between p-3 px-5 bg-slate-50 rounded-xl border border-slate-100 group transition-all">
+                      <span className="text-sm font-bold text-slate-700">{c.name}</span>
+                      <button onClick={async () => {
+                         try {
+                           await deleteExpenseCategory(c.id);
+                           setExpenseCategories(await getExpenseCategories());
+                           toast.success("Category removed");
+                         } catch (e) { toast.error("Active category cannot be deleted"); }
+                      }} className="p-2 text-rose-400 opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                   </div>
+                 ))}
+              </div>
+           </div>
         </div>
       )}
     </div>

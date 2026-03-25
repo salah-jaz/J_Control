@@ -24,7 +24,7 @@ const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <div className="max-w-md w-full bg-white rounded-xl shadow-xl p-8 border border-gray-100">
                 <div className="flex justify-center mb-6">
-                    <div className="bg-brand-500 p-3 rounded-xl shadow-lg shadow-brand-500/30">
+                    <div className="bg-violet-500 p-3 rounded-xl shadow-lg shadow-violet-500/30">
                         <LayoutDashboard className="h-8 w-8 text-white" />
                     </div>
                 </div>
@@ -43,7 +43,7 @@ const Login = () => {
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all duration-200 shadow-sm"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all duration-200 shadow-sm"
                             placeholder="admin@company.com"
                             required
                         />
@@ -54,14 +54,14 @@ const Login = () => {
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all duration-200 shadow-sm"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-4 focus:ring-violet-500/10 focus:border-violet-500 outline-none transition-all duration-200 shadow-sm"
                             placeholder="••••••••"
                             required
                         />
                     </div>
                     <button
                         type="submit"
-                        className="w-full bg-brand-600 text-white py-2.5 px-4 rounded-lg hover:bg-brand-700 focus:outline-none focus:ring-4 focus:ring-brand-500/20 transition-all duration-200 font-medium shadow-md shadow-brand-500/20 active:transform active:scale-[0.98]"
+                        className="w-full bg-violet-600 text-white py-2.5 px-4 rounded-lg hover:bg-violet-700 focus:outline-none focus:ring-4 focus:ring-violet-500/20 transition-all duration-200 font-medium shadow-md shadow-violet-500/20 active:transform active:scale-[0.98]"
                     >
                         Sign In
                     </button>

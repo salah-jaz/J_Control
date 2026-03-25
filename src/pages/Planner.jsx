@@ -1128,7 +1128,7 @@ const Planner = () => {
                                         fetchEventNotes(ev.id);
                                     }
                                 }}
-                                className="px-4 py-2 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 shadow-sm"
+                                className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 shadow-sm"
                             >
                                 View Event
                             </button>
@@ -1297,7 +1297,7 @@ const Planner = () => {
                         <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Status:</span> {((historyDetailsEvent.status === 'missed' ? 'overdue' : historyDetailsEvent.status) || 'scheduled').charAt(0).toUpperCase() + ((historyDetailsEvent.status === 'missed' ? 'overdue' : historyDetailsEvent.status) || 'scheduled').slice(1)}</p>
                         {historyDetailsEvent.description && <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Notes:</span> {historyDetailsEvent.description}</p>}
                         <div className="flex flex-wrap gap-2 mt-4">
-                            <button type="button" onClick={() => { setSelectedEvent(historyDetailsEvent); setHistoryDetailsEvent(null); setIsHistoryModalOpen(false); fetchEventNotes(historyDetailsEvent.id); }} className="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-semibold">View in Panel</button>
+                            <button type="button" onClick={() => { setSelectedEvent(historyDetailsEvent); setHistoryDetailsEvent(null); setIsHistoryModalOpen(false); fetchEventNotes(historyDetailsEvent.id); }} className="px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold">View in Panel</button>
                             <button type="button" onClick={() => { handleOpenCompleteModal(historyDetailsEvent, historyDetailsEvent.id); setHistoryDetailsEvent(null); setIsHistoryModalOpen(false); }} className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-100">Mark Completed</button>
                             <button type="button" onClick={() => { handleOpenRescheduleModal(historyDetailsEvent, historyDetailsEvent.id); setHistoryDetailsEvent(null); setIsHistoryModalOpen(false); }} className="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-100">Reschedule</button>
                             <button type="button" onClick={() => { handleOpenCancelModal(historyDetailsEvent, historyDetailsEvent.id); setHistoryDetailsEvent(null); setIsHistoryModalOpen(false); }} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-semibold border border-red-100">Cancel</button>
@@ -1310,7 +1310,7 @@ const Planner = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                        <CalendarIcon className="h-7 w-7 text-brand-600" />
+                        <CalendarIcon className="h-7 w-7 text-violet-600" />
                         Planner
                     </h1>
                     <p className="text-slate-500 mt-1 text-sm md:text-base">
@@ -1324,7 +1324,7 @@ const Planner = () => {
                             className={clsx(
                                 'px-3 py-1.5 text-xs font-medium rounded-lg',
                                 currentView === 'dayGridMonth'
-                                    ? 'bg-brand-600 text-white shadow-sm'
+                                    ? 'bg-violet-600 text-white shadow-sm'
                                     : 'text-slate-500 hover:bg-gray-50',
                             )}
                         >
@@ -1335,7 +1335,7 @@ const Planner = () => {
                             className={clsx(
                                 'px-3 py-1.5 text-xs font-medium rounded-lg',
                                 currentView === 'timeGridWeek'
-                                    ? 'bg-brand-600 text-white shadow-sm'
+                                    ? 'bg-violet-600 text-white shadow-sm'
                                     : 'text-slate-500 hover:bg-gray-50',
                             )}
                         >
@@ -1346,7 +1346,7 @@ const Planner = () => {
                             className={clsx(
                                 'px-3 py-1.5 text-xs font-medium rounded-lg',
                                 currentView === 'timeGridDay'
-                                    ? 'bg-brand-600 text-white shadow-sm'
+                                    ? 'bg-violet-600 text-white shadow-sm'
                                     : 'text-slate-500 hover:bg-gray-50',
                             )}
                         >
@@ -1432,13 +1432,13 @@ const Planner = () => {
                             placeholder="Search events or meetings..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all shadow-sm"
+                            className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 w-full transition-all shadow-sm"
                         />
                     </div>
                     <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[150px]"
+                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[150px]"
                     >
                         <option value="all">All Status</option>
                         <option value="scheduled">Scheduled</option>
@@ -1450,7 +1450,7 @@ const Planner = () => {
                     <select
                         value={categoryFilter}
                         onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[150px]"
+                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[150px]"
                     >
                         <option value="all">All Categories</option>
                         <option value="meeting">Meeting</option>
@@ -1462,7 +1462,7 @@ const Planner = () => {
                     <select
                         value={dateFilter}
                         onChange={(e) => setDateFilter(e.target.value)}
-                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
+                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
                     >
                         <option value="all">All Time</option>
                         <option value="today">Today</option>
@@ -1485,7 +1485,7 @@ const Planner = () => {
                         </button>
                         <button
                             onClick={openNewEventModal}
-                            className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30 h-[38px]"
+                            className="btn-primary flex items-center gap-2 shadow-lg shadow-violet-500/30 h-[38px]"
                         >
                             <Plus className="h-5 w-5" />
                             Add Event
@@ -1495,7 +1495,7 @@ const Planner = () => {
             </div>
 
             {filtersOpen && (
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5 space-y-3">
+                <div className="card !border-0 p-4 md:p-5 space-y-3">
                     <div className="flex flex-wrap gap-4 items-start">
                         <div className="flex-1 min-w-[160px]">
                             <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
@@ -1553,7 +1553,7 @@ const Planner = () => {
                             className={clsx(
                                 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200',
                                 viewMode === view.id
-                                    ? 'bg-brand-600 text-white shadow-sm'
+                                    ? 'bg-violet-600 text-white shadow-sm'
                                     : 'text-slate-600 bg-gray-100 hover:bg-gray-200'
                             )}
                         >
@@ -1565,7 +1565,7 @@ const Planner = () => {
             </div>
 
             <div className="flex flex-col lg:flex-row gap-6 min-h-[600px]">
-                <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[500px]">
+                <div className="flex-1 card !border-0 overflow-hidden flex flex-col min-h-[500px]">
                     {viewMode === 'list' && (
                         <div className="overflow-x-auto custom-scrollbar flex-1">
                             <table className="w-full text-sm text-left min-w-[900px]">
@@ -1673,7 +1673,7 @@ const Planner = () => {
                                                             key={ev.id}
                                                             type="button"
                                                             onClick={() => { setSelectedEvent(ev); fetchEventNotes(ev.id); }}
-                                                            className="w-full text-left bg-white rounded-lg p-2.5 shadow-[0_2px_6px_rgba(0,0,0,0.08)] border border-gray-100 hover:shadow-md hover:border-brand-200/50 transition-all"
+                                                            className="w-full text-left bg-white rounded-lg p-2.5 shadow-[0_2px_6px_rgba(0,0,0,0.08)] border border-gray-100 hover:shadow-md hover:border-violet-200/50 transition-all"
                                                         >
                                                             <p className="font-semibold text-slate-900 text-sm truncate">{ev.title || 'Untitled'}</p>
                                                             <p className="text-xs text-slate-500 mt-1">{dateStr} • {timeStr}</p>
@@ -1715,10 +1715,10 @@ const Planner = () => {
                     )}
                 </div>
 
-                <div className="w-full lg:w-96 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[400px]">
+                <div className="w-full lg:w-96 card !border-0 flex flex-col min-h-[400px]">
                     <div className="p-4 md:p-5 border-b border-gray-100 flex items-center justify-between">
                         <div>
-                            <p className="text-xs font-semibold text-brand-600 uppercase tracking-wide mb-1">
+                            <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
                                 {selectedEvent ? 'Event Details' : 'Quick Notes'}
                             </p>
                             <h3 className="text-lg font-bold text-slate-900">
@@ -1884,7 +1884,7 @@ const Planner = () => {
                                         </select>
                                         <button
                                             onClick={() => handleAddNote(false)}
-                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-[11px] font-semibold"
+                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-[11px] font-semibold"
                                         >
                                             <Plus className="h-3 w-3" />
                                             Save Note
@@ -2102,7 +2102,7 @@ const Planner = () => {
                                 <button
                                     type="submit"
                                     disabled={isSaving}
-                                    className="px-4 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 disabled:opacity-60"
+                                    className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 disabled:opacity-60"
                                 >
                                     {isSaving ? 'Saving...' : eventForm.id ? 'Update Event' : 'Create Event'}
                                 </button>
@@ -2491,7 +2491,7 @@ const EventNotesSection = ({ eventNotes, newNote, setNewNote, handleAddNote, han
                             <div className="flex justify-end">
                                 <button
                                     onClick={() => handleAddNote(true)}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-600 text-white text-[11px] font-semibold"
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-[11px] font-semibold"
                                 >
                                     <Plus className="h-3 w-3" />
                                     Add Note

@@ -528,7 +528,7 @@ export const MINIMAL_PRINT_STYLES = `
   @media print { 
     @page { size: A4; margin: 0 !important; } 
     html, body { width: 210mm !important; height: 297mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
-    .print-doc-dynamic { width: 210mm !important; max-width: 210mm !important; padding: 0 !important; margin: 0 !important; height: auto !important; min-height: 297mm !important; max-height: none !important; overflow: hidden !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box !important; page-break-after: avoid !important; page-break-inside: avoid !important; border: none !important; box-shadow: none !important; }
+    .print-doc-dynamic { width: 210mm !important; max-width: 210mm !important; padding: 20mm 15mm !important; margin: 0 !important; height: auto !important; min-height: 297mm !important; max-height: none !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box !important; page-break-after: auto !important; page-break-inside: auto !important; border: none !important; box-shadow: none !important; }
     .print-section, .print-field, .seal-image-wrap { page-break-inside: avoid; break-inside: avoid; }
     h1, h2, h3, h4, h5, h6 { page-break-after: avoid; break-after: avoid; }
   }
@@ -597,12 +597,12 @@ export const PRINT_PREVIEW_STYLES = `
     @page { size: A4; margin: 0 !important; }
     html, body { width: 210mm !important; height: 297mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; box-sizing: border-box !important; }
     .print-doc {
-      width: 210mm !important; max-width: 210mm !important; margin: 0 !important; padding: 0 !important;
+      width: 210mm !important; max-width: 210mm !important; margin: 0 !important; padding: 20mm 15mm !important;
       height: auto !important; min-height: 297mm !important; max-height: none !important;
-      overflow: hidden !important; box-sizing: border-box !important; page-break-after: avoid !important; page-break-inside: avoid !important; border: none !important; box-shadow: none !important;
+      overflow: visible !important; box-sizing: border-box !important; page-break-after: auto !important; page-break-inside: auto !important; border: none !important; box-shadow: none !important;
       -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
     }
-    .print-doc-agreement { overflow: hidden !important; height: auto !important; min-height: 297mm !important; max-height: none !important; box-sizing: border-box !important; }
+    .print-doc-agreement { overflow: visible !important; height: auto !important; min-height: 297mm !important; max-height: none !important; box-sizing: border-box !important; padding: 20mm 15mm !important; }
     .print-header { page-break-after: avoid; break-after: avoid; }
     .print-customer, .print-bank, .print-totals-wrap, .print-signature, .print-footer, tr, .party-block, .sig-box { page-break-inside: avoid; break-inside: avoid; }
     h1, h2, h3, h4, h5, h6 { page-break-after: avoid; break-after: avoid; }
@@ -616,7 +616,7 @@ export const AGREEMENT_LETTERHEAD_CSS = `
   @media print { 
     @page { size: A4; margin: 10mm 15mm; }
     .letterhead-doc { max-width: none !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } 
-    .letterhead-inner { padding: 0 !important; }
+    .letterhead-inner { padding: 20mm 15mm !important; }
     .letterhead-curve-top-red, .letterhead-curve-grey-1, .letterhead-curve-grey-2, .letterhead-curve-grey-3, .letterhead-curve-bottom-red, .letterhead-curve-grey-b1, .letterhead-curve-grey-b2, .letterhead-curve-grey-b3 { position: fixed !important; }
     tr, .letterhead-recipient, .letterhead-greeting, .letterhead-table-wrap, .letterhead-signature { page-break-inside: avoid; break-inside: avoid; }
     .letterhead-heading, .letterhead-subheading, .letterhead-header-modern { page-break-after: avoid; break-after: avoid; }
@@ -1376,16 +1376,29 @@ export function buildItemsTableHtml(items, type = 'invoice') {
     const rate = parseFloat(row.price || row.rate) || parseFloat(row.amount) / qty || 0;
     const amount = parseFloat(row.amount) || qty * rate;
     const fmt = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-    if (type === 'quotation') {
-      return `<tr><td>${num}</td><td>${escapeHtml(String(itemName))}</td><td>${escapeHtml(String(desc))}</td><td>${qty}</td><td class="text-right">${fmt(rate)}</td><td class="text-right">${fmt(amount)}</td></tr>`;
-    }
-    return `<tr><td>${num}</td><td>${escapeHtml(String(itemName))}</td><td>${escapeHtml(String(desc))}</td><td>${qty}</td><td class="text-right">${fmt(rate)}</td><td class="text-right">${fmt(amount)}</td></tr>`;
+    
+    return `<tr>
+      <td class="col-num">${num}</td>
+      <td class="col-item">${escapeHtml(String(itemName))}</td>
+      <td class="col-desc">${escapeHtml(String(desc))}</td>
+      <td class="col-qty">${qty}</td>
+      <td class="col-price text-right">${fmt(rate)}</td>
+      <td class="col-total text-right">${fmt(amount)}</td>
+    </tr>`;
   });
-  const thead =
-    type === 'quotation'
-      ? '<thead><tr><th>#</th><th>Item</th><th>Description</th><th>Qty</th><th class="text-right">Unit Price</th><th class="text-right">Total</th></tr></thead>'
-      : '<thead><tr><th>#</th><th>Item</th><th>Description</th><th>Qty</th><th class="text-right">Unit Price</th><th class="text-right">Total</th></tr></thead>';
-  return `<table class="print-table">${thead}<tbody>${rows.join('')}</tbody></table>`;
+
+  const thead = `<thead>
+    <tr>
+      <th class="col-num">#</th>
+      <th class="col-item">Item</th>
+      <th class="col-desc">Description</th>
+      <th class="col-qty">Qty</th>
+      <th class="col-price text-right">Unit Price</th>
+      <th class="col-total text-right">Total</th>
+    </tr>
+  </thead>`;
+
+  return `<table id="dynamic-items-table" class="print-table">${thead}<tbody>${rows.join('')}</tbody></table>`;
 }
 
 /**

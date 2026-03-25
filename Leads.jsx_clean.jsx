@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
     Users, Plus, Upload, Download, Search, LayoutList, Kanban, Calendar,
-    MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X, ArrowRight, FileText, StickyNote, Loader2, Save, Send, Target, MapPin as LocationIcon, Briefcase, Activity, Filter
+    MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X, ArrowRight, FileText, StickyNote
 } from 'lucide-react';
 import { getAssignees, saveAssignee, saveLead, getLeadNotes, createLeadNote, updateLeadNote, deleteLeadNote } from '../services/db';
 import { useQueryClient } from '@tanstack/react-query';
@@ -21,7 +21,6 @@ const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssigne
         priority: 'Medium', score: 0, value: 0,
         assignedTo: 'Unassigned', qualified: false, notes: ''
     });
-    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (lead) {
@@ -36,226 +35,163 @@ const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssigne
         }
     }, [lead, isOpen]);
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
-        setIsSaving(true);
-        try {
-            await onSave({ ...formData, id: lead ? lead.id : null });
-            onClose();
-        } finally {
-            setIsSaving(false);
-        }
+        onSave({ ...formData, id: lead ? lead.id : null });
+        onClose();
     };
 
     if (!isOpen) return null;
 
-    // Premium Label Component
-    const Label = ({ children, required }) => (
-        <label className="block text-[13px] font-medium text-slate-700 mb-1.5 ml-0.5">
-            {children} {required && <span className="text-rose-500 ml-1 font-bold">*</span>}
-        </label>
-    );
-
-    // Section Header for grouping
-    const SectionHeader = ({ title, subtitle, icon: Icon }) => (
-        <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4 mb-6 mt-2">
-            <div className="flex items-center gap-2">
-                {Icon && <Icon className="h-4 w-4 text-violet-500" />}
-                <h4 className="text-[16px] font-bold text-slate-900">{title}</h4>
-            </div>
-            {subtitle && <p className="text-[12px] font-medium text-slate-500">{subtitle}</p>}
-        </div>
-    );
-
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
-            <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-white/40 animate-in zoom-in-[0.98] duration-[250ms] ease-out">
-                
-                {/* Fixed Header */}
-                <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white z-20">
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] group-hover:scale-105 transition-transform duration-[250ms]">
-                            {lead ? <Edit2 className="h-5 w-5" /> : <Plus className="h-5 w-5 stroke-[2.5]" />}
-                        </div>
-                        <div>
-                            <h3 className="text-[20px] font-bold text-slate-900 tracking-tight">
-                                {lead ? 'Advance Lead Intelligence' : 'Register New Prospect'}
-                            </h3>
-                            <p className="text-[12px] font-medium text-slate-500 mt-0.5">
-                                {lead ? 'Refine lead data and strategic positioning' : 'Onboard a new business opportunity to the pipeline'}
-                            </p>
-                        </div>
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] animate-slide-up">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 tracking-tight">{lead ? 'Edit Lead' : 'Add New Lead'}</h3>
+                        <p className="text-sm text-slate-500 mt-1">Fill in the details below to manage this lead.</p>
                     </div>
-
-                    <button onClick={onClose} className="h-10 w-10 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all flex items-center justify-center active:scale-95 shadow-sm border border-slate-100">
-                        <X className="h-5 w-5" />
+                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
+                        <X size={20} />
                     </button>
                 </div>
 
-                {/* Body Content */}
-                <div className="flex-1 overflow-y-auto bg-white p-8 relative">
-                    <form id="lead-form" onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-8">
-                        <div>
-                            <SectionHeader title="Lead Identity" subtitle="Primary contact and organizational information" icon={User} />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <Label required>First Name</Label>
-                                    <input type="text" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="input-premium" required placeholder="Prospect's first name" />
-                                </div>
-                                <div>
-                                    <Label required>Last Name</Label>
-                                    <input type="text" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="input-premium" required placeholder="Prospect's last name" />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <Label>Organization / Company</Label>
-                                    <div className="relative">
-                                        <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="text" value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} className="input-premium pl-10" placeholder="Enter company name" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Professional Title</Label>
-                                    <div className="relative">
-                                        <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="text" value={formData.jobTitle} onChange={e => setFormData({ ...formData, jobTitle: e.target.value })} className="input-premium pl-10" placeholder="e.g. CEO, Sales Manager" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Primary Email</Label>
-                                    <div className="relative">
-                                        <MessageSquare className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="input-premium pl-10" placeholder="prospect@company.com" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Direct Phone</Label>
-                                    <div className="relative">
-                                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="input-premium pl-10" placeholder="+1 (234) 567-8900" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Operational Location</Label>
-                                    <div className="relative">
-                                        <LocationIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="text" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} className="input-premium pl-10" placeholder="City, Country" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <SectionHeader title="Strategic Positioning" subtitle="Pipeline status, priority and valuation" icon={Target} />
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div>
-                                    <Label>Current Pipeline State</Label>
-                                    <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="input-premium">
-                                        <option>New</option>
-                                        <option>Contacted</option>
-                                        <option>Working</option>
-                                        <option>Qualified</option>
-                                        <option>Lost</option>
-                                        <option>Converted</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <Label>Strategic Priority</Label>
-                                    <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })} className="input-premium">
-                                        <option>Low</option>
-                                        <option>Medium</option>
-                                        <option>High</option>
-                                        <option>Urgent</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <Label>Lead Source</Label>
-                                    <select value={formData.source} onChange={e => setFormData({ ...formData, source: e.target.value })} className="input-premium">
-                                        <option value="">Select Source</option>
-                                        <option>Website</option>
-                                        <option>Referral</option>
-                                        <option>Social Media</option>
-                                        <option>Advertisement</option>
-                                        <option>Cold Outreach</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <Label>Potential Revenue (₹)</Label>
-                                    <input type="number" value={formData.value} onChange={e => setFormData({ ...formData, value: e.target.value })} className="input-premium" placeholder="0.00" />
-                                </div>
-                                <div>
-                                    <Label>Strategic Score (0-100)</Label>
-                                    <input type="number" value={formData.score} onChange={e => setFormData({ ...formData, score: e.target.value })} className="input-premium" placeholder="Confidence level" />
-                                </div>
-                                <div>
-                                    <Label>Stakeholder Assignment</Label>
-                                    <div className="flex gap-2">
-                                        <select value={formData.assignedTo} onChange={e => setFormData({ ...formData, assignedTo: e.target.value })} className="input-premium flex-1">
-                                            <option>Unassigned</option>
-                                            {assignees.map(a => <option key={a} value={a}>{a}</option>)}
-                                        </select>
-                                        <button type="button" onClick={() => {
-                                            const name = prompt('Stakeholder Name:');
-                                            if (name) onAddAssignee(name);
-                                        }} className="p-2 bg-slate-50 border border-slate-200 rounded-lg hover:border-violet-300 hover:text-violet-600 transition-all">
-                                            <Plus className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <SectionHeader title="Account Intelligence" subtitle="Internal notes and strategic context" icon={StickyNote} />
+                <div className="flex-1 overflow-y-auto p-6 md:p-8">
+                    <form id="lead-form" onSubmit={handleSubmit} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                             <div>
-                                <Label>Tactical Notes</Label>
-                                <textarea
-                                    value={formData.notes}
-                                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                                    className="input-premium min-h-[120px] pt-3"
-                                    placeholder="Document initial discovery findings or strategic requirements..."
-                                />
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">First Name <span className="text-red-500">*</span></label>
+                                <input type="text" required className="input"
+                                    value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} />
                             </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Last Name <span className="text-red-500">*</span></label>
+                                <input type="text" required className="input"
+                                    value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Email <span className="text-red-500">*</span></label>
+                                <input type="email" required className="input"
+                                    value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Phone</label>
+                                <input type="text" className="input"
+                                    value={formData.phone} onChange={e => {
+                                        const val = e.target.value;
+                                        if (val === '' || /^\d+$/.test(val)) {
+                                            setFormData({ ...formData, phone: val });
+                                        }
+                                    }} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Company</label>
+                                <input type="text" className="input"
+                                    value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Job Title</label>
+                                <input type="text" className="input"
+                                    value={formData.jobTitle} onChange={e => setFormData({ ...formData, jobTitle: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Location</label>
+                                <input type="text" className="input"
+                                    value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                                <select className="input"
+                                    value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
+                                    <option value="New">New</option>
+                                    <option value="Contacted">Contacted</option>
+                                    <option value="Qualified">Qualified</option>
+                                    <option value="Proposal Sent">Proposal Sent</option>
+                                    <option value="Negotiation">Negotiation</option>
+                                    <option value="Converted">Converted</option>
+                                    <option value="Lost">Lost</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Source</label>
+                                <select className="input"
+                                    value={formData.source} onChange={e => setFormData({ ...formData, source: e.target.value })}>
+                                    <option value="">Select Source</option>
+                                    <option value="Website">Website</option>
+                                    <option value="Referral">Referral</option>
+                                    <option value="Social Media">Social Media</option>
+                                    <option value="Email Campaign">Email Campaign</option>
+                                    <option value="Trade Show">Trade Show</option>
+                                    <option value="Cold Call">Cold Call</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Priority</label>
+                                <select className="input"
+                                    value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })}>
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Urgent">Urgent</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Score (0-100)</label>
+                                <input type="number" min="0" max="100" className="input"
+                                    value={formData.score} onChange={e => setFormData({ ...formData, score: parseInt(e.target.value) || 0 })} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Estimated Value (USD)</label>
+                                <input type="number" min="0" step="0.01" className="input"
+                                    value={formData.value} onChange={e => setFormData({ ...formData, value: parseFloat(e.target.value) || 0 })} />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">Assigned To</label>
+                                <div className="flex gap-2">
+                                    <select className="input"
+                                        value={formData.assignedTo} onChange={e => setFormData({ ...formData, assignedTo: e.target.value })}>
+                                        <option value="Unassigned">Unassigned</option>
+                                        {assignees.map(user => (
+                                            <option key={user} value={user}>{user}</option>
+                                        ))}
+                                    </select>
+                                    <button type="button" onClick={() => {
+                                        const name = prompt("Enter new assignee name:");
+                                        if (name) onAddAssignee(name);
+                                    }} className="p-2.5 bg-gray-50 text-slate-600 rounded-xl hover:bg-gray-100 border border-gray-200 transition-colors" title="Add New Assignee">
+                                        <Plus className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 p-4 bg-brand-50 rounded-xl border border-brand-100 cursor-pointer" onClick={() => setFormData({ ...formData, qualified: !formData.qualified })}>
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${formData.qualified ? 'bg-brand-600 border-brand-600' : 'bg-white border-gray-300'}`}>
+                                {formData.qualified && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+                            </div>
+                            <span className="text-sm font-semibold text-slate-700">Mark as Qualified Lead</span>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-2">Notes</label>
+                            <textarea rows="3" className="input resize-none"
+                                value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Add any additional notes here..."></textarea>
                         </div>
                     </form>
                 </div>
 
-                {/* Fixed Footer */}
-                <div className="px-8 py-5 border-t border-slate-100 flex justify-end items-center bg-slate-50/50 z-20">
-                    <div className="flex items-center gap-4">
-                        <button 
-                            type="button"
-                            onClick={onClose} 
-                            className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 hover:bg-slate-50 transition-all duration-[250ms] shadow-sm active:scale-[0.98]"
-                        >
-                            Abort Process
-                        </button>
-                        <button
-                            form="lead-form"
-                            type="submit"
-                            disabled={isSaving}
-                            className={clsx(
-                                "px-8 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-xl text-[14px] font-medium shadow-[0_8px_20px_rgba(124,58,237,0.25)] hover:shadow-[0_12px_24px_rgba(124,58,237,0.35)] transition-all duration-[250ms] hover:-translate-y-[2px] active:scale-[0.98] group flex items-center justify-center min-w-[180px]",
-                                isSaving && "opacity-60 grayscale cursor-not-allowed shadow-none hover:translate-y-0 active:scale-100"
-                            )}
-                        >
-                            <div className="flex items-center gap-2">
-                                {isSaving ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Processing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="h-4 w-4 stroke-[2.5]" />
-                                        Commit Prospect
-                                    </>
-                                )}
-                            </div>
-                        </button>
-                    </div>
+                <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-white flex-shrink-0">
+                    <button type="button" onClick={onClose}
+                        className="btn-secondary"
+                    >Cancel</button>
+                    <button type="submit" form="lead-form"
+                        className="btn-primary"
+                    >Create Lead</button>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 
@@ -522,7 +458,7 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall
                         <div className="text-sm text-slate-600 mt-1 bg-purple-50 p-3 rounded-xl border border-purple-100/50">
                             <div className="flex items-center gap-3 mb-1.5 text-xs font-medium text-purple-700">
                                 <span>Outcome: {act.outcome || 'N/A'}</span>
-                                {act.duration && <span>ΓÇó {act.duration}m</span>}
+                                {act.duration && <span>• {act.duration}m</span>}
                             </div>
                             <p className="italic text-slate-600 text-xs leading-relaxed">"{act.notes}"</p>
                         </div>
@@ -567,7 +503,7 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall
                         </div>
                         <p className="text-sm text-slate-500 font-mono flex items-center gap-2">
                             LEAD-{lead.id}
-                            {lead.company && <span className="flex items-center gap-1 before:content-['ΓÇó'] before:mx-1 before:text-slate-300 text-slate-600">{lead.company}</span>}
+                            {lead.company && <span className="flex items-center gap-1 before:content-['•'] before:mx-1 before:text-slate-300 text-slate-600">{lead.company}</span>}
                         </p>
                     </div>
                     <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
@@ -964,7 +900,6 @@ const Leads = () => {
     const [logCallLead, setLogCallLead] = useState(null);
     const [isOverdueModalOpen, setIsOverdueModalOpen] = useState(false);
     const [filterByOverdue, setFilterByOverdue] = useState(false);
-    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
     const filters = useMemo(() => ({
         search: searchDebounced.trim() || undefined,
@@ -1247,105 +1182,60 @@ const Leads = () => {
                 )}
 
                 {/* Filters & Actions Bar */}
-                <div className="space-y-4">
-                    <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
+                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                         <ViewToggle active={viewMode} onChange={setViewMode} />
-                        
-                        <div className="flex-1 min-w-[240px] relative group">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
-                            <input
-                                type="text"
-                                placeholder="Search leads by name, email, company..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
-                            />
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-                                <Activity className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-                                >
-                                    <option value="All Statuses">All Statuses</option>
-                                    <option value="New">New</option>
-                                    <option value="Contacted">Contacted</option>
-                                    <option value="Qualified">Qualified</option>
-                                    <option value="Proposal Sent">Proposal Sent</option>
-                                    <option value="Negotiation">Negotiation</option>
-                                    <option value="Converted">Converted</option>
-                                    <option value="Lost">Lost</option>
-                                    <option value="Inactive">Inactive</option>
-                                </select>
+                        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+                            <div className="relative flex-1 sm:w-64">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <input
+                                    type="text"
+                                    placeholder="Search leads..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all shadow-sm"
+                                />
                             </div>
 
-                            <button
-                                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                                className={clsx(
-                                    "flex items-center gap-2 px-4 h-10 rounded-lg text-[13px] font-bold transition-all border shadow-sm",
-                                    showAdvancedFilters 
-                                        ? "bg-brand-50 border-brand-200 text-brand-700" 
-                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                )}
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
                             >
-                                <Filter size={16} className={clsx("transition-transform", showAdvancedFilters && "rotate-180")} />
-                                Filters
-                            </button>
-
-                            {(searchTerm || statusFilter !== "All Statuses" || priorityFilter !== "All Priorities" || assigneeFilter !== "All Assignees") && (
-                                <button
-                                    onClick={() => {
-                                        setSearchTerm("");
-                                        setStatusFilter("All Statuses");
-                                        setPriorityFilter("All Priorities");
-                                        setAssigneeFilter("All Assignees");
-                                        setFilterByOverdue(false);
-                                    }}
-                                    className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-                                >
-                                    <X size={14} /> Clear
-                                </button>
-                            )}
+                                <option value="All Statuses">All Statuses</option>
+                                <option value="New">New</option>
+                                <option value="Contacted">Contacted</option>
+                                <option value="Qualified">Qualified</option>
+                                <option value="Proposal Sent">Proposal Sent</option>
+                                <option value="Negotiation">Negotiation</option>
+                                <option value="Converted">Converted</option>
+                                <option value="Lost">Lost</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                            <select
+                                value={priorityFilter}
+                                onChange={(e) => setPriorityFilter(e.target.value)}
+                                className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
+                            >
+                                <option value="All Priorities">All Priorities</option>
+                                <option value="Low">Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                                <option value="Urgent">Urgent</option>
+                            </select>
+                            <select
+                                value={assigneeFilter}
+                                onChange={(e) => setAssigneeFilter(e.target.value)}
+                                className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
+                            >
+                                <option value="All Assignees">All Assignees</option>
+                                <option value="Unassigned">Unassigned</option>
+                                {assignees.map(user => (
+                                    <option key={user} value={user}>{user}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
-
-                    {/* Advanced Filters */}
-                    {showAdvancedFilters && (
-                        <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[160px]">
-                                <AlertCircle className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-                                <select
-                                    value={priorityFilter}
-                                    onChange={(e) => setPriorityFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-                                >
-                                    <option value="All Priorities">All Priorities</option>
-                                    <option value="Low">Low</option>
-                                    <option value="Medium">Medium</option>
-                                    <option value="High">High</option>
-                                    <option value="Urgent">Urgent</option>
-                                </select>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
-                                <User className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-                                <select
-                                    value={assigneeFilter}
-                                    onChange={(e) => setAssigneeFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-                                >
-                                    <option value="All Assignees">All Assignees</option>
-                                    <option value="Unassigned">Unassigned</option>
-                                    {assignees.map(user => (
-                                        <option key={user} value={user}>{user}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {viewMode === 'list' && (
@@ -1354,7 +1244,7 @@ const Leads = () => {
                             <h3 className="font-bold text-slate-800">All Leads</h3>
                             <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
                                 {isLoading ? 'Loading...' : leadsMeta
-                                    ? `Showing ${(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}ΓÇô${Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of ${leadsMeta.total}`
+                                    ? `Showing ${(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}–${Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of ${leadsMeta.total}`
                                     : `Showing ${filteredLeads.length} of ${totalLeadsCount}`}
                             </span>
                         </div>
@@ -1460,7 +1350,7 @@ const Leads = () => {
                         {leadsMeta && leadsMeta.last_page > 1 && (
                             <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
                                 <span className="text-sm text-slate-600">
-                                    Showing {(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}ΓÇô{Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of {leadsMeta.total}
+                                    Showing {(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}–{Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of {leadsMeta.total}
                                 </span>
                                 <div className="flex gap-2">
                                     <button

@@ -27,12 +27,10 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
     const [scaleFactor, setScaleFactor] = useState(1);
     const componentRef = useRef();
     const pendingPrintRef = useRef(false);
-    
     const templates = useMemo(() => getTemplates().filter(t => t.module === 'invoices'), []);
     const [activeTemplate, setActiveTemplate] = useState(
         () => templates.find(t => t.isDefault) || templates[0] || null
     );
-
     useEffect(() => {
         const loadData = async () => {
             const [clientsResult, banksData, settingsData] = await Promise.all([
@@ -49,37 +47,6 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
             loadData();
         }
     }, [isOpen]);
-
-    const client = clients.find(c => c.id == (invoice?.client_id || invoice?.clientId));
-    const bank = bankAccounts.find(b => b.id == (invoice?.bank_account_id || invoice?.bankAccountId));
-
-    const getPrintConfigKeys = useCallback(
-        () => printConfig || getStoredPrintConfig('invoices') || getDefaultPrintConfigKeys(),
-        [printConfig]
-    );
-
-    const printHtml = useMemo(() => {
-        if (!activeTemplate || !companySettings || !invoice) return null;
-        const keys = getPrintConfigKeys();
-        const html = activeTemplate.template_html
-            ? getEffectiveTemplateHtml(activeTemplate, 'invoices')
-            : buildFullTemplateHtml(filterTemplateByPrintConfig(activeTemplate, keys), 'invoices');
-        const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
-        return resolveTemplateHtmlWithData(html, 'invoices', data);
-    }, [activeTemplate, companySettings, invoice, client, bank, getPrintConfigKeys]);
-
-    const buildPreviewForConfig = useCallback(
-        (selectedKeys) => {
-            if (!activeTemplate || !companySettings || !invoice) return '';
-            const filtered = filterTemplateByPrintConfig(activeTemplate, selectedKeys);
-            const html = activeTemplate.template_html
-                ? getEffectiveTemplateHtml(activeTemplate, 'invoices')
-                : buildFullTemplateHtml(filtered, 'invoices');
-            const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
-            return resolveTemplateHtmlWithData(html, 'invoices', data);
-        },
-        [activeTemplate, companySettings, invoice, client, bank]
-    );
 
     // Auto-scaling logic to fit ENTIRE layout on one A4 page without cutting off
     useEffect(() => {
@@ -174,6 +141,38 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
             handlePrintTrigger();
         }
     }, [handlePrintTrigger]);
+
+
+    const client = clients.find(c => c.id == (invoice?.client_id || invoice?.clientId));
+    const bank = bankAccounts.find(b => b.id == (invoice?.bank_account_id || invoice?.bankAccountId));
+
+    const getPrintConfigKeys = useCallback(
+        () => printConfig || getStoredPrintConfig('invoices') || getDefaultPrintConfigKeys(),
+        [printConfig]
+    );
+
+    const printHtml = useMemo(() => {
+        if (!activeTemplate || !companySettings || !invoice) return null;
+        const keys = getPrintConfigKeys();
+        const html = activeTemplate.template_html
+            ? getEffectiveTemplateHtml(activeTemplate, 'invoices')
+            : buildFullTemplateHtml(filterTemplateByPrintConfig(activeTemplate, keys), 'invoices');
+        const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
+        return resolveTemplateHtmlWithData(html, 'invoices', data);
+    }, [activeTemplate, companySettings, invoice, client, bank, getPrintConfigKeys]);
+
+    const buildPreviewForConfig = useCallback(
+        (selectedKeys) => {
+            if (!activeTemplate || !companySettings || !invoice) return '';
+            const filtered = filterTemplateByPrintConfig(activeTemplate, selectedKeys);
+            const html = activeTemplate.template_html
+                ? getEffectiveTemplateHtml(activeTemplate, 'invoices')
+                : buildFullTemplateHtml(filtered, 'invoices');
+            const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
+            return resolveTemplateHtmlWithData(html, 'invoices', data);
+        },
+        [activeTemplate, companySettings, invoice, client, bank]
+    );
 
     useEffect(() => {
         if (printConfig && pendingPrintRef.current && componentRef.current) {
@@ -434,3 +433,4 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
 };
 
 export default InvoiceView;
+

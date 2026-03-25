@@ -4,7 +4,8 @@
  */
 
 const documentWrapperClass =
-  'agreement-document max-w-[210mm] mx-auto text-slate-800 leading-relaxed';
+  'agreement-document w-full max-w-[210mm] mx-auto text-slate-800 leading-relaxed print:max-w-none print:mx-0';
+
 
 export default function AgreementContentDisplay({ blocks = [], className = '' }) {
   if (!Array.isArray(blocks) || blocks.length === 0) return null;
@@ -84,7 +85,8 @@ function BlockRender({ block, number }) {
       const rows = content?.rows || [];
       if (headers.length === 0 && rows.length === 0) return null;
       return (
-        <div className="agreement-table overflow-x-auto my-5 print:my-4">
+        <div className="agreement-table overflow-x-auto my-5 print:my-4 print:overflow-visible">
+
           <table className="w-full text-sm border border-gray-300 border-collapse">
             <thead>
               <tr>

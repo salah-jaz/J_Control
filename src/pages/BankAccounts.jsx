@@ -181,7 +181,7 @@ export default function BankAccounts() {
         </div>
         <button
           onClick={openAdd}
-          className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
+          className="btn-primary flex items-center gap-2 shadow-lg shadow-violet-500/30"
         >
           <Plus size={20} />
           Add Account
@@ -197,7 +197,7 @@ export default function BankAccounts() {
             <input
               type="text"
               placeholder="Search accounts..."
-              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-64 transition-all"
+              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 w-64 transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -205,7 +205,7 @@ export default function BankAccounts() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
+            <thead className="bg-slate-50/80 text-[13px] font-semibold text-slate-600 capitalize tracking-normal border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4">Bank</th>
                 <th className="px-6 py-4">Account Holder</th>
@@ -257,7 +257,7 @@ export default function BankAccounts() {
                         <button
                           onClick={() => openViewModal(item)}
                           title="View"
-                          className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                          className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-brand-50 transition-colors"
                         >
                           <Eye size={18} />
                         </button>
@@ -297,12 +297,12 @@ export default function BankAccounts() {
             </div>
 
             <div className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 overflow-y-auto max-h-[80vh]">
-              <div className="col-span-1 sm:col-span-2 flex items-center gap-4 p-4 bg-brand-50 rounded-xl border border-brand-100 mb-2">
-                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-brand-600 shadow-sm shrink-0">
+              <div className="col-span-1 sm:col-span-2 flex items-center gap-4 p-4 bg-brand-50 rounded-xl border border-violet-100 mb-2">
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-violet-600 shadow-sm shrink-0">
                   <CreditCard size={24} />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-brand-600 uppercase tracking-wide">Current Balance</p>
+                  <p className="text-xs font-bold text-violet-600 uppercase tracking-wide">Current Balance</p>
                   <p className="text-2xl font-bold text-slate-900">
                     {viewItem.currency} {parseFloat(viewItem.currentBalance || viewItem.openingBalance || 0).toLocaleString()}
                   </p>
@@ -362,7 +362,7 @@ export default function BankAccounts() {
                   onClick={() => setActiveTab(i)}
                   className={clsx(
                     "px-6 py-4 text-sm font-bold uppercase tracking-wide border-b-2 transition-all whitespace-nowrap",
-                    activeTab === i ? "border-brand-600 text-brand-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
+                    activeTab === i ? "border-violet-600 text-violet-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
                   )}
                 >
                   {t}

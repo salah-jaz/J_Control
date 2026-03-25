@@ -6,44 +6,48 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 import { StatCardsSkeleton } from '../components/Skeleton';
 
 const StatCard = ({ title, value, icon: Icon, trend, color, subValue = null, subLabel = null }) => (
-    <div className="card min-h-[190px] h-auto flex flex-col justify-between group cursor-default relative">
-        {/* Isolated background decoration with overflow-hidden */}
-        <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-            <div className={clsx("absolute -right-6 -top-6 w-32 h-32 rounded-full opacity-5 group-hover:opacity-10 transition-opacity bg-current", color.replace('bg-', 'text-'))}></div>
-        </div>
-
-        <div className="flex justify-between items-start z-10 gap-2 mb-4">
-            <div className="min-w-0 flex-1">
-                <div className={clsx("inline-flex p-3 rounded-2xl mb-3 transition-transform group-hover:scale-110", color.replace('bg-', 'bg-').replace('500', '50'))}>
-                    <Icon className={clsx("w-6 h-6", color.replace('bg-', 'text-').replace('500', '600'))} />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-tight" title={value}>
-                    {value}
-                </h3>
-                <p className="text-sm font-medium text-slate-500 mt-1 truncate">{title}</p>
+    <div className="card group relative overflow-hidden cursor-default !border-0 p-5 h-[160px] flex flex-col justify-between">
+        {/* Top Gradient Line */}
+        <div className={clsx("absolute top-0 left-0 right-0 h-[2px]", "bg-gradient-to-r from-violet-500 to-fuchsia-500")} />
+        
+        <div className="flex items-start justify-between z-10">
+            <div className="flex flex-col gap-1">
+                <p className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">{title}</p>
+                <h3 className="text-[28px] font-bold text-slate-900 leading-none mt-1" title={value}>{value}</h3>
             </div>
-
-            {/* Trend indicator */}
-            {trend && (
-                <div className={clsx("flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold bg-white shadow-sm border border-gray-100 flex-shrink-0 mt-1", trend > 0 ? "text-emerald-600" : "text-red-600")}>
-                    {trend > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                    {Math.abs(trend)}%
-                </div>
-            )}
+            <div className={clsx(
+                "h-12 w-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 shadow-sm border border-slate-100/50",
+                color.replace('bg-', 'bg-opacity-10 '),
+                color.replace('bg-', 'text-')
+            )}>
+                <Icon className="w-6 h-6" />
+            </div>
         </div>
-
-        <div className="mt-auto z-10 w-full">
+        
+        <div className="mt-auto z-10 w-full space-y-3">
             {subValue && (
-                <div className="flex items-center justify-between gap-2 text-xs font-medium">
-                    <span className="truncate text-slate-400">{subLabel}</span>
-                    <span className="text-slate-900 font-bold bg-gray-100 px-2 py-1 rounded flex-shrink-0">{subValue}</span>
+                <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
+                    <span className="text-slate-400 truncate uppercase tracking-tighter">{subLabel}</span>
+                    <span className="text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full flex-shrink-0 border border-violet-100/50">{subValue}</span>
                 </div>
             )}
-            {!subValue && (
-                <div className="h-1.5 w-full bg-gray-50 rounded-full overflow-hidden">
-                    <div className={clsx("h-full rounded-full w-2/3 opacity-50", color)}></div>
+            
+            <div className="flex items-center justify-between">
+                <div className="flex-1 max-w-[100px] h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={clsx("h-full rounded-full transition-all duration-1000", color)} style={{ width: '75%' }}></div>
                 </div>
-            )}
+                {trend && (
+                    <div className={clsx(
+                        "flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors",
+                        trend > 0 
+                            ? "text-emerald-600 bg-emerald-50 border-emerald-100" 
+                            : "text-rose-600 bg-rose-50 border-rose-100"
+                    )}>
+                        {trend > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                        {Math.abs(trend)}%
+                    </div>
+                )}
+            </div>
         </div>
     </div>
 );
@@ -75,8 +79,20 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="p-4 md:p-6 lg:p-10 w-full mx-auto space-y-6 md:space-y-8 animate-fade-in">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="min-h-screen bg-[#F8FAFC]">
+            {/* Header Background Strip */}
+            <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-violet-50/50 to-transparent pointer-events-none" />
+
+            <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                {/* Header Section */}
+                <div className="flex items-center justify-between mb-2">
+                    <div className="space-y-1">
+                        <h1 className="text-[28px] font-bold text-slate-900 leading-tight">Dashboard Overview</h1>
+                        <p className="text-slate-500 font-medium text-[14px]">Welcome back! Here&apos;s what&apos;s happening with your business.</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
                     title="Total Revenue"
                     value={`₹${(stats.totalRevenue ?? 0).toLocaleString('en-IN')}`}
@@ -105,7 +121,7 @@ const Dashboard = () => {
                     value="24.5%"
                     icon={Activity}
                     trend={4.1}
-                    color="bg-brand-500"
+                    color="bg-violet-500"
                 />
             </div>
 
@@ -116,7 +132,7 @@ const Dashboard = () => {
                     <div className="flex justify-between items-center mb-6 px-2 md:px-0">
                         <h3 className="text-lg font-bold text-slate-800">Recent Invoices</h3>
                         <button
-                            className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                            className="text-sm font-medium text-violet-600 hover:text-violet-700"
                             onClick={() => navigate('/invoices')}
                         >
                             View All
@@ -136,7 +152,7 @@ const Dashboard = () => {
                             <tbody className="divide-y divide-gray-50">
                                 {(stats.recentInvoices ?? []).map((inv) => (
                                     <tr key={inv.id} className="group hover:bg-gray-50/80 transition-colors">
-                                        <td className="px-4 py-4 font-mono font-medium text-brand-600 group-hover:text-brand-700">{inv.id}</td>
+                                        <td className="px-4 py-4 font-mono font-medium text-violet-600 group-hover:text-violet-700">{inv.id}</td>
                                         <td className="px-4 py-4 font-semibold text-slate-700">{inv.client_name}</td>
                                         <td className="px-4 py-4 text-slate-500">{inv.date}</td>
                                         <td className="px-4 py-4 font-bold text-slate-900">₹{inv.amount.toLocaleString('en-IN')}</td>
@@ -170,18 +186,18 @@ const Dashboard = () => {
                         <div className="grid grid-cols-2 gap-3 mb-6">
                             <button
                                 onClick={() => navigate('/invoices', { state: { openForm: true } })}
-                                className="flex items-center justify-between p-4 rounded-xl bg-brand-50 hover:bg-brand-100/80 transition-all group border border-brand-100/50"
+                                className="flex items-center justify-between p-4 rounded-xl bg-brand-50 hover:bg-violet-100/80 transition-all group border border-violet-100/50"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-lg bg-white text-brand-600 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                    <div className="h-10 w-10 rounded-lg bg-white text-violet-600 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                                         <FileText className="w-5 h-5" />
                                     </div>
                                     <div className="text-left">
                                         <p className="font-bold text-slate-800">Add Invoice</p>
-                                        <p className="text-xs text-brand-600/80 font-medium">Create & Send</p>
+                                        <p className="text-xs text-violet-600/80 font-medium">Create & Send</p>
                                     </div>
                                 </div>
-                                <ArrowRight className="w-4 h-4 text-brand-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+                                <ArrowRight className="w-4 h-4 text-violet-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
                             </button>
 
                             <button
@@ -337,6 +353,7 @@ const Dashboard = () => {
                         ))}
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     );

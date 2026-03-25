@@ -45,13 +45,21 @@ class DashboardController extends Controller
             ->orderBy('start_time')
             ->get(['id', 'title', 'event_date', 'start_time', 'end_time', 'category', 'priority', 'status']);
 
-        // Monthly Revenue (Last 6 months)
+        // Monthly Revenue (Last 6 months) - Made compatible with SQLite/MySQL
         $monthlyRevenue = Invoice::where('status', 'Paid')
-            ->selectRaw("DATE_FORMAT(date, '%b') as month, sum(grand_total) as revenue")
-            ->groupBy('month')
-            ->orderByRaw("MIN(date) ASC")
-            ->take(6)
-            ->get();
+            ->where('date', '>=', now()->subMonths(6))
+            ->get()
+            ->groupBy(function ($inv) {
+                return $inv->date ? $inv->date->format('M') : 'Unknown';
+            })
+            ->map(function ($group, $month) {
+                return [
+                    'month' => $month,
+                    'revenue' => $group->sum('grand_total')
+                ];
+            })
+            ->values()
+            ->take(6);
 
         // Invoice Status Distribution
         $invoiceStatusCounts = Invoice::selectRaw('status, count(*) as count')

@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, X, User, Layers, Landmark, Wallet, FileText } from 'lucide-react';
+import { 
+  Plus, Trash2, X, User, Layers, Landmark, Wallet, FileText, 
+  Building2, Calendar as CalendarIcon, Clock, Target, MessageSquare, 
+  Save, CheckCircle2, AlertTriangle, CreditCard, Banknote, FileCheck, Loader2
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { createInvoice, updateInvoice } from '../services/invoiceService';
@@ -25,6 +29,37 @@ const emptyForm = {
   extraInstallments: [],
   operationalExpenses: [],
 };
+
+const SectionHeader = ({ icon: Icon, title, color }) => {
+  const colors = {
+    blue: "from-blue-600 to-cyan-500 shadow-blue-500/20",
+    indigo: "from-indigo-600 to-blue-500 shadow-indigo-500/20",
+    violet: "from-violet-600 to-purple-500 shadow-violet-500/20",
+    fuchsia: "from-fuchsia-600 to-pink-500 shadow-fuchsia-500/20",
+    rose: "from-rose-600 to-pink-500 shadow-rose-500/20",
+    amber: "from-amber-500 to-orange-400 shadow-amber-500/20"
+  };
+  
+  return (
+    <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
+      <div className="flex items-center gap-3">
+        <div className={clsx("h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white shadow-lg", colors[color] || colors.blue)}>
+          <Icon size={16} className="stroke-[2.5]" />
+        </div>
+        <h4 className="text-[14px] font-bold text-slate-900 uppercase tracking-widest leading-none">
+          {title}
+        </h4>
+      </div>
+    </div>
+  );
+};
+
+const Label = ({ text, required }) => (
+  <label className="text-[13px] font-bold text-slate-700 ml-0.5 flex items-center gap-1">
+    {text}
+    {required && <span className="text-rose-500 font-black">*</span>}
+  </label>
+);
 
 const InvoiceForm = ({
   isOpen,
@@ -232,154 +267,187 @@ const InvoiceForm = ({
 
   const inputClass = (f) => `input ${errors[f] ? 'border-red-500' : ''}`;
   const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
-
   return (
-    <div className="fixed inset-0 bg-slate-900/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden animate-slide-up">
-        <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
-          <div>
-            <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
-              {invoice ? 'Edit Invoice' : 'Create New Invoice'}
-            </h2>
-            <p className="text-xs md:text-sm text-slate-500 mt-1">Fill in the details below.</p>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
+      <div className="bg-white/90 backdrop-blur-xl w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-[0.98] duration-[250ms] border border-white/40 overflow-hidden">
+        
+        {/* Header */}
+        <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white z-20">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 bg-gradient-to-br from-brand-600 to-brand-400 text-white rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(234,88,12,0.3)] animate-pulse-subtle">
+              <FileCheck className="h-5 w-5 stroke-[2.5]" />
+            </div>
+            <div>
+              <h3 className="text-[20px] font-bold text-slate-900 tracking-tight">
+                {invoice ? "Revise Financial Instrument" : "Issue New Invoice/Bill"}
+              </h3>
+              <p className="text-[12px] font-medium text-slate-500 mt-0.5">
+                {invoice ? `Modifying ${invoice.invoice_number}` : "Generate professional billing documents for clients"}
+              </p>
+            </div>
           </div>
-          <button type="button" onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full">
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="h-10 w-10 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all flex items-center justify-center active:scale-95 shadow-sm border border-slate-100">
+            <X size={20} />
           </button>
         </div>
 
-        <div className="flex px-4 md:px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto">
-          {[
-            { id: 'basic', label: 'Basic Info', icon: User },
-            { id: 'services', label: 'Service Details', icon: Layers },
-            { id: 'finance', label: 'Finance', icon: Wallet },
-          ].map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveTab(id)}
-              className={clsx(
-                'px-4 py-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2',
-                activeTab === id ? 'border-brand-600 text-brand-600' : 'border-transparent text-slate-500 hover:text-slate-800'
-              )}
-            >
-              <Icon className="w-4 h-4" /> {label}
-            </button>
-          ))}
-        </div>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar Tabs */}
+          <div className="w-64 border-r border-slate-100 bg-slate-50/50 p-4 flex flex-col gap-2">
+            {[
+              { id: 'basic', label: 'Billing Context', icon: User, desc: 'Client & Temporal' },
+              { id: 'services', label: 'Service Inventory', icon: Layers, desc: 'Items & Valuation' },
+              { id: 'finance', label: 'Fiscal Architecture', icon: Wallet, desc: 'Payments & Expenses' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={clsx(
+                  "flex items-center gap-3 p-3.5 rounded-xl transition-all duration-[250ms] group text-left relative overflow-hidden",
+                  activeTab === t.id 
+                    ? "bg-white text-brand-600 shadow-md shadow-brand-500/5 ring-1 ring-slate-200" 
+                    : "text-slate-500 hover:bg-white hover:text-slate-900"
+                )}
+              >
+                {activeTab === t.id && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-brand-600 rounded-full" />
+                )}
+                <t.icon className={clsx("h-5 w-5 transition-transform duration-300", activeTab === t.id && "scale-110")} />
+                <div>
+                  <p className="text-[14px] font-bold leading-none">{t.label}</p>
+                  <p className="text-[10px] font-medium opacity-60 mt-1 uppercase tracking-wider">{t.desc}</p>
+                </div>
+              </button>
+            ))}
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {activeTab === 'basic' && (
-              <>
-                <div className="form-group">
-                  <label className="label">Invoice ID</label>
-                  <div className="form-control bg-gray-100 w-full px-4 py-3 border border-gray-200 rounded-xl text-slate-600 font-medium cursor-not-allowed select-none">
-                    {invoice
-                      ? invoice.invoice_number
-                      : nextInvoiceNumberLoading
-                        ? 'Loading...'
-                        : nextInvoiceNumber
-                          ? nextInvoiceNumber
-                          : 'No ID Generated'}
+            {/* Live Summary Stats */}
+            <div className="mt-auto bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-5 text-white shadow-lg space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="h-4 w-4 text-brand-400" />
+                <span className="text-[11px] font-bold uppercase tracking-widest text-brand-200">Live Valuation</span>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-[13px]">
+                   <span className="opacity-60">Subtotal</span>
+                   <span className="font-medium">₹{subtotal.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center text-[16px]">
+                   <span className="font-bold">Total Due</span>
+                   <span className="font-black text-brand-400">₹{totalAmount.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-white">
+            <form onSubmit={handleSubmit} className="space-y-8 max-w-3xl mx-auto">
+              {activeTab === 'basic' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <SectionHeader icon={Building2} title="Entity Configuration" color="blue" />
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                      <Label text="Invoice Identifier" />
+                      <div className="input-premium bg-slate-50 text-slate-500 border-dashed flex items-center">
+                        {invoice ? invoice.invoice_number : (nextInvoiceNumberLoading ? 'Synchronizing...' : (nextInvoiceNumber || 'Draft'))}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label text="Client Relationship" required />
+                      <select
+                        value={formData.clientId}
+                        onChange={(e) => {
+                          const c = clients.find((x) => String(x.id) === String(e.target.value));
+                          setFormData({ ...formData, clientId: e.target.value, clientName: c ? (c.company_name || c.client_name) : '' });
+                        }}
+                        className={clsx("input-premium", errors.clientId && "border-rose-400 ring-rose-100")}
+                      >
+                        <option value="">Select Target Entity</option>
+                        {clients.map((c) => (
+                          <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                      <Label text="Document Issuance Date" />
+                      <div className="relative">
+                        <CalendarIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="input-premium pl-10" />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label text="Financial Status" />
+                      <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input-premium">
+                        <option value="Pending">Pending Audit</option>
+                        <option value="Paid">Cleared/Capitalized</option>
+                        <option value="Overdue">Past Maturity</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 pt-4">
+                    <SectionHeader icon={Landmark} title="Banking Architecture" color="indigo" />
+                    <Label text="Primary Disbursement Account" required />
+                    <select
+                      value={formData.bankAccountId || ''}
+                      onChange={(e) => {
+                        const id = e.target.value ? Number(e.target.value) : null;
+                        const b = bankAccounts.find((x) => x.id === id);
+                        setFormData({ ...formData, bankAccountId: id, bankName: b ? b.bankName : '', accountNumber: b ? b.accountNumber : '' });
+                      }}
+                      className={clsx("input-premium", errors.bankAccountId && "border-rose-400 ring-rose-100")}
+                    >
+                      <option value="">Select Treasury Channel</option>
+                      {bankAccounts.map((b) => (
+                        <option key={b.id} value={b.id}>{b.bankName} – {b.accountNumber}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-                <div>
-                  <label className="label">Client <Req /></label>
-                  <select
-                    value={formData.clientId}
-                    onChange={(e) => {
-                      const c = clients.find((x) => x.id == e.target.value);
-                      setFormData({ ...formData, clientId: e.target.value, clientName: c ? (c.company_name || c.client_name) : '' });
-                    }}
-                    className={inputClass('clientId')}
-                  >
-                    <option value="">Select client</option>
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="label">Date</label>
-                  <input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="input" />
-                </div>
-                <div>
-                  <label className="label">Status</label>
-                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="input">
-                    <option value="Pending">Pending</option>
-                    <option value="Paid">Paid</option>
-                    <option value="Overdue">Overdue</option>
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="label">Bank Account <Req /></label>
-                  <select
-                    value={formData.bankAccountId || ''}
-                    onChange={(e) => {
-                      const id = e.target.value ? Number(e.target.value) : null;
-                      const b = bankAccounts.find((x) => x.id === id);
-                      setFormData({
-                        ...formData,
-                        bankAccountId: id,
-                        bankName: b ? b.bankName : '',
-                        accountNumber: b ? b.accountNumber : '',
-                      });
-                    }}
-                    className={inputClass('bankAccountId')}
-                  >
-                    <option value="">Select bank account</option>
-                    {bankAccounts.map((b) => (
-                      <option key={b.id} value={b.id}>{b.bankName} – {b.accountNumber}</option>
-                    ))}
-                  </select>
-                  {formData.accountNumber && (
-                    <p className="text-sm text-slate-500 mt-1">Account Number: {formData.accountNumber}</p>
-                  )}
-                </div>
-              </>
-            )}
+              )}
 
-            {activeTab === 'services' && (
-              <>
-                <div className="md:col-span-2">
-                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
-                        <tr>
-                          <th className="px-4 py-3 w-12 text-center">#</th>
-                          <th className="px-4 py-3">Service Name</th>
-                          <th className="px-4 py-3 w-28">Amount (₹)</th>
-                          <th className="px-4 py-3 w-10"></th>
+              {activeTab === 'services' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <SectionHeader icon={Layers} title="Service Inventory Mapping" color="violet" />
+                  <div className="border border-slate-100 rounded-2xl overflow-hidden shadow-sm bg-white">
+                    <table className="w-full text-[13px]">
+                      <thead>
+                        <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                          <th className="px-6 py-4 text-left w-12 italic">#</th>
+                          <th className="px-6 py-4 text-left">Deliverable Name</th>
+                          <th className="px-6 py-4 text-right w-40">Valuation (₹)</th>
+                          <th className="px-6 py-4 w-12"></th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-slate-50">
                         {items.map((item, index) => (
-                          <tr key={index}>
-                            <td className="px-4 py-2 text-center text-slate-500">{item.sNo}</td>
-                            <td className="px-4 py-2">
+                          <tr key={index} className="group hover:bg-slate-50/30 transition-colors">
+                            <td className="px-6 py-4 text-slate-400 font-bold">{item.sNo}</td>
+                            <td className="px-6 py-4">
                               <input
                                 type="text"
-                                className="input"
-                                placeholder="e.g. Website Development"
+                                className="w-full bg-transparent font-medium border-none focus:ring-0 p-0 placeholder:text-slate-300"
+                                placeholder="Service execution detail..."
                                 value={item.serviceName}
                                 onChange={(e) => handleItemChange(index, 'serviceName', e.target.value)}
                               />
                             </td>
-                            <td className="px-4 py-2">
+                            <td className="px-6 py-4">
                               <input
                                 type="number"
-                                step="0.01"
-                                className="input"
+                                className="w-full bg-transparent text-right font-bold border-none focus:ring-0 p-0 placeholder:text-slate-300 text-slate-700"
                                 placeholder="0.00"
                                 value={item.amount}
                                 onChange={(e) => handleItemChange(index, 'amount', e.target.value)}
                               />
                             </td>
-                            <td className="px-4 py-2">
+                            <td className="px-6 py-4">
                               {items.length > 1 && (
-                                <button type="button" onClick={() => removeItem(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
-                                  <Trash2 className="w-4 h-4" />
+                                <button type="button" onClick={() => removeItem(index)} className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
+                                  <Trash2 size={14} />
                                 </button>
                               )}
                             </td>
@@ -388,391 +456,206 @@ const InvoiceForm = ({
                       </tbody>
                     </table>
                   </div>
-                  <button type="button" onClick={addItem} className="mt-3 flex items-center gap-2 text-brand-600 font-bold hover:text-brand-700">
-                    <Plus className="w-4 h-4" /> Add Service
+                  <button type="button" onClick={addItem} className="flex items-center gap-2 text-[13px] font-bold text-brand-600 hover:text-brand-700 bg-brand-50/50 px-4 py-2 rounded-xl transition-all border border-brand-100/50 active:scale-95">
+                    <Plus size={16} /> Append Line Item
                   </button>
 
-                  <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <h4 className="text-sm font-bold text-slate-800 mb-4">Discount & Tax</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="label">Discount Type</label>
-                        <select
-                          value={formData.discountType}
-                          onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
-                          className="input"
-                        >
-                          <option value="Flat">Flat (₹)</option>
-                          <option value="Percentage">Percentage (%)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="label">Discount Value</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          className="input"
-                          placeholder={formData.discountType === 'Flat' ? '0.00' : '0'}
-                          value={formData.discountValue}
-                          onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
-                        />
-                        {subtotal > 0 && formData.discountValue && (
-                          <p className="text-xs text-slate-500 mt-1">
-                            {formData.discountType === 'Flat'
-                              ? `Percentage: ${((parseFloat(formData.discountValue) / subtotal) * 100).toFixed(1)}%`
-                              : `Flat: ₹${(subtotal * (parseFloat(formData.discountValue) || 0) / 100).toFixed(2)}`}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="label">GST %</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          value={formData.gst}
-                          onChange={(e) => setFormData({ ...formData, gst: e.target.value })}
-                          className="input"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {activeTab === 'finance' && (
-              <div className="md:col-span-2 space-y-6">
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-base font-bold text-slate-800 mb-4">Financial Summary</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="label">Subtotal (₹)</label>
-                      <input type="text" readOnly className="input bg-gray-50" value={`₹${subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
-                    </div>
-                    <div>
-                      <label className="label">Discount (₹)</label>
-                      <input type="text" readOnly className="input bg-gray-50" value={`₹${discountVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
-                    </div>
-                    <div>
-                      <label className="label">Tax (₹)</label>
-                      <input type="text" readOnly className="input bg-gray-50" value={`₹${taxAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
-                    </div>
-                    <div>
-                      <label className="label">Total Amount (₹)</label>
-                      <input type="text" readOnly className="input bg-brand-50 font-bold" value={`₹${totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
-                    </div>
-                  </div>
-                  <div className="mt-6 pt-4 border-t border-gray-100">
-                    <div className="flex items-center gap-2 mb-4">
-                      <input
-                        type="checkbox"
-                        id="initialDeposit"
-                        checked={formData.initialDepositEnabled}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            initialDepositEnabled: e.target.checked,
-                            initialDepositAmount: e.target.checked ? formData.initialDepositAmount : '',
-                            initialDepositBankId: e.target.checked ? formData.initialDepositBankId : null,
-                          })
-                        }
-                        className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-                      />
-                      <label htmlFor="initialDeposit" className="text-sm font-medium text-slate-700">Initial Deposit</label>
-                    </div>
-                    {formData.initialDepositEnabled && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">Initial Deposit Amount (₹)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="input"
-                            placeholder="0.00"
-                            value={formData.initialDepositAmount}
-                            onChange={(e) => setFormData({ ...formData, initialDepositAmount: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="label">Bank Account</label>
-                          <button
-                            type="button"
-                            onClick={() => { setBankModalFor('initial'); setBankModalOpen(true); }}
-                            className={clsx('input w-full text-left', errors.initialDepositBank && 'border-red-500')}
-                          >
-                            {formData.initialDepositBankName || getBankDisplay(formData.initialDepositBankId) || 'Select Bank'}
-                          </button>
-                          {errors.initialDepositBank && <p className="text-sm text-red-500 mt-1">{errors.initialDepositBank}</p>}
-                        </div>
-                      </div>
-                    )}
-                    <div className="mt-4">
-                      <label className="label">Balance Due (₹)</label>
-                      <input type="text" readOnly className="input bg-amber-50 font-bold" value={`₹${balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-base font-bold text-slate-800">Operational Expenses</h3>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData({
-                          ...formData,
-                          operationalExpenses: [...(formData.operationalExpenses || []), { name: '', amount: '', bankAccountId: null, bankName: '', paid: false }],
-                        })
-                      }
-                      className="btn-primary flex items-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" /> Add Expense
-                    </button>
-                  </div>
-                  <div className="space-y-4">
-                    {(formData.operationalExpenses || []).length === 0 ? (
-                      <p className="text-sm text-slate-400 py-4 text-center">No expenses. Click &quot;+ Add Expense&quot; to add.</p>
-                    ) : (
-                      (formData.operationalExpenses || []).map((row, idx) => (
-                        <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 items-end">
-                          <div className="md:col-span-3">
-                            <label className="label text-xs">Expense Name</label>
-                            <input
-                              type="text"
-                              className="input"
-                              placeholder="e.g. Shipping, Packaging"
-                              value={row.name}
-                              onChange={(e) => {
-                                const next = [...(formData.operationalExpenses || [])];
-                                next[idx] = { ...next[idx], name: e.target.value };
-                                setFormData({ ...formData, operationalExpenses: next });
-                              }}
-                            />
-                          </div>
-                          <div className="md:col-span-2">
-                            <label className="label text-xs">Amount (₹)</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              className="input"
-                              placeholder="0.00"
-                              value={row.amount}
-                              onChange={(e) => {
-                                const next = [...(formData.operationalExpenses || [])];
-                                next[idx] = { ...next[idx], amount: e.target.value };
-                                setFormData({ ...formData, operationalExpenses: next });
-                              }}
-                            />
-                          </div>
-                          <div className="md:col-span-3">
-                            <label className="label text-xs">Bank Account</label>
-                            <button
-                              type="button"
-                              onClick={() => { setBankModalFor({ type: 'operationalExpense', index: idx }); setBankModalOpen(true); }}
-                              className={clsx('input w-full text-left truncate bg-white', errors[`operationalExpenseBank_${idx}`] && 'border-red-500')}
-                            >
-                              {row.bankName || getBankDisplay(row.bankAccountId) || 'Select Bank'}
-                            </button>
-                            {errors[`operationalExpenseBank_${idx}`] && <p className="text-sm text-red-500 mt-1">{errors[`operationalExpenseBank_${idx}`]}</p>}
-                          </div>
-                          <div className="md:col-span-2">
-                            <label className="label text-xs">Paid</label>
-                            <select
-                              className="input"
-                              value={row.paid ? 'Paid' : 'Unpaid'}
-                              onChange={(e) => {
-                                const next = [...(formData.operationalExpenses || [])];
-                                next[idx] = { ...next[idx], paid: e.target.value === 'Paid' };
-                                setFormData({ ...formData, operationalExpenses: next });
-                              }}
-                            >
-                              <option value="Unpaid">Unpaid</option>
-                              <option value="Paid">Paid</option>
+                  <div className="grid grid-cols-2 gap-8 pt-6">
+                    <div className="space-y-6">
+                       <SectionHeader icon={Target} title="Deductions & Levies" color="fuchsia" />
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label text="Protocol" />
+                            <select value={formData.discountType} onChange={(e) => setFormData({ ...formData, discountType: e.target.value })} className="input-premium">
+                              <option value="Flat">Flat Value</option>
+                              <option value="Percentage">Relativity (%)</option>
                             </select>
                           </div>
-                          <div className="md:col-span-2 flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setFormData({
-                                  ...formData,
-                                  operationalExpenses: (formData.operationalExpenses || []).filter((_, i) => i !== idx),
-                                })
-                              }
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                          <div className="space-y-1.5">
+                            <Label text="Delta" />
+                            <input type="number" className="input-premium" placeholder="0.00" value={formData.discountValue} onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })} />
                           </div>
+                       </div>
+                       <div className="space-y-1.5">
+                          <Label text="Fiscal Duty (GST %)" />
+                          <input type="number" value={formData.gst} onChange={(e) => setFormData({ ...formData, gst: e.target.value })} className="input-premium" />
+                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'finance' && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                  <SectionHeader icon={Wallet} title="Capital Allocation" color="rose" />
+                  <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl space-y-4">
+                    <div className="grid grid-cols-2 gap-6 pb-4 border-b border-white/10 opacity-70">
+                       <div className="flex justify-between items-center text-[14px]">
+                          <span>Gross Subtotal</span>
+                          <span className="font-bold font-mono">₹{subtotal.toLocaleString()}</span>
+                       </div>
+                       <div className="flex justify-between items-center text-[14px]">
+                          <span>Unified Tax</span>
+                          <span className="font-bold font-mono">₹{taxAmount.toLocaleString()}</span>
+                       </div>
+                    </div>
+                    <div className="flex justify-between items-center pt-2">
+                       <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 bg-brand-500/20 text-brand-400 rounded-lg flex items-center justify-center">
+                             <Banknote className="h-5 w-5" />
+                          </div>
+                          <div>
+                             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Aggregate Liability</p>
+                             <h4 className="text-[24px] font-black text-brand-400 font-mono">₹{totalAmount.toLocaleString()}</h4>
+                          </div>
+                       </div>
+                       <div className="text-right">
+                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Unsettled Stake</p>
+                          <h4 className="text-[20px] font-extrabold text-rose-400 font-mono">₹{balanceDue.toLocaleString()}</h4>
+                       </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6 pt-4 border-t border-slate-100">
+                    <div className="flex items-center gap-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-100 hover:border-brand-100 transition-all cursor-pointer group" onClick={() => setFormData({...formData, initialDepositEnabled: !formData.initialDepositEnabled})}>
+                      <div className={clsx("h-6 w-6 rounded-md border-2 flex items-center justify-center transition-all", formData.initialDepositEnabled ? "bg-brand-600 border-brand-600" : "bg-white border-slate-200")}>
+                        {formData.initialDepositEnabled && <CheckCircle2 className="h-4 w-4 text-white" />}
+                      </div>
+                      <span className="text-[14px] font-bold text-slate-700">Initial Capital Injection (Deposit)</span>
+                    </div>
+
+                    {formData.initialDepositEnabled && (
+                      <div className="grid grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-300 ml-9 pb-4">
+                        <div className="space-y-1.5">
+                           <Label text="Injection Quantum (₹)" />
+                           <input type="number" className="input-premium" placeholder="0.00" value={formData.initialDepositAmount} onChange={(e) => setForm({...formData, initialDepositAmount: e.target.value})} />
                         </div>
-                      ))
+                        <div className="space-y-1.5">
+                           <Label text="Target Vault" />
+                           <button type="button" onClick={() => { setBankModalFor('initial'); setBankModalOpen(true); }} className={clsx("input-premium text-left relative", errors.initialDepositBank && "border-rose-400")}>
+                             {formData.initialDepositBankName || getBankDisplay(formData.initialDepositBankId) || 'Select Reserve Entity'}
+                             <Landmark className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                           </button>
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
 
-                <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-base font-bold text-slate-800">Extra Installments (Split Payments)</h3>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData({
-                          ...formData,
-                          extraInstallments: [...(formData.extraInstallments || []), { date: '', amount: '', bankAccountId: null, bankName: '', notes: '' }],
-                        })
-                      }
-                      className="btn-primary flex items-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" /> Add Payment
+                  <SectionHeader icon={Activity} title="Operational Expenditures" color="amber" />
+                  <div className="space-y-3">
+                    {formData.operationalExpenses?.map((row, idx) => (
+                      <div key={idx} className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 grid grid-cols-12 gap-4 items-center animate-in slide-in-from-right-2 duration-200">
+                         <div className="col-span-4">
+                            <input type="text" className="bg-transparent border-none focus:ring-0 p-0 text-[14px] font-bold placeholder:text-slate-300" placeholder="Expense nomenclature..." value={row.name} onChange={(e) => {
+                               const next = [...formData.operationalExpenses];
+                               next[idx].name = e.target.value;
+                               setFormData({...formData, operationalExpenses: next});
+                            }} />
+                         </div>
+                         <div className="col-span-3">
+                            <input type="number" className="bg-transparent border-none focus:ring-0 p-0 text-[14px] font-black text-slate-700 text-right w-full" placeholder="0.00" value={row.amount} onChange={(e) => {
+                               const next = [...formData.operationalExpenses];
+                               next[idx].amount = e.target.value;
+                               setFormData({...formData, operationalExpenses: next});
+                            }} />
+                         </div>
+                         <div className="col-span-3 text-right">
+                           <select className="bg-transparent border-none text-[12px] font-bold text-slate-500 focus:ring-0 p-0 text-right cursor-pointer" value={row.paid ? 'Paid' : 'Unpaid'} onChange={(e) => {
+                              const next = [...formData.operationalExpenses];
+                              next[idx].paid = e.target.value === 'Paid';
+                              setFormData({...formData, operationalExpenses: next});
+                           }}>
+                              <option value="Unpaid">UNSETTLED</option>
+                              <option value="Paid">CAPITALIZED</option>
+                           </select>
+                         </div>
+                         <div className="col-span-2 flex justify-end">
+                            <button type="button" onClick={() => setFormData({...formData, operationalExpenses: formData.operationalExpenses.filter((_, i) => i !== idx)})} className="h-8 w-8 text-rose-400 hover:bg-rose-50 rounded-lg flex items-center justify-center">
+                               <X size={14} />
+                            </button>
+                         </div>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setFormData({...formData, operationalExpenses: [...(formData.operationalExpenses || []), { name: '', amount: '', bankAccountId: null, bankName: '', paid: false }]})} className="text-[12px] font-bold text-slate-500 hover:text-slate-900 flex items-center gap-1.5 pl-2 transition-colors">
+                      <Plus size={14} /> Append Expenditure Field
                     </button>
                   </div>
-                  <div className="space-y-4">
-                    {(formData.extraInstallments || []).length === 0 ? (
-                      <p className="text-sm text-slate-400 py-4 text-center">No payments. Click &quot;+ Add Payment&quot; to add.</p>
-                    ) : (
-                      (formData.extraInstallments || []).map((row, idx) => {
-                        const rowIsSaved = isSavedRecord && idx < savedExtraInstallmentsCount;
-                        return (
-                          <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 rounded-xl border border-gray-100 bg-gray-50/50 items-end">
-                            <div className="md:col-span-2">
-                              <label className="label text-xs">Date</label>
-                              <input
-                                type="date"
-                                readOnly={rowIsSaved}
-                                className="input"
-                                value={row.date}
-                                onChange={(e) => {
-                                  const next = [...(formData.extraInstallments || [])];
-                                  next[idx] = { ...next[idx], date: e.target.value };
-                                  setFormData({ ...formData, extraInstallments: next });
-                                }}
-                              />
-                            </div>
-                            <div className="md:col-span-2">
-                              <label className="label text-xs">Amount (₹)</label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                readOnly={rowIsSaved}
-                                className="input"
-                                placeholder="0.00"
-                                value={row.amount}
-                                onChange={(e) => {
-                                  const next = [...(formData.extraInstallments || [])];
-                                  next[idx] = { ...next[idx], amount: e.target.value };
-                                  setFormData({ ...formData, extraInstallments: next });
-                                }}
-                              />
-                            </div>
-                            <div className="md:col-span-3">
-                              <label className="label text-xs">Bank Account</label>
-                              <button
-                                type="button"
-                                disabled={rowIsSaved}
-                                onClick={() => { setBankModalFor({ type: 'installment', index: idx }); setBankModalOpen(true); }}
-                                className={clsx('input w-full text-left truncate bg-white', errors[`installmentBank_${idx}`] && 'border-red-500')}
-                              >
-                                {row.bankName || getBankDisplay(row.bankAccountId) || 'Select Bank'}
-                              </button>
-                              {errors[`installmentBank_${idx}`] && <p className="text-sm text-red-500 mt-1">{errors[`installmentBank_${idx}`]}</p>}
-                            </div>
-                            <div className="md:col-span-3">
-                              <label className="label text-xs">Notes</label>
-                              <input
-                                type="text"
-                                readOnly={rowIsSaved}
-                                className="input"
-                                placeholder="Optional"
-                                value={row.notes}
-                                onChange={(e) => {
-                                  const next = [...(formData.extraInstallments || [])];
-                                  next[idx] = { ...next[idx], notes: e.target.value };
-                                  setFormData({ ...formData, extraInstallments: next });
-                                }}
-                              />
-                            </div>
-                            <div className="md:col-span-2 flex justify-end">
-                              {!rowIsSaved && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setFormData({
-                                      ...formData,
-                                      extraInstallments: (formData.extraInstallments || []).filter((_, i) => i !== idx),
-                                    })
-                                  }
-                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
                 </div>
-              </div>
-            )}
-
-
+              )}
+            </form>
           </div>
+        </div>
 
-          {bankModalOpen && (
-            <div className="absolute inset-0 bg-slate-900/60 z-10 flex items-center justify-center p-4 rounded-2xl">
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                  <h3 className="text-lg font-bold text-slate-800">Select Bank Account</h3>
-                  <button type="button" onClick={() => { setBankModalOpen(false); setBankModalFor(null); }} className="p-2 text-slate-400 hover:text-slate-600 rounded-full">
-                    <X className="w-5 h-5" />
+        {/* Footer */}
+        <div className="px-8 py-5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 z-20">
+          <button onClick={onClose} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+            Discard Parameters
+          </button>
+          <div className="flex gap-4">
+             <button
+               type="button"
+               disabled={!isSavedRecord}
+               className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 flex items-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+             >
+                <Eye size={16} /> Preview Draft
+             </button>
+             <button
+                type="submit"
+                onClick={handleSubmit}
+                className="px-8 py-2.5 bg-gradient-to-r from-brand-600 to-brand-400 text-white rounded-xl text-[14px] font-medium shadow-lg shadow-brand-500/20 hover:shadow-xl hover:shadow-brand-500/30 transition-all hover:-translate-y-[2px] active:scale-95 group relative overflow-hidden"
+             >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                <div className="flex items-center gap-2 relative z-10">
+                   <Save size={18} className="stroke-[2.5]" />
+                   <span>{invoice ? 'Synchronize Updates' : 'Authorize Issuance'}</span>
+                </div>
+             </button>
+          </div>
+        </div>
+
+        {/* Local Nested Modal for Bank Selection */}
+        {bankModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-[0.95] duration-200">
+              <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                <h3 className="text-[16px] font-bold text-slate-800">Assign Financial Channel</h3>
+                <button onClick={() => setBankModalOpen(false)} className="h-8 w-8 text-slate-400 hover:text-rose-500 transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                {bankAccounts.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => {
+                      const name = `${b.bankName} – ${b.accountNumber}`;
+                      if (bankModalFor === 'initial') {
+                        setFormData((prev) => ({ ...prev, initialDepositBankId: b.id, initialDepositBankName: name }));
+                      } else if (bankModalFor?.type === 'installment' || bankModalFor?.type === 'operationalExpense') {
+                         const field = bankModalFor.type === 'installment' ? 'extraInstallments' : 'operationalExpenses';
+                         const next = [...formData[field]];
+                         next[bankModalFor.index].bankAccountId = b.id;
+                         next[bankModalFor.index].bankName = name;
+                         setFormData({...formData, [field]: next});
+                      }
+                      setBankModalOpen(false);
+                    }}
+                    className="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50/50 text-left transition-all group"
+                  >
+                    <div className="h-10 w-10 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center group-hover:bg-brand-100 group-hover:text-brand-600 transition-colors">
+                       <Landmark size={20} />
+                    </div>
+                    <div>
+                       <p className="text-[14px] font-bold text-slate-800 tracking-tight">{b.bankName}</p>
+                       <p className="text-[12px] font-medium text-slate-400">Acc: {b.accountNumber}</p>
+                    </div>
                   </button>
-                </div>
-                <div className="overflow-y-auto p-4 space-y-2">
-                  {bankAccounts.map((b) => (
-                    <button
-                      key={b.id}
-                      type="button"
-                      onClick={() => {
-                        const name = `${b.bankName} – ${b.accountNumber}`;
-                        if (bankModalFor === 'initial') {
-                          setFormData((prev) => ({ ...prev, initialDepositBankId: b.id, initialDepositBankName: name }));
-                          setErrors((prev) => ({ ...prev, initialDepositBank: undefined }));
-                        } else if (bankModalFor?.type === 'installment' && typeof bankModalFor.index === 'number') {
-                          const next = [...(formData.extraInstallments || [])];
-                          next[bankModalFor.index] = { ...next[bankModalFor.index], bankAccountId: b.id, bankName: name };
-                          setFormData((prev) => ({ ...prev, extraInstallments: next }));
-                          setErrors((prev) => ({ ...prev, [`installmentBank_${bankModalFor.index}`]: undefined }));
-                        } else if (bankModalFor?.type === 'operationalExpense' && typeof bankModalFor.index === 'number') {
-                          const next = [...(formData.operationalExpenses || [])];
-                          next[bankModalFor.index] = { ...next[bankModalFor.index], bankAccountId: b.id, bankName: name };
-                          setFormData((prev) => ({ ...prev, operationalExpenses: next }));
-                          setErrors((prev) => ({ ...prev, [`operationalExpenseBank_${bankModalFor.index}`]: undefined }));
-                        }
-                        setBankModalOpen(false);
-                        setBankModalFor(null);
-                      }}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-brand-200 hover:bg-brand-50/50 text-left"
-                    >
-                      <Landmark className="w-5 h-5 text-brand-600" />
-                      <span className="font-medium text-slate-800">{b.bankName} – {b.accountNumber}</span>
-                    </button>
-                  ))}
-                </div>
+                ))}
               </div>
             </div>
-          )}
-
-          <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
-            <button type="submit" className="btn-primary shadow-lg shadow-brand-500/30">
-              {invoice ? 'Save Changes' : 'Create Invoice'}
-            </button>
           </div>
-        </form>
+        )}
       </div>
     </div>
   );

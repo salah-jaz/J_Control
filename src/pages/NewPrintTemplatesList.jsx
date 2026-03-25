@@ -106,7 +106,7 @@ export default function PrintTemplatesList() {
                         </button>
                         <Link
                           to={`/print-templates/edit/${t.id}`}
-                          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-brand-600"
+                          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-violet-600"
                           title="Edit"
                         >
                           <Pencil className="w-4 h-4" />

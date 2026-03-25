@@ -48,9 +48,40 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
         }
     }, [isOpen]);
 
+    const client = clients.find(c => c.id == (invoice?.client_id || invoice?.clientId));
+    const bank = bankAccounts.find(b => b.id == (invoice?.bank_account_id || invoice?.bankAccountId));
+
+    const getPrintConfigKeys = useCallback(
+        () => printConfig || getStoredPrintConfig('invoices') || getDefaultPrintConfigKeys(),
+        [printConfig]
+    );
+
+    const printHtml = useMemo(() => {
+        if (!defaultTemplate || !companySettings) return null;
+        const keys = getPrintConfigKeys();
+        const html = defaultTemplate.template_html
+            ? getEffectiveTemplateHtml(defaultTemplate, 'invoices')
+            : buildFullTemplateHtml(filterTemplateByPrintConfig(defaultTemplate, keys), 'invoices');
+        const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
+        return resolveTemplateHtmlWithData(html, 'invoices', data);
+    }, [defaultTemplate, companySettings, invoice, client, bank, getPrintConfigKeys]);
+
+    const buildPreviewForConfig = useCallback(
+        (selectedKeys) => {
+            if (!defaultTemplate || !companySettings) return '';
+            const filtered = filterTemplateByPrintConfig(defaultTemplate, selectedKeys);
+            const html = defaultTemplate.template_html
+                ? getEffectiveTemplateHtml(defaultTemplate, 'invoices')
+                : buildFullTemplateHtml(filtered, 'invoices');
+            const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
+            return resolveTemplateHtmlWithData(html, 'invoices', data);
+        },
+        [defaultTemplate, companySettings, invoice, client, bank]
+    );
+
     // Auto-scaling logic to fit content nicely on one A4 page without cutting off
     useEffect(() => {
-        if (!isOpen || !componentRef.current) return;
+        if (!isOpen || !componentRef.current || !printHtml) return;
         const calculateScale = () => {
             const container = componentRef.current;
             const contentWrap = container.querySelector('.print-scale-content');
@@ -58,14 +89,12 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                 // Reset scale and width for accurate measurement
                 contentWrap.style.transform = 'none';
                 contentWrap.style.width = '210mm';
-                contentWrap.style.transformOrigin = 'top left';
                 
                 const contentHeight = contentWrap.scrollHeight;
-                const a4InnerHeight = 1120; // Standard A4 height @ 96DPI is ~1123px. 1120 gives a tiny safety margin.
+                const a4InnerHeight = 1115; // Safe A4 height @ 96DPI
                 
                 if (contentHeight > a4InnerHeight) {
                     const factor = a4InnerHeight / contentHeight;
-                    // Proportional scale to fit content within the A4 height
                     setScaleFactor(parseFloat(factor.toFixed(4)));
                 } else {
                     setScaleFactor(1);
@@ -75,9 +104,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
 
         const resizeTimeout = setTimeout(calculateScale, 400);
         return () => clearTimeout(resizeTimeout);
-    }, [isOpen, invoice, activeTemplate, companySettings, printConfig]);
-
-
+    }, [isOpen, companySettings, printConfig, activeTemplate, invoice?.agreement_content, printHtml]);
 
     const handlePrintTrigger = useReactToPrint({
         contentRef: componentRef,
@@ -147,39 +174,6 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
         }
     };
 
-    if (!isOpen || !invoice) return null;
-
-    const client = clients.find(c => c.id == (invoice.client_id || invoice.clientId));
-    const bank = bankAccounts.find(b => b.id == (invoice.bank_account_id || invoice.bankAccountId));
-
-    const getPrintConfigKeys = useCallback(
-        () => printConfig || getStoredPrintConfig('invoices') || getDefaultPrintConfigKeys(),
-        [printConfig]
-    );
-
-    const printHtml = useMemo(() => {
-        if (!defaultTemplate || !companySettings) return null;
-        const keys = getPrintConfigKeys();
-        const html = defaultTemplate.template_html
-            ? getEffectiveTemplateHtml(defaultTemplate, 'invoices')
-            : buildFullTemplateHtml(filterTemplateByPrintConfig(defaultTemplate, keys), 'invoices');
-        const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
-        return resolveTemplateHtmlWithData(html, 'invoices', data);
-    }, [defaultTemplate, companySettings, invoice, client, bank, getPrintConfigKeys]);
-
-    const buildPreviewForConfig = useCallback(
-        (selectedKeys) => {
-            if (!defaultTemplate || !companySettings) return '';
-            const filtered = filterTemplateByPrintConfig(defaultTemplate, selectedKeys);
-            const html = defaultTemplate.template_html
-                ? getEffectiveTemplateHtml(defaultTemplate, 'invoices')
-                : buildFullTemplateHtml(filtered, 'invoices');
-            const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
-            return resolveTemplateHtmlWithData(html, 'invoices', data);
-        },
-        [defaultTemplate, companySettings, invoice, client, bank]
-    );
-
     useEffect(() => {
         if (printConfig && pendingPrintRef.current && componentRef.current) {
             pendingPrintRef.current = false;
@@ -195,46 +189,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
         pendingPrintRef.current = true;
     };
 
-    const items = invoice.items || [];
-    const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0) || parseFloat(invoice.amount) || 0;
-    const gst = invoice.gst || 0;
-    const discount = invoice.discount || 0;
-    const gstAmount = subtotal * (gst / 100);
-    const grandTotal = Math.max(0, subtotal + gstAmount - discount);
-
-    // Logic for Paid/Pending Calculation
-    let paidAmount = 0;
-    const itemsPaidTotal = items
-        .filter(item => item.payment_status === 'Paid')
-        .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-
-    const itemsPendingTotal = items
-        .filter(item => item.payment_status !== 'Paid')
-        .reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-
-    if (invoice.status === 'Paid') {
-        paidAmount = grandTotal;
-    } else {
-        if (subtotal > 0) {
-            const ratio = itemsPaidTotal / subtotal;
-            paidAmount = itemsPaidTotal + (gstAmount * ratio) - (discount * ratio);
-        } else {
-            paidAmount = 0;
-        }
-    }
-
-    paidAmount = Math.max(0, paidAmount);
-    paidAmount = Math.min(paidAmount, grandTotal);
-
-    const balanceAmount = grandTotal - paidAmount;
-
-    // QR Code URL Construction
-    const API_BASE_URL = 'http://localhost:8000';
-    const rawQrCode = invoice.qr_code || companySettings?.qr_code;
-
-    const qrCodeUrl = rawQrCode
-        ? (rawQrCode.startsWith('http') ? rawQrCode : `${API_BASE_URL}/storage/${rawQrCode}`)
-        : null;
+    if (!isOpen || !invoice) return null;
 
     return (
         <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm print:p-0 print:bg-white print:static print:block">
@@ -269,18 +224,18 @@ const InvoiceView = ({ isOpen, onClose, invoice, activeTemplate, onTemplateChang
                     <div ref={componentRef} className="print-container bg-white shadow-sm w-[210mm] h-[297mm] mx-auto print:shadow-none print:w-[210mm] print:h-auto print:min-h-[297mm] print:overflow-visible print:m-0 print:p-0 flex flex-col relative font-sans text-slate-800 print:box-border">
                         {printHtml ? (
                             <>
-                            <div className="max-w-[210mm] mx-auto text-slate-800 p-0 print-scale-container" style={{ overflow: 'visible', width: '100%', height: '100%' }}>
-                              <div className="print-scale-content" style={{ 
-                                  transform: scaleFactor !== 1 ? `scale(${scaleFactor})` : 'none',
-                                  transformOrigin: 'top center',
-                                  width: '210mm'
-                              }} dangerouslySetInnerHTML={{ __html: printHtml }} />
-                            </div>
-                            {invoice?.agreement_content?.length > 0 && (
-                              <div className="max-w-[210mm] mx-auto px-4 mt-6 print:mt-4">
-                                <AgreementContentDisplay blocks={invoice.agreement_content} className="print:block" />
-                              </div>
-                            )}
+                                        <div className="print-scale-content" style={{ 
+                                            transform: scaleFactor !== 1 ? `scale(${scaleFactor})` : 'none',
+                                            transformOrigin: 'top center',
+                                            width: '210mm'
+                                        }}>
+                                           <div dangerouslySetInnerHTML={{ __html: printHtml }} />
+                                           {invoice?.agreement_content?.length > 0 && (
+                                              <div className="max-w-[210mm] mx-auto px-4 mt-6 print:mt-4">
+                                                <AgreementContentDisplay blocks={invoice.agreement_content} className="print:block" />
+                                              </div>
+                                           )}
+                                        </div>
                             </>
                         ) : (
                             <div className="max-w-[210mm] mx-auto p-6">

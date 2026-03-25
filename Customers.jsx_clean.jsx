@@ -144,52 +144,38 @@ const Customers = () => {
     );
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC]">
-        {/* Header Background Strip */}
-        <div className="absolute top-0 left-0 right-0 h-80 bg-gradient-to-b from-violet-50/50 to-transparent pointer-events-none" />
-
-        <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] relative group overflow-hidden">
-                            <Users className="h-5 w-5 text-white relative z-10" />
-                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                        </div>
-                        <h1 className="text-[28px] font-bold text-slate-900">Customers</h1>
-                    </div>
-                    <p className="text-slate-500 font-medium text-[14px]">Manage your client base and contacts efficiently.</p>
+        <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Customers</h1>
+                    <p className="text-slate-500 mt-1 text-base md:text-lg">Manage your client base and contacts.</p>
                 </div>
                 <button
                     onClick={() => openModal()}
-                    className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+                    className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30 w-full sm:w-auto justify-center"
                 >
-                    {/* Shimmer Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
-
-                    <Plus size={20} className="relative z-10" />
-                    <span className="relative z-10">New Customer</span>
+                    <Plus className="h-5 w-5" />
+                    New Customer
                 </button>
             </div>
 
             <div className="card p-0 overflow-hidden min-h-[500px]">
-                <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap justify-between items-center bg-white gap-4">
-                    <h3 className="font-bold text-slate-800">Customer Database</h3>
-                    <div className="relative group min-w-[300px]">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors w-4 h-4" />
+                <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/50">
+                    <h3 className="font-bold text-slate-800">Customer List</h3>
+                    <div className="relative w-full md:w-64">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <input
                             type="text"
                             placeholder="Search customers..."
-                            className="w-full pl-10 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-violet-400 focus:ring-[3px] focus:ring-violet-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all"
                         />
                     </div>
                 </div>
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-sm text-left min-w-[700px]">
-                        <thead className="bg-slate-50/80 text-[13px] font-semibold text-slate-600 capitalize tracking-normal border-b border-gray-100">
+                        <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                             <tr>
                                 <th className="px-6 py-4">Company Name</th>
                                 <th className="px-6 py-4">Contact</th>
@@ -202,7 +188,7 @@ const Customers = () => {
                                 <tr key={customer.id} className="hover:bg-slate-50/50 transition-colors group">
                                     <td className="px-6 py-4 text-slate-900 font-medium">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-xl bg-brand-50 text-violet-600 flex items-center justify-center font-bold text-lg shadow-sm border border-violet-100">
+                                            <div className="h-10 w-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold text-lg shadow-sm border border-brand-100">
                                                 {customer.name.substring(0, 1).toUpperCase()}
                                             </div>
                                             <div>
@@ -242,7 +228,7 @@ const Customers = () => {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => openModal(customer)} className="p-2 text-slate-400 hover:text-violet-600 hover:bg-brand-50 rounded-lg transition-colors" title="Edit">
+                                            <button onClick={() => openModal(customer)} className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="Edit">
                                                 <Edit2 className="h-4 w-4" />
                                             </button>
                                             <button onClick={() => handleDelete(customer.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
@@ -268,9 +254,8 @@ const Customers = () => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 customer={editingCustomer}
-            onSave={handleSave}
+                onSave={handleSave}
             />
-            </div>
         </div>
     );
 };

@@ -3,13 +3,16 @@
  * Use with module: invoices. Variables: {{invoice.xxx}}
  */
 export const JAZ_INVOICE_TEMPLATE_CSS = `
-  .jaz-invoice { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; max-width: 210mm; min-height: 297mm; margin: 0 auto; padding: 0; background: #fff; box-sizing: border-box; position: relative; overflow: hidden; }
+  .jaz-invoice { font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1e293b; line-height: 1.5; width: 210mm; max-width: 210mm; min-height: 297mm; margin: 0 auto; padding: 0; background: #fff; box-sizing: border-box; position: relative; overflow: visible; }
   .jaz-invoice * { box-sizing: border-box; }
-  @media print { @page { size: A4; margin: 12mm; } .jaz-invoice { max-width: 210mm; min-height: 297mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  @media print { 
+    @page { size: A4; margin: 0 !important; } 
+    .jaz-invoice { width: 210mm !important; max-width: 210mm !important; min-height: 297mm !important; height: auto !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; overflow: visible !important; }
+  }
 
-  .jaz-invoice .jaz-shape-top { position: absolute; top: 0; right: 0; width: 320px; height: 200px; background: #3f36a6; transform: skewY(-6deg); transform-origin: top right; z-index: 0; }
-  .jaz-invoice .jaz-shape-bottom { position: absolute; bottom: 0; left: 0; width: 320px; height: 180px; background: #3f36a6; transform: skewY(6deg); transform-origin: bottom left; z-index: 0; }
-  .jaz-invoice .jaz-inner { position: relative; z-index: 1; padding: 24px 28px 28px; }
+  .jaz-invoice .jaz-shape-top { position: absolute; top: 0; right: 0; width: 320px; height: 200px; background: #3f36a6; transform: skewY(-6deg); transform-origin: top right; z-index: 0; pointer-events: none; }
+  .jaz-invoice .jaz-shape-bottom { position: absolute; bottom: 0; left: 0; width: 320px; height: 180px; background: #3f36a6; transform: skewY(6deg); transform-origin: bottom left; z-index: 0; pointer-events: none; }
+  .jaz-invoice .jaz-inner { position: relative; z-index: 1; padding: 24px 28px 28px; min-height: 297mm; }
 
   .jaz-invoice .jaz-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
   .jaz-invoice .jaz-header-left { flex: 1; }

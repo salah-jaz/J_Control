@@ -1,68 +1,226 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply antialiased bg-[#F3F4F6] text-slate-800 tracking-tight font-sans;
+  :root {
+    /* Primary Brand (Purple Premium) */
+    --primary-1: #7c3aed; /* Violet 600 */
+    --primary-2: #8b5cf6; /* Violet 500 */
+    --primary-3: #a78bfa; /* Violet 400 */
+    --brand-color: #7c3aed;
+  --primary-gradient: linear-gradient(135deg, var(--primary-1) 0%, var(--primary-2) 100%);
+  --premium-gradient: linear-gradient(135deg, #7C3AED 0%, #C026D3 100%);
+
+    /* Background System */
+    --bg-main: #F8FAFC;
+    --bg-card: rgba(255, 255, 255, 0.75);
+    --bg-hover: #F1F5F9;
+    --bg-overlay: rgba(0, 0, 0, 0.2);
+
+    /* Borders & Dividers */
+    --border-light: #E5E7EB;
+    --border-soft: rgba(0,0,0,0.05);
+
+    /* Text Colors */
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+    --text-white: #FFFFFF;
+
+    /* Status Colors */
+    --success: #22C55E;
+    --success-bg: rgba(34,197,94,0.1);
+
+    --warning: #F59E0B;
+    --warning-bg: rgba(245,158,11,0.1);
+
+    --info: #3B82F6;
+    --info-bg: rgba(59,130,246,0.1);
+
+    --error: #EF4444;
+    --error-bg: rgba(239,68,68,0.1);
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-bold text-slate-900 tracking-tight;
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    @apply antialiased font-sans;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold;
+    color: var(--text-primary);
   }
 }
 
 @layer components {
 
-  /* Premium Input Style */
-  .input {
+  /* Global Typographical Hierarchy */
+  h1, .page-title { @apply text-[28px] font-bold text-slate-900; }
+  h2, h3, .section-title { @apply text-[18px] font-semibold text-slate-800; }
+  .label-text, label { @apply text-[13px] font-medium text-slate-700; }
+
+  /* Standard Global Input Style */
+  .input, input[type="text"], input[type="email"], input[type="number"], select, textarea {
     @apply w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-200 shadow-sm hover:border-gray-300;
   }
 
   .label {
-    @apply block text-sm font-semibold text-slate-700 mb-1.5 ml-1;
+    @apply block text-[13px] font-medium text-slate-700 mb-1.5 ml-0.5;
   }
 
   .req {
-    @apply text-red-500 ml-0.5;
+    @apply text-rose-500 ml-1 font-bold text-sm;
   }
 
   /* Premium Button Styles */
-  .btn-primary {
-    @apply bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white px-6 py-2.5 rounded-xl transition-all duration-200 font-semibold shadow-[0_2px_10px_-3px_#ea580c80] hover:shadow-[0_4px_12px_-2px_#ea580c99] active:transform active:scale-[0.98] border border-transparent;
+  button, .btn {
+    transition: all 0.25s ease-in-out !important;
   }
-
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white px-6 py-2.5 rounded-xl transition-all duration-200 font-semibold shadow-[0_2px_10px_-3px_#7c3aed80] hover:shadow-[0_4px_12px_-2px_#7c3aed99] active:transform active:scale-[0.98] border border-transparent;
+  }
+  
   .btn-secondary {
     @apply bg-white text-slate-700 border border-gray-200 px-6 py-2.5 rounded-xl hover:bg-gray-50 hover:text-slate-900 transition-all duration-200 font-medium shadow-sm hover:shadow active:transform active:scale-[0.98];
   }
 
   .btn-danger {
-    @apply bg-white text-red-600 border border-red-100 px-4 py-2 rounded-xl hover:bg-red-50 transition-all duration-200 font-medium active:transform active:scale-[0.98];
+    @apply bg-white text-rose-600 border border-rose-100 px-4 py-2 rounded-xl hover:bg-rose-50 transition-all duration-200 font-medium active:transform active:scale-[0.98];
   }
 
-  /* Premium Card Style */
+  /* Premium Buttons (Violet Theme) */
+  .btn-premium {
+    background: var(--primary-gradient) !important;
+    color: white !important;
+    border-radius: 12px !important;
+    padding: 10px 24px !important;
+    box-shadow: 0 4px 14px rgba(124,58,237,0.2) !important;
+    font-weight: 600 !important;
+    border: none !important;
+    transition: all 0.25s ease-in-out !important;
+  }
+  .btn-premium:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 12px 25px rgba(124,58,237,0.35) !important;
+  }
+  .btn-premium:active {
+    transform: scale(0.98) !important;
+  }
+  .btn-danger:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(225,29,72,0.15) !important;
+  }
+
+  /* Standard Card Style */
   .card {
     @apply bg-white rounded-2xl shadow-[0_2px_8px_#0000000a] border border-gray-100/50 p-6 transition-shadow hover:shadow-[0_8px_24px_#0000000f];
   }
 
+  /* Premium Card Style (Glass - OPT-IN ONLY) */
+  .card-premium {
+    background: var(--bg-card) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid var(--border-soft) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px #0000000d !important; 
+    transition: all 0.3s ease-in-out !important;
+    position: relative;
+    overflow: hidden;
+  }
+  .card-premium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+    z-index: 10;
+  }
+  .card-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.08) !important;
+  }
+
   /* Status Badges */
   .badge {
-    @apply px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wide border;
+    @apply px-2.5 py-1 text-[12px] font-medium border-0;
+    border-radius: 6px !important;
+  }
+  .badge-success {
+    background: var(--success-bg);
+    color: var(--success);
+  }
+  .badge-warning {
+    background: var(--warning-bg);
+    color: var(--warning);
+  }
+  .badge-info {
+    background: var(--info-bg);
+    color: var(--info);
+  }
+  .badge-error {
+    background: var(--error-bg);
+    color: var(--error);
+  }
+
+  /* Enterprise Table Style */
+  table {
+    width: 100% !important;
+    border-collapse: collapse;
+  }
+  .table thead, thead {
+    background: var(--bg-hover) !important;
+  }
+  .table thead th, thead th {
+    text-transform: capitalize !important;
+    letter-spacing: normal !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--text-secondary) !important;
+    padding: 12px 16px !important;
+    border-bottom: 1px solid var(--border-light) !important;
+  }
+  
+  .table tbody tr, tbody tr {
+    transition: all 0.25s ease-in-out !important;
+    background: transparent !important;
+    border-bottom: 1px solid var(--border-light) !important;
+  }
+  .table tbody tr:hover, tbody tr:hover {
+    background: var(--bg-hover) !important;
+    transform: translateY(-1px) !important;
+  }
+  .table tbody td, tbody td {
+    padding: 16px !important;
+    font-size: 14px !important;
+    color: var(--text-primary) !important;
+  }
+
+  /* Sidebar Premium Active */
+  .sidebar-item {
+    @apply flex items-center gap-4 px-5 py-3 rounded-xl text-[14px] font-medium transition-all duration-[250ms] ease-out group overflow-hidden focus:outline-none text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm border-l-[3px] border-transparent;
+  }
+  .sidebar-item.active {
+    background: rgba(124,58,237,0.1);
+    color: var(--primary-1);
+    border-left: 3px solid var(--primary-1);
   }
 
   /* Planner: overdue events (red text + dot in calendar) */
   .event-overdue {
-    color: #ff3b3b;
+    color: var(--error);
     font-weight: 600;
   }
 
   .event-overdue .fc-event-title {
-    color: #ff3b3b;
+    color: var(--error);
   }
 }
 
@@ -82,5 +240,29 @@
 
   .font-signature {
     font-family: 'Brush Script MT', 'Bradley Hand', 'Segoe Script', cursive;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes modalIn {
+    from { 
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to { 
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  .animate-modalIn {
+    animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 }

@@ -14,66 +14,138 @@ import AgreementContentDisplay from './AgreementContentDisplay';
 
 const A4_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
-  @page { size: A4; margin: 0 !important; }
+  
+  @page { 
+    size: A4; 
+    margin: 0 !important; 
+  }
+
   @media print {
-    html, body { height: 297mm !important; width: 210mm !important; margin: 0 !important; padding: 0 !important; font-family: 'Inter', sans-serif !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-color: transparent !important; overflow: hidden !important; box-sizing: border-box !important; }
+    html, body { 
+      height: auto !important; 
+      width: 210mm !important; 
+      margin: 0 auto !important; 
+      padding: 0 !important; 
+      font-family: 'Inter', sans-serif !important; 
+      -webkit-print-color-adjust: exact !important; 
+      print-color-adjust: exact !important; 
+      background-color: white !important; 
+      overflow: visible !important; 
+      box-sizing: border-box !important;
+    }
+    
     * { 
       -webkit-print-color-adjust: exact !important; 
       print-color-adjust: exact !important;
       color-adjust: exact !important;
       box-shadow: none !important;
-      border-radius: 0 !important;
-      margin-bottom: 0 !important;
     }
-    .print-root-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 210mm !important; height: 297mm !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; background: transparent !important; box-sizing: border-box !important; }
-    .print-main-layout { display: block !important; position: static !important; width: 210mm !important; height: 297mm !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; box-sizing: border-box !important; }
-    .print-root { display: block !important; height: 297mm !important; min-height: 297mm !important; max-height: 297mm !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; border: none !important; box-sizing: border-box !important; }
-    .print-content { 
+
+    .print-root-container { 
       display: block !important; 
-      width: 210mm !important; 
-      max-width: 210mm !important; 
-      height: 297mm !important;
-      min-height: 297mm !important;
-      max-height: 297mm !important;
+      position: relative !important; 
+      width: 100% !important; 
+      height: auto !important; 
+      overflow: visible !important; 
+      margin: 0 !important; 
+      padding: 0 !important; 
+      background: transparent !important; 
+      box-sizing: border-box !important; 
+    }
+    
+    .print-main-layout { 
+      display: block !important; 
+      position: static !important; 
+      width: 100% !important; 
+      margin: 0 !important; 
+      padding: 0 !important; 
+      box-sizing: border-box !important; 
+    }
+    
+    .print-root { 
+      display: block !important; 
+      width: 100% !important;
+      height: auto !important; 
       margin: 0 !important; 
       padding: 0 !important; 
       border: none !important; 
+      box-sizing: border-box !important; 
+    }
+    
+    .print-content { 
+      display: block !important; 
+      width: 210mm !important; 
+      max-width: 210mm !important;
+      height: auto !important;
+      min-height: 297mm !important;
+      margin: 0 auto !important; 
+      border: none !important; 
       box-shadow: none !important;
-      overflow: hidden !important;
+      overflow: visible !important;
       border-radius: 0 !important;
       box-sizing: border-box !important;
-      page-break-after: avoid !important;
-      page-break-inside: avoid !important;
+      position: relative !important;
+      transform: none !important;
     }
-    .print-content > div { height: auto !important; min-height: 297mm !important; max-height: none !important; width: 210mm !important; margin: 0 !important; padding: 0 !important; box-sizing: border-box !important; overflow: hidden !important; }
-    /* Root of dynamic templates */
+
+    .print-scale-container, .print-scale-content {
+      transform: none !important;
+      width: 100% !important;
+      height: auto !important;
+      overflow: visible !important;
+      display: block !important;
+    }
+
+    /* Standard template print padding */
+    .standard-template-print-wrapper {
+      padding: 20mm 15mm !important;
+      box-sizing: border-box !important;
+      width: 100% !important;
+    }
+
+    /* Support dynamic template elements */
     .print-doc-dynamic, .agreement-print-root, .agreement-wrap, .jaz-doc, .print-doc, .letterhead-doc, .letterhead-inner {
       height: auto !important;
       min-height: 297mm !important;
-      max-height: none !important;
       margin: 0 !important;
       padding: 0 !important;
       width: 210mm !important;
+      max-width: 210mm !important;
       box-sizing: border-box !important;
       border: none !important;
       box-shadow: none !important;
-      overflow: hidden !important;
-      display: flex !important;
-      flex-direction: column !important;
+      overflow: visible !important;
+      display: block !important;
+      position: relative !important;
     }
-    .jaz-footer-branding, .jaz-company-contact, .print-footer, footer {
-      margin-top: auto !important;
-    }
-    .jaz-inner, .agreement-wrap, .print-doc-dynamic { padding: 0 !important; box-sizing: border-box !important; overflow: hidden !important; }
-    /* Fixed decoration at the absolute bottom of EVERY page */
-    .jaz-acc-bl { position: fixed !important; bottom: 0 !important; left: 0 !important; margin-bottom: 0 !important; width: 100% !important; height: auto !important; z-index: -1 !important; }
+
+    /* Content spacing and break points */
     .agreement-section, .agreement-paragraph, .agreement-bullets, .agreement-table, .signature-box, .party-details {
       page-break-inside: avoid !important;
       break-inside: avoid !important;
-      margin-bottom: 12px !important;
+    }
+
+    .jaz-footer-branding, .jaz-company-contact, .print-footer, footer {
+      page-break-inside: avoid !important;
+    }
+
+    /* Ensure backgrounds and gradients print properly */
+    .jaz-acc-tl, .jaz-acc-tr, .jaz-acc-bl { 
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+  }
+
+  /* Screen-only: Trap fixed elements in the preview box */
+  @media screen {
+    .print-content {
+      position: relative !important;
+      transform: translateZ(0);
+      overflow: visible !important;
     }
   }
 `;
+
 
 export default function AgreementPreviewModal({
   agreement: agreementProp,
@@ -143,34 +215,9 @@ export default function AgreementPreviewModal({
     };
   }, [agreementProp, selectedAgreement, agreementData, agreementRecord]);
 
-  // Auto-scaling logic to fit content nicely on one A4 page without cutting off
-  useEffect(() => {
-    if (!isOpen || !contentRef.current) return;
-    const resizeTimeout = setTimeout(() => {
-      const container = contentRef.current;
-      const contentWrap = container.querySelector('.print-scale-content');
-      if (contentWrap) {
-        // Reset scale and width for accurate measurement
-        contentWrap.style.transform = 'none';
-        contentWrap.style.width = '100%';
-        contentWrap.style.transformOrigin = 'top left';
-        
-        const contentHeight = contentWrap.scrollHeight;
-        const a4InnerHeight = 1125; // Standard A4 height @ 96DPI is ~1123px
-        
-        if (contentHeight > a4InnerHeight) {
-          const scaleRatio = a4InnerHeight / contentHeight;
-          const factor = scaleRatio - 0.01;
-          
-          // Proportional scale to fit content within the A4 height
-          contentWrap.style.transform = `scale(${factor.toFixed(4)})`;
-          contentWrap.style.transformOrigin = 'top center';
-          contentWrap.style.width = '100%';
-        }
-      }
-    }, 300); // allow fonts and layout to settle
-    return () => clearTimeout(resizeTimeout);
-  }, [isOpen, agreementForPrint, activeTemplate, companySettings, selectedPreviewId]);
+  // Scaling logic removed to allow document to overflow to multiple pages naturally
+  // instead of shrinking to fit a single A4 page.
+
 
   const generateHtmlForTemplate = useCallback((tpl, agreementSource) => {
     if (!agreementSource) return null;
@@ -211,7 +258,7 @@ export default function AgreementPreviewModal({
     if (!html.includes('<style>')) {
       const css = template.template_css || template.css || '';
       if (css) {
-        html = `<style>${css}</style>\n${html}`;
+        html = '<style>' + css + '</style>\n' + html;
       }
     }
 
@@ -382,132 +429,139 @@ export default function AgreementPreviewModal({
               ref={contentRef}
               className={clsx(
                 "bg-white transition-all shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:p-0 print:rounded-none print-content",
-                "w-[210mm] h-[297mm] print:h-auto print:min-h-[297mm] print:overflow-visible mb-12 print:mb-0"
+                "w-[210mm] min-h-[297mm] print:h-auto print:min-h-0 print:overflow-visible mb-12 print:mb-0"
               )}
             >
-              <div className="print-scale-container" style={{ transformOrigin: 'top left', width: '100%', height: '100%', overflow: 'visible' }}>
-                <div className="print-scale-content" style={{ transformOrigin: 'top left' }}>
-              {selectedPreviewId === 'standard' ? (
-                <>
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6 print:block">
-                    <div className="text-slate-600">
-                      <p className="font-bold text-xl text-slate-800 tracking-tight">{agreementForPrint?.override_company_name || companySettings?.company_name || companySettings?.name || "JAZ INFOTECH"}</p>
-                      <p className="text-sm">{companySettings?.website || companySettings?.email || "www.company.com"}</p>
-                    </div>
-                    <div className="text-right text-slate-800">
-                      <p className="text-sm border bg-slate-50 px-3 py-1.5 rounded-md inline-block font-medium mb-1"><span className="font-bold">Agreement No:</span> {agreementForPrint?.agreement_no || "—"}</p>
-                      {quotation && <p className="text-sm mt-1 mb-1"><span className="font-bold">Quote No:</span> {quotation.quotation_no}</p>}
-                      <p className="text-sm mt-1"><span className="font-bold">Date:</span> {dateStr}</p>
-                    </div>
-                  </div>
-
-                  <div className="h-0.5 w-full bg-amber-400 mb-6 rounded-full" />
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 print:block">
-                    <div>
-                      <h3 className="text-amber-500 font-bold mb-3">Bill To</h3>
-                      <div className="text-slate-700 text-sm space-y-1">
-                        <p className="font-bold text-slate-800">{clientName}</p>
-                        {client.company_name && client.client_name && <p>{client.client_name}</p>}
-                        <p>{client.address || "Client Address"}</p>
-                        <p>{client.phone || "Client Phone"}</p>
-                      </div>
-                    </div>
-                    <div className="print:mt-6">
-                      <h3 className="text-amber-500 font-bold mb-3">From</h3>
-                      <div className="text-slate-700 text-sm space-y-1">
-                        <p className="font-bold text-slate-800">{companySettings?.company_name || companySettings?.name || "Your Company Pvt Ltd"}</p>
-                        <p className="whitespace-pre-line">{companySettings?.address || "Business Address\nCity, Country"}</p>
-                        <p>{companySettings?.email || "contact@company.com"}</p>
-                        {companySettings?.phone && <p>{companySettings?.phone}</p>}
-                      </div>
-                    </div>
-                  </div>
-
-                  {quotation && items.length > 0 && (
-                    <div className="mb-8">
-                      <div className="overflow-x-auto rounded-lg border border-slate-200 mb-4">
-                        <table className="w-full text-left text-sm">
-                          <thead className="bg-[#1e293b] text-white">
-                            <tr>
-                              <th className="px-4 py-3 font-semibold">#</th>
-                              <th className="px-4 py-3 font-semibold">Description</th>
-                              <th className="px-4 py-3 font-semibold text-center">Qty</th>
-                              <th className="px-4 py-3 font-semibold text-right">Price</th>
-                              <th className="px-4 py-3 font-semibold text-right">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
-                            {items.map((item, index) => (
-                              <tr key={index} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-4 py-4">{index + 1}</td>
-                                <td className="px-4 py-4 font-medium min-w-[200px] whitespace-pre-wrap">{item.description || item.item_name || "—"}</td>
-                                <td className="px-4 py-4 text-center">{item.quantity}</td>
-                                <td className="px-4 py-4 text-right whitespace-nowrap">
-                                  {quotation.currency || '$'}{parseFloat(item.unit_price || 0).toFixed(2)}
-                                </td>
-                                <td className="px-4 py-4 text-right font-semibold text-slate-900 whitespace-nowrap">
-                                  {quotation.currency || '$'}{parseFloat(item.total || 0).toFixed(2)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="flex justify-end mb-6">
-                        <div className="w-full max-w-sm space-y-3 text-sm">
-                          <div className="flex justify-between items-center px-4">
-                            <span className="text-slate-600 font-medium">Subtotal</span>
-                            <span className="font-semibold text-slate-800">{quotation.currency || '$'}{subtotal.toFixed(2)}</span>
+              <div className="print-scale-container" style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+                <div className="print-scale-content">
+                  {selectedPreviewId === 'standard' ? (
+                    <div className="standard-template-print-wrapper w-full h-full">
+                      <div className="relative isolate" style={{ transform: 'translateZ(0)' }}>
+                        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6 print:block">
+                          <div className="text-slate-600">
+                            <p className="font-bold text-xl text-slate-800 tracking-tight">{agreementForPrint?.override_company_name || companySettings?.company_name || companySettings?.name || "JAZ INFOTECH"}</p>
+                            <p className="text-sm">{companySettings?.website || companySettings?.email || "www.company.com"}</p>
                           </div>
-                          {discount > 0 && (
-                            <div className="flex justify-between items-center px-4">
-                              <span className="text-slate-600 font-medium">Discount</span>
-                              <span className="font-semibold text-emerald-600">-{quotation.currency || '$'}{discount.toFixed(2)}</span>
-                            </div>
-                          )}
-                          {tax > 0 && (
-                            <div className="flex justify-between items-center px-4">
-                              <span className="text-slate-600 font-medium">Tax</span>
-                              <span className="font-semibold text-slate-800">{quotation.currency || '$'}{tax.toFixed(2)}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between items-center p-4 bg-slate-50 rounded-lg border border-slate-100 mt-2">
-                            <span className="text-slate-900 font-bold">Total</span>
-                            <span className="text-lg font-bold text-[#f59e0b]">{quotation.currency || '$'}{total.toFixed(2)}</span>
+                          <div className="text-right text-slate-800">
+                            <p className="text-sm border bg-slate-50 px-3 py-1.5 rounded-md inline-block font-medium mb-1"><span className="font-bold">Agreement No:</span> {agreementForPrint?.agreement_no || "—"}</p>
+                            {quotation && <p className="text-sm mt-1 mb-1"><span className="font-bold">Quote No:</span> {quotation.quotation_no}</p>}
+                            <p className="text-sm mt-1"><span className="font-bold">Date:</span> {dateStr}</p>
                           </div>
                         </div>
+
+                        <div className="h-0.5 w-full bg-amber-400 mb-6 rounded-full" />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 print:block">
+                          <div>
+                            <h3 className="text-amber-500 font-bold mb-3">Bill To</h3>
+                            <div className="text-slate-700 text-sm space-y-1">
+                              <p className="font-bold text-slate-800">{clientName}</p>
+                              {client.company_name && client.client_name && <p>{client.client_name}</p>}
+                              <p>{client.address || "Client Address"}</p>
+                              <p>{client.phone || "Client Phone"}</p>
+                            </div>
+                          </div>
+                          <div className="print:mt-6">
+                            <h3 className="text-amber-500 font-bold mb-3">From</h3>
+                            <div className="text-slate-700 text-sm space-y-1">
+                              <p className="font-bold text-slate-800">{companySettings?.company_name || companySettings?.name || "Your Company Pvt Ltd"}</p>
+                              <p className="whitespace-pre-line">{companySettings?.address || "Business Address\nCity, Country"}</p>
+                              <p>{companySettings?.email || "contact@company.com"}</p>
+                              {companySettings?.phone && <p>{companySettings?.phone}</p>}
+                            </div>
+                          </div>
+                        </div>
+
+                        {quotation && items.length > 0 && (
+                          <div className="mb-8">
+                            <div className="overflow-x-auto rounded-lg border border-slate-200 mb-4">
+                              <table className="w-full text-left text-sm">
+                                <thead className="bg-[#1e293b] text-white">
+                                  <tr>
+                                    <th className="px-4 py-3 font-semibold">#</th>
+                                    <th className="px-4 py-3 font-semibold">Description</th>
+                                    <th className="px-4 py-3 font-semibold text-center">Qty</th>
+                                    <th className="px-4 py-3 font-semibold text-right">Price</th>
+                                    <th className="px-4 py-3 font-semibold text-right">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
+                                  {items.map((item, index) => (
+                                    <tr key={index} className="hover:bg-slate-50 transition-colors">
+                                      <td className="px-4 py-4">{index + 1}</td>
+                                      <td className="px-4 py-4 font-medium min-w-[200px] whitespace-pre-wrap">{item.description || item.item_name || "—"}</td>
+                                      <td className="px-4 py-4 text-center">{item.quantity}</td>
+                                      <td className="px-4 py-4 text-right whitespace-nowrap">
+                                        {quotation.currency || '$'}{parseFloat(item.unit_price || 0).toFixed(2)}
+                                      </td>
+                                      <td className="px-4 py-4 text-right font-semibold text-slate-900 whitespace-nowrap">
+                                        {quotation.currency || '$'}{parseFloat(item.total || 0).toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                            <div className="flex justify-end mb-6">
+                              <div className="w-full max-w-sm space-y-3 text-sm">
+                                <div className="flex justify-between items-center px-4">
+                                  <span className="text-slate-600 font-medium">Subtotal</span>
+                                  <span className="font-semibold text-slate-800">{quotation.currency || '$'}{subtotal.toFixed(2)}</span>
+                                </div>
+                                {discount > 0 && (
+                                  <div className="flex justify-between items-center px-4">
+                                    <span className="text-slate-600 font-medium">Discount</span>
+                                    <span className="font-semibold text-emerald-600">-{quotation.currency || '$'}{discount.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                {tax > 0 && (
+                                  <div className="flex justify-between items-center px-4">
+                                    <span className="text-slate-600 font-medium">Tax</span>
+                                    <span className="font-semibold text-slate-800">{quotation.currency || '$'}{tax.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between items-center p-4 bg-slate-50 rounded-lg border border-slate-100 mt-2">
+                                  <span className="text-slate-900 font-bold">Total</span>
+                                  <span className="text-lg font-bold text-[#f59e0b]">{quotation.currency || '$'}{total.toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="h-px border-t border-dashed border-gray-300 w-full my-8"></div>
+                          </div>
+                        )}
+
+                        <h1 className="text-2xl font-bold text-slate-900 mb-6 mt-4 pb-2 border-b border-gray-200 text-center uppercase tracking-tight">
+                          {title}
+                        </h1>
+
+                        {blocks.length === 0 ? (
+                          <p className="text-slate-500 text-center italic mt-4">No agreement content provided.</p>
+                        ) : (
+                          <AgreementContentDisplay blocks={blocks} />
+                        )}
                       </div>
-                      <div className="h-px border-t border-dashed border-gray-300 w-full my-8"></div>
+                    </div>
+                  ) : (
+                    <div className="text-slate-800 w-full">
+                      {printHtml ? (
+                        <div
+                          className="premium-template-root relative"
+                          style={{ transform: 'translateZ(0)' }}
+                          dangerouslySetInnerHTML={{ __html: printHtml }}
+                        />
+                      ) : (
+                        <div className="p-12 text-center text-slate-500">
+                          <p className="font-semibold text-lg">No Template Selected</p>
+                          <p className="text-sm mt-2">Please select a valid print template from the sidebar.</p>
+                        </div>
+                      )}
                     </div>
                   )}
-
-                  <h1 className="text-2xl font-bold text-slate-900 mb-6 mt-4 pb-2 border-b border-gray-200 text-center uppercase tracking-tight">
-                    {title}
-                  </h1>
-
-                  {blocks.length === 0 ? (
-                    <p className="text-slate-500 text-center italic mt-4">No agreement content provided.</p>
-                  ) : (
-                    <AgreementContentDisplay blocks={blocks} />
-                  )}
-                </>
-              ) : (
-                <div className="text-slate-800 w-full">
-                  {printHtml ? (
-                    <div dangerouslySetInnerHTML={{ __html: printHtml }} />
-                  ) : (
-                    <div className="p-12 text-center text-slate-500">
-                      <p className="font-semibold text-lg">No Template Selected</p>
-                      <p className="text-sm mt-2">Please select a valid print template from the sidebar.</p>
-                    </div>
-                  )}
-                </div>
-              )}
                 </div>
               </div>
             </div>
           </div>
+
 
           {/* Footer Actions */}
           <div className="p-5 border-t border-slate-100 bg-slate-50 flex flex-wrap gap-3 items-center justify-between rounded-b-2xl print:hidden">
