@@ -167,11 +167,52 @@ class IncomeController extends Controller
     }
 
     /**
-     * GET /incomes/summary - dashboard aggregates.
+     * GET /incomes/summary - aggregates with the same filters as index().
+     * Query params: search, status, category, bank_account_id, date_from, date_to
      */
-    public function summary()
+    public function summary(Request $request)
     {
-        $incomes = \App\Models\Income::all();
+        $query = \App\Models\Income::query();
+
+        if ($request->filled('search')) {
+            $term = '%' . $request->input('search') . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('client', 'like', $term)
+                    ->orWhere('source', 'like', $term)
+                    ->orWhere('invoice_no', 'like', $term)
+                    ->orWhere('notes', 'like', $term);
+            });
+        }
+
+        if ($request->filled('status') && $request->input('status') !== 'all') {
+            $status = $request->input('status');
+            if ($status === 'Paid') {
+                $query->where('status', 'Fully Paid');
+            } elseif ($status === 'Partial') {
+                $query->where('status', 'Partially Paid');
+            } elseif ($status === 'Unpaid') {
+                $query->where('status', 'Unpaid');
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category', $request->input('category'));
+        }
+
+        if ($request->filled('bank_account_id')) {
+            $query->where('bank_account_id', $request->input('bank_account_id'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('received_date', '>=', $request->input('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('received_date', '<=', $request->input('date_to'));
+        }
+
+        $incomes = $query->get();
         $totalIncome = 0;
         $totalReceived = 0;
 

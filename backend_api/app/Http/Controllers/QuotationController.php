@@ -57,17 +57,42 @@ class QuotationController extends Controller
     }
 
     /**
-     * GET /quotations/summary - counts for stats cards.
+     * GET /quotations/summary - counts for stats cards with filters.
      */
-    public function summary()
+    public function summary(Request $request)
     {
+        $query = Quotation::query();
+
+        if ($request->filled('status') && $request->status !== 'All') {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->client_id);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('date', '<=', $request->date_to);
+        }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('quotation_no', 'like', "%{$search}%")
+                    ->orWhereHas('client', function ($c) use ($search) {
+                        $c->where('company_name', 'like', "%{$search}%")
+                            ->orWhere('client_name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
         return response()->json([
-            'total' => Quotation::count(),
-            'draft' => Quotation::where('status', 'Draft')->count(),
-            'sent' => Quotation::where('status', 'Sent')->count(),
-            'accepted' => Quotation::where('status', 'Accepted')->count(),
-            'rejected' => Quotation::where('status', 'Rejected')->count(),
-            'converted' => Quotation::where('status', 'Converted')->count(),
+            'total' => (clone $query)->count(),
+            'draft' => (clone $query)->where('status', 'Draft')->count(),
+            'sent' => (clone $query)->where('status', 'Sent')->count(),
+            'accepted' => (clone $query)->where('status', 'Accepted')->count(),
+            'rejected' => (clone $query)->where('status', 'Rejected')->count(),
+            'converted' => (clone $query)->where('status', 'Converted')->count(),
         ]);
     }
 

@@ -290,7 +290,7 @@ const Dashboard = () => {
                 <div className="card lg:col-span-2 p-6 flex flex-col">
                     <h3 className="text-lg font-bold text-slate-800 mb-6">Revenue Overview</h3>
                     <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <BarChart data={stats.monthlyRevenue ?? []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                 <XAxis
@@ -324,7 +324,7 @@ const Dashboard = () => {
                 <div className="card p-6 flex flex-col">
                     <h3 className="text-lg font-bold text-slate-800 mb-6">Invoice Status</h3>
                     <div className="h-[300px] w-full flex items-center justify-center relative">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <PieChart>
                                 <Pie
                                     data={pieData}

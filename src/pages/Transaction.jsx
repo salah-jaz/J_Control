@@ -49,7 +49,13 @@ export default function Transaction() {
   );
 
   const { data: listResult, isLoading: listLoading } = useTransactionList(filters);
-  const { data: summary } = useTransactionSummary();
+
+  const summaryFilters = useMemo(() => {
+    const { page, per_page, ...rest } = filters;
+    return rest;
+  }, [filters]);
+
+  const { data: summary } = useTransactionSummary(summaryFilters);
 
   const transactions = Array.isArray(listResult?.data) ? listResult.data : [];
   const listMeta = listResult?.meta ?? null;
@@ -136,7 +142,7 @@ export default function Transaction() {
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold text-slate-800 flex items-center gap-2">
               <Filter size={16} className="text-brand-600" />
-              Filter Transactions
+              Filter Records
             </h3>
             <button
               onClick={() => {
@@ -171,7 +177,7 @@ export default function Transaction() {
               </select>
             </div>
             <div>
-              <label className="label">Bank Account</label>
+              <label className="label">Bank/Treasury</label>
               <select className="input" value={bankFilter} onChange={(e) => setBankFilter(e.target.value)}>
                 <option value="">All</option>
                 {bankAccounts.map((b) => (
@@ -318,7 +324,7 @@ export default function Transaction() {
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-800">Transaction Details</h3>
+              <h3 className="text-lg font-bold text-slate-800">Transaction Info</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -338,11 +344,11 @@ export default function Transaction() {
                     <div className="font-semibold text-slate-800">{viewDetail.id}</div>
                     <div className="text-slate-500">Amount</div>
                     <div className="font-bold text-slate-900">₹ {parseFloat(viewDetail.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
-                    <div className="text-slate-500">Bank</div>
+                    <div className="text-slate-500">Bank/Treasury</div>
                     <div className="font-medium text-slate-800">{viewDetail.bankName || viewDetail.bank || "—"}</div>
-                    <div className="text-slate-500">Party</div>
+                    <div className="text-slate-500">Related Party</div>
                     <div className="font-medium text-slate-800">{viewDetail.party || "—"}</div>
-                    <div className="text-slate-500">Date</div>
+                    <div className="text-slate-500">Transaction Date</div>
                     <div className="font-medium text-slate-800">{viewDetail.date || "—"}</div>
                     <div className="text-slate-500">Type</div>
                     <div>
@@ -355,11 +361,11 @@ export default function Transaction() {
                         {viewDetail.type}
                       </span>
                     </div>
-                    <div className="text-slate-500">Method</div>
+                    <div className="text-slate-500">Payment Method</div>
                     <div className="font-medium text-slate-800">{viewDetail.method || "—"}</div>
                     <div className="text-slate-500">Status</div>
                     <div className="font-medium text-slate-800">{displayStatus(viewDetail)}</div>
-                    <div className="text-slate-500">Reference</div>
+                    <div className="text-slate-500">Reference No.</div>
                     <div className="font-mono text-xs text-slate-700">{viewDetail.reference || viewDetail.transactionId || "—"}</div>
                   </div>
                   {viewDetail.description && (

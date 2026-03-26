@@ -508,8 +508,8 @@ function Agreements() {
                             {/* NEW Sidebar Navigation */}
                             <div className="w-64 border-r border-slate-100 bg-slate-50/50 p-4 flex flex-col gap-1.5 shrink-0">
                                 {[
-                                    { id: 'basic', label: 'General Identity', icon: Layout, desc: 'Identity & Metrics' },
-                                    { id: 'content', label: 'Letter Construction', icon: Pencil, desc: 'Interactive Builder' },
+                                    { id: 'basic', label: 'Agreement Details', icon: Layout, desc: 'Client & Dates' },
+                                    { id: 'content', label: 'Agreement Builder', icon: Pencil, desc: 'Interactive Content' },
                                 ].map((t) => (
                                     <button
                                         key={t.id}
@@ -542,10 +542,10 @@ function Agreements() {
                                         <div className="max-w-4xl mx-auto p-6 md:p-8 space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                                             <div className="space-y-8">
                                                 <section className="space-y-5">
-                                                   <SectionHeader icon={ShieldAlert} title="Agreement Foundations" color="violet" />
+                                                   <SectionHeader icon={ShieldAlert} title="Basic Details" color="violet" />
                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                        <div className="md:col-span-2 space-y-1.5">
-                                                           <Label text="Contract Heading / Title" required />
+                                                           <Label text="Agreement Title" required />
                                                            <input
                                                                type="text"
                                                                value={form.title}
@@ -555,13 +555,13 @@ function Agreements() {
                                                            />
                                                        </div>
                                                        <div className="space-y-1.5">
-                                                           <Label text="Assign Client Party" required />
+                                                           <Label text="Select Client" required />
                                                            <select
                                                                value={form.client_id}
                                                                onChange={(e) => setForm({ ...form, client_id: e.target.value })}
                                                                className={clsx("input-premium", errors.client_id && "border-rose-400")}
                                                            >
-                                                               <option value="">Select organizational entity...</option>
+                                                               <option value="">Select Client...</option>
                                                                {clients.map((c) => (
                                                                    <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
                                                                ))}
@@ -569,7 +569,7 @@ function Agreements() {
                                                        </div>
                                                        <div className="grid grid-cols-2 gap-3">
                                                            <div className="space-y-1.5">
-                                                               <Label text="Effective Date" required />
+                                                               <Label text="Agreement Date" required />
                                                                <input
                                                                    type="date"
                                                                    value={form.date}
@@ -578,7 +578,7 @@ function Agreements() {
                                                                />
                                                            </div>
                                                            <div className="space-y-1.5">
-                                                               <Label text="Lifecycle Status" />
+                                                               <Label text="Status" />
                                                                <select
                                                                    value={form.status}
                                                                    onChange={(e) => setForm({ ...form, status: e.target.value })}
@@ -594,10 +594,10 @@ function Agreements() {
                                                 </section>
 
                                                 <section className="space-y-5 bg-slate-50/50 p-6 rounded-[24px] border border-slate-100">
-                                                   <SectionHeader icon={Building2} title="Header Branding Overrides" color="indigo" />
+                                                   <SectionHeader icon={Building2} title="Branding Overrides" color="indigo" />
                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                                                        <div className="space-y-1.5">
-                                                           <Label text="Issuer Unit Name" />
+                                                           <Label text="Company Name" />
                                                            <input
                                                                type="text"
                                                                value={form.override_company_name}
@@ -606,7 +606,7 @@ function Agreements() {
                                                            />
                                                        </div>
                                                        <div className="space-y-1.5">
-                                                           <Label text="Promotional Tagline" />
+                                                           <Label text="Tagline" />
                                                            <input
                                                                type="text"
                                                                value={form.tagline}
@@ -615,7 +615,7 @@ function Agreements() {
                                                            />
                                                        </div>
                                                        <div className="space-y-1.5">
-                                                            <Label text="Letterhead Graphic" />
+                                                            <Label text="Company Logo" />
                                                             <div className="flex gap-2">
                                                                 <input
                                                                     type="text"
@@ -633,9 +633,9 @@ function Agreements() {
                                                 </section>
 
                                                 <section className="space-y-5">
-                                                   <SectionHeader icon={StickyNote} title="Administrative Audit Notes" color="rose" />
+                                                   <SectionHeader icon={StickyNote} title="Internal Notes" color="rose" />
                                                    <div className="space-y-1.5">
-                                                       <Label text="Internal Log Context" />
+                                                       <Label text="Private Notes" />
                                                        <textarea
                                                            value={form.notes}
                                                            onChange={(e) => setForm({ ...form, notes: e.target.value })}

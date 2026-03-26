@@ -126,8 +126,9 @@ export const getExpenses = async (filters = {}) => {
   return { data, meta: result.meta };
 };
 
-export const getExpenseSummary = async () => {
-  const response = await api.get("/expenses/summary");
+export const getExpenseSummary = async (filters = {}) => {
+  const params = { ...filters };
+  const response = await api.get("/expenses/summary", { params });
   return response.data;
 };
 

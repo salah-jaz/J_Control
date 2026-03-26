@@ -129,8 +129,15 @@ export const getIncomes = async (filters = {}) => {
 };
 
 /** GET /incomes/summary - dashboard totals */
-export const getIncomeSummary = async () => {
-    const response = await api.get("/incomes/summary");
+export const getIncomeSummary = async (filters = {}) => {
+    const params = {};
+    if (filters.search) params.search = filters.search;
+    if (filters.status && filters.status !== 'All') params.status = filters.status;
+    if (filters.category) params.category = filters.category;
+    if (filters.bank_account_id) params.bank_account_id = filters.bank_account_id;
+    if (filters.date_from) params.date_from = filters.date_from;
+    if (filters.date_to) params.date_to = filters.date_to;
+    const response = await api.get("/incomes/summary", { params });
     return response.data;
 };
 

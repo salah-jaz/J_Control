@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Calendar, Filter, Plus, Search, Trash2, Edit2, Eye, X, User, Layers, Landmark, Wallet, FileText, AlertCircle, TrendingUp, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
@@ -69,10 +69,52 @@ export default function Invoices() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const location = useLocation();
 
-  const invoiceParams = { page: currentPage, per_page: 20 };
-  const { data: invoicesResult, isLoading: invoicesLoading } = useInvoices(invoiceParams);
-  const { data: invoiceSummary } = useInvoiceSummary();
   const { data: clientsResult } = useClients({ per_page: 100 });
+  const clients = Array.isArray(clientsResult?.data) ? clientsResult.data : [];
+
+  const filters = useMemo(() => {
+    let date_from = undefined;
+    let date_to = undefined;
+    if (dateFilter !== 'All') {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (dateFilter === 'Today') {
+        date_from = todayStart.toISOString().split('T')[0];
+        date_to = date_from;
+      } else if (dateFilter === 'This Week') {
+        const weekStart = new Date(todayStart);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        date_from = weekStart.toISOString().split('T')[0];
+      } else if (dateFilter === 'This Month') {
+        date_from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      } else if (dateFilter === 'This Year') {
+        date_from = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+      }
+    }
+
+    // Map client name back to ID if needed, or if clientFilter is already ID
+    const selectedClient = clients.find(c => (c.company_name || c.client_name) === clientFilter);
+
+    return {
+      search: searchQuery.trim() || undefined,
+      status: statusFilter === 'All' ? undefined : statusFilter,
+      client_id: selectedClient?.id || undefined,
+      date_from,
+      date_to,
+      page: currentPage,
+      per_page: 20,
+    };
+  }, [searchQuery, statusFilter, clientFilter, dateFilter, currentPage, clients]);
+
+  const { data: invoicesResult, isLoading: invoicesLoading } = useInvoices(filters);
+
+  const summaryFilters = useMemo(() => {
+    const { page, per_page, ...rest } = filters;
+    return rest;
+  }, [filters]);
+
+  const { data: invoiceSummary } = useInvoiceSummary(summaryFilters);
+
   const { data: nextNumber, isLoading: nextInvoiceNumberLoading } = useNextInvoiceNumber(isFormOpen && !editingInvoice);
   const deleteInvoiceMutation = useDeleteInvoice();
   const queryClient = useQueryClient();
@@ -80,7 +122,7 @@ export default function Invoices() {
   const invoices = Array.isArray(invoicesResult?.data) ? invoicesResult.data : [];
   const invoicesMeta = invoicesResult?.meta ?? null;
   const totalInvoicesCount = invoicesMeta?.total ?? invoices.length;
-  const clients = Array.isArray(clientsResult?.data) ? clientsResult.data : [];
+
   const nextInvoiceNumber = nextNumber ?? (isFormOpen && !editingInvoice ? `INV-${new Date().getFullYear()}-draft` : null);
 
   useEffect(() => {
@@ -92,25 +134,11 @@ export default function Invoices() {
     window.history.replaceState({}, document.title);
   }, [location]);
 
-  const filteredInvoices = invoices.filter((inv) => {
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      const match =
-        (inv.invoice_number && inv.invoice_number.toLowerCase().includes(q)) ||
-        (inv.client_name && inv.client_name.toLowerCase().includes(q)) ||
-        (String(inv.id).includes(q));
-      if (!match) return false;
-    }
-    if (clientFilter) {
-      const invClientName = inv.client_name || inv.clientName;
-      const matchName = clients.find((c) => (c.company_name || c.client_name) === clientFilter);
-      const nameMatch = invClientName === clientFilter || (matchName && inv.client_id == matchName.id);
-      if (!nameMatch) return false;
-    }
-    if (statusFilter !== 'All' && inv.status !== statusFilter) return false;
-    if (!isDateInRange(inv.date, dateFilter)) return false;
-    return true;
-  });
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, clientFilter, dateFilter]);
+
+  const filteredInvoices = invoices; // Now server-side filtered
 
   const handleSave = async () => {
     invalidateCache('/invoices');
@@ -143,7 +171,7 @@ export default function Invoices() {
               </div>
               <h1 className="text-[28px] font-bold text-slate-900">Invoices</h1>
             </div>
-            <p className="text-slate-500 font-medium text-[14px]">Manage billing and payments effectively.</p>
+            <p className="text-slate-500 font-medium text-[14px]">Manage your invoices & billing efficiently.</p>
           </div>
           <button
             onClick={() => {
@@ -285,7 +313,7 @@ export default function Invoices() {
 
       <div className="card p-0 overflow-hidden">
         <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
-          <h3 className="font-bold text-slate-800">Invoice History</h3>
+          <h3 className="font-bold text-slate-800">Invoices List</h3>
           <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
             {invoicesLoading ? 'Loading...' : invoicesMeta
               ? `Showing ${(invoicesMeta.current_page - 1) * invoicesMeta.per_page + 1}–${Math.min(invoicesMeta.current_page * invoicesMeta.per_page, invoicesMeta.total)} of ${invoicesMeta.total}`
@@ -299,10 +327,10 @@ export default function Invoices() {
           <table className="w-full text-sm text-left min-w-[700px]">
             <thead className="bg-slate-50/80 text-[13px] font-semibold text-slate-600 capitalize tracking-normal border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4">Invoice ID</th>
+                <th className="px-6 py-4">Invoice #</th>
                 <th className="px-6 py-4">Client</th>
                 <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4 text-right">Grand Total</th>
+                <th className="px-6 py-4 text-right">Amount</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>

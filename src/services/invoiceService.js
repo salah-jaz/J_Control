@@ -17,9 +17,9 @@ export const getNextInvoiceNumber = async () => {
   }
 };
 
-export const getInvoiceSummary = async () => {
+export const getInvoiceSummary = async (filters = {}) => {
   try {
-    const response = await api.get('/invoices/summary');
+    const response = await api.get('/invoices/summary', { params: filters });
     return response.data;
   } catch (e) {
     console.error('Failed to fetch invoice summary', e);

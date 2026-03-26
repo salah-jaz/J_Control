@@ -18,8 +18,10 @@ export const getQuotations = async (filters = {}) => {
  * Quotation summary for stats cards.
  * @returns {Promise<{ total, draft, sent, accepted, rejected, converted }>}
  */
-export const getQuotationSummary = async () => {
-  const response = await api.get('/quotations/summary');
+export const getQuotationSummary = async (filters = {}) => {
+  const params = { ...filters };
+  if (params.status === 'All') delete params.status;
+  const response = await api.get('/quotations/summary', { params });
   return response.data;
 };
 

@@ -94,19 +94,49 @@ class TransactionController extends Controller
     }
 
     /**
-     * GET /transactions/summary - for stats cards.
+     * GET /transactions/summary - for stats cards with filters.
      */
-    public function summary()
+    public function summary(Request $request)
     {
-        $total = \App\Models\Transaction::count();
-        $totalIncome = (float) \App\Models\Transaction::where('type', 'Income')->sum('amount');
-        $totalExpense = (float) \App\Models\Transaction::where('type', 'Expense')->sum('amount');
-        $recentCount = \App\Models\Transaction::where('date', '>=', now()->subDays(7)->toDateString())->count();
+        $query = \App\Models\Transaction::query();
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('bank_account_id')) {
+            $query->where('bank_account_id', $request->bank_account_id);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('date', '<=', $request->date_to);
+        }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('reference_id', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHasMorph('related', [\App\Models\Income::class], function ($m) use ($search) {
+                        $m->where('client', 'like', "%{$search}%");
+                    })
+                    ->orWhereHasMorph('related', [\App\Models\Expense::class], function ($m) use ($search) {
+                        $m->where('vendor', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $totalIncomes = (clone $query)->where('type', 'Income')->sum('amount');
+        $totalExpenses = (clone $query)->where('type', 'Expense')->sum('amount');
+        $recentCount = (clone $query)->where('date', '>=', now()->subDays(7)->toDateString())->count();
 
         return response()->json([
-            'totalTransactions' => $total,
-            'totalIncome' => round($totalIncome, 2),
-            'totalExpense' => round($totalExpense, 2),
+            'totalTransactions' => (clone $query)->count(),
+            'totalIncome' => round((float)$totalIncomes, 2),
+            'totalExpense' => round((float)$totalExpenses, 2),
             'recentCount' => $recentCount,
         ]);
     }
