@@ -27,7 +27,7 @@ const emptyForm = {
   qrCodeFile: null,
 };
 
-const tabs = ["Basic Info", "Bank Details", "Balance & Status", "QR Code", "Notes"];
+const tabs = ["Account Info", "Bank Details", "Balance", "QR Code", "Private Notes"];
 
 export default function BankAccounts() {
   const [data, setData] = useState([]);
@@ -390,7 +390,7 @@ export default function BankAccounts() {
                       {input("accountName")}
                     </div>
                     <div>
-                      <label className="label">Nick Name</label>
+                      <label className="label">Alias / Reference Name</label>
                       {input("nickName")}
                     </div>
                     <div>
@@ -429,7 +429,7 @@ export default function BankAccounts() {
                       </label>
                       {input("ifsc")}
                     </div>
-                    <div><label className="label">Branch</label>{input("branch")}</div>
+                    <div><label className="label">Bank Branch</label>{input("branch")}</div>
                     <div><label className="label">MICR Code</label>{input("micr")}</div>
                     <div><label className="label">SWIFT Code</label>{input("swift")}</div>
                   </>
@@ -491,7 +491,7 @@ export default function BankAccounts() {
 
                 {activeTab === 3 && (
                   <div className="md:col-span-2">
-                    <label className="label">Start QR Code Upload</label>
+                    <label className="label">Upload Payment QR Code</label>
                     <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition cursor-pointer relative flex flex-col items-center justify-center min-h-[300px]">
                       <input
                         type="file"
@@ -521,7 +521,7 @@ export default function BankAccounts() {
                   <div className="md:col-span-2">
                     <textarea
                       className="input h-32 w-full"
-                      placeholder="Internal notes about this account..."
+                      placeholder="Private Notes..."
                       value={form.notes}
                       onChange={(e) => setForm({ ...form, notes: e.target.value })}
                     />

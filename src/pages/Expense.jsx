@@ -4,7 +4,7 @@ import {
   TrendingUp, TrendingDown, AlertCircle, Receipt, Loader2, Save, Layers, User, Target, 
   Building2, Calendar as CalendarIcon, Phone, Mail, BadgeCheck, Activity, 
   Briefcase, Filter, MessageSquare, CreditCard, Banknote, CheckCircle2,
-  ShoppingCart, Truck, MapPin
+  ShoppingCart, Truck, MapPin, ChevronDown, ChevronRight
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -161,7 +161,13 @@ export default function Expense() {
   }, [searchDebounced, statusFilter, categoryFilter, bankFilter, vendorFilter, dateFilter, dateFrom, dateTo, currentPage, today]);
 
   const { data: expenseResult, isLoading: expenseLoading } = useExpenseList(filters);
-  const { data: expenseSummary } = useExpenseSummary();
+
+  const summaryFilters = useMemo(() => {
+    const { page, per_page, ...rest } = filters;
+    return rest;
+  }, [filters]);
+
+  const { data: expenseSummary } = useExpenseSummary(summaryFilters);
 
   const expenseRecords = Array.isArray(expenseResult?.data) ? expenseResult.data : [];
   const expenseMeta = expenseResult?.meta ?? null;
@@ -315,7 +321,7 @@ export default function Expense() {
       );
       if (e.initialDepositBank) {
         setFirstInvalidBankKey("initialDepositBank");
-        setTab("summary");
+        setTab("financial");
       } else {
         const firstIdx = (form.extraInstallments || []).findIndex(
           (_, i) => e[`installmentBank_${i}`]
@@ -369,7 +375,8 @@ export default function Expense() {
 
   const StatCard = ({ title, value, icon: Icon, color }) => (
     <div className="card group relative overflow-hidden cursor-default !border-0 p-5 h-[140px] flex flex-col justify-between">
-      <div className={clsx("absolute top-0 left-0 right-0 h-[2px]", "bg-gradient-to-r from-indigo-500 to-blue-300")} />
+      {/* Top Gradient Line */}
+      <div className={clsx("absolute top-0 left-0 right-0 h-[2px]", "bg-gradient-to-r from-brand-500 to-brand-300")} />
       
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-0.5">
@@ -378,7 +385,8 @@ export default function Expense() {
         </div>
         <div className={clsx(
           "h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110",
-          color.replace('bg-', 'bg-opacity-10 '),
+          color,
+          "bg-opacity-10",
           color.replace('bg-', 'text-')
         )}>
           <Icon className="w-5 h-5 font-bold" />
@@ -694,251 +702,294 @@ export default function Expense() {
       )}
 
       {openForm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
-          <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-            <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white z-20">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 bg-gradient-to-br from-indigo-600 to-blue-500 text-white rounded-xl flex items-center justify-center shadow-lg">
-                  <TrendingUp className="h-5 w-5 stroke-[2.5]" />
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-3xl rounded-t-[32px] sm:rounded-[24px] shadow-2xl flex flex-col max-h-[96vh] border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-[0.98] duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between px-8 pt-8 pb-6 shrink-0">
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="h-9 w-9 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/30">
+                    <TrendingDown size={18} className="text-white" />
+                  </div>
+                  <h2 className="text-[22px] font-extrabold text-slate-900 tracking-tight">
+                    {editId ? 'Modify Expense Entry' : 'New Expense Entry'}
+                  </h2>
                 </div>
-                <div>
-                  <h3 className="text-[20px] font-bold text-slate-900">
-                    {editId ? "Modify Expenditure" : "New Expenditure"}
-                  </h3>
-                  <p className="text-[12px] font-medium text-slate-500 mt-0.5">Capture operational outflow records</p>
-                </div>
+                <p className="text-[13.5px] text-slate-400 font-medium ml-12">Log your business expenditures.</p>
               </div>
-              <button onClick={() => setOpenForm(false)} className="p-2 text-slate-400 hover:text-rose-500"><X size={20} /></button>
+              <button onClick={() => setOpenForm(false)} className="h-9 w-9 bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full flex items-center justify-center transition-all active:scale-90">
+                <X size={18} />
+              </button>
             </div>
 
-            <div className="flex flex-1 overflow-hidden">
-              <div className="w-64 border-r border-slate-100 bg-slate-50/50 p-4 flex flex-col gap-2">
+            {/* Step Tabs */}
+            <div className="px-8 pb-6 shrink-0">
+              <div className="flex items-center gap-0">
                 {[
-                  { id: 'basic', label: 'Primary Context', icon: ShoppingCart, desc: 'Vendor & Project' },
-                  { id: 'summary', label: 'Fiscal Summary', icon: Wallet, desc: 'Valuation & Tax' },
-                  { id: 'installments', label: 'Payment Splits', icon: Layers, desc: 'Installment Logic' },
-                  { id: 'internal', label: 'Internal Ops', icon: Briefcase, desc: 'Staff & Notes' },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTab(t.id)}
-                    className={clsx(
-                      "flex items-center gap-3 p-3.5 rounded-xl transition-all group text-left relative overflow-hidden",
-                      tab === t.id ? "bg-white text-indigo-600 shadow-md ring-1 ring-slate-200" : "text-slate-500 hover:bg-white hover:text-slate-900"
-                    )}
-                  >
-                    {tab === t.id && <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-600 rounded-full" />}
-                    <t.icon className="h-5 w-5" />
-                    <div>
-                      <p className="text-[14px] font-bold">{t.label}</p>
-                      <p className="text-[10px] font-medium opacity-60 uppercase">{t.desc}</p>
+                  { id:'basic',label:'General',icon:ShoppingCart },
+                  { id:'financial',label:'Payment',icon:Wallet },
+                  { id:'installments',label:'Installments',icon:Layers },
+                  { id:'internal',label:'Internal',icon:Briefcase },
+                ].map((step, idx, arr) => {
+                  const isActive = step.id === tab;
+                  const order = ['basic','financial','installments','internal'];
+                  const isDone = order.indexOf(tab) > idx;
+                  const StepIcon = step.icon;
+                  return (
+                    <div key={step.id} className="flex items-center flex-1">
+                      <button onClick={() => setTab(step.id)} className="flex flex-col items-center gap-1.5 group transition-all flex-1">
+                        <div className={clsx("h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 border-2", isActive?"bg-brand-600 border-brand-600 shadow-lg shadow-brand-500/30":isDone?"bg-emerald-500 border-emerald-500":"bg-white border-slate-200 group-hover:border-slate-300")}>
+                          {isDone?<Check size={16} className="text-white"/>:<StepIcon size={16} className={isActive?"text-white":"text-slate-400"}/>}
+                        </div>
+                        <span className={clsx("text-[11.5px] font-bold transition-colors",isActive?"text-brand-600":isDone?"text-emerald-600":"text-slate-400")}>{step.label}</span>
+                      </button>
+                      {idx<arr.length-1&&<div className={clsx("h-0.5 flex-1 mb-5 mx-1 rounded-full transition-all duration-500",isDone?"bg-emerald-400":"bg-slate-100")}/>}
                     </div>
-                  </button>
-                ))}
-                
-                <div className="mt-auto bg-slate-900 rounded-xl p-5 text-white shadow-lg space-y-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Target className="h-4 w-4 text-indigo-400" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-200">Summary</span>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center text-[13px]">
-                       <span className="opacity-60">Total Amount</span>
-                       <span className="font-black text-indigo-400">₹{totalAmount.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[13px]">
-                       <span className="opacity-60">Balance Due</span>
-                       <span className="font-bold text-amber-400">₹{balanceDue.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-white">
-                <div className="space-y-8 max-w-3xl mx-auto">
-                  {tab === "basic" && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                      <SectionHeader icon={Truck} title="Vendor Relationship" color="blue" />
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1.5">
-                          <Label text="Vendor" required />
-                          <input className={clsx("input-premium", errors.vendor && "border-rose-400")} placeholder="e.g. AWS" value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label text="Category" />
-                          <div className="flex gap-2">
-                             <select className="input-premium flex-1" value={form.category} onChange={(e) => {
-                               if (e.target.value === "__add__") return setAddCategoryModalOpen(true);
-                               if (e.target.value === "__manage__") return setManageCategoriesModalOpen(true);
-                               setForm({ ...form, category: e.target.value });
-                             }}>
-                               <option value="">Select category</option>
-                               {expenseCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-                               <option value="__add__">+ Add New</option>
-                               <option value="__manage__">Manage List</option>
-                             </select>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1.5">
-                           <Label text="Service / Project" />
-                           <input className="input-premium" placeholder="e.g. Hosting" value={form.project} onChange={(e) => setForm({ ...form, project: e.target.value })} />
-                        </div>
-                        <div className="space-y-1.5">
-                           <Label text="Bill Number" />
-                           <input className="input-premium" placeholder="Ref No" value={form.billNo} onChange={(e) => setForm({ ...form, billNo: e.target.value })} />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label text="Description" />
-                        <textarea className="input-premium min-h-[100px] py-3" placeholder="Briefly describe the expense..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-                      </div>
-                    </div>
-                  )}
-
-                  {tab === "summary" && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                      <SectionHeader icon={CreditCard} title="Fiscal Architecture" color="rose" />
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1.5">
-                           <Label text="Amount (Subtotal)" required />
-                           <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-                        </div>
-                        <div className="space-y-1.5">
-                           <Label text="Discount" />
-                           <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1.5">
-                           <Label text="GST Amount" />
-                           <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.gstAmount} onChange={(e) => setForm({ ...form, gstAmount: e.target.value })} />
-                        </div>
-                        <div className="space-y-1.5">
-                           <Label text="Payment Date" />
-                           <input type="date" className="input-premium" value={form.paidDate} onChange={(e) => setForm({ ...form, paidDate: e.target.value })} />
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4 pt-4 border-t border-slate-100">
-                        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setForm({ ...form, initialDepositEnabled: !form.initialDepositEnabled })}>
-                          <div className={clsx("h-6 w-6 rounded border-2 flex items-center justify-center transition-all", form.initialDepositEnabled ? "bg-indigo-600 border-indigo-600" : "bg-white border-slate-200")}>
-                            {form.initialDepositEnabled && <Check size={14} className="text-white" />}
-                          </div>
-                          <span className="text-[14px] font-bold text-slate-700">Initial Down Payment</span>
-                        </div>
-                        
-                        {form.initialDepositEnabled && (
-                          <div className="grid grid-cols-2 gap-6 animate-in slide-in-from-top-2">
-                            <div className="space-y-1.5">
-                               <Label text="Amount" />
-                               <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.initialDepositAmount} onChange={(e) => setForm({ ...form, initialDepositAmount: e.target.value })} />
-                            </div>
-                            <div className="space-y-1.5">
-                               <Label text="Source Bank" />
-                               <button type="button" onClick={() => { setBankModalFor("initial"); setBankModalOpen(true); }} className="input-premium text-left relative h-[42px]">
-                                 {form.initialDepositBankName || 'Select Bank'}
-                                 <Landmark className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                               </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {tab === "installments" && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-                        <SectionHeader icon={Layers} title="Sequential Liability" color="indigo" />
-                        <button type="button" onClick={() => setForm({ ...form, extraInstallments: [...(form.extraInstallments || []), { date: "", amount: "", bankAccountId: null, bankName: "", note: "" }] })} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-indigo-500/20">
-                           <Plus size={14} /> Add Installment
-                        </button>
-                      </div>
-                      <div className="space-y-4">
-                        {form.extraInstallments.map((row, idx) => (
-                          <div key={idx} className="p-4 rounded-xl border border-slate-200 grid grid-cols-12 gap-4 items-end bg-slate-50/30 group">
-                            <div className="col-span-3 space-y-1.5">
-                               <Label text="Date" />
-                               <input type="date" className="input-premium py-1.5 text-xs" value={row.date} onChange={(e) => {
-                                 const next = [...form.extraInstallments];
-                                 next[idx].date = e.target.value;
-                                 setForm({ ...form, extraInstallments: next });
-                               }} />
-                            </div>
-                            <div className="col-span-3 space-y-1.5">
-                               <Label text="Amount" />
-                               <input type="number" className="input-premium py-1.5 text-xs" placeholder="0.00" value={row.amount} onChange={(e) => {
-                                  const next = [...form.extraInstallments];
-                                  next[idx].amount = e.target.value;
-                                  setForm({ ...form, extraInstallments: next });
-                               }} />
-                            </div>
-                            <div className="col-span-3 space-y-1.5">
-                               <Label text="Bank" />
-                               <button type="button" onClick={() => { setBankModalFor({ type: "installment", index: idx }); setBankModalOpen(true); }} className="input-premium py-1.5 text-xs text-left h-[34px] relative">
-                                 {row.bankName || 'Select'}
-                                 <Landmark className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                               </button>
-                            </div>
-                            <div className="col-span-2 space-y-1.5">
-                               <Label text="Note" />
-                               <input type="text" className="input-premium py-1.5 text-xs" placeholder="Note" value={row.note} onChange={(e) => {
-                                  const next = [...form.extraInstallments];
-                                  next[idx].note = e.target.value;
-                                  setForm({ ...form, extraInstallments: next });
-                               }} />
-                            </div>
-                            <div className="col-span-1 flex justify-end">
-                               <button type="button" onClick={() => setForm({ ...form, extraInstallments: form.extraInstallments.filter((_, i) => i !== idx) })} className="p-2 text-rose-400 hover:bg-rose-50 rounded-lg group-hover:opacity-100 opacity-0 transition-opacity">
-                                  <Trash2 size={16} />
-                               </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {tab === "internal" && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                      <SectionHeader icon={Briefcase} title="Managerial Assignments" color="fuchsia" />
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1.5">
-                           <Label text="Assigned Staff" />
-                           <input className="input-premium" placeholder="Staff Name" value={form.staff} onChange={(e) => setForm({ ...form, staff: e.target.value })} />
-                        </div>
-                        <div className="space-y-1.5">
-                           <Label text="Department" />
-                           <input className="input-premium" placeholder="e.g. Sales" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label text="Internal Notes" />
-                        <textarea className="input-premium min-h-[120px] py-3" placeholder="Restricted audit notes..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="px-8 py-5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 z-20">
-              <button onClick={() => setOpenForm(false)} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:bg-slate-50 transition-all active:scale-95 shadow-sm">
-                Discard Changes
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="px-10 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-500 text-white rounded-xl text-[14px] font-bold shadow-lg shadow-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/30 transition-all hover:-translate-y-[2px] active:scale-95 group relative overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
-                <div className="flex items-center gap-2 relative z-10">
-                   {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                   <span>{isSaving ? 'Processing...' : (editId ? 'Commit Update' : 'Authorize Expense')}</span>
-                </div>
-              </button>
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto px-8 pb-4 custom-scrollbar">
+              <div className="max-w-3xl mx-auto py-4">
+                {tab === 'basic' && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-3 duration-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700 flex items-center gap-1">Vendor <span className="text-rose-500 text-[11px] font-black">required</span></label>
+                        <div className="relative">
+                          <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                          <input className={clsx("w-full pl-10 pr-4 py-3 bg-white border rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none transition-all",errors.vendor?"border-rose-300 ring-2 ring-rose-100":"border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15")} placeholder="e.g. AWS" value={form.vendor} onChange={(e)=>setForm({...form,vendor:e.target.value})}/>
+                        </div>
+                        {errors.vendor&&<p className="text-[11.5px] text-rose-500 flex items-center gap-1"><AlertCircle size={11}/> {errors.vendor}</p>}
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700 flex items-center gap-1">Expense Type <span className="text-rose-500 text-[11px] font-black">required</span></label>
+                        <input className={clsx("w-full px-4 py-3 bg-white border rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none transition-all",errors.expenseType?"border-rose-300 ring-2 ring-rose-100":"border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15")} placeholder="e.g. Hosting" value={form.expenseType} onChange={(e)=>setForm({...form,expenseType:e.target.value})}/>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Project / Service</label>
+                        <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Project Name" value={form.project} onChange={(e)=>setForm({...form,project:e.target.value})}/>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Category</label>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <select className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all appearance-none" value={form.category} onChange={(e)=>{if(e.target.value==='__add__')return setAddCategoryModalOpen(true);if(e.target.value==='__manage__')return setManageCategoriesModalOpen(true);setForm({...form,category:e.target.value});}}>
+                              <option value="">Select category</option>
+                              {expenseCategories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+                              <option value="__add__">+ Add New</option>
+                              <option value="__manage__">Manage List</option>
+                            </select>
+                            <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                          </div>
+                          <button type="button" onClick={()=>setAddCategoryModalOpen(true)} className="h-[46px] w-[46px] bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl flex items-center justify-center transition-all active:scale-95"><Plus size={18}/></button>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Bill Number</label>
+                        <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Bill ID" value={form.billNo} onChange={(e)=>setForm({...form,billNo:e.target.value})}/>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700 flex items-center gap-1">Subtotal Amount (₹) <span className="text-rose-500 text-[11px] font-black">required</span></label>
+                        <input type="number" step="0.01" className={clsx("w-full px-4 py-3 bg-white border rounded-xl text-[14px] font-bold text-slate-800 placeholder:text-slate-300 outline-none transition-all",errors.amount?"border-rose-300 ring-2 ring-rose-100":"border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15")} placeholder="0.00" value={form.amount} onChange={(e)=>setForm({...form,amount:e.target.value})}/>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Description</label>
+                      <textarea className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-medium text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 transition-all min-h-[100px] resize-none" placeholder="Details about this expense…" value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})}/>
+                    </div>
+                    <div className="flex justify-end pt-2">
+                      <button type="button" onClick={()=>setTab('financial')} className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-[13.5px] font-bold rounded-xl hover:bg-brand-700 transition-all active:scale-95 shadow-lg shadow-brand-500/20">Next: Payment <ChevronRight size={16}/></button>
+                    </div>
+                  </div>
+                )}
+
+                {tab === 'financial' && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-3 duration-300">
+                    <div className="bg-slate-900 rounded-2xl p-5 text-white space-y-2">
+                      <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400 mb-2">Spending Summary</h4>
+                      <div className="flex justify-between text-[13px] text-slate-400"><span>Subtotal Amount</span><span className="text-white font-semibold">₹{Number(form.amount||0).toLocaleString()}</span></div>
+                      {parseFloat(form.discount)>0&&<div className="flex justify-between text-[13px] text-emerald-400"><span>Discount</span><span>- ₹{parseFloat(form.discount).toLocaleString()}</span></div>}
+                      {parseFloat(form.gstAmount)>0&&<div className="flex justify-between text-[13px] text-slate-400"><span>GST / Tax</span><span className="text-white">+ ₹{parseFloat(form.gstAmount).toLocaleString()}</span></div>}
+                      <div className="flex justify-between text-[18px] font-black pt-2 border-t border-slate-700"><span>Total Payable</span><span className="text-brand-400">₹{totalAmount.toLocaleString()}</span></div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Discount (₹)</label>
+                        <input type="number" step="0.01" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 transition-all" placeholder="0.00" value={form.discount} onChange={(e)=>setForm({...form,discount:e.target.value})}/>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">GST Amount (₹)</label>
+                        <input type="number" step="0.01" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 transition-all" placeholder="0.00" value={form.gstAmount} onChange={(e)=>setForm({...form,gstAmount:e.target.value})}/>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Payment Status</label>
+                        <div className="relative">
+                          <select className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 transition-all appearance-none" value={form.status} onChange={(e)=>setForm({...form,status:e.target.value})}>
+                            {['Paid','Pending','Partial','Overdue'].map(s=><option key={s} value={s}>{s}</option>)}
+                          </select>
+                          <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Payment Date</label>
+                        <div className="relative">
+                          <CalendarIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                          <input type="date" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 transition-all" value={form.paidDate} onChange={(e)=>setForm({...form,paidDate:e.target.value})}/>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Payment Method</label>
+                        <div className="relative">
+                          <select className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all appearance-none" value={form.method} onChange={(e)=>setForm({...form,method:e.target.value})}>
+                            {['Bank Transfer','UPI','Cash','Cheque','Card','Other'].map(m=><option key={m}>{m}</option>)}
+                          </select>
+                          <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Transaction ID</label>
+                        <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="UTR / Ref number" value={form.transactionId} onChange={(e)=>setForm({...form,transactionId:e.target.value})}/>
+                      </div>
+                    </div>
+                    <div onClick={()=>setForm({...form,initialDepositEnabled:!form.initialDepositEnabled})} className={clsx("flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all",form.initialDepositEnabled?"bg-brand-50 border-brand-200":"bg-slate-50 border-slate-100 hover:border-slate-200")}>
+                      <div className={clsx("h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0",form.initialDepositEnabled?"bg-brand-600 border-brand-600":"bg-white border-slate-300")}>
+                        {form.initialDepositEnabled&&<Check size={14} className="text-white"/>}
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-bold text-slate-800">Paid an advance / initial deposit</p>
+                        <p className="text-[12px] text-slate-400 font-medium">Record an upfront partial expenditure</p>
+                      </div>
+                    </div>
+                    {form.initialDepositEnabled&&(
+                      <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-brand-200 ml-3 animate-in slide-in-from-top-2 duration-200">
+                        <div className="space-y-1">
+                          <label className="text-[13px] font-semibold text-slate-700">Advance Amount (₹)</label>
+                          <input type="number" step="0.01" readOnly={editId&&savedExtraInstallmentsCount>0} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-bold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 transition-all" placeholder="0.00" value={form.initialDepositAmount} onChange={(e)=>setForm({...form,initialDepositAmount:e.target.value})}/>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[13px] font-semibold text-slate-700">Paid From</label>
+                          <button type="button" disabled={editId&&savedExtraInstallmentsCount>0} onClick={()=>{setBankModalFor('initial');setBankModalOpen(true);}} className={clsx("w-full px-4 py-3 bg-white border rounded-xl text-[14px] font-semibold text-left flex items-center justify-between transition-all",errors.initialDepositBank?"border-rose-300":"border-slate-200 hover:border-slate-300")}>
+                            <span className={form.initialDepositBankName?'text-slate-800':'text-slate-300'}>{form.initialDepositBankName||'Select bank account…'}</span>
+                            <Landmark size={15} className="text-slate-300"/>
+                          </button>
+                          {errors.initialDepositBank&&<p className="text-[11.5px] text-rose-500">{errors.initialDepositBank}</p>}
+                        </div>
+                      </div>
+                    )}
+                    {form.initialDepositEnabled&&parseFloat(form.initialDepositAmount)>0&&(
+                      <div className="flex items-center justify-between px-5 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
+                        <span className="text-[13px] font-bold text-amber-700">Balance Due After Advance</span>
+                        <span className="text-[18px] font-extrabold text-amber-600">₹{Math.max(0,balanceDue).toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between pt-2">
+                      <button type="button" onClick={()=>setTab('basic')} className="flex items-center gap-1.5 px-5 py-2.5 text-slate-500 hover:text-slate-700 text-[13.5px] font-bold transition-all">← Back</button>
+                      <button type="button" onClick={()=>setTab('installments')} className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-[13.5px] font-bold rounded-xl hover:bg-brand-700 transition-all active:scale-95 shadow-lg shadow-brand-500/20">Next: Installments <ChevronRight size={16}/></button>
+                    </div>
+                  </div>
+                )}
+
+                {tab === 'installments' && (
+                  <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
+                    <p className="text-[13px] text-slate-500 font-medium tracking-tight">Track additional payment installments for this expense record.</p>
+                    <div className="space-y-3">
+                      {(!form.extraInstallments || form.extraInstallments.length === 0) ? (
+                        <div className="py-16 flex flex-col items-center justify-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                          <div className="h-14 w-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-300 mb-3"><Layers size={28}/></div>
+                          <p className="text-[14px] font-medium text-slate-400">No installments added yet.</p>
+                        </div>
+                      ) : form.extraInstallments.map((row, idx) => {
+                        const rowIsSaved = editId && idx < savedExtraInstallmentsCount;
+                        return (
+                          <div key={idx} className={clsx("flex items-center gap-3 group rounded-2xl px-4 py-3 border transition-all", rowIsSaved?"bg-slate-50 border-slate-100 opacity-70":"bg-white border-slate-200 hover:border-slate-300")}>
+                            <span className="text-[12px] font-black text-slate-300 w-5 shrink-0 text-center">{idx+1}</span>
+                            <div className="relative shrink-0">
+                              <CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                              <input type="date" readOnly={rowIsSaved} className="w-36 pl-9 pr-3 py-2.5 bg-transparent border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-700 outline-none focus:border-brand-400" value={row.date} onChange={(e)=>{const n=[...form.extraInstallments];n[idx].date=e.target.value;setForm({...form,extraInstallments:n});}}/>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className="text-[13px] font-bold text-slate-400">₹</span>
+                              <input type="number" readOnly={rowIsSaved} className="w-28 bg-transparent border border-slate-200 rounded-xl px-3 py-2.5 text-[13px] font-black text-slate-900 outline-none focus:border-brand-400" placeholder="0.00" value={row.amount} onChange={(e)=>{const n=[...form.extraInstallments];n[idx].amount=e.target.value;setForm({...form,extraInstallments:n});}}/>
+                            </div>
+                            <button type="button" disabled={rowIsSaved} onClick={()=>{setBankModalFor({type:'installment',index:idx});setBankModalOpen(true);}} className={clsx("flex-1 px-3 py-2.5 bg-white border rounded-xl text-[12px] font-semibold text-left truncate transition-all",errors[`installmentBank_${idx}`]?"border-rose-300":"border-slate-200 hover:border-slate-300")}>
+                              {row.bankName||<span className="text-slate-300">Select bank…</span>}
+                            </button>
+                            <input type="text" readOnly={rowIsSaved} className="w-28 bg-transparent border border-slate-200 rounded-xl px-3 py-2.5 text-[12px] font-medium text-slate-600 placeholder:text-slate-300 outline-none focus:border-brand-400" placeholder="Note…" value={row.note} onChange={(e)=>{const n=[...form.extraInstallments];n[idx].note=e.target.value;setForm({...form,extraInstallments:n});}}/>
+                            {!rowIsSaved&&<button type="button" onClick={()=>setForm({...form,extraInstallments:form.extraInstallments.filter((_,i)=>i!==idx)})} className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <button type="button" onClick={()=>setForm({...form,extraInstallments:[...(form.extraInstallments||[]),{date:'',amount:'',bankAccountId:null,bankName:'',note:''}]})} className="flex items-center gap-2 text-[13px] font-bold text-brand-600 hover:text-brand-700 px-4 py-2 hover:bg-brand-50 rounded-xl transition-all">
+                      <Plus size={16}/> Add Installment
+                    </button>
+                    <div className="flex justify-between pt-2">
+                       <button type="button" onClick={()=>setTab('financial')} className="flex items-center gap-1.5 px-5 py-2.5 text-slate-500 hover:text-slate-700 text-[13.5px] font-bold transition-all">← Back</button>
+                       <button type="button" onClick={()=>setTab('internal')} className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-[13.5px] font-bold rounded-xl hover:bg-brand-700 transition-all active:scale-95 shadow-lg shadow-brand-500/20">Next: Internal <ChevronRight size={16}/></button>
+                    </div>
+                  </div>
+                )}
+
+                {tab === 'internal' && (
+                  <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
+                    <p className="text-[13px] text-slate-500 font-medium">Internal details for staff, audit, and follow-up tracking.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Assigned Staff</label>
+                        <div className="relative">
+                          <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                          <input className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Lead agent" value={form.staff} onChange={(e)=>setForm({...form,staff:e.target.value})}/>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Department</label>
+                        <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Sales / Ops / Treasury" value={form.department} onChange={(e)=>setForm({...form,department:e.target.value})}/>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Reference Number</label>
+                        <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Internal reference or PO number" value={form.referenceNumber} onChange={(e)=>setForm({...form,referenceNumber:e.target.value})}/>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Location</label>
+                        <div className="relative">
+                          <MapPin size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                          <input className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="City or Office location" value={form.location} onChange={(e)=>setForm({...form,location:e.target.value})}/>
+                        </div>
+                      </div>
+                      <div className="space-y-1 sm:col-span-2">
+                        <label className="text-[13px] font-semibold text-slate-700">Internal Notes</label>
+                        <textarea className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-medium text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all min-h-[80px] resize-none" placeholder="Restricted notes for internal audit only…" value={form.notes} onChange={(e)=>setForm({...form,notes:e.target.value})}/>
+                      </div>
+                    </div>
+                    <div className="flex justify-start pt-2">
+                      <button type="button" onClick={()=>setTab('installments')} className="flex items-center gap-1.5 px-5 py-2.5 text-slate-500 hover:text-slate-700 text-[13.5px] font-bold transition-all">← Back</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="shrink-0 px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-4">
+              <div className="flex flex-col">
+                <span className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Total Outflow</span>
+                <span className="text-[22px] font-black text-slate-900 leading-tight">₹{totalAmount.toLocaleString()}</span>
+                {form.initialDepositEnabled && parseFloat(form.initialDepositAmount) > 0 && (
+                  <span className="text-[11px] text-slate-400 font-medium">Balance: ₹{Math.max(0, balanceDue).toLocaleString()}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setOpenForm(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-[14px] font-bold rounded-xl hover:bg-slate-50 transition-all active:scale-95">Cancel</button>
+                <button type="button" onClick={handleSave} disabled={isSaving} className="flex items-center gap-2.5 px-8 py-3 bg-brand-600 hover:bg-brand-700 text-white text-[14px] font-extrabold rounded-xl shadow-xl shadow-brand-500/25 hover:shadow-brand-500/40 transition-all active:scale-95 disabled:opacity-60">
+                  {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                  {isSaving ? 'Saving...' : editId ? 'Save Changes' : 'Save Record'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

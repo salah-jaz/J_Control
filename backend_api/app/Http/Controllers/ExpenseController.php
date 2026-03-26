@@ -141,11 +141,39 @@ class ExpenseController extends Controller
     }
 
     /**
-     * GET /expenses/summary
+     * GET /expenses/summary - filter-aware aggregates.
+     * Query params: search, status, category, bank_account_id, date_from, date_to
      */
-    public function summary()
+    public function summary(Request $request)
     {
-        $expenses = Expense::all();
+        $query = Expense::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('vendor', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhere('bill_no', 'like', "%{$search}%")
+                    ->orWhere('reference_number', 'like', "%{$search}%");
+            });
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+        if ($request->filled('bank_account_id')) {
+            $query->where('bank_account_id', $request->bank_account_id);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('paid_date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('paid_date', '<=', $request->date_to);
+        }
+
+        $expenses = $query->get();
         $totalExpenses = 0;
         $totalPaid = 0;
         $now = now();

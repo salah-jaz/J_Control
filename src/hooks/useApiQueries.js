@@ -157,10 +157,10 @@ export function useInvoices(params = {}) {
   });
 }
 
-export function useInvoiceSummary() {
+export function useInvoiceSummary(filters = {}) {
   return useQuery({
-    queryKey: queryKeys.invoices.summary(),
-    queryFn: getInvoiceSummary,
+    queryKey: queryKeys.invoices.summary(filters),
+    queryFn: () => getInvoiceSummary(filters),
     staleTime: 60 * 1000,
     placeholderData: (prev) => prev,
   });
@@ -228,10 +228,10 @@ export function useIncomeList(filters = {}) {
   });
 }
 
-export function useIncomeSummary() {
+export function useIncomeSummary(filters = {}) {
   return useQuery({
-    queryKey: queryKeys.income.summary(),
-    queryFn: getIncomeSummary,
+    queryKey: queryKeys.income.summary(filters),
+    queryFn: () => getIncomeSummary(filters),
     staleTime: 60 * 1000,
     placeholderData: (prev) => prev,
   });
@@ -247,10 +247,10 @@ export function useQuotationList(filters = {}) {
   });
 }
 
-export function useQuotationSummary() {
+export function useQuotationSummary(filters = {}) {
   return useQuery({
-    queryKey: queryKeys.quotations.summary(),
-    queryFn: getQuotationSummary,
+    queryKey: queryKeys.quotations.summary(filters),
+    queryFn: () => getQuotationSummary(filters),
     staleTime: 60 * 1000,
     placeholderData: (prev) => prev,
   });
@@ -266,10 +266,10 @@ export function useExpenseList(filters = {}) {
   });
 }
 
-export function useExpenseSummary() {
+export function useExpenseSummary(filters = {}) {
   return useQuery({
-    queryKey: queryKeys.expenses.summary(),
-    queryFn: getExpenseSummary,
+    queryKey: queryKeys.expenses.summary(filters),
+    queryFn: () => getExpenseSummary(filters),
     staleTime: 60 * 1000,
     placeholderData: (prev) => prev,
   });
@@ -285,10 +285,10 @@ export function useTransactionList(filters = {}) {
   });
 }
 
-export function useTransactionSummary() {
+export function useTransactionSummary(filters = {}) {
   return useQuery({
-    queryKey: queryKeys.transactions.summary(),
-    queryFn: getTransactionSummary,
+    queryKey: queryKeys.transactions.summary(filters),
+    queryFn: () => getTransactionSummary(filters),
     staleTime: 60 * 1000,
     placeholderData: (prev) => prev,
   });

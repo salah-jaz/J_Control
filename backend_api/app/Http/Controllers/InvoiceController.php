@@ -24,15 +24,41 @@ class InvoiceController extends Controller
     }
 
     /**
-     * GET invoice summary for dashboard cards (optimized with aggregates).
+     * GET invoice summary for dashboard cards with filters.
      */
-    public function summary()
+    public function summary(Request $request)
     {
-        $totalInvoices = Invoice::count();
-        $paidInvoices = Invoice::where('status', 'Paid')->count();
-        $pendingInvoices = Invoice::where('status', 'Pending')->count();
-        $overdueInvoices = Invoice::where('status', 'Overdue')->count();
-        $totalRevenue = (float) Invoice::where('status', 'Paid')->sum('grand_total');
+        $query = Invoice::query();
+
+        if ($request->filled('search')) {
+            $term = '%' . $request->input('search') . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('client_name', 'like', $term)
+                  ->orWhere('invoice_number', 'like', $term);
+            });
+        }
+
+        if ($request->filled('status') && $request->input('status') !== 'all') {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->input('client_id'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('date', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('date', '<=', $request->input('date_to'));
+        }
+
+        $totalInvoices = (clone $query)->count();
+        $paidInvoices = (clone $query)->where('status', 'Paid')->count();
+        $pendingInvoices = (clone $query)->where('status', 'Pending')->count();
+        $overdueInvoices = (clone $query)->where('status', 'Overdue')->count();
+        $totalRevenue = (float) (clone $query)->where('status', 'Paid')->sum('grand_total');
 
         return response()->json([
             'totalInvoices' => $totalInvoices,
@@ -45,8 +71,34 @@ class InvoiceController extends Controller
 
     public function index(Request $request)
     {
+        $query = Invoice::query();
+
+        if ($request->filled('search')) {
+            $term = '%' . $request->input('search') . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('client_name', 'like', $term)
+                  ->orWhere('invoice_number', 'like', $term);
+            });
+        }
+
+        if ($request->filled('status') && $request->input('status') !== 'all') {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->input('client_id'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('date', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('date', '<=', $request->input('date_to'));
+        }
+
         $perPage = max(1, min(100, (int) $request->input('per_page', 20)));
-        return Invoice::with('items')->orderBy('created_at', 'desc')->paginate($perPage);
+        return $query->with('items')->orderBy('created_at', 'desc')->paginate($perPage);
     }
 
     public function show(Invoice $invoice)

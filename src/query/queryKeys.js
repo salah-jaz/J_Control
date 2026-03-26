@@ -20,19 +20,19 @@ export const queryKeys = {
   invoices: {
     all: ['invoices'],
     list: () => ['invoices', 'list'],
-    summary: () => ['invoices', 'summary'],
+    summary: (filters = {}) => ['invoices', 'summary', filters],
     detail: (id) => ['invoices', 'detail', id],
     nextNumber: () => ['invoices', 'nextNumber'],
   },
   income: {
     all: ['income'],
     list: (filters = {}) => ['income', 'list', filters],
-    summary: () => ['income', 'summary'],
+    summary: (filters = {}) => ['income', 'summary', filters],
   },
   quotations: {
     all: ['quotations'],
     list: (filters = {}) => ['quotations', 'list', filters],
-    summary: () => ['quotations', 'summary'],
+    summary: (filters = {}) => ['quotations', 'summary', filters],
   },
   leads: {
     all: ['leads'],
@@ -52,12 +52,12 @@ export const queryKeys = {
   transactions: {
     all: ['transactions'],
     list: (filters = {}) => ['transactions', 'list', filters],
-    summary: () => ['transactions', 'summary'],
+    summary: (filters = {}) => ['transactions', 'summary', filters],
   },
   expenses: {
     all: ['expenses'],
     list: (filters = {}) => ['expenses', 'list', filters],
-    summary: () => ['expenses', 'summary'],
+    summary: (filters = {}) => ['expenses', 'summary', filters],
   },
   planner: {
     stats: () => ['planner', 'stats'],

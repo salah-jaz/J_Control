@@ -87,7 +87,13 @@ function Quotations() {
   );
 
   const { data: quotationsResult, isLoading: quotationsLoading } = useQuotationList(filters);
-  const { data: summaryResult } = useQuotationSummary();
+
+  const summaryFilters = useMemo(() => {
+    const { page, per_page, ...rest } = filters;
+    return rest;
+  }, [filters]);
+
+  const { data: summaryResult } = useQuotationSummary(summaryFilters);
   const { data: clientsResult } = useClients({ per_page: 100 });
 
   const quotations = Array.isArray(quotationsResult?.data) ? quotationsResult.data : [];
@@ -331,7 +337,7 @@ function Quotations() {
               </div>
               <h1 className="text-[28px] font-bold text-slate-900">Quotations</h1>
             </div>
-            <p className="text-slate-500 font-medium text-[14px]">Create and manage quotations for your clients.</p>
+            <p className="text-slate-500 font-medium text-[14px]">Create and manage quotations for your customers.</p>
           </div>
           <button
             onClick={openAdd}
@@ -341,7 +347,7 @@ function Quotations() {
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
             
             <Plus size={20} className="relative z-10" />
-            <span className="relative z-10">Create Quotation</span>
+            <span className="relative z-10">New Quotation</span>
           </button>
         </div>
 
@@ -425,7 +431,7 @@ function Quotations() {
                 <option value="">All Clients</option>
                 {safeClients.map((c, idx) => (
                   <option key={c?.id ?? `client-${idx}`} value={c?.id ?? ""}>
-                    {c?.company_name || c?.client_name || "ΓÇö"}
+                    {c?.company_name || c?.client_name || "—"}
                   </option>
                 ))}
               </select>
@@ -454,7 +460,7 @@ function Quotations() {
 
       <div className="card p-0 overflow-hidden">
         <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <h3 className="font-bold text-slate-800">Quotations</h3>
+          <h3 className="font-bold text-slate-800">Quotation List</h3>
           <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
             {quotationsLoading ? "Loading..." : quotationsMeta ? `Showing ${(quotationsMeta.current_page - 1) * quotationsMeta.per_page + 1}–${Math.min(quotationsMeta.current_page * quotationsMeta.per_page, quotationsMeta.total)} of ${quotationsMeta.total}` : `Showing ${quotations.length}`}
           </span>
@@ -466,7 +472,7 @@ function Quotations() {
           <table className="w-full text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4">Quotation No</th>
+                <th className="px-6 py-4">Quotation #</th>
                 <th className="px-6 py-4">Client</th>
                 <th className="px-6 py-4">Date</th>
                 <th className="px-6 py-4 text-right">Amount</th>
@@ -590,10 +596,10 @@ function Quotations() {
                 </div>
                 <div>
                   <h3 className="text-[20px] font-bold text-slate-900 tracking-tight">
-                    {editId ? "Customize Quotation Document" : "Draft New Proposal"}
+                    {editId ? "Edit Quotation Details" : "New Quotation"}
                   </h3>
                   <p className="text-[12px] font-medium text-slate-500 mt-0.5">
-                    {editId ? `Editing ${form.quotation_no || "Quotation"}` : "Configure business proposal and service parameters"}
+                    {editId ? `Editing ${form.quotation_no || "Quotation"}` : "Fill in the details for the new quotation"}
                   </p>
                 </div>
               </div>
@@ -609,9 +615,9 @@ function Quotations() {
               {/* Sidebar Tabs */}
               <div className="w-64 bg-slate-50/50 border-r border-slate-100 p-4 flex flex-col gap-1.5 overflow-y-auto">
                 {[
-                  { id: "basic", label: "Business Intelligence", icon: Building2, desc: "Entity & Timeline" },
-                  { id: "items", label: "Service Catalog", icon: Layers, desc: "Inventory & Pricing" },
-                  { id: "agreement", label: "Legal Framework", icon: FileText, desc: "Terms & Scope" },
+                  { id: "basic", label: "Quotation Information", icon: Building2, desc: "Client & Dates" },
+                  { id: "items", label: "Services / Items", icon: Layers, desc: "Service Details" },
+                  { id: "agreement", label: "Terms & Conditions", icon: FileText, desc: "Contract Terms" },
                 ].map(({ id, label, icon: Icon, desc }) => (
                   <button
                     key={id}
@@ -639,7 +645,7 @@ function Quotations() {
                 <div className="mt-auto pt-6 px-1">
                   <div className="bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-2xl p-4 text-white shadow-lg shadow-violet-200/50 overflow-hidden relative group">
                     <div className="relative z-10">
-                      <p className="text-[11px] font-bold text-violet-100 uppercase tracking-widest mb-1">Live Valuation</p>
+                      <p className="text-[11px] font-bold text-violet-100 uppercase tracking-widest mb-1">Total Calculation</p>
                       <p className="text-[22px] font-black tracking-tight flex items-baseline gap-1.5">
                         <span className="text-[14px] font-bold opacity-80">₹</span>
                         {totalForm.toLocaleString("en-IN", { minimumFractionDigits: 0 })}
@@ -660,27 +666,27 @@ function Quotations() {
                       <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4 mb-2">
                         <h4 className="text-[16px] font-bold text-slate-900 flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-violet-500" />
-                          Business Entity & Timeline
+                          Client & Timeline
                         </h4>
-                        <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Identify stakeholders and procedural dates</p>
+                        <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Client & Date details</p>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                         <div className="space-y-1.5">
-                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Contracting Client <span className="text-rose-500 font-black ml-1">*</span></label>
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Select Client <span className="text-rose-500 font-black ml-1">*</span></label>
                           <select
                             value={form.client_id}
                             onChange={(e) => setForm({ ...form, client_id: e.target.value })}
                             className={clsx("input-premium appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M2.22%204.47a.75.75%200%200%201%201.06%200L6%207.19l2.72-2.72a.75.75%200%201%201%201.06%201.06L6.53%208.81a.75.75%200%200%201-1.06%200L2.22%205.53a.75.75%200%200%201%200-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-[right_1rem_center] bg-no-repeat", inputClass("client_id"))}
                           >
-                            <option value="">Select organizational entity</option>
+                            <option value="">Select Client</option>
                             {safeClients.map((c) => (
                               <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
                             ))}
                           </select>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Reference Document Identifier</label>
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Quotation Number</label>
                           <input
                             type="text"
                             readOnly
@@ -689,7 +695,7 @@ function Quotations() {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Execution Date <span className="text-rose-500 font-black ml-1">*</span></label>
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Quotation Date <span className="text-rose-500 font-black ml-1">*</span></label>
                           <div className="relative">
                             <CalendarIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                             <input
@@ -701,7 +707,7 @@ function Quotations() {
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Maturity / Expiry Date</label>
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Expiry Date</label>
                           <div className="relative">
                             <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                             <input
@@ -713,17 +719,17 @@ function Quotations() {
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Internal Reference Code</label>
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Reference Number</label>
                           <input
                             type="text"
                             value={form.reference_number}
                             onChange={(e) => setForm({ ...form, reference_number: e.target.value })}
                             className="input-premium placeholder:text-slate-300"
-                            placeholder="e.g. PO-8892-X"
+                            placeholder="Reference Number..."
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Designated Account Manager</label>
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Sales Person</label>
                           <div className="relative">
                             <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                             <input
@@ -731,13 +737,13 @@ function Quotations() {
                               value={form.sales_person}
                               onChange={(e) => setForm({ ...form, sales_person: e.target.value })}
                               className="input-premium pl-10 placeholder:text-slate-300"
-                              placeholder="Name of account executive"
+                              placeholder="Enter Sales Person Name"
                             />
                           </div>
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Lifecycle Status</label>
-                          <select
+                          <label className="text-[13px] font-bold text-slate-700 ml-0.5">Status</label>
+                        <select
                             value={form.status}
                             onChange={(e) => setForm({ ...form, status: e.target.value })}
                             className="input-premium appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2012%2012%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M2.22%204.47a.75.75%200%200%201%201.06%200L6%207.19l2.72-2.72a.75.75%200%201%201%201.06%201.06L6.53%208.81a.75.75%200%200%201-1.06%200L2.22%205.53a.75.75%200%200%201%200-1.06z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-[right_1rem_center] bg-no-repeat"
@@ -753,25 +759,25 @@ function Quotations() {
                         <div className="space-y-1.5">
                           <label className="text-[13px] font-bold text-slate-700 ml-0.5 flex items-center gap-1.5">
                             <MessageSquare className="h-3.5 w-3.5 text-slate-400" />
-                            Stakeholder Communiqué
+                            Client Notes
                           </label>
                           <textarea
                             value={form.notes}
                             onChange={(e) => setForm({ ...form, notes: e.target.value })}
                             className="input-premium min-h-[120px] pt-3 text-[14px] placeholder:text-slate-300"
-                            placeholder="Add strategic context or special considerations visible to the client..."
+                            placeholder="Add notes visible to the client..."
                           />
                         </div>
                         <div className="space-y-1.5">
                           <label className="text-[13px] font-bold text-slate-700 ml-0.5 flex items-center gap-1.5">
                             <Target className="h-3.5 w-3.5 text-slate-400" />
-                            Intelligence & Internal Logs
+                            Internal Notes
                           </label>
                           <textarea
                             value={form.internal_notes}
                             onChange={(e) => setForm({ ...form, internal_notes: e.target.value })}
                             className="input-premium min-h-[120px] pt-3 text-[14px] bg-slate-50/30 placeholder:text-slate-300"
-                            placeholder="Document internal negotiation strategy or background intelligence (invisible to client)..."
+                            placeholder="Internal notes (not visible to client)..."
                           />
                         </div>
                       </div>
@@ -784,9 +790,9 @@ function Quotations() {
                         <div className="flex flex-col gap-1.5">
                           <h4 className="text-[16px] font-bold text-slate-900 flex items-center gap-2">
                             <Layers className="h-4 w-4 text-violet-500" />
-                            Inventory & Service Allocation
+                            Service Items
                           </h4>
-                          <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Detail service units and unit economics</p>
+                          <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Detail service items & pricing</p>
                         </div>
                         <button 
                           type="button" 
@@ -794,7 +800,7 @@ function Quotations() {
                           className="px-4 py-2 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[13px] font-bold hover:bg-white hover:text-violet-600 hover:border-violet-200 transition-all flex items-center gap-2 active:scale-95 group shadow-sm"
                         >
                           <Plus className="h-3.5 w-3.5 stroke-[2.5] group-hover:scale-110 transition-transform" />
-                          Expand Line Items
+                          Add Item
                         </button>
                       </div>
 
@@ -802,12 +808,12 @@ function Quotations() {
                         <table className="w-full text-sm text-left border-collapse">
                           <thead>
                             <tr className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-[0.1em] border-b border-slate-100">
-                              <th className="px-5 py-4 w-[25%]">Service/Product</th>
+                              <th className="px-5 py-4 w-[25%]">Service Name</th>
                               <th className="px-5 py-4 w-[25%]">Description</th>
                               <th className="px-5 py-4 w-[12%] text-center">Quantity</th>
                               <th className="px-5 py-4 w-[15%]">Rate (₹)</th>
                               <th className="px-5 py-4 w-[10%] text-center">Tax %</th>
-                              <th className="px-5 py-4 w-[13%] text-right bg-slate-100/30 font-bold">Aggregate</th>
+                              <th className="px-5 py-4 w-[13%] text-right bg-slate-100/30 font-bold">Total</th>
                               <th className="px-5 py-4 w-[5%]"></th>
                             </tr>
                           </thead>
@@ -820,7 +826,7 @@ function Quotations() {
                                     value={row.item}
                                     onChange={(e) => updateItem(index, "item", e.target.value)}
                                     className="w-full bg-transparent border-0 border-b border-transparent focus:border-violet-500 focus:ring-0 text-[14px] font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-300 transition-all"
-                                    placeholder="e.g. ERP Implementation"
+                                    placeholder="Service Name..."
                                   />
                                 </td>
                                 <td className="px-4 py-3 align-top">
@@ -828,7 +834,7 @@ function Quotations() {
                                     value={row.description}
                                     onChange={(e) => updateItem(index, "description", e.target.value)}
                                     className="w-full bg-transparent border-0 border-b border-transparent focus:border-violet-500 focus:ring-0 text-[13px] text-slate-600 placeholder:text-slate-300 resize-none py-0 min-h-[24px]"
-                                    placeholder="Enter technical scope..."
+                                    placeholder="Enter description..."
                                     rows={1}
                                   />
                                 </td>
@@ -885,7 +891,7 @@ function Quotations() {
                       <div className="flex justify-end pt-4">
                         <div className="w-full max-w-sm bg-slate-50/80 rounded-2xl border border-slate-100 p-6 space-y-4 shadow-sm">
                           <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
-                            <span className="text-[13px] font-bold text-slate-500 uppercase tracking-widest">Gross Subtotal</span>
+                            <span className="text-[13px] font-bold text-slate-500 uppercase tracking-widest">Subtotal</span>
                             <span className="text-[16px] font-bold text-slate-900">₹{subtotalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
                           </div>
                           
@@ -916,7 +922,7 @@ function Quotations() {
 
                           <div className="pt-4 border-t-2 border-slate-200 flex justify-between items-center">
                             <div className="flex flex-col">
-                              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Net Valuation</span>
+                              <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Amount</span>
                               <span className="text-[12px] font-bold text-violet-600">(Grand Total)</span>
                             </div>
                             <span className="text-[24px] font-black tracking-tight text-slate-900">
@@ -934,9 +940,9 @@ function Quotations() {
                       <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4 mb-8">
                         <h4 className="text-[16px] font-bold text-slate-900 flex items-center gap-2">
                           <FileText className="h-4 w-4 text-violet-500" />
-                          Compliance & Legal Terms
+                          Compliance & Terms
                         </h4>
-                        <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Standardize terms of service and legal agreement</p>
+                        <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Define terms of service and conditions</p>
                       </div>
 
                       <div className="bg-white border-2 border-slate-100 rounded-2xl shadow-inner min-h-[400px]">
@@ -962,12 +968,12 @@ function Quotations() {
             <div className="px-8 py-5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 z-20">
               <div className="hidden md:flex items-center gap-6">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Total Impact</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Total Amount</span>
                   <p className="text-[18px] font-black text-slate-900 tracking-tight leading-none">₹{totalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
                 </div>
                 <div className="h-8 w-px bg-slate-200"></div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Status Code</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Status</span>
                   <span className={clsx(
                     "inline-flex items-center text-[11px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider",
                     form.status === 'Accepted' ? 'bg-emerald-100 text-emerald-700' : 
@@ -984,7 +990,7 @@ function Quotations() {
                   onClick={() => setOpenForm(false)} 
                   className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 hover:bg-slate-50 transition-all duration-[250ms] shadow-sm active:scale-[0.98] flex-1 md:flex-none"
                 >
-                  Discard Draft
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -1004,7 +1010,7 @@ function Quotations() {
                     ) : (
                       <>
                         <Save className="h-4 w-4 stroke-[2.5]" />
-                        Commit Quotation
+                        Save Quotation
                       </>
                     )}
                   </div>

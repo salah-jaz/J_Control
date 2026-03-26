@@ -19,7 +19,8 @@ export const getTransaction = (id) => api.get(`/transactions/${id}`);
  * GET /transactions/summary - for stats cards.
  * @returns {Promise<{ totalTransactions, totalIncome, totalExpense, recentCount }>}
  */
-export const getTransactionSummary = async () => {
-    const response = await api.get("/transactions/summary");
+export const getTransactionSummary = async (filters = {}) => {
+    const params = { ...filters };
+    const response = await api.get("/transactions/summary", { params });
     return response.data;
 };

@@ -3,7 +3,8 @@ import {
   Eye, Edit2, Trash2, Plus, Download, Search, X, Check, Landmark, Wallet, 
   TrendingUp, AlertCircle, Receipt, Loader2, Save, Layers, User, Target, 
   Building2, Calendar as CalendarIcon, Phone, Mail, BadgeCheck, Activity, 
-  Briefcase, Filter, MessageSquare, CreditCard, Banknote, CheckCircle2 
+  Briefcase, Filter, MessageSquare, CreditCard, Banknote, CheckCircle2,
+  ChevronDown, ChevronRight
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -167,7 +168,14 @@ export default function Income() {
   }, [searchDebounced, statusFilter, categoryFilter, bankFilter, clientFilter, dateFilter, dateFrom, dateTo, currentPage]);
 
   const { data: incomeResult, isLoading: incomeLoading } = useIncomeList(filters);
-  const { data: incomeSummaryFromQuery } = useIncomeSummary();
+
+  // Build summary filters (same as list filters but without pagination)
+  const summaryFilters = useMemo(() => {
+    const { page: _p, per_page: _pp, ...rest } = filters;
+    return rest;
+  }, [filters]);
+
+  const { data: incomeSummaryFromQuery } = useIncomeSummary(summaryFilters);
   const { data: clientsResult } = useClients({ per_page: 100 });
   const queryClient = useQueryClient();
 
@@ -362,11 +370,24 @@ export default function Income() {
     } catch (e) {
       console.error("Failed to save", e);
       setIsSaving(false);
+      
       if (e.response && e.response.data && e.response.data.errors) {
-        setErrors(e.response.data.errors);
+        // Normalize snake_case keys from backend to camelCase for the frontend UI
+        const backendErrors = e.response.data.errors;
+        const normalizedErrors = {};
+        
+        Object.keys(backendErrors).forEach(key => {
+          const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+          normalizedErrors[camelKey] = Array.isArray(backendErrors[key]) 
+            ? backendErrors[key][0] 
+            : backendErrors[key];
+        });
+        
+        setErrors(normalizedErrors);
         toast.error("Server validation failed. Please check the form.");
       } else {
-        toast.error("Failed to save record: " + (e.message || "Unknown error"));
+        const msg = e.response?.data?.message || e.message || "Unknown error";
+        toast.error("Failed to save record: " + msg);
       }
     }
   };
@@ -387,7 +408,8 @@ export default function Income() {
         </div>
         <div className={clsx(
           "h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110",
-          color.replace('bg-', 'bg-opacity-10 '),
+          color,
+          "bg-opacity-10",
           color.replace('bg-', 'text-')
         )}>
           <Icon className="w-5 h-5 font-bold" />
@@ -783,377 +805,330 @@ export default function Income() {
 
       {/* FORM MODAL */}
       {openForm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
-          <div className="bg-white/90 backdrop-blur-xl w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-[0.98] duration-[250ms] border border-white/40 overflow-hidden">
-            
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-3xl rounded-t-[32px] sm:rounded-[24px] shadow-2xl flex flex-col max-h-[96vh] border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-[0.98] duration-300">
+
             {/* Header */}
-            <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white z-20">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 bg-gradient-to-br from-violet-600 to-indigo-500 text-white rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] animate-pulse-subtle">
-                  <TrendingUp className="h-5 w-5 stroke-[2.5]" />
+            <div className="flex items-center justify-between px-8 pt-8 pb-6 shrink-0">
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="h-9 w-9 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/30">
+                    <TrendingUp size={18} className="text-white" />
+                  </div>
+                  <h2 className="text-[22px] font-extrabold text-slate-900 tracking-tight">
+                    {editId ? 'Edit Income Entry' : 'New Income Entry'}
+                  </h2>
                 </div>
-                <div>
-                  <h3 className="text-[20px] font-bold text-slate-900 tracking-tight">
-                    {editId ? "Modify Revenue Record" : "Capture New Inflow"}
-                  </h3>
-                  <p className="text-[12px] font-medium text-slate-500 mt-0.5">
-                    {editId ? `Updating transaction #${editId}` : "Record business income and manage fiscal installments"}
-                  </p>
-                </div>
+                <p className="text-[13.5px] text-slate-400 font-medium ml-12">Fill in the details for this transaction.</p>
               </div>
-              <button onClick={() => setOpenForm(false)} className="h-10 w-10 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all flex items-center justify-center active:scale-95 shadow-sm border border-slate-100">
-                <X size={20} />
+              <button onClick={() => setOpenForm(false)} className="h-9 w-9 bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full flex items-center justify-center transition-all active:scale-90">
+                <X size={18} />
               </button>
             </div>
 
-            <div className="flex flex-1 overflow-hidden">
-              {/* Sidebar Tabs */}
-              <div className="w-64 border-r border-slate-100 bg-slate-50/50 p-4 flex flex-col gap-2">
+            {/* Step Tabs */}
+            <div className="px-8 pb-6 shrink-0">
+              <div className="flex items-center gap-0">
                 {[
-                  { id: 'basic', label: 'Primary Context', icon: User, desc: 'Client & Project' },
-                  { id: 'financial', label: 'Fiscal Summary', icon: Wallet, desc: 'Valuation & Tax' },
-                  { id: 'installments', label: 'Payment Splits', icon: Layers, desc: 'Installment Logic' },
-                  { id: 'internal', label: 'Internal Ops', icon: Briefcase, desc: 'Staff & Notes' },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setTab(t.id)}
-                    className={clsx(
-                      "flex items-center gap-3 p-3.5 rounded-xl transition-all duration-[250ms] group text-left relative overflow-hidden",
-                      tab === t.id 
-                        ? "bg-white text-violet-600 shadow-md shadow-violet-500/5 ring-1 ring-slate-200" 
-                        : "text-slate-500 hover:bg-white hover:text-slate-900"
-                    )}
-                  >
-                    {tab === t.id && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-violet-600 rounded-full" />
-                    )}
-                    <t.icon className={clsx("h-5 w-5 transition-transform duration-300", tab === t.id && "scale-110")} />
-                    <div>
-                      <p className="text-[14px] font-bold leading-none">{t.label}</p>
-                      <p className="text-[10px] font-medium opacity-60 mt-1 uppercase tracking-wider">{t.desc}</p>
+                  { id:'basic',label:'Basic',icon:User },
+                  { id:'financial',label:'Payment',icon:Wallet },
+                  { id:'installments',label:'Installments',icon:Layers },
+                  { id:'internal',label:'Internal',icon:Briefcase },
+                ].map((step, idx, arr) => {
+                  const isActive = step.id === tab;
+                  const order = ['basic','financial','installments','internal'];
+                  const isDone = order.indexOf(tab) > idx;
+                  const StepIcon = step.icon;
+                  return (
+                    <div key={step.id} className="flex items-center flex-1">
+                      <button onClick={() => setTab(step.id)} className="flex flex-col items-center gap-1.5 group transition-all flex-1">
+                        <div className={clsx("h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 border-2", isActive?"bg-brand-600 border-brand-600 shadow-lg shadow-brand-500/30":isDone?"bg-emerald-500 border-emerald-500":"bg-white border-slate-200 group-hover:border-slate-300")}>
+                          {isDone?<Check size={16} className="text-white"/>:<StepIcon size={16} className={isActive?"text-white":"text-slate-400"}/>}
+                        </div>
+                        <span className={clsx("text-[11.5px] font-bold transition-colors",isActive?"text-brand-600":isDone?"text-emerald-600":"text-slate-400")}>{step.label}</span>
+                      </button>
+                      {idx<arr.length-1&&<div className={clsx("h-0.5 flex-1 mb-5 mx-1 rounded-full transition-all duration-500",isDone?"bg-emerald-400":"bg-slate-100")}/>}
                     </div>
-                  </button>
-                ))}
-
-                {/* Live Valuation Summary */}
-                <div className="mt-auto bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-5 text-white shadow-lg space-y-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Target className="h-4 w-4 text-violet-400" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-violet-200">Revenue Lock</span>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center text-[13px]">
-                       <span className="opacity-60">Subtotal</span>
-                       <span className="font-medium">₹{Number(form.amount || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[16px]">
-                       <span className="font-bold">Total Inflow</span>
-                       <span className="font-black text-violet-400">₹{totalAmount.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
+            </div>
 
-              {/* Form Content */}
-              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-white">
-                <div className="space-y-8 max-w-3xl mx-auto">
-                  {tab === "basic" && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                      <SectionHeader icon={Building2} title="Entity Relationship" color="blue" />
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1.5Col">
-                          <Label text="Source Entity (Client)" required />
-                          <select className={clsx("input-premium", errors.client && "border-rose-400")} value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })}>
-                            <option value="">Select Target Entity</option>
-                            {clients.map((c) => (
-                              <option key={c.id} value={c.company_name || c.client_name}>{c.company_name || c.client_name}</option>
-                            ))}
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-8 pb-4 custom-scrollbar">
+
+              {tab==='basic'&&(
+                <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700 flex items-center gap-1">Client <span className="text-rose-500 text-[11px] font-black">required</span></label>
+                      <div className="relative">
+                        <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                        <select className={clsx("w-full pl-10 pr-10 py-3 bg-white border rounded-xl text-[14px] font-semibold text-slate-800 outline-none transition-all appearance-none",errors.client?"border-rose-300 ring-2 ring-rose-100":"border-slate-200 hover:border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15")} value={form.client} onChange={(e)=>setForm({...form,client:e.target.value})}>
+                          <option value="">Select Client</option>
+                          {clients.map(c=><option key={c.id} value={c.company_name||c.client_name}>{c.company_name||c.client_name}</option>)}
+                        </select>
+                        <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                      </div>
+                      {errors.client&&<p className="text-[11.5px] text-rose-500 flex items-center gap-1"><AlertCircle size={11}/> {errors.client}</p>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700 flex items-center gap-1">Income Source <span className="text-rose-500 text-[11px] font-black">required</span></label>
+                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="e.g. Consulting" value={form.source} onChange={(e)=>setForm({...form,source:e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Project / Service</label>
+                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="e.g. Website Redesign" value={form.project} onChange={(e)=>setForm({...form,project:e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Category</label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <select className={clsx("w-full px-4 py-3 bg-white border rounded-xl text-[14px] font-semibold text-slate-800 outline-none transition-all appearance-none",errors.category?"border-rose-300":"border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15")} value={form.category} onChange={(e)=>{if(e.target.value==='__add__')return setAddCategoryModalOpen(true);if(e.target.value==='__manage__')return setManageCategoriesModalOpen(true);setForm({...form,category:e.target.value});}}>
+                            <option value="">Select category</option>
+                            {incomeCategories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+                            <option value="__add__">+ Add New</option>
+                            <option value="__manage__">Manage List</option>
                           </select>
+                          <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
                         </div>
-                        <div className="space-y-1.5">
-                          <Label text="Income Classification" />
-                          <div className="flex gap-2">
-                             <select className={clsx("input-premium flex-1", errors.category && "border-rose-400")} value={form.category} onChange={(e) => {
-                               if (e.target.value === "__add__") return setAddCategoryModalOpen(true);
-                               if (e.target.value === "__manage__") return setManageCategoriesModalOpen(true);
-                               setForm({ ...form, category: e.target.value });
-                             }}>
-                               <option value="">Select logic channel</option>
-                               {incomeCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-                               <option value="__add__">— Define New Channel —</option>
-                               <option value="__manage__">— Audit Channels —</option>
-                             </select>
-                             <button type="button" onClick={() => setAddCategoryModalOpen(true)} className="h-[42px] px-4 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl transition-all active:scale-95 border border-slate-100 flex items-center justify-center">
-                               <Plus size={18} />
-                             </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1.5">
-                          <Label text="Service Line / Project" />
-                          <input className="input-premium" placeholder="e.g. Infrastructure Audit" value={form.project} onChange={(e) => setForm({ ...form, project: e.target.value })} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label text="Invoice Identifier" />
-                          <input className="input-premium" placeholder="Internal/Ref No" value={form.invoiceNo} onChange={(e) => setForm({ ...form, invoiceNo: e.target.value })} />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5 pt-4">
-                        <SectionHeader icon={MessageSquare} title="Operational Narrative" color="indigo" />
-                        <Label text="Transactional Intelligence" />
-                        <textarea className="input-premium min-h-[100px] py-3" placeholder="Define the scope and nature of this revenue inflow..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-6 pt-4">
-                        <div className="space-y-1.5">
-                           <Label text="Client Email Corridor" />
-                           <div className="relative">
-                              <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                              <input type="email" className="input-premium pl-11" placeholder="entity@domain.com" value={form.clientEmail} onChange={(e) => setForm({ ...form, clientEmail: e.target.value })} />
-                           </div>
-                        </div>
-                        <div className="space-y-1.5">
-                           <Label text="Direct Dial" />
-                           <div className="relative">
-                              <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                              <input className="input-premium pl-11" placeholder="Secure line" value={form.clientPhone} onChange={(e) => setForm({ ...form, clientPhone: e.target.value })} />
-                           </div>
-                        </div>
+                        <button type="button" onClick={()=>setAddCategoryModalOpen(true)} className="h-[46px] w-[46px] bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl flex items-center justify-center transition-all active:scale-95"><Plus size={18}/></button>
                       </div>
                     </div>
-                  )}
-
-                  {tab === "financial" && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                      <SectionHeader icon={CreditCard} title="Fiscal Architecture" color="rose" />
-                      <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl space-y-4">
-                        <div className="grid grid-cols-2 gap-6 pb-4 border-b border-white/10 opacity-70">
-                           <div className="flex justify-between items-center text-[14px]">
-                              <span>Base Revenue</span>
-                              <span className="font-bold font-mono text-white">₹{Number(form.amount || 0).toLocaleString()}</span>
-                           </div>
-                           <div className="flex justify-between items-center text-[14px]">
-                              <span>Unified Tax</span>
-                              <span className="font-bold font-mono text-white">₹{Number(form.taxAmount || 0).toLocaleString()}</span>
-                           </div>
-                        </div>
-                        <div className="flex justify-between items-center pt-2">
-                           <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 bg-violet-500/20 text-violet-400 rounded-lg flex items-center justify-center">
-                                 <Banknote className="h-5 w-5" />
-                              </div>
-                              <div>
-                                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Aggregate Valuation</p>
-                                 <h4 className="text-[24px] font-black text-violet-400 font-mono">₹{totalAmount.toLocaleString()}</h4>
-                              </div>
-                           </div>
-                           <div className="text-right">
-                              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Outstanding Balance</p>
-                              <h4 className="text-[20px] font-extrabold text-amber-400 font-mono">₹{Math.max(0, balanceDue).toLocaleString()}</h4>
-                           </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-1.5">
-                           <Label text="Base Valuation (Subtotal)" required />
-                           <input type="number" step="0.01" className={clsx("input-premium", errors.amount && "border-rose-400")} placeholder="0.00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-                        </div>
-                        <div className="space-y-1.5">
-                           <Label text="Applied Deduction (Discount)" />
-                           <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.discount} onChange={(e) => setForm({ ...form, discount: e.target.value })} />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-50 mt-4">
-                        <div className="space-y-1.5">
-                           <Label text="Calculated Tax Amount" />
-                           <input type="number" step="0.01" className="input-premium" placeholder="0.00" value={form.taxAmount} onChange={(e) => setForm({ ...form, taxAmount: e.target.value })} />
-                        </div>
-                        <div className="flex items-center gap-3 h-full pt-6">
-                           <button onClick={() => setForm({ ...form, autoCalculateAmount: !form.autoCalculateAmount })} className="flex items-center gap-2 group cursor-pointer">
-                              <div className={clsx("h-5 w-5 rounded border-2 flex items-center justify-center transition-all", form.autoCalculateAmount ? "bg-violet-600 border-violet-600" : "bg-white border-slate-200")}>
-                                {form.autoCalculateAmount && <Check size={14} className="text-white" />}
-                              </div>
-                              <span className="text-[13px] font-bold text-slate-600 group-hover:text-violet-600 transition-colors">Auto-Algorithmic Logic</span>
-                           </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-6 pt-6 border-t border-slate-100">
-                        <div className="flex items-center gap-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-100 hover:border-violet-100 transition-all cursor-pointer group" onClick={() => setForm({ ...form, initialDepositEnabled: !form.initialDepositEnabled })}>
-                          <div className={clsx("h-6 w-6 rounded-md border-2 flex items-center justify-center transition-all", form.initialDepositEnabled ? "bg-violet-600 border-violet-600" : "bg-white border-slate-200")}>
-                            {form.initialDepositEnabled && <CheckCircle2 className="h-4 w-4 text-white" />}
-                          </div>
-                          <span className="text-[14px] font-bold text-slate-700 uppercase tracking-tight">Activate Initial Liquidity (Deposit)</span>
-                        </div>
-
-                        {form.initialDepositEnabled && (
-                          <div className="grid grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-300 ml-9 pb-4">
-                            <div className="space-y-1.5">
-                               <Label text="Injection Quantum (₹)" />
-                               <input type="number" step="0.01" readOnly={editId && savedExtraInstallmentsCount > 0} className="input-premium" placeholder="0.00" value={form.initialDepositAmount} onChange={(e) => setForm({ ...form, initialDepositAmount: e.target.value })} />
-                            </div>
-                            <div className="space-y-1.5">
-                               <Label text="Target Vault / Bank" />
-                               <button type="button" onClick={() => { setBankModalFor("initial"); setBankModalOpen(true); }} disabled={editId && savedExtraInstallmentsCount > 0} className={clsx("input-premium text-left relative", errors.initialDepositBank && "border-rose-400")}>
-                                 {form.initialDepositBankName || 'Select Reserve Entity'}
-                                 <Landmark className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                               </button>
-                            </div>
-                          </div>
-                        )}
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Invoice No</label>
+                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="—" value={form.invoiceNo} onChange={(e)=>setForm({...form,invoiceNo:e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700 flex items-center gap-1">Base Amount (₹) <span className="text-rose-500 text-[11px] font-black">required</span></label>
+                      <input type="number" step="0.01" className={clsx("w-full px-4 py-3 bg-white border rounded-xl text-[14px] font-bold text-slate-800 placeholder:text-slate-300 outline-none transition-all",errors.amount?"border-rose-300 ring-2 ring-rose-100":"border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15")} placeholder="0.00" value={form.amount} onChange={(e)=>setForm({...form,amount:e.target.value})}/>
+                      {errors.amount&&<p className="text-[11.5px] text-rose-500 flex items-center gap-1"><AlertCircle size={11}/> {errors.amount}</p>}
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-[13px] font-semibold text-slate-700">Description</label>
+                      <textarea className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-medium text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all min-h-[80px] resize-none" placeholder="Detailed description of the income" value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Reference Number</label>
+                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Internal reference or PO number" value={form.referenceNumber} onChange={(e)=>setForm({...form,referenceNumber:e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Invoice Date</label>
+                      <div className="relative">
+                        <CalendarIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                        <input type="date" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" value={form.invoiceDate} onChange={(e)=>setForm({...form,invoiceDate:e.target.value})}/>
                       </div>
                     </div>
-                  )}
-
-                  {tab === "installments" && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                      <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-                        <SectionHeader icon={Layers} title="Sequential Liquidation (Installments)" color="indigo" />
-                        <button type="button" onClick={() => setForm({ ...form, extraInstallments: [...(form.extraInstallments || []), { date: "", amount: "", bankAccountId: null, bankName: "", note: "" }] })} className="h-[40px] px-6 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-[13px] font-bold transition-all shadow-lg shadow-violet-500/20 active:scale-95 flex items-center gap-2">
-                           <Plus size={16} /> Append Breakpoint
-                        </button>
-                      </div>
-                      <div className="space-y-4 pt-4">
-                        {(!form.extraInstallments || form.extraInstallments.length === 0) ? (
-                          <div className="py-20 flex flex-col items-center justify-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-                             <div className="h-16 w-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-300 mb-4">
-                               <Layers size={32} />
-                             </div>
-                             <p className="text-[14px] font-medium text-slate-400">No installment logic defined for this revenue stream.</p>
-                          </div>
-                        ) : (
-                          form.extraInstallments.map((row, idx) => {
-                            const rowIsSaved = editId && idx < savedExtraInstallmentsCount;
-                            return (
-                              <div key={idx} className={clsx("p-5 rounded-2xl border transition-all grid grid-cols-12 gap-5 items-end animate-in slide-in-from-right-2 duration-300 group", rowIsSaved ? "bg-slate-50 border-slate-100 opacity-80" : "bg-white border-slate-200 hover:border-violet-200 hover:shadow-md shadow-violet-500/5")}>
-                                <div className="col-span-3 space-y-1.5">
-                                   <Label text="Temporal Date" />
-                                   <div className="relative">
-                                      <CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                      <input type="date" readOnly={rowIsSaved} className="input-premium pl-9 py-2 text-[13px]" value={row.date} onChange={(e) => {
-                                        const next = [...form.extraInstallments];
-                                        next[idx].date = e.target.value;
-                                        setForm({ ...form, extraInstallments: next });
-                                      }} />
-                                   </div>
-                                </div>
-                                <div className="col-span-3 space-y-1.5">
-                                   <Label text="Quantum (₹)" />
-                                   <input type="number" readOnly={rowIsSaved} className="input-premium py-2 text-[13px] font-bold" placeholder="0.00" value={row.amount} onChange={(e) => {
-                                      const next = [...form.extraInstallments];
-                                      next[idx].amount = e.target.value;
-                                      setForm({ ...form, extraInstallments: next });
-                                   }} />
-                                </div>
-                                <div className="col-span-3 space-y-1.5">
-                                   <Label text="Target Vault" />
-                                   <button type="button" disabled={rowIsSaved} onClick={() => { setBankModalFor({ type: "installment", index: idx }); setBankModalOpen(true); }} className={clsx("input-premium py-2 text-[12px] font-bold text-left truncate relative", errors[`installmentBank_${idx}`] && "border-rose-400")}>
-                                     {row.bankName || 'Assign Vault'}
-                                     <Landmark className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                                   </button>
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                   <Label text="Codename/Note" />
-                                   <input type="text" readOnly={rowIsSaved} className="input-premium py-2 text-[13px]" placeholder="Optional..." value={row.note} onChange={(e) => {
-                                      const next = [...form.extraInstallments];
-                                      next[idx].note = e.target.value;
-                                      setForm({ ...form, extraInstallments: next });
-                                   }} />
-                                </div>
-                                <div className="col-span-1 flex justify-end pb-1.5">
-                                   {!rowIsSaved && (
-                                     <button type="button" onClick={() => setForm({ ...form, extraInstallments: form.extraInstallments.filter((_, i) => i !== idx) })} className="h-8 w-8 text-rose-400 hover:bg-rose-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                                        <Trash2 size={16} />
-                                     </button>
-                                   )}
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Client Email</label>
+                      <div className="relative">
+                        <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                        <input type="email" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="client@email.com" value={form.clientEmail} onChange={(e)=>setForm({...form,clientEmail:e.target.value})}/>
                       </div>
                     </div>
-                  )}
-
-                  {tab === "internal" && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                       <SectionHeader icon={Briefcase} title="Managerial Assignments" color="fuchsia" />
-                       <div className="grid grid-cols-2 gap-6">
-                         <div className="space-y-1.5Col">
-                            <Label text="Primary Custodian (Staff)" />
-                            <div className="relative">
-                               <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                               <input className="input-premium pl-11" placeholder="Lead agent" value={form.staff} onChange={(e) => setForm({ ...form, staff: e.target.value })} />
-                            </div>
-                         </div>
-                         <div className="space-y-1.5">
-                            <Label text="Strategic Department" />
-                            <input className="input-premium" placeholder="Sales/Ops/Treasury" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
-                         </div>
-                       </div>
-
-                       <div className="grid grid-cols-2 gap-6 pt-4">
-                         <div className="space-y-1.5">
-                            <Label text="Collection Framework Status" />
-                            <select className="input-premium" value={form.collectionStatus} onChange={(e) => setForm({ ...form, collectionStatus: e.target.value })}>
-                               <option>Collected</option>
-                               <option>Overdue</option>
-                               <option>Partially Paid</option>
-                               <option>Written Off</option>
-                            </select>
-                         </div>
-                         <div className="space-y-1.5">
-                            <Label text="Incentive Schema (Commission)" />
-                            <div className="relative">
-                               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px] font-bold text-slate-400 font-mono">₹</span>
-                               <input type="number" className="input-premium pl-11" placeholder="0.00" value={form.commission} onChange={(e) => setForm({ ...form, commission: e.target.value })} />
-                            </div>
-                         </div>
-                       </div>
-
-                       <div className="space-y-1.5 pt-4">
-                          <SectionHeader icon={Activity} title="Internal Intelligence" color="amber" />
-                          <Label text="Confidential Audit Notes" />
-                          <textarea className="input-premium min-h-[120px] py-3" placeholder="Restricted tactical notes for internal audit only..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-                       </div>
-
-                       <div className="pt-4">
-                          <Label text="Scheduled Protocol Follow-up" />
-                          <div className="relative max-w-sm mt-1.5">
-                             <CalendarIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                             <input type="date" className="input-premium pl-11" value={form.followUpDate} onChange={(e) => setForm({ ...form, followUpDate: e.target.value })} />
-                          </div>
-                       </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Client Phone</label>
+                      <div className="relative">
+                        <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                        <input className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Phone number" value={form.clientPhone} onChange={(e)=>setForm({...form,clientPhone:e.target.value})}/>
+                      </div>
                     </div>
-                  )}
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <button type="button" onClick={()=>setTab('financial')} className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-[13.5px] font-bold rounded-xl hover:bg-brand-700 transition-all active:scale-95 shadow-lg shadow-brand-500/20">Next: Payment <ChevronRight size={16}/></button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {tab==='financial'&&(
+                <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
+                  <div className="bg-slate-900 rounded-2xl p-5 text-white space-y-2">
+                    <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400 mb-2">Revenue Summary</h4>
+                    <div className="flex justify-between text-[13px] text-slate-400"><span>Base Amount</span><span className="text-white font-semibold">₹{Number(form.amount||0).toLocaleString()}</span></div>
+                    {parseFloat(form.discount)>0&&<div className="flex justify-between text-[13px] text-emerald-400"><span>Discount</span><span>- ₹{parseFloat(form.discount).toLocaleString()}</span></div>}
+                    {parseFloat(form.taxAmount)>0&&<div className="flex justify-between text-[13px] text-slate-400"><span>Tax</span><span className="text-white">+ ₹{parseFloat(form.taxAmount).toLocaleString()}</span></div>}
+                    <div className="flex justify-between text-[18px] font-black pt-2 border-t border-slate-700"><span>Total</span><span className="text-brand-400">₹{totalAmount.toLocaleString()}</span></div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Discount (₹)</label>
+                      <input type="number" step="0.01" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="0.00" value={form.discount} onChange={(e)=>setForm({...form,discount:e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Tax Amount (₹)</label>
+                      <input type="number" step="0.01" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="0.00" value={form.taxAmount} onChange={(e)=>setForm({...form,taxAmount:e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Payment Method</label>
+                      <div className="relative">
+                        <select className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all appearance-none" value={form.method} onChange={(e)=>setForm({...form,method:e.target.value})}>
+                          {['Bank Transfer','UPI','Cash','Cheque','Card','Other'].map(m=><option key={m}>{m}</option>)}
+                        </select>
+                        <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Status</label>
+                      <div className="relative">
+                        <select className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all appearance-none" value={form.status} onChange={(e)=>setForm({...form,status:e.target.value})}>
+                          {['Received','Pending','Partial','Overdue'].map(s=><option key={s}>{s}</option>)}
+                        </select>
+                        <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Transaction ID</label>
+                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="UTR / Ref number" value={form.transactionId} onChange={(e)=>setForm({...form,transactionId:e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Received Date</label>
+                      <div className="relative">
+                        <CalendarIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                        <input type="date" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" value={form.receivedDate} onChange={(e)=>setForm({...form,receivedDate:e.target.value})}/>
+                      </div>
+                    </div>
+                  </div>
+                  <div onClick={()=>setForm({...form,initialDepositEnabled:!form.initialDepositEnabled})} className={clsx("flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all",form.initialDepositEnabled?"bg-brand-50 border-brand-200":"bg-slate-50 border-slate-100 hover:border-slate-200")}>
+                    <div className={clsx("h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0",form.initialDepositEnabled?"bg-brand-600 border-brand-600":"bg-white border-slate-300")}>
+                      {form.initialDepositEnabled&&<Check size={14} className="text-white"/>}
+                    </div>
+                    <div>
+                      <p className="text-[14px] font-bold text-slate-800">Client paid an advance / deposit</p>
+                      <p className="text-[12px] text-slate-400 font-medium">Record an upfront partial payment</p>
+                    </div>
+                  </div>
+                  {form.initialDepositEnabled&&(
+                    <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-brand-200 ml-3 animate-in slide-in-from-top-2 duration-200">
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Advance Amount (₹)</label>
+                        <input type="number" step="0.01" readOnly={editId&&savedExtraInstallmentsCount>0} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-bold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 transition-all" placeholder="0.00" value={form.initialDepositAmount} onChange={(e)=>setForm({...form,initialDepositAmount:e.target.value})}/>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[13px] font-semibold text-slate-700">Received In</label>
+                        <button type="button" disabled={editId&&savedExtraInstallmentsCount>0} onClick={()=>{setBankModalFor('initial');setBankModalOpen(true);}} className={clsx("w-full px-4 py-3 bg-white border rounded-xl text-[14px] font-semibold text-left flex items-center justify-between transition-all",errors.initialDepositBank?"border-rose-300":"border-slate-200 hover:border-slate-300")}>
+                          <span className={form.initialDepositBankName?'text-slate-800':'text-slate-300'}>{form.initialDepositBankName||'Select bank account…'}</span>
+                          <Landmark size={15} className="text-slate-300"/>
+                        </button>
+                        {errors.initialDepositBank&&<p className="text-[11.5px] text-rose-500">{errors.initialDepositBank}</p>}
+                      </div>
+                    </div>
+                  )}
+                  {form.initialDepositEnabled&&parseFloat(form.initialDepositAmount)>0&&(
+                    <div className="flex items-center justify-between px-5 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
+                      <span className="text-[13px] font-bold text-amber-700">Balance Due After Advance</span>
+                      <span className="text-[18px] font-extrabold text-amber-600">₹{Math.max(0,balanceDue).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-2">
+                    <button type="button" onClick={()=>setTab('basic')} className="flex items-center gap-1.5 px-5 py-2.5 text-slate-500 hover:text-slate-700 text-[13.5px] font-bold transition-all">← Back</button>
+                    <button type="button" onClick={()=>setTab('installments')} className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-[13.5px] font-bold rounded-xl hover:bg-brand-700 transition-all active:scale-95 shadow-lg shadow-brand-500/20">Next: Installments <ChevronRight size={16}/></button>
+                  </div>
+                </div>
+              )}
+
+              {tab==='installments'&&(
+                <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
+                  <p className="text-[13px] text-slate-500 font-medium">Track additional payment installments for this income record.</p>
+                  <div className="space-y-3">
+                    {(!form.extraInstallments||form.extraInstallments.length===0)?(
+                      <div className="py-16 flex flex-col items-center justify-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                        <div className="h-14 w-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-300 mb-3"><Layers size={28}/></div>
+                        <p className="text-[14px] font-medium text-slate-400">No installments added yet.</p>
+                      </div>
+                    ):form.extraInstallments.map((row,idx)=>{
+                      const rowIsSaved=editId&&idx<savedExtraInstallmentsCount;
+                      return(
+                        <div key={idx} className={clsx("flex items-center gap-3 group rounded-2xl px-4 py-3 border transition-all",rowIsSaved?"bg-slate-50 border-slate-100 opacity-70":"bg-white border-slate-200 hover:border-slate-300")}>
+                          <span className="text-[12px] font-black text-slate-300 w-5 shrink-0 text-center">{idx+1}</span>
+                          <div className="relative shrink-0">
+                            <CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                            <input type="date" readOnly={rowIsSaved} className="w-36 pl-9 pr-3 py-2.5 bg-transparent border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-700 outline-none focus:border-brand-400" value={row.date} onChange={(e)=>{const n=[...form.extraInstallments];n[idx].date=e.target.value;setForm({...form,extraInstallments:n});}}/>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-[13px] font-bold text-slate-400">₹</span>
+                            <input type="number" readOnly={rowIsSaved} className="w-28 bg-transparent border border-slate-200 rounded-xl px-3 py-2.5 text-[13px] font-black text-slate-900 outline-none focus:border-brand-400" placeholder="0.00" value={row.amount} onChange={(e)=>{const n=[...form.extraInstallments];n[idx].amount=e.target.value;setForm({...form,extraInstallments:n});}}/>
+                          </div>
+                          <button type="button" disabled={rowIsSaved} onClick={()=>{setBankModalFor({type:'installment',index:idx});setBankModalOpen(true);}} className={clsx("flex-1 px-3 py-2.5 bg-white border rounded-xl text-[12px] font-semibold text-left truncate transition-all",errors[`installmentBank_${idx}`]?"border-rose-300":"border-slate-200 hover:border-slate-300")}>
+                            {row.bankName||<span className="text-slate-300">Select bank…</span>}
+                          </button>
+                          <input type="text" readOnly={rowIsSaved} className="w-28 bg-transparent border border-slate-200 rounded-xl px-3 py-2.5 text-[12px] font-medium text-slate-600 placeholder:text-slate-300 outline-none focus:border-brand-400" placeholder="Note…" value={row.note} onChange={(e)=>{const n=[...form.extraInstallments];n[idx].note=e.target.value;setForm({...form,extraInstallments:n});}}/>
+                          {!rowIsSaved&&<button type="button" onClick={()=>setForm({...form,extraInstallments:form.extraInstallments.filter((_,i)=>i!==idx)})} className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button type="button" onClick={()=>setForm({...form,extraInstallments:[...(form.extraInstallments||[]),{date:'',amount:'',bankAccountId:null,bankName:'',note:''}]})} className="flex items-center gap-2 text-[13px] font-bold text-brand-600 hover:text-brand-700 px-4 py-2 hover:bg-brand-50 rounded-xl transition-all active:scale-95">
+                    <Plus size={16}/> Add Installment
+                  </button>
+                  <div className="flex justify-between pt-2">
+                    <button type="button" onClick={()=>setTab('financial')} className="flex items-center gap-1.5 px-5 py-2.5 text-slate-500 hover:text-slate-700 text-[13.5px] font-bold transition-all">← Back</button>
+                    <button type="button" onClick={()=>setTab('internal')} className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-[13.5px] font-bold rounded-xl hover:bg-brand-700 transition-all active:scale-95 shadow-lg shadow-brand-500/20">Next: Internal <ChevronRight size={16}/></button>
+                  </div>
+                </div>
+              )}
+
+              {tab==='internal'&&(
+                <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
+                  <p className="text-[13px] text-slate-500 font-medium">Internal details for staff, audit, and follow-up tracking.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Assigned Staff</label>
+                      <div className="relative">
+                        <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                        <input className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Lead agent" value={form.staff} onChange={(e)=>setForm({...form,staff:e.target.value})}/>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Department</label>
+                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Sales / Ops / Treasury" value={form.department} onChange={(e)=>setForm({...form,department:e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Payment Status</label>
+                      <div className="relative">
+                        <select className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all appearance-none" value={form.collectionStatus} onChange={(e)=>setForm({...form,collectionStatus:e.target.value})}>
+                          {['Collected','Overdue','Partially Paid','Written Off'].map(s=><option key={s}>{s}</option>)}
+                        </select>
+                        <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Commission (₹)</label>
+                      <input type="number" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="0.00" value={form.commission} onChange={(e)=>setForm({...form,commission:e.target.value})}/>
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-[13px] font-semibold text-slate-700">Internal Notes</label>
+                      <textarea className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-medium text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all min-h-[80px] resize-none" placeholder="Restricted notes for internal audit only…" value={form.notes} onChange={(e)=>setForm({...form,notes:e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[13px] font-semibold text-slate-700">Follow-up Date</label>
+                      <div className="relative">
+                        <CalendarIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
+                        <input type="date" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" value={form.followUpDate} onChange={(e)=>setForm({...form,followUpDate:e.target.value})}/>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-start pt-2">
+                    <button type="button" onClick={()=>setTab('installments')} className="flex items-center gap-1.5 px-5 py-2.5 text-slate-500 hover:text-slate-700 text-[13.5px] font-bold transition-all">← Back</button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
-            <div className="px-8 py-5 border-t border-slate-100 flex justify-between items-center bg-slate-50/50 z-20">
-              <button onClick={() => setOpenForm(false)} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm active:scale-95">
-                Discard Updates
-              </button>
-              <div className="flex gap-4">
-                 <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="px-8 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-500 text-white rounded-xl text-[14px] font-medium shadow-lg shadow-violet-500/20 hover:shadow-xl hover:shadow-violet-500/30 transition-all hover:-translate-y-[2px] active:scale-95 group relative overflow-hidden"
-                 >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
-                    <div className="flex items-center gap-2 relative z-10">
-                       {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} className="stroke-[2.5]" />}
-                       <span>{isSaving ? 'Processing Protocol...' : (editId ? 'Commit Financial Update' : 'Authorize Revenue Entry')}</span>
-                    </div>
-                 </button>
+            <div className="shrink-0 px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-4">
+              <div className="flex flex-col">
+                <span className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Total Inflow</span>
+                <span className="text-[22px] font-black text-slate-900 leading-tight">₹{totalAmount.toLocaleString()}</span>
+                {form.initialDepositEnabled&&parseFloat(form.initialDepositAmount)>0&&(
+                  <span className="text-[11px] text-slate-400 font-medium">Balance: ₹{Math.max(0,balanceDue).toLocaleString()}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={()=>setOpenForm(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-[14px] font-bold rounded-xl hover:bg-slate-50 transition-all active:scale-95">Cancel</button>
+                <button type="button" onClick={handleSave} disabled={isSaving} className="flex items-center gap-2.5 px-8 py-3 bg-brand-600 hover:bg-brand-700 text-white text-[14px] font-extrabold rounded-xl shadow-xl shadow-brand-500/25 hover:shadow-brand-500/40 transition-all active:scale-95 disabled:opacity-60">
+                  {isSaving?<Loader2 size={18} className="animate-spin"/>:<Save size={18}/>}
+                  {isSaving?'Saving…':editId?'Save Changes':'Save Record'}
+                </button>
               </div>
             </div>
 
