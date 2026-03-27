@@ -661,7 +661,7 @@ export default function Expense() {
                     <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">{expense.id}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">{expense.vendor || "—"}</td>
                     <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
-                      ₹{parseFloat(expense.amount || 0).toLocaleString("en-IN")}
+                      ₹{parseFloat(expense.netAmount || expense.amount || 0).toLocaleString("en-IN")}
                     </td>
                     <td className="px-6 py-4 text-slate-600">{expense.method || "—"}</td>
                     <td className="px-6 py-4 text-slate-600 font-mono text-xs">{expense.paidDate || "—"}</td>
@@ -682,20 +682,265 @@ export default function Expense() {
         </div>
       </div>
 
-      {viewModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white max-w-lg w-full rounded-2xl shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-900">Expense Details</h2>
-              <button onClick={() => setViewModalOpen(false)} className="p-2 text-slate-400 hover:text-rose-500"><X size={20} /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              {viewDetail && Object.entries(viewDetail).map(([key, val]) => (
-                <div key={key} className="flex justify-between border-b border-slate-50 pb-2">
-                  <span className="text-slate-500 capitalize">{key.replace(/_/g, ' ')}</span>
-                  <span className="font-medium text-slate-800">{String(val || '—')}</span>
+      {viewModalOpen && viewDetail && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300 backdrop-blur-sm">
+          <div className="bg-white max-w-2xl w-full rounded-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-[0.98] duration-300 border border-white/20">
+            {/* Header / Banner */}
+            <div className="relative shrink-0 p-8 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white overflow-hidden">
+              {/* Abstract decorative elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2"></div>
+              
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-brand-500 animate-pulse shadow-[0_0_10px_#ea580c]"></span>
+                    <span className="text-brand-400 font-black uppercase tracking-[0.25em] text-[10px]">Expense Record #{viewDetail.id}</span>
+                  </div>
+                  <h2 className="text-4xl font-black tracking-tight text-white drop-shadow-sm">{viewDetail.vendor || 'Unnamed Vendor'}</h2>
+                  <div className="flex items-center gap-3">
+                    <div className={clsx(
+                      "px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-wider border shadow-sm flex items-center gap-2",
+                      viewDetail.status === 'Paid' ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400" :
+                      viewDetail.status === 'Partial' ? "bg-amber-500/20 border-amber-500/30 text-amber-400" :
+                      "bg-rose-500/20 border-rose-500/30 text-rose-400"
+                    )}>
+                      <div className={clsx("h-1.5 w-1.5 rounded-full", 
+                        viewDetail.status === 'Paid' ? "bg-emerald-400" : 
+                        viewDetail.status === 'Partial' ? "bg-amber-400" : "bg-rose-400"
+                      )}></div>
+                      {viewDetail.status || 'Pending'}
+                    </div>
+                    <div className="h-6 w-[1.5px] bg-white/10"></div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl">
+                      <Layers size={14} className="text-slate-400" />
+                      <span className="text-slate-300 text-[11px] font-bold uppercase tracking-widest">{viewDetail.expenseType || 'General Expense'}</span>
+                    </div>
+                  </div>
                 </div>
-              ))}
+                
+                <div className="flex flex-col md:items-end bg-white/5 backdrop-blur-md p-5 rounded-3xl border border-white/10 shadow-inner">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5 opacity-80">Total Value</span>
+                  <p className="text-4xl font-black text-white leading-none tracking-tight">
+                    ₹{Number(viewDetail.totalAmount || viewDetail.amount || 0).toLocaleString()}
+                  </p>
+                  {parseFloat(viewDetail.balanceDue || 0) > 0 && (
+                    <div className="flex items-center gap-1.5 mt-3 text-rose-400 text-[11px] font-black bg-rose-500/15 px-3 py-1 rounded-full border border-rose-500/20">
+                      <AlertCircle size={13} strokeWidth={3} />
+                      DUE: ₹{Number(viewDetail.balanceDue).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => setViewModalOpen(false)}
+                className="absolute top-6 right-6 h-9 w-9 rounded-full bg-white/10 hover:bg-rose-500/20 text-white/40 hover:text-rose-400 flex items-center justify-center transition-all active:scale-90 border border-white/10"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-8 pt-8 space-y-12">
+              
+              {/* Main Info sections */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                
+                {/* Basic Details Section */}
+                <div className="space-y-6">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 pb-3 flex items-center gap-2.5">
+                    <div className="h-1.5 w-1.5 rounded-full bg-brand-500"></div> Details & Classification
+                  </h3>
+                  <div className="grid grid-cols-1 gap-5">
+                    <div className="flex flex-col group">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Business Category</span>
+                      <span className="text-[15px] font-bold text-slate-800 transition-colors group-hover:text-brand-600">{viewDetail.category || 'Uncategorized'}</span>
+                    </div>
+                    <div className="flex flex-col group">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Project Assignment</span>
+                      <span className="text-[15px] font-bold text-slate-800 transition-colors group-hover:text-brand-600">{viewDetail.project || 'No associated project'}</span>
+                    </div>
+                    <div className="flex flex-col group">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Bill / Invoice ID</span>
+                      <span className="text-[15px] font-mono font-black text-slate-900 bg-slate-100/80 px-2.5 py-1 rounded-xl inline-block w-fit border border-slate-200 transition-all group-hover:bg-white group-hover:border-brand-300">{viewDetail.billNo || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logistics Info Section */}
+                <div className="space-y-6">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 pb-3 flex items-center gap-2.5">
+                    <div className="h-1.5 w-1.5 rounded-full bg-indigo-500"></div> Logistics & Timeline
+                  </h3>
+                  <div className="space-y-5">
+                    <div className="flex items-center gap-10">
+                      <div className="flex flex-col flex-1">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Execution Date</span>
+                        <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800">
+                          <CalendarIcon size={16} className="text-slate-400" />
+                          {viewDetail.paidDate || '—'}
+                        </div>
+                      </div>
+                      <div className="flex flex-col flex-1">
+                        <span className="text-[10px] font-extrabold text-rose-400/80 uppercase tracking-widest mb-1">Settlement Deadline</span>
+                        <div className="flex items-center gap-2 text-[15px] font-bold text-rose-600">
+                          <CalendarIcon size={16} className="text-rose-300" />
+                          {viewDetail.dueDate || 'No deadline'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col group">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1 text-indigo-500/80">Operational Venue</span>
+                      <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800 transition-colors group-hover:text-indigo-600">
+                        <MapPin size={16} className="text-slate-400 group-hover:text-indigo-400" />
+                        {viewDetail.location || 'Centralized Operations'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Summary Section */}
+              <div className="relative p-8 bg-slate-50 border border-slate-100 rounded-[32px] overflow-hidden group hover:border-brand-200 transition-all">
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <Receipt size={80} />
+                </div>
+                <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 mb-6 flex items-center gap-2">
+                  <Receipt size={14} className="text-brand-500" /> Accounting Breakdown
+                </h3>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Gross Subtotal</span>
+                    <p className="text-lg font-black text-slate-900 font-mono">₹{Number(viewDetail.amount || 0).toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-extrabold text-emerald-500 uppercase tracking-widest">Rebate / Discount</span>
+                    <p className="text-lg font-black text-emerald-600 font-mono">- ₹{Number(viewDetail.discountAmount || viewDetail.discount || 0).toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Statutory GST</span>
+                    <p className="text-lg font-black text-slate-900 font-mono">+ ₹{Number(viewDetail.gstAmount || 0).toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-extrabold text-brand-500 uppercase tracking-widest">Net Outflow</span>
+                    <p className="text-xl font-black text-brand-600 font-mono">
+                      ₹{Number(viewDetail.totalAmount || (parseFloat(viewDetail.amount || 0) - parseFloat(viewDetail.discountAmount || viewDetail.discount || 0) + parseFloat(viewDetail.gstAmount || 0))).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment & Assignment Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div className="space-y-6">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 pb-3 flex items-center gap-2.5">
+                    <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div> Settlement Information
+                  </h3>
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-500 border border-slate-200">
+                        <CreditCard size={20} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Mode & Channel</span>
+                        <div className="flex items-center gap-2 text-[14px] font-bold text-slate-800">
+                          <span className="px-2.5 py-1 bg-brand-50 text-[9px] text-brand-600 font-black uppercase rounded-lg border border-brand-100">{viewDetail.method || 'Internal Transfer'}</span>
+                          {viewDetail.bank || 'Standard Bank Channel'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Transaction Link</span>
+                        <span className="text-[13px] font-mono font-bold text-slate-600 truncate bg-slate-50 p-1.5 rounded-lg border border-slate-100">{viewDetail.transactionId || 'NO_LINKED_TXN'}</span>
+                      </div>
+                      <div className="flex flex-col ml-2">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Reporting Agent</span>
+                        <div className="flex items-center gap-2 text-[14px] font-bold text-slate-800">
+                          <User size={14} className="text-slate-400" />
+                          <span className="italic">{viewDetail.staff || 'System Admin'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100 pb-3 flex items-center gap-2.5">
+                    <div className="h-1.5 w-1.5 rounded-full bg-fuchsia-500"></div> Metadata & Context
+                  </h3>
+                  <div className="space-y-5">
+                    <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-200/50">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2 block">Formal Scope</span>
+                      <p className="text-[13.5px] font-medium text-slate-600 leading-relaxed italic">
+                        {viewDetail.description || 'Comprehensive expenditure details not cataloged.'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5 block">Audit Clarification</span>
+                      <p className="text-[13px] font-bold text-slate-500 leading-relaxed bg-brand-50/30 p-3 rounded-xl border border-brand-100/50">
+                        {viewDetail.notes || 'No administrative annotations detected.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Installment History - Premium Cards */}
+              {viewDetail.extraInstallments && viewDetail.extraInstallments.length > 0 && (
+                <div className="space-y-5">
+                  <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400 flex items-center gap-3">
+                    <div className="h-4 w-1 bg-brand-500 rounded-full"></div> Payment Disbursement History
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {viewDetail.extraInstallments.map((inst, i) => (
+                      <div key={i} className="flex items-center justify-between p-5 bg-white border border-slate-100 rounded-3xl group hover:border-brand-300 hover:shadow-xl hover:shadow-brand-500/5 transition-all">
+                        <div className="flex items-center gap-4">
+                          <div className="h-10 w-10 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-brand-600 group-hover:text-white transition-all shadow-sm">
+                            <Banknote size={20} />
+                          </div>
+                          <div>
+                            <p className="text-[15px] font-black text-slate-800">₹{Number(inst.amount).toLocaleString()}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <CalendarIcon size={12} className="text-slate-300" />
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{inst.date}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-[10px] font-black text-slate-500 uppercase bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">{inst.bankName || 'O_TRANSFER'}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Premium Footer Actions */}
+            <div className="shrink-0 px-8 py-6 border-t border-slate-100 bg-slate-50/80 backdrop-blur-md flex items-center justify-between gap-6">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => { setViewModalOpen(false); openEdit(viewDetail); }}
+                  className="group flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-700 text-[13px] font-bold rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all active:scale-[0.97] shadow-sm"
+                >
+                  <Edit2 size={15} className="text-brand-500" /> Administrative Update
+                </button>
+                <button 
+                  onClick={() => { handleDelete(viewDetail.id); setViewModalOpen(false); }}
+                  className="flex items-center gap-2.5 px-6 py-2.5 bg-white border border-rose-100 text-rose-500 text-[13px] font-bold rounded-2xl hover:bg-rose-50 hover:border-rose-300 transition-all active:scale-[0.97] shadow-sm"
+                >
+                  <Trash2 size={15} /> Expunge Record
+                </button>
+              </div>
+              
+              <button 
+                onClick={() => setViewModalOpen(false)}
+                className="px-10 py-3 bg-slate-950 text-white text-[13.5px] font-black rounded-2xl hover:bg-slate-800 transition-all active:scale-[0.97] shadow-xl shadow-slate-900/20 uppercase tracking-widest"
+              >
+                Dismiss
+              </button>
             </div>
           </div>
         </div>
@@ -760,7 +1005,7 @@ export default function Expense() {
                         <label className="text-[13px] font-semibold text-slate-700 flex items-center gap-1">Vendor <span className="text-rose-500 text-[11px] font-black">required</span></label>
                         <div className="relative">
                           <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                          <input className={clsx("w-full pl-10 pr-4 py-3 bg-white border rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none transition-all",errors.vendor?"border-rose-300 ring-2 ring-rose-100":"border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15")} placeholder="e.g. AWS" value={form.vendor} onChange={(e)=>setForm({...form,vendor:e.target.value})}/>
+                          <input className={clsx("w-full pl-11 pr-4 py-3 bg-white border rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none transition-all",errors.vendor?"border-rose-300 ring-2 ring-rose-100":"border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15")} placeholder="e.g. AWS" value={form.vendor} onChange={(e)=>setForm({...form,vendor:e.target.value})}/>
                         </div>
                         {errors.vendor&&<p className="text-[11.5px] text-rose-500 flex items-center gap-1"><AlertCircle size={11}/> {errors.vendor}</p>}
                       </div>
@@ -837,7 +1082,7 @@ export default function Expense() {
                         <label className="text-[13px] font-semibold text-slate-700">Payment Date</label>
                         <div className="relative">
                           <CalendarIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                          <input type="date" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 transition-all" value={form.paidDate} onChange={(e)=>setForm({...form,paidDate:e.target.value})}/>
+                          <input type="date" className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 transition-all" value={form.paidDate} onChange={(e)=>setForm({...form,paidDate:e.target.value})}/>
                         </div>
                       </div>
                     </div>

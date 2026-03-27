@@ -386,7 +386,6 @@ const QuotationView = ({
                           <tr>
                             <th className="px-4 py-3 font-semibold">#</th>
                             <th className="px-4 py-3 font-semibold">Description</th>
-                            <th className="px-4 py-3 font-semibold text-center">Qty</th>
                             <th className="px-4 py-3 font-semibold text-right">Price</th>
                             <th className="px-4 py-3 font-semibold text-right">Total</th>
                           </tr>
@@ -394,18 +393,17 @@ const QuotationView = ({
                         <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
                           {items.length === 0 ? (
                             <tr>
-                              <td colSpan="5" className="px-4 py-6 text-center text-slate-500">No items added.</td>
+                              <td colSpan="4" className="px-4 py-6 text-center text-slate-500">No items added.</td>
                             </tr>
                           ) : items.map((item, index) => (
                             <tr key={index} className="hover:bg-slate-50 transition-colors">
                               <td className="px-4 py-4">{index + 1}</td>
-                              <td className="px-4 py-4 font-medium">{item.description || item.item_name || "—"}</td>
-                              <td className="px-4 py-4 text-center">{item.quantity}</td>
+                              <td className="px-4 py-4 font-medium">{item.item || item.description || item.item_name || "—"}</td>
                               <td className="px-4 py-4 text-right">
-                                {quotation.currency || '$'}{parseFloat(item.unit_price || 0).toFixed(2)}
+                                {quotation.currency || '$'}{parseFloat(item.price || item.unit_price || 0).toFixed(2)}
                               </td>
                               <td className="px-4 py-4 text-right font-semibold text-slate-900">
-                                {quotation.currency || '$'}{parseFloat(item.total || 0).toFixed(2)}
+                                {quotation.currency || '$'}{parseFloat(item.amount || item.total || 0).toFixed(2)}
                               </td>
                             </tr>
                           ))}

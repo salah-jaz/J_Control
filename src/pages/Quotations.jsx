@@ -25,13 +25,13 @@ import toast from "react-hot-toast";
 import clsx from "clsx";
 import { useQueryClient } from "@tanstack/react-query";
 import { createQuotation, updateQuotation, deleteQuotation, convertQuotationToInvoice } from "../services/quotationService";
-import { useQuotationList, useQuotationSummary, useClients } from "../hooks/useApiQueries";
+import { useQuotationList, useQuotationSummary, useClients, useProducts } from "../hooks/useApiQueries";
 import { invalidateCache } from "../utils/apiFetch";
 import { queryKeys } from "../query/queryKeys";
 import { TableSkeleton } from "../components/Skeleton";
 
 const QuotationView = lazy(() => import("../components/QuotationView"));
-const AgreementTab = lazy(() => import("../components/AgreementTab"));
+
 
 const emptyForm = {
   client_id: "",
@@ -95,6 +95,9 @@ function Quotations() {
 
   const { data: summaryResult } = useQuotationSummary(summaryFilters);
   const { data: clientsResult } = useClients({ per_page: 100 });
+
+  const { data: productsResult } = useProducts();
+  const safeProducts = Array.isArray(productsResult) ? productsResult : [];
 
   const quotations = Array.isArray(quotationsResult?.data) ? quotationsResult.data : [];
   const quotationsMeta = quotationsResult?.meta ?? null;
@@ -206,13 +209,29 @@ function Quotations() {
   const updateItem = (index, field, value) => {
     const next = [...(form.items || [])];
     if (!next[index]) return;
-    next[index] = { ...next[index], [field]: value };
-    if (field === "qty" || field === "price" || field === "tax") {
-      const qty = parseFloat(next[index].qty) || 0;
-      const price = parseFloat(next[index].price) || 0;
-      const taxPct = field === "tax" ? parseFloat(value) || 0 : (parseFloat(next[index].tax) || 0);
-      next[index].amount = Math.round((qty * price * (1 + taxPct / 100)) * 100) / 100;
+    
+    let updatedItem = { ...next[index], [field]: value };
+
+    // If item name matches a product name, auto-fill description and price
+    if (field === "item") {
+      const selectedProduct = safeProducts.find(p => p.name === value);
+      if (selectedProduct) {
+        updatedItem.description = selectedProduct.description || "";
+        updatedItem.price = selectedProduct.price || "";
+        // Calculate amount immediately for the new price
+        const price = parseFloat(selectedProduct.price) || 0;
+        const taxPct = parseFloat(updatedItem.tax) || 0;
+        updatedItem.amount = Math.round((price * (1 + taxPct / 100)) * 100) / 100;
+      }
     }
+
+    if (field === "price" || field === "tax") {
+      const price = parseFloat(updatedItem.price) || 0;
+      const taxPct = field === "tax" ? parseFloat(value) || 0 : (parseFloat(updatedItem.tax) || 0);
+      updatedItem.amount = Math.round((price * (1 + taxPct / 100)) * 100) / 100;
+    }
+
+    next[index] = updatedItem;
     setForm({ ...form, items: next });
   };
 
@@ -616,8 +635,8 @@ function Quotations() {
               <div className="w-64 bg-slate-50/50 border-r border-slate-100 p-4 flex flex-col gap-1.5 overflow-y-auto">
                 {[
                   { id: "basic", label: "Quotation Information", icon: Building2, desc: "Client & Dates" },
-                  { id: "items", label: "Services / Items", icon: Layers, desc: "Service Details" },
-                  { id: "agreement", label: "Terms & Conditions", icon: FileText, desc: "Contract Terms" },
+                  { id: "items", label: "Services / Products", icon: Layers, desc: "Item Details" },
+
                 ].map(({ id, label, icon: Icon, desc }) => (
                   <button
                     key={id}
@@ -790,9 +809,9 @@ function Quotations() {
                         <div className="flex flex-col gap-1.5">
                           <h4 className="text-[16px] font-bold text-slate-900 flex items-center gap-2">
                             <Layers className="h-4 w-4 text-violet-500" />
-                            Service Items
+                            Service or Product Name
                           </h4>
-                          <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Detail service items & pricing</p>
+                          <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Detail catalog items & pricing</p>
                         </div>
                         <button 
                           type="button" 
@@ -808,9 +827,8 @@ function Quotations() {
                         <table className="w-full text-sm text-left border-collapse">
                           <thead>
                             <tr className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-[0.1em] border-b border-slate-100">
-                              <th className="px-5 py-4 w-[25%]">Service Name</th>
+                              <th className="px-5 py-4 w-[40%]">Service or Product Name</th>
                               <th className="px-5 py-4 w-[25%]">Description</th>
-                              <th className="px-5 py-4 w-[12%] text-center">Quantity</th>
                               <th className="px-5 py-4 w-[15%]">Rate (₹)</th>
                               <th className="px-5 py-4 w-[10%] text-center">Tax %</th>
                               <th className="px-5 py-4 w-[13%] text-right bg-slate-100/30 font-bold">Total</th>
@@ -821,13 +839,21 @@ function Quotations() {
                             {(form.items || []).map((row, index) => (
                               <tr key={index} className="group hover:bg-slate-50/50 transition-colors">
                                 <td className="px-4 py-3 align-top">
-                                  <input
-                                    type="text"
-                                    value={row.item}
-                                    onChange={(e) => updateItem(index, "item", e.target.value)}
-                                    className="w-full bg-transparent border-0 border-b border-transparent focus:border-violet-500 focus:ring-0 text-[14px] font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-300 transition-all"
-                                    placeholder="Service Name..."
-                                  />
+                                    <input
+                                      type="text"
+                                      list="quotation-product-list"
+                                      value={row.item}
+                                      onChange={(e) => updateItem(index, "item", e.target.value)}
+                                      className="w-full bg-transparent border-0 border-b border-transparent focus:border-violet-500 focus:ring-0 text-[14px] font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-300 transition-all"
+                                      placeholder="Service or Product Name..."
+                                    />
+                                    <datalist id="quotation-product-list">
+                                      {safeProducts.map((p) => (
+                                        <option key={p.id} value={p.name}>
+                                          {p.price ? `₹${p.price}` : ""}
+                                        </option>
+                                      ))}
+                                    </datalist>
                                 </td>
                                 <td className="px-4 py-3 align-top">
                                   <textarea
@@ -838,16 +864,7 @@ function Quotations() {
                                     rows={1}
                                   />
                                 </td>
-                                <td className="px-4 py-3 text-center align-top">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="any"
-                                    value={row.qty === "" || row.qty == null ? "" : row.qty}
-                                    onChange={(e) => updateItem(index, "qty", e.target.value)}
-                                    className="w-full text-center bg-slate-50/50 border-slate-100 rounded-lg focus:ring-violet-500 focus:border-violet-500 text-[14px] font-black text-slate-800 p-1.5"
-                                  />
-                                </td>
+
                                 <td className="px-4 py-3 align-top">
                                   <input
                                     type="number"
@@ -889,7 +906,7 @@ function Quotations() {
                       </div>
 
                       <div className="flex justify-end pt-4">
-                        <div className="w-full max-w-sm bg-slate-50/80 rounded-2xl border border-slate-100 p-6 space-y-4 shadow-sm">
+                        <div className="w-full max-w-md bg-slate-50/80 rounded-2xl border border-slate-100 p-6 space-y-4 shadow-sm overflow-hidden">
                           <div className="flex justify-between items-center pb-2 border-b border-slate-200/50">
                             <span className="text-[13px] font-bold text-slate-500 uppercase tracking-widest">Subtotal</span>
                             <span className="text-[16px] font-bold text-slate-900">₹{subtotalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
@@ -901,7 +918,7 @@ function Quotations() {
                               <input
                                 type="number"
                                 step="0.01"
-                                className="w-32 bg-white border-slate-200 rounded-xl focus:ring-violet-500 focus:border-violet-500 text-[14px] font-bold text-slate-800 text-right p-2.5 shadow-inner"
+                                className="flex-1 min-w-0 bg-white border-slate-200 rounded-xl focus:ring-violet-500 focus:border-violet-500 text-[14px] font-bold text-slate-800 text-right p-2.5 shadow-inner"
                                 placeholder="0.00"
                                 value={form.discount}
                                 onChange={(e) => setForm({ ...form, discount: e.target.value })}
@@ -925,7 +942,7 @@ function Quotations() {
                               <span className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Amount</span>
                               <span className="text-[12px] font-bold text-violet-600">(Grand Total)</span>
                             </div>
-                            <span className="text-[24px] font-black tracking-tight text-slate-900">
+                            <span className="text-[24px] font-black tracking-tight text-slate-900 flex items-center flex-wrap">
                               <span className="text-[14px] font-bold opacity-60 mr-1.5 uppercase tracking-normal">INR</span>
                               {totalForm.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                             </span>
@@ -935,31 +952,7 @@ function Quotations() {
                     </div>
                   )}
 
-                  {tab === "agreement" && (
-                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-[350ms]">
-                      <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4 mb-8">
-                        <h4 className="text-[16px] font-bold text-slate-900 flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-violet-500" />
-                          Compliance & Terms
-                        </h4>
-                        <p className="text-[12px] font-medium text-slate-500 uppercase tracking-widest">Define terms of service and conditions</p>
-                      </div>
 
-                      <div className="bg-white border-2 border-slate-100 rounded-2xl shadow-inner min-h-[400px]">
-                        <Suspense fallback={
-                          <div className="py-20 flex flex-col items-center justify-center gap-4">
-                            <Loader2 className="h-8 w-8 text-violet-500 animate-spin" />
-                            <p className="text-[13px] font-bold text-slate-400 uppercase tracking-widest">Protocol Initializing...</p>
-                          </div>
-                        }>
-                          <AgreementTab
-                            value={form.agreement_content || []}
-                            onChange={(v) => setForm({ ...form, agreement_content: v })}
-                          />
-                        </Suspense>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

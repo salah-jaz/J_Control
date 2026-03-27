@@ -482,13 +482,13 @@ export default function Income() {
       <div className="space-y-3">
         <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[240px] relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
             <input
               type="text"
               placeholder="Search income by ID, invoice, or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
+              className="w-full pl-11 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
             />
           </div>
           
@@ -635,7 +635,7 @@ export default function Income() {
                 : `Showing ${incomeRecords.length} of ${incomeRecords.length}`}
             </span>
             <button
-              onClick={() => exportToCSV(incomeRecords.map((r) => ({ id: r.id, client: r.client, amount: r.amount, method: r.method, date: r.receivedDate, bank: r.bank, status: r.status })), "income_records")}
+              onClick={() => exportToCSV(incomeRecords.map((r) => ({ id: r.id, client: r.client, amount: r.netAmount || r.amount, method: r.method, date: r.receivedDate, bank: r.bank, status: r.status })), "income_records")}
               className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
               title="Export to CSV"
             >
@@ -676,7 +676,7 @@ export default function Income() {
                     <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">{income.id}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">{income.client || "-"}</td>
                     <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
-                      ₹{parseFloat(income.amount || 0).toLocaleString("en-IN")}
+                      ₹{parseFloat(income.netAmount || income.amount || 0).toLocaleString("en-IN")}
                     </td>
                     <td className="px-6 py-4">
                       <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
@@ -916,21 +916,21 @@ export default function Income() {
                       <label className="text-[13px] font-semibold text-slate-700">Invoice Date</label>
                       <div className="relative">
                         <CalendarIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        <input type="date" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" value={form.invoiceDate} onChange={(e)=>setForm({...form,invoiceDate:e.target.value})}/>
+                        <input type="date" className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" value={form.invoiceDate} onChange={(e)=>setForm({...form,invoiceDate:e.target.value})}/>
                       </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[13px] font-semibold text-slate-700">Client Email</label>
                       <div className="relative">
                         <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        <input type="email" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="client@email.com" value={form.clientEmail} onChange={(e)=>setForm({...form,clientEmail:e.target.value})}/>
+                        <input type="email" className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="client@email.com" value={form.clientEmail} onChange={(e)=>setForm({...form,clientEmail:e.target.value})}/>
                       </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[13px] font-semibold text-slate-700">Client Phone</label>
                       <div className="relative">
                         <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        <input className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Phone number" value={form.clientPhone} onChange={(e)=>setForm({...form,clientPhone:e.target.value})}/>
+                        <input className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Phone number" value={form.clientPhone} onChange={(e)=>setForm({...form,clientPhone:e.target.value})}/>
                       </div>
                     </div>
                   </div>
@@ -984,7 +984,7 @@ export default function Income() {
                       <label className="text-[13px] font-semibold text-slate-700">Received Date</label>
                       <div className="relative">
                         <CalendarIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        <input type="date" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" value={form.receivedDate} onChange={(e)=>setForm({...form,receivedDate:e.target.value})}/>
+                        <input type="date" className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" value={form.receivedDate} onChange={(e)=>setForm({...form,receivedDate:e.target.value})}/>
                       </div>
                     </div>
                   </div>
