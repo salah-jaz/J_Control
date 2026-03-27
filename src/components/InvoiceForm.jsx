@@ -10,6 +10,7 @@ import clsx from 'clsx';
 import { createInvoice, updateInvoice } from '../services/invoiceService';
 import { getClients } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
+import { getProducts } from '../services/productService';
 
 const emptyForm = {
   clientId: '',
@@ -78,6 +79,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
   const [bankAccounts, setBankAccounts] = useState([]);
   const [activeTab, setActiveTab]     = useState('basic');
   const [formData, setFormData]       = useState(emptyForm);
+  const [products, setProducts]       = useState([]);
   const [items, setItems]             = useState([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
   const [errors, setErrors]           = useState({});
   const [bankModalOpen, setBankModalOpen] = useState(false);
@@ -88,9 +90,14 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
 
   useEffect(() => {
     if (isOpen) {
-      Promise.all([getClients({ per_page: 100 }), getBankAccounts()]).then(([cResult, b]) => {
+      Promise.all([
+        getClients({ per_page: 100 }),
+        getBankAccounts(),
+        getProducts()
+      ]).then(([cResult, b, p]) => {
         setClients(Array.isArray(cResult?.data ?? cResult) ? (cResult?.data ?? cResult) : []);
         setBankAccounts(Array.isArray(b) ? b : []);
+        setProducts(Array.isArray(p) ? p : []);
       });
     }
   }, [isOpen]);
@@ -231,7 +238,18 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const updateItem = (idx, field, val) => {
-    const next = [...items]; next[idx] = { ...next[idx], [field]: val }; setItems(next);
+    const next = [...items];
+    let updatedItem = { ...next[idx], [field]: val };
+
+    if (field === 'serviceName') {
+      const selectedProduct = products.find(p => p.name === val);
+      if (selectedProduct) {
+        updatedItem.amount = selectedProduct.price || '';
+      }
+    }
+
+    next[idx] = updatedItem;
+    setItems(next);
   };
   const removeItem = (idx) => setItems(items.filter((_, i) => i !== idx).map((it, i) => ({ ...it, sNo: i + 1 })));
   const addItem    = () => setItems([...items, { sNo: items.length + 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
@@ -415,11 +433,19 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                       <span className="text-[12px] font-black text-slate-300 w-5 shrink-0 text-center">{idx + 1}</span>
                       <input
                         type="text"
+                        list="invoice-product-list"
                         placeholder="Service or product name…"
                         value={item.serviceName}
                         onChange={(e) => updateItem(idx, 'serviceName', e.target.value)}
                         className="flex-1 bg-transparent border-none outline-none text-[14px] font-semibold text-slate-800 placeholder:text-slate-300"
                       />
+                      <datalist id="invoice-product-list">
+                        {products.map((p) => (
+                          <option key={p.id} value={p.name}>
+                            {p.price ? `₹${p.price}` : ""}
+                          </option>
+                        ))}
+                      </datalist>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className="text-[13px] font-bold text-slate-400">₹</span>
                         <input

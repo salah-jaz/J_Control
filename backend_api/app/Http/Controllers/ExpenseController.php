@@ -195,9 +195,19 @@ class ExpenseController extends Controller
             );
             $totalPaid += $paid;
 
-            $paidDate = $expense->paid_date;
-            if ($paidDate && $paidDate >= $thisMonthStart && $paidDate <= $thisMonthEnd) {
-                $thisMonthTotal += $paid;
+            // Accurate "This Month" calculation: check dates of initial deposit and all installments
+            $initAmt = (float)($expense->initial_deposit_amount ?? 0);
+            $initDate = $expense->paid_date;
+            if ($initAmt > 0 && $initDate && $initDate >= $thisMonthStart && $initDate <= $thisMonthEnd) {
+                $thisMonthTotal += $initAmt;
+            }
+
+            foreach ($expense->extra_installments ?? [] as $inst) {
+                $instAmt = (float)($inst['amount'] ?? 0);
+                $instDate = $inst['date'] ?? null;
+                if ($instAmt > 0 && $instDate && $instDate >= $thisMonthStart && $instDate <= $thisMonthEnd) {
+                    $thisMonthTotal += $instAmt;
+                }
             }
         }
 

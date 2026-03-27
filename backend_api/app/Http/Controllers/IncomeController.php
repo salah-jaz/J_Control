@@ -218,9 +218,13 @@ class IncomeController extends Controller
 
         foreach ($incomes as $income) {
             $amount = (float) $income->amount;
-            $totalIncome += $amount;
+            $discount = (float) ($income->discount_amount ?? 0);
+            $gst = (float) ($income->gst_amount ?? 0);
+            $netTotal = max(0, $amount - $discount + $gst);
+            $totalIncome += $netTotal;
+
             $paid = self::getPaidAmount(
-                $amount,
+                $netTotal,
                 $income->initial_deposit_amount ? (float) $income->initial_deposit_amount : null,
                 $income->extra_installments ?? []
             );

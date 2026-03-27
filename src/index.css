@@ -65,8 +65,28 @@
   .label-text, label { @apply text-[13px] font-medium text-slate-700; }
 
   /* Standard Global Input Style */
-  .input, input[type="text"], input[type="email"], input[type="number"], select, textarea {
-    @apply w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-200 shadow-sm hover:border-gray-300;
+  .input, .input-premium, select, textarea {
+    @apply w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-[250ms] shadow-sm hover:border-gray-300;
+  }
+
+  /* Global fix for inputs with leading icons to prevent overlap with text */
+  .relative > .absolute.left-3 + input,
+  .relative > .absolute.left-3\.5 + input,
+  .relative > .absolute.left-4 + input,
+  .relative > .absolute.left-3 + select,
+  .relative > .absolute.left-3\.5 + select,
+  .relative > .absolute.left-4 + select {
+    padding-left: 3rem !important; /* Forces pl-12 equivalent */
+  }
+  
+  /* Global fix for select fields and inputs with trailing icons */
+  .relative > .absolute.right-3 + select,
+  .relative > .absolute.right-3\.5 + select,
+  .relative > .absolute.right-4 + select,
+  .relative > .absolute.right-3 + input,
+  .relative > .absolute.right-3\.5 + input,
+  .relative > .absolute.right-4 + input {
+    padding-right: 3rem !important; /* Forces pr-12 equivalent */
   }
 
   .label {
