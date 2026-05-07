@@ -14,6 +14,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\PrintTemplateController;
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -71,6 +72,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/settings/upload-logo', [\App\Http\Controllers\SettingController::class, 'uploadLogo']);
     Route::post('/settings/upload-signature', [\App\Http\Controllers\SettingController::class, 'uploadSignature']);
     Route::post('/settings/upload-seal', [\App\Http\Controllers\SettingController::class, 'uploadSeal']);
+
+    // Print Templates Routes
+    Route::apiResource('print-templates', PrintTemplateController::class);
 
     // Reports Routes
     Route::get('/reports/summary', [\App\Http\Controllers\ReportsController::class, 'summary']);
