@@ -49,11 +49,17 @@
     color: var(--text-primary);
     @apply antialiased font-sans;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
   }
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold;
     color: var(--text-primary);
+  }
+
+  *:focus-visible {
+    outline: 2px solid rgba(124, 58, 237, 0.35);
+    outline-offset: 2px;
   }
 }
 
@@ -66,7 +72,7 @@
 
   /* Standard Global Input Style */
   .input, .input-premium, select, textarea {
-    @apply w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-[250ms] shadow-sm hover:border-gray-300;
+    @apply w-full px-4 py-2.5 md:py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-[250ms] shadow-sm hover:border-gray-300;
   }
 
   /* Global fix for inputs with leading icons to prevent overlap with text */
@@ -103,15 +109,15 @@
   }
   
   .btn-primary {
-    @apply bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white px-6 py-2.5 rounded-xl transition-all duration-200 font-semibold shadow-[0_2px_10px_-3px_#7c3aed80] hover:shadow-[0_4px_12px_-2px_#7c3aed99] active:transform active:scale-[0.98] border border-transparent;
+    @apply bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white px-4 md:px-6 py-2.5 rounded-xl transition-all duration-200 font-semibold shadow-[0_2px_10px_-3px_#7c3aed80] hover:shadow-[0_4px_12px_-2px_#7c3aed99] active:transform active:scale-[0.98] border border-transparent min-h-10;
   }
   
   .btn-secondary {
-    @apply bg-white text-slate-700 border border-gray-200 px-6 py-2.5 rounded-xl hover:bg-gray-50 hover:text-slate-900 transition-all duration-200 font-medium shadow-sm hover:shadow active:transform active:scale-[0.98];
+    @apply bg-white text-slate-700 border border-gray-200 px-4 md:px-6 py-2.5 rounded-xl hover:bg-gray-50 hover:text-slate-900 transition-all duration-200 font-medium shadow-sm hover:shadow active:transform active:scale-[0.98] min-h-10;
   }
 
   .btn-danger {
-    @apply bg-white text-rose-600 border border-rose-100 px-4 py-2 rounded-xl hover:bg-rose-50 transition-all duration-200 font-medium active:transform active:scale-[0.98];
+    @apply bg-white text-rose-600 border border-rose-100 px-4 py-2 rounded-xl hover:bg-rose-50 transition-all duration-200 font-medium active:transform active:scale-[0.98] min-h-10;
   }
 
   /* Premium Buttons (Violet Theme) */
@@ -139,7 +145,7 @@
 
   /* Standard Card Style */
   .card {
-    @apply bg-white rounded-2xl shadow-[0_2px_8px_#0000000a] border border-gray-100/50 p-6 transition-shadow hover:shadow-[0_8px_24px_#0000000f];
+    @apply bg-white rounded-2xl shadow-[0_2px_8px_#0000000a] border border-gray-100/50 p-4 md:p-6 transition-shadow hover:shadow-[0_8px_24px_#0000000f];
   }
 
   /* Premium Card Style (Glass - OPT-IN ONLY) */
@@ -215,11 +221,10 @@
   }
   .table tbody tr:hover, tbody tr:hover {
     background: var(--bg-hover) !important;
-    transform: translateY(-1px) !important;
   }
   .table tbody td, tbody td {
     padding: 16px !important;
-    font-size: 14px !important;
+    font-size: 13px !important;
     color: var(--text-primary) !important;
   }
 
@@ -284,5 +289,26 @@
 
   .animate-modalIn {
     animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+@media (max-width: 768px) {
+  .table thead th, thead th {
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+  }
+
+  .table tbody td, tbody td {
+    padding: 12px !important;
+    font-size: 12px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

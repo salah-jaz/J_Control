@@ -4,6 +4,9 @@ import { useDashboardData } from '../hooks/useApiQueries';
 import clsx from 'clsx';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { StatCardsSkeleton } from '../components/Skeleton';
+import PageHeader from '../components/ui/PageHeader';
+import EmptyState from '../components/ui/EmptyState';
+import { TableSectionHeader } from '../components/ui/DataTableSection';
 
 const StatCard = ({ title, value, icon: Icon, trend, color, subValue = null, subLabel = null }) => (
     <div className="card group relative overflow-hidden cursor-default !border-0 p-5 h-[160px] flex flex-col justify-between">
@@ -85,12 +88,10 @@ const Dashboard = () => {
 
             <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 {/* Header Section */}
-                <div className="flex items-center justify-between mb-2">
-                    <div className="space-y-1">
-                        <h1 className="text-[28px] font-bold text-slate-900 leading-tight">Dashboard Overview</h1>
-                        <p className="text-slate-500 font-medium text-[14px]">Welcome back! Here&apos;s what&apos;s happening with your business.</p>
-                    </div>
-                </div>
+                <PageHeader
+                    title="Dashboard Overview"
+                    subtitle="Welcome back! Here's what's happening with your business."
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <StatCard
@@ -129,14 +130,19 @@ const Dashboard = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
                 <div className="card lg:col-span-2 px-2 md:px-6">
-                    <div className="flex justify-between items-center mb-6 px-2 md:px-0">
-                        <h3 className="text-lg font-bold text-slate-800">Recent Invoices</h3>
-                        <button
-                            className="text-sm font-medium text-violet-600 hover:text-violet-700"
-                            onClick={() => navigate('/invoices')}
-                        >
-                            View All
-                        </button>
+                    <div className="mb-6 px-2 md:px-0">
+                        <TableSectionHeader
+                            title="Recent Invoices"
+                            summary={`${(stats.recentInvoices ?? []).length} recent`}
+                        />
+                        <div className="pt-2">
+                            <button
+                                className="text-sm font-medium text-violet-600 hover:text-violet-700"
+                                onClick={() => navigate('/invoices')}
+                            >
+                                View All
+                            </button>
+                        </div>
                     </div>
                     <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full text-sm text-left min-w-[600px]">
@@ -170,7 +176,13 @@ const Dashboard = () => {
                                 ))}
                                 {(stats.recentInvoices ?? []).length === 0 && (
                                     <tr>
-                                        <td colSpan="5" className="px-4 py-8 text-center text-gray-400 italic">No recent activity</td>
+                                        <td colSpan="5" className="px-4 py-2">
+                                            <EmptyState
+                                                icon={FileText}
+                                                title="No recent activity"
+                                                description="New invoices will appear here."
+                                            />
+                                        </td>
                                     </tr>
                                 )}
                             </tbody>

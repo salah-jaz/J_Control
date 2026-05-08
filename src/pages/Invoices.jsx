@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Calendar, Filter, Plus, Search, Trash2, Edit2, Eye, X, User, Layers, Landmark, Wallet, FileText, AlertCircle, TrendingUp, Receipt } from 'lucide-react';
+import { Calendar, Filter, Plus, Trash2, Edit2, Eye, User, Layers, Landmark, Wallet, FileText, AlertCircle, TrendingUp, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import { useLocation } from 'react-router-dom';
@@ -12,6 +12,12 @@ import InvoiceView from '../components/InvoiceViewer';
 
 import InvoiceForm from '../components/InvoiceForm';
 import { TableSkeleton } from '../components/Skeleton';
+import PageHeader from '../components/ui/PageHeader';
+import ToolbarSearch from '../components/ui/ToolbarSearch';
+import EmptyState from '../components/ui/EmptyState';
+import { FilterSelect, ClearFiltersButton } from '../components/ui/FilterControls';
+import { TableSectionHeader, TablePagination } from '../components/ui/DataTableSection';
+import { ActionIconButton } from '../components/ui/TableRowActions';
 
 function isDateInRange(dateStr, range) {
   if (!dateStr || range === 'All') return true;
@@ -162,31 +168,24 @@ export default function Invoices() {
 
       <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-brand-600 to-brand-400 rounded-xl shadow-[0_4px_12px_rgba(234,88,12,0.3)] relative group overflow-hidden">
-                <FileText className="h-5 w-5 text-white relative z-10" />
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-              </div>
-              <h1 className="text-[28px] font-bold text-slate-900">Invoices</h1>
-            </div>
-            <p className="text-slate-500 font-medium text-[14px]">Manage your invoices & billing efficiently.</p>
-          </div>
-          <button
-            onClick={() => {
-              setEditingInvoice(null);
-              setIsFormOpen(true);
-            }}
-            className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
-          >
-            {/* Shimmer Effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
-
-            <Plus size={20} className="relative z-10" />
-            <span className="relative z-10">New Invoice</span>
-          </button>
-        </div>
+        <PageHeader
+          title="Invoices"
+          subtitle="Manage your invoices and billing efficiently."
+          primaryAction={(
+            <button
+              onClick={() => {
+                setEditingInvoice(null);
+                setIsFormOpen(true);
+              }}
+              className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+            >
+              {/* Shimmer Effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
+              <Plus size={20} className="relative z-10" />
+              <span className="relative z-10">New Invoice</span>
+            </button>
+          )}
+        />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         <StatCard
@@ -218,47 +217,36 @@ export default function Invoices() {
       {/* Filters Bar */}
       <div className="space-y-3">
         <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[240px] relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search invoice number, client..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
-            />
-          </div>
+          <ToolbarSearch
+            placeholder="Search invoice number, client..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
           
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-              <Receipt className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-              >
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+            <FilterSelect
+              icon={Receipt}
+              value={statusFilter}
+              onChange={setStatusFilter}
+            >
                 <option value="All">All Status</option>
                 <option value="Paid">Paid</option>
                 <option value="Pending">Pending</option>
                 <option value="Overdue">Overdue</option>
                 <option value="Draft">Draft</option>
-              </select>
-            </div>
+            </FilterSelect>
 
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-              <Calendar className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-              >
+            <FilterSelect
+              icon={Calendar}
+              value={dateFilter}
+              onChange={setDateFilter}
+            >
                 <option value="All">All Time</option>
                 <option value="Today">Today</option>
                 <option value="This Week">This Week</option>
                 <option value="This Month">This Month</option>
                 <option value="This Year">This Year</option>
-              </select>
-            </div>
+            </FilterSelect>
 
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -274,17 +262,14 @@ export default function Invoices() {
             </button>
 
             {(searchQuery || statusFilter !== "All" || clientFilter || dateFilter !== "All") && (
-              <button
+              <ClearFiltersButton
                 onClick={() => {
                   setSearchQuery("");
                   setStatusFilter("All");
                   setClientFilter("");
                   setDateFilter("All");
                 }}
-                className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-              >
-                <X size={14} /> Clear
-              </button>
+              />
             )}
           </div>
         </div>
@@ -292,42 +277,38 @@ export default function Invoices() {
         {/* Advanced Filters */}
         {showAdvancedFilters && (
           <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
-              <User className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={clientFilter}
-                onChange={(e) => setClientFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-              >
+            <FilterSelect
+              icon={User}
+              value={clientFilter}
+              onChange={setClientFilter}
+              minWidthClass="min-w-[200px]"
+            >
                 <option value="">All Clients</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.company_name || c.client_name}>
                     {c.company_name || c.client_name}
                   </option>
                 ))}
-              </select>
-            </div>
+            </FilterSelect>
           </div>
         )}
       </div>
 
       <div className="card p-0 overflow-hidden">
-        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
-          <h3 className="font-bold text-slate-800">Invoices List</h3>
-          <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
-            {invoicesLoading ? 'Loading...' : invoicesMeta
-              ? `Showing ${(invoicesMeta.current_page - 1) * invoicesMeta.per_page + 1}–${Math.min(invoicesMeta.current_page * invoicesMeta.per_page, invoicesMeta.total)} of ${invoicesMeta.total}`
-              : `Showing ${filteredInvoices.length} of ${invoices.length}`}
-          </span>
-        </div>
+        <TableSectionHeader
+          title="Invoices List"
+          summary={invoicesLoading ? 'Loading...' : invoicesMeta
+            ? `Showing ${(invoicesMeta.current_page - 1) * invoicesMeta.per_page + 1}–${Math.min(invoicesMeta.current_page * invoicesMeta.per_page, invoicesMeta.total)} of ${invoicesMeta.total}`
+            : `Showing ${filteredInvoices.length} of ${invoices.length}`}
+        />
         <div className="overflow-x-auto">
           {invoicesLoading ? (
             <TableSkeleton rows={6} cols={6} />
           ) : (
-          <table className="w-full text-sm text-left min-w-[700px]">
+          <table className="w-full text-xs md:text-sm text-left min-w-[700px]">
             <thead className="bg-slate-50/80 text-[13px] font-semibold text-slate-600 capitalize tracking-normal border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4">Invoice #</th>
+                <th className="px-6 py-4 sticky left-0 z-20 bg-slate-50/80">Invoice #</th>
                 <th className="px-6 py-4">Client</th>
                 <th className="px-6 py-4">Date</th>
                 <th className="px-6 py-4 text-right">Amount</th>
@@ -338,7 +319,7 @@ export default function Invoices() {
             <tbody className="divide-y divide-gray-50">
               {filteredInvoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-6 py-4 font-mono font-bold text-slate-800">{inv.invoice_number || `#${inv.id}`}</td>
+                  <td className="px-6 py-4 font-mono font-bold text-slate-800 sticky left-0 z-10 bg-white group-hover:bg-slate-50/50">{inv.invoice_number || `#${inv.id}`}</td>
                   <td className="px-6 py-4 font-medium text-slate-900">{inv.client_name || inv.clientName || '—'}</td>
                   <td className="px-6 py-4 text-slate-600 font-mono text-xs">
                     {typeof inv.date === 'string' ? inv.date.split('T')[0] : (inv.date || '—')}
@@ -366,35 +347,21 @@ export default function Invoices() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => setViewingInvoice(inv)}
-                        className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                        title="View"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      <button
-                        onClick={() => { setEditingInvoice(inv); setIsFormOpen(true); }}
-                        className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(inv.id)}
-                        className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      <ActionIconButton onClick={() => setViewingInvoice(inv)} title="View" icon={Eye} tone="view" />
+                      <ActionIconButton onClick={() => { setEditingInvoice(inv); setIsFormOpen(true); }} title="Edit" icon={Edit2} tone="edit" />
+                      <ActionIconButton onClick={() => handleDelete(inv.id)} title="Delete" icon={Trash2} tone="delete" />
                     </div>
                   </td>
                 </tr>
               ))}
               {filteredInvoices.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-slate-500 italic">
-                    No invoices found
+                  <td colSpan="6" className="px-6 py-2">
+                    <EmptyState
+                      icon={FileText}
+                      title="No invoices found"
+                      description="Create a new invoice or adjust your filters."
+                    />
                   </td>
                 </tr>
               )}
@@ -403,29 +370,13 @@ export default function Invoices() {
           )}
         </div>
         {invoicesMeta && invoicesMeta.last_page > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <span className="text-sm text-slate-600">
-              Page {invoicesMeta.current_page} of {invoicesMeta.last_page}
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={invoicesMeta.current_page <= 1}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={invoicesMeta.current_page >= invoicesMeta.last_page}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <TablePagination
+            summary={`Page ${invoicesMeta.current_page} of ${invoicesMeta.last_page}`}
+            onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            onNext={() => setCurrentPage((p) => p + 1)}
+            previousDisabled={invoicesMeta.current_page <= 1}
+            nextDisabled={invoicesMeta.current_page >= invoicesMeta.last_page}
+          />
         )}
       </div>
 

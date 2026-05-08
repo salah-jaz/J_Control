@@ -4,6 +4,7 @@ import { Building2, Wallet, User, Shield, Bell, LayoutTemplate, Stamp } from "lu
 import api, { getApiOrigin } from "../api/axios";
 import { toAbsoluteImageUrl } from "../config/printTemplateModules";
 import toast from "react-hot-toast";
+import PageHeader from "../components/ui/PageHeader";
 
 const defaultSettings = {
   company: {
@@ -203,12 +204,10 @@ export default function Settings() {
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
       {/* HEADER */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Settings</h1>
-        <p className="text-slate-500 mt-1 text-base md:text-lg">
-          Manage your application preferences and configuration.
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        subtitle="Manage your application preferences and configuration."
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* SIDEBAR */}

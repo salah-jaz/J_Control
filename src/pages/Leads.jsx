@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
-    Users, Plus, Upload, Download, Search, LayoutList, Kanban, Calendar,
+    Users, Plus, Upload, Download, LayoutList, Kanban, Calendar,
     MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X, ArrowRight, FileText, StickyNote, Loader2, Save, Send, Target, MapPin as LocationIcon, Briefcase, Activity, Filter
 } from 'lucide-react';
 import { getAssignees, saveAssignee, saveLead, getLeadNotes, createLeadNote, updateLeadNote, deleteLeadNote } from '../services/db';
@@ -13,6 +13,12 @@ import LogCallModal from '../components/LogCallModal';
 import FollowUpCalendar from './FollowUpCalendar';
 import { TableSkeleton } from '../components/Skeleton';
 import toast from 'react-hot-toast';
+import PageHeader from '../components/ui/PageHeader';
+import ToolbarSearch from '../components/ui/ToolbarSearch';
+import EmptyState from '../components/ui/EmptyState';
+import { FilterSelect, ClearFiltersButton } from '../components/ui/FilterControls';
+import { TableSectionHeader, TablePagination } from '../components/ui/DataTableSection';
+import { ActionIconButton } from '../components/ui/TableRowActions';
 
 const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssignee }) => {
     const [formData, setFormData] = useState({
@@ -887,7 +893,7 @@ const KanbanView = ({ leads, onView }) => {
             {columns.map(col => (
                 <div key={col.id} className="min-w-[320px] bg-gray-50/50 rounded-2xl flex flex-col h-full border border-gray-100/50 shadow-sm">
                     <div className={`p-4 border-b border-gray-100 bg-white rounded-t-2xl flex justify-between items-center sticky top-0 z-10 shadow-sm`}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                             <div className={`w-2 h-8 rounded-full ${col.bg.replace('bg-', 'bg-')} ${col.color.replace('border-', 'bg-')}`}></div>
                             <h3 className="font-bold text-slate-800">{col.label}</h3>
                         </div>
@@ -1163,30 +1169,32 @@ const Leads = () => {
     return (
         <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Lead Pipeline</h1>
-                    <p className="text-slate-500 mt-1 text-base md:text-lg">Manage and track your potential customers effectively.</p>
-                </div>
-                <div className="flex flex-wrap gap-3">
+            <PageHeader
+                title="Lead Pipeline"
+                subtitle="Manage and track your potential customers effectively."
+                primaryAction={(
                     <button onClick={() => { setEditingLead(null); setIsFormOpen(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30">
                         <Plus className="w-5 h-5" /> Add New Lead
                     </button>
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        style={{ display: 'none' }}
-                        onChange={handleFileChange}
-                        accept=".csv"
-                    />
-                    <button onClick={handleImportLeads} className="p-2.5 bg-white border border-gray-200 text-slate-600 rounded-xl hover:bg-gray-50 shadow-sm transition-colors" title="Import CSV">
-                        <Upload className="w-5 h-5" />
-                    </button>
-                    <button onClick={handleExportCSV} className="p-2.5 bg-white border border-gray-200 text-slate-600 rounded-xl hover:bg-gray-50 shadow-sm transition-colors" title="Export Leads">
-                        <Download className="w-5 h-5" />
-                    </button>
-                </div>
-            </div>
+                )}
+                secondaryActions={(
+                    <>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            style={{ display: 'none' }}
+                            onChange={handleFileChange}
+                            accept=".csv"
+                        />
+                        <button onClick={handleImportLeads} className="p-2.5 bg-white border border-gray-200 text-slate-600 rounded-xl hover:bg-gray-50 shadow-sm transition-colors" title="Import CSV">
+                            <Upload className="w-5 h-5" />
+                        </button>
+                        <button onClick={handleExportCSV} className="p-2.5 bg-white border border-gray-200 text-slate-600 rounded-xl hover:bg-gray-50 shadow-sm transition-colors" title="Export Leads">
+                            <Download className="w-5 h-5" />
+                        </button>
+                    </>
+                )}
+            />
 
             {/* Overdue Alert */}
             {overdueLeads.length > 0 && (
@@ -1251,25 +1259,18 @@ const Leads = () => {
                     <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
                         <ViewToggle active={viewMode} onChange={setViewMode} />
                         
-                        <div className="flex-1 min-w-[240px] relative group">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
-                            <input
-                                type="text"
-                                placeholder="Search leads by name, email, company..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
-                            />
-                        </div>
+                        <ToolbarSearch
+                            placeholder="Search leads by name, email, company..."
+                            value={searchTerm}
+                            onChange={setSearchTerm}
+                        />
                         
                         <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-                                <Activity className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-                                >
+                            <FilterSelect
+                                icon={Activity}
+                                value={statusFilter}
+                                onChange={setStatusFilter}
+                            >
                                     <option value="All Statuses">All Statuses</option>
                                     <option value="New">New</option>
                                     <option value="Contacted">Contacted</option>
@@ -1279,8 +1280,7 @@ const Leads = () => {
                                     <option value="Converted">Converted</option>
                                     <option value="Lost">Lost</option>
                                     <option value="Inactive">Inactive</option>
-                                </select>
-                            </div>
+                            </FilterSelect>
 
                             <button
                                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -1296,7 +1296,7 @@ const Leads = () => {
                             </button>
 
                             {(searchTerm || statusFilter !== "All Statuses" || priorityFilter !== "All Priorities" || assigneeFilter !== "All Assignees") && (
-                                <button
+                                <ClearFiltersButton
                                     onClick={() => {
                                         setSearchTerm("");
                                         setStatusFilter("All Statuses");
@@ -1304,10 +1304,7 @@ const Leads = () => {
                                         setAssigneeFilter("All Assignees");
                                         setFilterByOverdue(false);
                                     }}
-                                    className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-                                >
-                                    <X size={14} /> Clear
-                                </button>
+                                />
                             )}
                         </div>
                     </div>
@@ -1315,58 +1312,52 @@ const Leads = () => {
                     {/* Advanced Filters */}
                     {showAdvancedFilters && (
                         <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[160px]">
-                                <AlertCircle className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-                                <select
-                                    value={priorityFilter}
-                                    onChange={(e) => setPriorityFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-                                >
+                            <FilterSelect
+                                icon={AlertCircle}
+                                value={priorityFilter}
+                                onChange={setPriorityFilter}
+                                minWidthClass="min-w-[160px]"
+                            >
                                     <option value="All Priorities">All Priorities</option>
                                     <option value="Low">Low</option>
                                     <option value="Medium">Medium</option>
                                     <option value="High">High</option>
                                     <option value="Urgent">Urgent</option>
-                                </select>
-                            </div>
+                            </FilterSelect>
 
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
-                                <User className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-                                <select
-                                    value={assigneeFilter}
-                                    onChange={(e) => setAssigneeFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-                                >
+                            <FilterSelect
+                                icon={User}
+                                value={assigneeFilter}
+                                onChange={setAssigneeFilter}
+                                minWidthClass="min-w-[200px]"
+                            >
                                     <option value="All Assignees">All Assignees</option>
                                     <option value="Unassigned">Unassigned</option>
                                     {assignees.map(user => (
                                         <option key={user} value={user}>{user}</option>
                                     ))}
-                                </select>
-                            </div>
+                            </FilterSelect>
                         </div>
                     )}
                 </div>
 
                 {viewMode === 'list' && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
-                            <h3 className="font-bold text-slate-800">All Leads</h3>
-                            <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
-                                {isLoading ? 'Loading...' : leadsMeta
-                                    ? `Showing ${(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}ΓÇô${Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of ${leadsMeta.total}`
-                                    : `Showing ${filteredLeads.length} of ${totalLeadsCount}`}
-                            </span>
-                        </div>
+                        <TableSectionHeader
+                            title="All Leads"
+                            summary={isLoading ? 'Loading...' : leadsMeta
+                                ? `Showing ${(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}–${Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of ${leadsMeta.total}`
+                                : `Showing ${filteredLeads.length} of ${totalLeadsCount}`}
+                        />
                         <div className="overflow-x-auto custom-scrollbar">
                             {isLoading ? (
                                 <TableSkeleton rows={8} cols={8} />
                             ) : (
-                            <table className="w-full text-sm text-left min-w-[1000px]">
+                            <table className="w-full text-xs md:text-sm text-left min-w-[1000px]">
                                 <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
                                     <tr>
                                         <th className="px-6 py-4 w-10"><input type="checkbox" className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" /></th>
-                                        <th className="px-6 py-4">Lead Info</th>
+                                        <th className="px-6 py-4 sticky left-[48px] z-20 bg-gray-50/50">Lead Info</th>
                                         <th className="px-6 py-4">Status</th>
                                         <th className="px-6 py-4">Priority</th>
                                         <th className="px-6 py-4">Value</th>
@@ -1379,18 +1370,18 @@ const Leads = () => {
                                     {filteredLeads.length === 0 ? (
                                         <tr>
                                             <td colSpan="8" className="px-6 py-12 text-center">
-                                                <div className="flex flex-col items-center justify-center text-gray-400">
-                                                    <User className="h-12 w-12 mb-3 opacity-20" />
-                                                    <p className="text-lg font-medium text-gray-500">No leads found</p>
-                                                    <p className="text-sm">Add a lead or adjust your filters.</p>
-                                                </div>
+                                                <EmptyState
+                                                    icon={User}
+                                                    title="No leads found"
+                                                    description="Add a lead or adjust your filters."
+                                                />
                                             </td>
                                         </tr>
                                     ) : (
                                         filteredLeads.map(lead => (
                                             <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors group">
                                                 <td className="px-6 py-4"><input type="checkbox" className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" /></td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-4 sticky left-[48px] z-10 bg-white group-hover:bg-slate-50/50">
                                                     <div className="flex flex-col">
                                                         <span className="font-bold text-slate-800 text-sm">{lead.firstName} {lead.lastName}</span>
                                                         <span className="text-xs text-slate-500">{lead.company}</span>
@@ -1444,10 +1435,10 @@ const Leads = () => {
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => { setFollowUpLead(lead); setIsFollowUpModalOpen(true); }} className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="Set Follow-up"><CalendarIcon className="w-4 h-4" /></button>
-                                                        <button onClick={() => handleView(lead)} className="p-2 text-slate-500 hover:bg-gray-100 rounded-lg transition-colors" title="View Details"><Eye className="w-4 h-4" /></button>
-                                                        <button onClick={() => handleEdit(lead)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit"><Edit2 className="w-4 h-4" /></button>
-                                                        <button onClick={() => handleDelete(lead.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                                        <ActionIconButton onClick={() => { setFollowUpLead(lead); setIsFollowUpModalOpen(true); }} title="Set Follow-up" icon={CalendarIcon} tone="view" />
+                                                        <ActionIconButton onClick={() => handleView(lead)} title="View Details" icon={Eye} tone="view" />
+                                                        <ActionIconButton onClick={() => handleEdit(lead)} title="Edit" icon={Edit2} tone="edit" />
+                                                        <ActionIconButton onClick={() => handleDelete(lead.id)} title="Delete" icon={Trash2} tone="delete" />
                                                     </div>
                                                 </td>
                                             </tr>
@@ -1458,29 +1449,13 @@ const Leads = () => {
                             )}
                         </div>
                         {leadsMeta && leadsMeta.last_page > 1 && (
-                            <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-                                <span className="text-sm text-slate-600">
-                                    Showing {(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}ΓÇô{Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of {leadsMeta.total}
-                                </span>
-                                <div className="flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                        disabled={leadsMeta.current_page <= 1}
-                                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Previous
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setCurrentPage((p) => p + 1)}
-                                        disabled={leadsMeta.current_page >= leadsMeta.last_page}
-                                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Next
-                                    </button>
-                                </div>
-                            </div>
+                            <TablePagination
+                                summary={`Showing ${(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}–${Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of ${leadsMeta.total}`}
+                                onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                onNext={() => setCurrentPage((p) => p + 1)}
+                                previousDisabled={leadsMeta.current_page <= 1}
+                                nextDisabled={leadsMeta.current_page >= leadsMeta.last_page}
+                            />
                         )}
                     </div>
                 )}

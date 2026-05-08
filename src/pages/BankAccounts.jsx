@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
-import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Search, Upload, Image, Loader2 } from "lucide-react";
+import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Upload, Image, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { getBankAccounts, createBankAccount, updateBankAccount, deleteBankAccount } from "../services/bankAccountService";
 import { invalidateCache } from "../utils/apiFetch";
 import clsx from "clsx";
+import PageHeader from "../components/ui/PageHeader";
+import ToolbarSearch from "../components/ui/ToolbarSearch";
+import EmptyState from "../components/ui/EmptyState";
+import { TableSectionHeader } from "../components/ui/DataTableSection";
+import { ActionIconButton } from "../components/ui/TableRowActions";
 
 const emptyForm = {
   bankName: "",
@@ -174,34 +179,30 @@ export default function BankAccounts() {
   return (
     <div className="p-6 lg:p-10 w-full mx-auto animate-fade-in space-y-8 overflow-hidden">
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Bank Accounts</h1>
-          <p className="text-slate-500 mt-1 text-lg">Manage your banking and payment channels.</p>
-        </div>
-        <button
-          onClick={openAdd}
-          className="btn-primary flex items-center gap-2 shadow-lg shadow-violet-500/30"
-        >
-          <Plus size={20} />
-          Add Account
-        </button>
-      </div>
+      <PageHeader
+        title="Bank Accounts"
+        subtitle="Manage your banking and payment channels."
+        primaryAction={(
+          <button
+            onClick={openAdd}
+            className="btn-primary flex items-center gap-2 shadow-lg shadow-violet-500/30"
+          >
+            <Plus size={20} />
+            Add Account
+          </button>
+        )}
+      />
 
       {/* TABLE */}
       <div className="card p-0 overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <h3 className="font-bold text-slate-800">Accounts</h3>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search accounts..."
-              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 w-64 transition-all"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+        <div className="p-4 md:p-5 border-b border-gray-100 bg-gray-50/50 space-y-3">
+          <TableSectionHeader title="Accounts" summary={`Showing ${filteredData.length}`} />
+          <ToolbarSearch
+            placeholder="Search accounts..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+            className="max-w-sm"
+          />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
@@ -219,8 +220,12 @@ export default function BankAccounts() {
             <tbody className="divide-y divide-gray-50">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-12 text-center text-slate-400 italic">
-                    No bank accounts found
+                  <td colSpan="7" className="px-6 py-2">
+                    <EmptyState
+                      icon={Wallet}
+                      title="No bank accounts found"
+                      description="Add a bank account or adjust your search."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -254,27 +259,9 @@ export default function BankAccounts() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => openViewModal(item)}
-                          title="View"
-                          className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-brand-50 transition-colors"
-                        >
-                          <Eye size={18} />
-                        </button>
-                        <button
-                          onClick={() => openEdit(item)}
-                          title="Edit"
-                          className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                          <Edit2 size={18} />
-                        </button>
-                        <button
-                          onClick={() => deleteBankaccounts(item.id)}
-                          title="Delete"
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        <ActionIconButton onClick={() => openViewModal(item)} title="View" icon={Eye} tone="view" />
+                        <ActionIconButton onClick={() => openEdit(item)} title="Edit" icon={Edit2} tone="edit" />
+                        <ActionIconButton onClick={() => deleteBankaccounts(item.id)} title="Delete" icon={Trash2} tone="delete" />
                       </div>
                     </td>
                   </tr>

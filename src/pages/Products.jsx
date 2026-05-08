@@ -1,9 +1,15 @@
 import { useState } from "react";
-import { Plus, Eye, Edit2, Trash2, X, Package, Search, ShoppingBag, AlertTriangle, Loader2, Filter, Activity, Save } from "lucide-react";
+import { Plus, Eye, Edit2, Trash2, X, Package, ShoppingBag, AlertTriangle, Loader2, Filter, Activity, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "../hooks/useApiQueries";
 import clsx from "clsx";
 import { TableSkeleton } from "../components/Skeleton";
+import PageHeader from "../components/ui/PageHeader";
+import ToolbarSearch from "../components/ui/ToolbarSearch";
+import EmptyState from "../components/ui/EmptyState";
+import { FilterSelect, ClearFiltersButton } from "../components/ui/FilterControls";
+import { TableSectionHeader } from "../components/ui/DataTableSection";
+import { ActionIconButton } from "../components/ui/TableRowActions";
 
 const emptyForm = {
     name: "",
@@ -155,55 +161,39 @@ export default function Products() {
 
             <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-                    <div className="space-y-1.5">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] relative group overflow-hidden">
-                                <ShoppingBag className="h-5 w-5 text-white relative z-10" />
-                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                            </div>
-                            <h1 className="text-[28px] font-bold text-slate-900">Products & Services</h1>
-                        </div>
-                        <p className="text-slate-500 font-medium text-[14px]">Manage your products and services catalogue efficiently.</p>
-                    </div>
-                    <button
-                        onClick={openAdd}
-                        className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
-                    >
-                        {/* Shimmer Effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
-
-                        <Plus size={20} className="relative z-10" />
-                        <span className="relative z-10">Add Item</span>
-                    </button>
-                </div>
+                <PageHeader
+                    title="Products & Services"
+                    subtitle="Manage your products and services catalogue efficiently."
+                    primaryAction={(
+                        <button
+                            onClick={openAdd}
+                            className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
+                            <Plus size={20} className="relative z-10" />
+                            <span className="relative z-10">Add Item</span>
+                        </button>
+                    )}
+                />
 
             <div className="sticky top-[88px] z-30 space-y-3">
                 <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
-                    <div className="flex-1 min-w-[240px] relative group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors w-4 h-4" />
-                        <input
-                            type="text"
-                            placeholder="Search products by name or description..."
-                            className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-violet-400 focus:ring-[3px] focus:ring-violet-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
+                    <ToolbarSearch
+                        placeholder="Search products by name or description..."
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                    />
 
-                    <div className="flex flex-wrap items-center gap-2 pr-1">
-                        <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-10">
-                            <Activity className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-                            >
+                    <div className="flex flex-wrap items-center gap-2 pr-1 w-full lg:w-auto">
+                        <FilterSelect
+                            icon={Activity}
+                            value={statusFilter}
+                            onChange={setStatusFilter}
+                        >
                                 <option value="all">All Status</option>
                                 <option value="Active">Active Only</option>
                                 <option value="Inactive">Inactive Only</option>
-                            </select>
-                        </div>
+                        </FilterSelect>
 
                         <button 
                             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -219,39 +209,35 @@ export default function Products() {
                         </button>
 
                         {(searchQuery || statusFilter !== 'all' || typeFilter !== 'all') && (
-                            <button
+                            <ClearFiltersButton
                                 onClick={() => {
                                     setSearchQuery("");
                                     setStatusFilter("all");
                                     setTypeFilter("all");
                                 }}
-                                className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-                            >
-                                <X size={14} /> Clear
-                            </button>
+                            />
                         )}
                     </div>
                 </div>
 
                 {showAdvancedFilters && (
                     <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
-                        <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[160px]">
-                            <Package className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
-                            <select
-                                value={typeFilter}
-                                onChange={(e) => setTypeFilter(e.target.value)}
-                                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-                            >
+                        <FilterSelect
+                            icon={Package}
+                            value={typeFilter}
+                            onChange={setTypeFilter}
+                            minWidthClass="min-w-[160px]"
+                        >
                                 <option value="all">Project Type (Any)</option>
                                 <option value="Product">Product</option>
                                 <option value="Service">Service</option>
-                            </select>
-                        </div>
+                        </FilterSelect>
                     </div>
                 )}
             </div>
 
             <div className="card p-0 overflow-hidden">
+                <TableSectionHeader title="Product Catalog" summary={`Showing ${filteredData.length} item${filteredData.length !== 1 ? 's' : ''}`} />
                 <div className="overflow-x-auto">
                     {isLoading ? (
                         <TableSkeleton rows={6} cols={5} />
@@ -269,8 +255,12 @@ export default function Products() {
                         <tbody className="divide-y divide-gray-50">
                             {filteredData.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" className="p-12 text-center text-slate-400 italic">
-                                        No items found
+                                    <td colSpan="5" className="px-6 py-2">
+                                        <EmptyState
+                                            icon={Package}
+                                            title="No items found"
+                                            description="Add a product/service or adjust your filters."
+                                        />
                                     </td>
                                 </tr>
                             ) : (
@@ -318,27 +308,9 @@ export default function Products() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                                <button
-                                                    onClick={() => openViewModal(item)}
-                                                    title="View"
-                                                    className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-brand-50 transition-colors"
-                                                >
-                                                    <Eye size={18} />
-                                                </button>
-                                                <button
-                                                    onClick={() => openEdit(item)}
-                                                    title="Edit"
-                                                    className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                                                >
-                                                    <Edit2 size={18} />
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteItem(item.id)}
-                                                    title="Delete"
-                                                    className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
+                                                <ActionIconButton onClick={() => openViewModal(item)} title="View" icon={Eye} tone="view" />
+                                                <ActionIconButton onClick={() => openEdit(item)} title="Edit" icon={Edit2} tone="edit" />
+                                                <ActionIconButton onClick={() => deleteItem(item.id)} title="Delete" icon={Trash2} tone="delete" />
                                             </div>
                                         </td>
                                     </tr>

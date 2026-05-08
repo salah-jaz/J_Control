@@ -18,6 +18,12 @@ import { invalidateCache } from "../utils/apiFetch";
 import { queryKeys } from "../query/queryKeys";
 import clsx from "clsx";
 import { TableSkeleton } from "../components/Skeleton";
+import PageHeader from "../components/ui/PageHeader";
+import ToolbarSearch from "../components/ui/ToolbarSearch";
+import EmptyState from "../components/ui/EmptyState";
+import { FilterSelect, ClearFiltersButton } from "../components/ui/FilterControls";
+import { TableSectionHeader, TablePagination } from "../components/ui/DataTableSection";
+import { ActionIconButton } from "../components/ui/TableRowActions";
 
 const emptyForm = {
   client: "",
@@ -434,21 +440,20 @@ export default function Income() {
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Income Records</h1>
-          <p className="text-slate-500 mt-1 text-base md:text-lg">Track and manage your incoming payments.</p>
-        </div>
-        <button
-          onClick={openAdd}
-          className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
-        >
-          {/* Shimmer Effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
-          <Plus size={20} className="relative z-10" />
-          <span className="relative z-10">Add Income</span>
-        </button>
-      </div>
+      <PageHeader
+        title="Income Records"
+        subtitle="Track and manage your incoming payments."
+        primaryAction={(
+          <button
+            onClick={openAdd}
+            className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
+            <Plus size={20} className="relative z-10" />
+            <span className="relative z-10">Add Income</span>
+          </button>
+        )}
+      />
 
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
@@ -481,46 +486,27 @@ export default function Income() {
       {/* Filters Bar */}
       <div className="space-y-3">
         <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[240px] relative group">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search income by ID, invoice, or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
-            />
-          </div>
+          <ToolbarSearch
+            placeholder="Search income by ID, invoice, or description..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
           
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-              <Receipt className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-              >
+            <FilterSelect icon={Receipt} value={statusFilter} onChange={setStatusFilter}>
                 <option value="All">All Status</option>
                 <option value="Paid">Paid</option>
                 <option value="Partial">Partial</option>
                 <option value="Unpaid">Unpaid</option>
-              </select>
-            </div>
+            </FilterSelect>
 
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-              <CalendarIcon className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-              >
+            <FilterSelect icon={CalendarIcon} value={dateFilter} onChange={setDateFilter}>
                 <option value="All">All Time</option>
                 <option value="Today">Today</option>
                 <option value="This Week">This Week</option>
                 <option value="This Month">This Month</option>
                 <option value="This Year">This Year</option>
-              </select>
-            </div>
+            </FilterSelect>
 
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -536,7 +522,7 @@ export default function Income() {
             </button>
 
             {(searchQuery || statusFilter !== "All" || categoryFilter || bankFilter || clientFilter || dateFilter !== "All" || dateFrom || dateTo) && (
-              <button
+              <ClearFiltersButton
                 onClick={() => {
                   setSearchQuery("");
                   setStatusFilter("All");
@@ -547,10 +533,7 @@ export default function Income() {
                   setDateFrom("");
                   setDateTo("");
                 }}
-                className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-              >
-                <X size={14} /> Clear
-              </button>
+              />
             )}
           </div>
         </div>
@@ -627,13 +610,13 @@ export default function Income() {
       {/* TABLE */}
       <div className="card p-0 overflow-hidden">
         <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
-          <h3 className="font-bold text-slate-800">Income Records</h3>
+          <TableSectionHeader
+            title="Income Records"
+            summary={incomeLoading ? "Loading..." : incomeMeta
+              ? `Showing ${(incomeMeta.current_page - 1) * incomeMeta.per_page + 1}–${Math.min(incomeMeta.current_page * incomeMeta.per_page, incomeMeta.total)} of ${incomeMeta.total}`
+              : `Showing ${incomeRecords.length} of ${incomeRecords.length}`}
+          />
           <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-            <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg self-center">
-              {incomeLoading ? "Loading..." : incomeMeta
-                ? `Showing ${(incomeMeta.current_page - 1) * incomeMeta.per_page + 1}–${Math.min(incomeMeta.current_page * incomeMeta.per_page, incomeMeta.total)} of ${incomeMeta.total}`
-                : `Showing ${incomeRecords.length} of ${incomeRecords.length}`}
-            </span>
             <button
               onClick={() => exportToCSV(incomeRecords.map((r) => ({ id: r.id, client: r.client, amount: r.netAmount || r.amount, method: r.method, date: r.receivedDate, bank: r.bank, status: r.status })), "income_records")}
               className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
@@ -662,12 +645,12 @@ export default function Income() {
             <tbody className="divide-y divide-gray-50">
               {incomeRecords.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-gray-400">
-                      <Receipt className="h-12 w-12 mb-3 opacity-20" />
-                      <p className="text-lg font-medium text-gray-500">No income records found</p>
-                      <p className="text-sm">Add an income record or adjust your filters.</p>
-                    </div>
+                  <td colSpan="7" className="px-6 py-2">
+                    <EmptyState
+                      icon={Receipt}
+                      title="No income records found"
+                      description="Add an income record or adjust your filters."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -692,29 +675,11 @@ export default function Income() {
                             Invoice Linked
                           </span>
                         )}
-                        <button
-                          onClick={() => openViewModal(income)}
-                          title="View"
-                          className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-brand-50 transition-colors"
-                        >
-                          <Eye size={18} />
-                        </button>
+                        <ActionIconButton onClick={() => openViewModal(income)} title="View" icon={Eye} tone="view" />
                         {!income.invoice_id && (
                           <>
-                            <button
-                              onClick={() => openEdit(income)}
-                              title="Edit"
-                              className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                            >
-                              <Edit2 size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(income.id)}
-                              title="Delete"
-                              className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 size={18} />
-                            </button>
+                            <ActionIconButton onClick={() => openEdit(income)} title="Edit" icon={Edit2} tone="edit" />
+                            <ActionIconButton onClick={() => handleDelete(income.id)} title="Delete" icon={Trash2} tone="delete" />
                           </>
                         )}
                       </div>
@@ -727,29 +692,13 @@ export default function Income() {
           )}
         </div>
         {incomeMeta && incomeMeta.last_page > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <span className="text-sm text-slate-600">
-              Showing {(incomeMeta.current_page - 1) * incomeMeta.per_page + 1}–{Math.min(incomeMeta.current_page * incomeMeta.per_page, incomeMeta.total)} of {incomeMeta.total}
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={incomeMeta.current_page <= 1}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={incomeMeta.current_page >= incomeMeta.last_page}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <TablePagination
+            summary={`Showing ${(incomeMeta.current_page - 1) * incomeMeta.per_page + 1}–${Math.min(incomeMeta.current_page * incomeMeta.per_page, incomeMeta.total)} of ${incomeMeta.total}`}
+            onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            onNext={() => setCurrentPage((p) => p + 1)}
+            previousDisabled={incomeMeta.current_page <= 1}
+            nextDisabled={incomeMeta.current_page >= incomeMeta.last_page}
+          />
         )}
       </div>
 

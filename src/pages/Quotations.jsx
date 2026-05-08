@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, Suspense, lazy } from "react";
 import {
   FileText,
   Plus,
-  Search,
   Eye,
   Edit2,
   Trash2,
@@ -29,6 +28,12 @@ import { useQuotationList, useQuotationSummary, useClients, useProducts } from "
 import { invalidateCache } from "../utils/apiFetch";
 import { queryKeys } from "../query/queryKeys";
 import { TableSkeleton } from "../components/Skeleton";
+import PageHeader from "../components/ui/PageHeader";
+import ToolbarSearch from "../components/ui/ToolbarSearch";
+import EmptyState from "../components/ui/EmptyState";
+import { FilterSelect, ClearFiltersButton } from "../components/ui/FilterControls";
+import { TableSectionHeader, TablePagination } from "../components/ui/DataTableSection";
+import { ActionIconButton } from "../components/ui/TableRowActions";
 
 const QuotationView = lazy(() => import("../components/QuotationView"));
 
@@ -347,28 +352,21 @@ function Quotations() {
 
       <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-brand-600 to-brand-400 rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] relative group overflow-hidden">
-                <FileOutput className="h-5 w-5 text-white relative z-10" />
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-              </div>
-              <h1 className="text-[28px] font-bold text-slate-900">Quotations</h1>
-            </div>
-            <p className="text-slate-500 font-medium text-[14px]">Create and manage quotations for your customers.</p>
-          </div>
-          <button
-            onClick={openAdd}
-            className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
-          >
-            {/* Shimmer Effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
-            
-            <Plus size={20} className="relative z-10" />
-            <span className="relative z-10">New Quotation</span>
-          </button>
-        </div>
+        <PageHeader
+          title="Quotations"
+          subtitle="Create and manage quotations for your customers."
+          primaryAction={(
+            <button
+              onClick={openAdd}
+              className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+            >
+              {/* Shimmer Effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
+              <Plus size={20} className="relative z-10" />
+              <span className="relative z-10">New Quotation</span>
+            </button>
+          )}
+        />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
         <StatCard title="Total" value={summary.total ?? 0} icon={FileText} color="bg-slate-500" />
@@ -381,31 +379,23 @@ function Quotations() {
       {/* Filters Bar */}
       <div className="space-y-3">
         <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[240px] relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search quotation number, client..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
-            />
-          </div>
+          <ToolbarSearch
+            placeholder="Search quotation number, client..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
           
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-              <Layers className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-              >
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+            <FilterSelect
+              icon={Layers}
+              value={statusFilter}
+              onChange={setStatusFilter}
+            >
                 <option value="All">All Status</option>
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
-              </select>
-            </div>
+            </FilterSelect>
 
             <button
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -421,7 +411,7 @@ function Quotations() {
             </button>
 
             {(searchQuery || statusFilter !== "All" || clientFilter || dateFrom || dateTo) && (
-              <button
+              <ClearFiltersButton
                 onClick={() => {
                   setSearchQuery("");
                   setStatusFilter("All");
@@ -429,10 +419,7 @@ function Quotations() {
                   setDateFrom("");
                   setDateTo("");
                 }}
-                className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-              >
-                <X size={14} /> Clear
-              </button>
+              />
             )}
           </div>
         </div>
@@ -440,21 +427,19 @@ function Quotations() {
         {/* Advanced Filters */}
         {showAdvancedFilters && (
           <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
-              <User className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={clientFilter}
-                onChange={(e) => setClientFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-              >
+            <FilterSelect
+              icon={User}
+              value={clientFilter}
+              onChange={setClientFilter}
+              minWidthClass="min-w-[200px]"
+            >
                 <option value="">All Clients</option>
                 {safeClients.map((c, idx) => (
                   <option key={c?.id ?? `client-${idx}`} value={c?.id ?? ""}>
                     {c?.company_name || c?.client_name || "—"}
                   </option>
                 ))}
-              </select>
-            </div>
+            </FilterSelect>
 
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-2">Period:</span>
@@ -478,20 +463,18 @@ function Quotations() {
 
 
       <div className="card p-0 overflow-hidden">
-        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <h3 className="font-bold text-slate-800">Quotation List</h3>
-          <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
-            {quotationsLoading ? "Loading..." : quotationsMeta ? `Showing ${(quotationsMeta.current_page - 1) * quotationsMeta.per_page + 1}–${Math.min(quotationsMeta.current_page * quotationsMeta.per_page, quotationsMeta.total)} of ${quotationsMeta.total}` : `Showing ${quotations.length}`}
-          </span>
-        </div>
+        <TableSectionHeader
+          title="Quotation List"
+          summary={quotationsLoading ? "Loading..." : quotationsMeta ? `Showing ${(quotationsMeta.current_page - 1) * quotationsMeta.per_page + 1}–${Math.min(quotationsMeta.current_page * quotationsMeta.per_page, quotationsMeta.total)} of ${quotationsMeta.total}` : `Showing ${quotations.length}`}
+        />
         <div className="overflow-x-auto">
           {quotationsLoading ? (
             <TableSkeleton rows={6} cols={7} />
           ) : (
-          <table className="w-full text-sm text-left min-w-[800px]">
+          <table className="w-full text-xs md:text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
               <tr>
-                <th className="px-6 py-4">Quotation #</th>
+                <th className="px-6 py-4 sticky left-0 z-20 bg-gray-50/50">Quotation #</th>
                 <th className="px-6 py-4">Client</th>
                 <th className="px-6 py-4">Date</th>
                 <th className="px-6 py-4 text-right">Amount</th>
@@ -503,12 +486,18 @@ function Quotations() {
             <tbody className="divide-y divide-gray-50">
               {quotations.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-slate-500 italic">No quotations found</td>
+                  <td colSpan="7" className="px-6 py-2">
+                    <EmptyState
+                      icon={FileText}
+                      title="No quotations found"
+                      description="Create a quotation or adjust your filters."
+                    />
+                  </td>
                 </tr>
               ) : (
                 quotations.map((q) => (
                   <tr key={q.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-6 py-4 font-mono font-semibold text-slate-800">{q.quotation_no}</td>
+                    <td className="px-6 py-4 font-mono font-semibold text-slate-800 sticky left-0 z-10 bg-white group-hover:bg-slate-50/50">{q.quotation_no}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">
                       {q.client ? (q.client.company_name || q.client.client_name) : "—"}
                     </td>
@@ -537,35 +526,11 @@ function Quotations() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-1 transition-opacity">
-                        <button
-                          onClick={() => openViewModal(q)}
-                          title="View"
-                          className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                        >
-                          <Eye size={18} />
-                        </button>
-                        <button
-                          onClick={() => openEdit(q)}
-                          title="Edit"
-                          className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                          <Edit2 size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(q.id)}
-                          title="Delete"
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        <ActionIconButton onClick={() => openViewModal(q)} title="View" icon={Eye} tone="view" />
+                        <ActionIconButton onClick={() => openEdit(q)} title="Edit" icon={Edit2} tone="edit" />
+                        <ActionIconButton onClick={() => handleDelete(q.id)} title="Delete" icon={Trash2} tone="delete" />
                         {q.status !== "Converted" && (
-                          <button
-                            onClick={() => handleConvertToInvoice(q)}
-                            title="Convert to Invoice"
-                            className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
-                          >
-                            <FileOutput size={18} />
-                          </button>
+                          <ActionIconButton onClick={() => handleConvertToInvoice(q)} title="Convert to Invoice" icon={FileOutput} tone="convert" />
                         )}
                       </div>
                     </td>
@@ -577,29 +542,13 @@ function Quotations() {
           )}
         </div>
         {quotationsMeta && quotationsMeta.last_page > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <span className="text-sm text-slate-600">
-              Showing {(quotationsMeta.current_page - 1) * quotationsMeta.per_page + 1}–{Math.min(quotationsMeta.current_page * quotationsMeta.per_page, quotationsMeta.total)} of {quotationsMeta.total}
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={quotationsMeta.current_page <= 1}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={quotationsMeta.current_page >= quotationsMeta.last_page}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <TablePagination
+            summary={`Showing ${(quotationsMeta.current_page - 1) * quotationsMeta.per_page + 1}–${Math.min(quotationsMeta.current_page * quotationsMeta.per_page, quotationsMeta.total)} of ${quotationsMeta.total}`}
+            onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            onNext={() => setCurrentPage((p) => p + 1)}
+            previousDisabled={quotationsMeta.current_page <= 1}
+            nextDisabled={quotationsMeta.current_page >= quotationsMeta.last_page}
+          />
         )}
       </div>
 

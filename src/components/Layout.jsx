@@ -24,19 +24,28 @@ const isAlertActive = (item) => {
 
 // Helper function to get page title based on path
 const getPageTitle = (pathname) => {
-    switch (pathname) {
-        case '/':
-            return 'Dashboard';
-        case '/settings':
-            return 'Settings';
-        case '/users':
-            return 'Users Management';
-        // Add more cases as needed
-        default:
-            // Capitalize the first letter and replace hyphens with spaces for other paths
-            const pathSegment = pathname.split('/').pop();
-            return pathSegment ? pathSegment.charAt(0).toUpperCase() + pathSegment.slice(1).replace(/-/g, ' ') : 'Page';
-    }
+    const titleMap = {
+        '/': 'Dashboard',
+        '/leads': 'Leads',
+        '/clients': 'Clients',
+        '/products': 'Products & Services',
+        '/quotations': 'Quotations',
+        '/invoices': 'Invoices',
+        '/agreements': 'Agreements',
+        '/income': 'Income',
+        '/banks': 'Bank Accounts',
+        '/expense': 'Expense',
+        '/transaction': 'Transactions',
+        '/reports': 'Reports',
+        '/planner': 'Planner',
+        '/settings': 'Settings',
+        '/user': 'Users',
+        '/print-templates': 'Print Templates',
+    };
+
+    if (titleMap[pathname]) return titleMap[pathname];
+    const pathSegment = pathname.split('/').pop();
+    return pathSegment ? pathSegment.charAt(0).toUpperCase() + pathSegment.slice(1).replace(/-/g, ' ') : 'Page';
 };
 
 const Layout = ({ children }) => {

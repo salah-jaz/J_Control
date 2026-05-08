@@ -8,6 +8,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { invalidateCache } from "../utils/apiFetch";
 import { queryKeys } from "../query/queryKeys";
 import { TableSkeleton } from "../components/Skeleton";
+import PageHeader from "../components/ui/PageHeader";
+import ToolbarSearch from "../components/ui/ToolbarSearch";
+import EmptyState from "../components/ui/EmptyState";
+import { TableSectionHeader, TablePagination } from "../components/ui/DataTableSection";
+import { ActionIconButton } from "../components/ui/TableRowActions";
 
 const emptyForm = {
   name: "",
@@ -125,45 +130,36 @@ export default function Users() {
   return (
     <div className="p-4 md:p-6 lg:p-8 w-full mx-auto animate-fade-in space-y-6 md:space-y-8">
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">User Management</h1>
-          <p className="text-slate-500 mt-1 text-base md:text-lg">Manage team members and their access permissions.</p>
-        </div>
-        <button
-          onClick={openAdd}
-          className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
-        >
-          <UserPlus size={20} />
-          Add User
-        </button>
-      </div>
+      <PageHeader
+        title="User Management"
+        subtitle="Manage team members and their access permissions."
+        primaryAction={(
+          <button
+            onClick={openAdd}
+            className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
+          >
+            <UserPlus size={20} />
+            Add User
+          </button>
+        )}
+      />
 
       {/* TABLE */}
       <div className="card p-0 overflow-hidden min-h-[400px]">
-        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
-          <h3 className="font-bold text-slate-800">Team Members</h3>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search users..."
-              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-        {meta && (
-          <div className="px-4 md:px-6 py-2 border-b border-gray-100 bg-gray-50/30 text-xs font-semibold text-slate-500">
-            {meta
-              ? `Showing ${(meta.current_page - 1) * meta.per_page + 1}–${Math.min(
-                  meta.current_page * meta.per_page,
-                  meta.total
-                )} of ${meta.total}`
+        <div className="border-b border-gray-100 bg-gray-50/50 p-4 md:p-5 space-y-3">
+          <TableSectionHeader
+            title="Team Members"
+            summary={meta
+              ? `Showing ${(meta.current_page - 1) * meta.per_page + 1}–${Math.min(meta.current_page * meta.per_page, meta.total)} of ${meta.total}`
               : `Showing ${filteredData.length}`}
-          </div>
-        )}
+          />
+          <ToolbarSearch
+            placeholder="Search users..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+            className="max-w-sm"
+          />
+        </div>
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-sm text-left min-w-[800px]">
             <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
@@ -184,8 +180,12 @@ export default function Users() {
                 </tr>
               ) : filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="p-12 text-center text-slate-400 italic">
-                    No users found
+                  <td colSpan="5" className="px-6 py-2">
+                    <EmptyState
+                      icon={UserCheck}
+                      title="No users found"
+                      description="Add a user or try different search text."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -232,18 +232,9 @@ export default function Users() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                          onClick={() => openViewModal(item)} title="View">
-                          <Eye size={18} />
-                        </button>
-                        <button className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                          onClick={() => openEdit(item)} title="Edit">
-                          <Edit2 size={18} />
-                        </button>
-                        <button className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                          onClick={() => handleDelete(item.id)} title="Delete">
-                          <Trash2 size={18} />
-                        </button>
+                        <ActionIconButton onClick={() => openViewModal(item)} title="View" icon={Eye} tone="view" />
+                        <ActionIconButton onClick={() => openEdit(item)} title="Edit" icon={Edit2} tone="edit" />
+                        <ActionIconButton onClick={() => handleDelete(item.id)} title="Delete" icon={Trash2} tone="delete" />
                       </div>
                     </td>
                   </tr>
@@ -253,30 +244,13 @@ export default function Users() {
           </table>
         </div>
         {meta && meta.last_page > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <span className="text-sm text-slate-600">
-              Showing {(meta.current_page - 1) * meta.per_page + 1}–
-              {Math.min(meta.current_page * meta.per_page, meta.total)} of {meta.total}
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={meta.current_page <= 1}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={meta.current_page >= meta.last_page}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <TablePagination
+            summary={`Showing ${(meta.current_page - 1) * meta.per_page + 1}–${Math.min(meta.current_page * meta.per_page, meta.total)} of ${meta.total}`}
+            onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            onNext={() => setCurrentPage((p) => p + 1)}
+            previousDisabled={meta.current_page <= 1}
+            nextDisabled={meta.current_page >= meta.last_page}
+          />
         )}
       </div>
 

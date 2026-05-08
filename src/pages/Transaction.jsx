@@ -1,10 +1,16 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Search, Download, ArrowUpRight, ArrowDownLeft, Filter, X, Eye, Receipt, TrendingUp, TrendingDown, Activity } from "lucide-react";
+import { Download, ArrowUpRight, ArrowDownLeft, Filter, X, Eye, Receipt, TrendingUp, TrendingDown, Activity } from "lucide-react";
 import clsx from "clsx";
 import { exportToCSV } from "../utils/csvExport";
 import { useTransactionList, useTransactionSummary } from "../hooks/useApiQueries";
 import { getBankAccounts } from "../services/bankAccountService";
 import { TableSkeleton } from "../components/Skeleton";
+import PageHeader from "../components/ui/PageHeader";
+import ToolbarSearch from "../components/ui/ToolbarSearch";
+import EmptyState from "../components/ui/EmptyState";
+import { FilterSelect } from "../components/ui/FilterControls";
+import { TableSectionHeader, TablePagination } from "../components/ui/DataTableSection";
+import { ActionIconButton } from "../components/ui/TableRowActions";
 
 const StatCard = ({ title, value, icon: Icon, color }) => (
   <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -85,28 +91,28 @@ export default function Transaction() {
 
   return (
     <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Transactions</h1>
-          <p className="text-slate-500 mt-1 text-base md:text-lg">History of all financial movements.</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={clsx("btn-secondary flex items-center gap-2", showFilters && "bg-slate-100 ring-2 ring-slate-200")}
-          >
-            <Filter size={18} />
-            Filter
-          </button>
-          <button
-            onClick={() => exportToCSV(transactions, "transactions_export")}
-            className="btn-secondary flex items-center gap-2"
-          >
-            <Download size={18} />
-            Export
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Transactions"
+        subtitle="History of all financial movements."
+        secondaryActions={(
+          <>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={clsx("btn-secondary flex items-center gap-2", showFilters && "bg-slate-100 ring-2 ring-slate-200")}
+            >
+              <Filter size={18} />
+              Filter
+            </button>
+            <button
+              onClick={() => exportToCSV(transactions, "transactions_export")}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <Download size={18} />
+              Export
+            </button>
+          </>
+        )}
+      />
 
       {/* STATS CARDS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
@@ -160,30 +166,30 @@ export default function Transaction() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="label">Type</label>
-              <select className="input" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+              <FilterSelect value={typeFilter} onChange={setTypeFilter}>
                 <option value="">All</option>
                 <option value="Income">Income</option>
                 <option value="Expense">Expense</option>
-              </select>
+              </FilterSelect>
             </div>
             <div>
               <label className="label">Status</label>
-              <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <FilterSelect value={statusFilter} onChange={setStatusFilter}>
                 <option value="">All</option>
                 <option value="Paid">Paid</option>
                 <option value="Received">Received</option>
                 <option value="Pending">Pending</option>
                 <option value="Completed">Completed</option>
-              </select>
+              </FilterSelect>
             </div>
             <div>
               <label className="label">Bank/Treasury</label>
-              <select className="input" value={bankFilter} onChange={(e) => setBankFilter(e.target.value)}>
+              <FilterSelect value={bankFilter} onChange={setBankFilter}>
                 <option value="">All</option>
                 {bankAccounts.map((b) => (
                   <option key={b.id} value={b.id}>{b.bank_name || b.bankName} - {b.account_number || b.accountNumber}</option>
                 ))}
-              </select>
+              </FilterSelect>
             </div>
             <div>
               <label className="label">Start Date</label>
@@ -199,23 +205,17 @@ export default function Transaction() {
 
       {/* TABLE */}
       <div className="card p-0 overflow-hidden min-h-[400px]">
-        <div className="px-4 md:px-6 py-4 md:py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
-          <h3 className="font-bold text-slate-800">Transaction History</h3>
-          <div className="relative w-full sm:w-auto">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full sm:w-64 transition-all"
-            />
-          </div>
-        </div>
-        <div className="px-4 md:px-6 py-2 border-b border-gray-100 bg-gray-50/30">
-          <span className="text-xs font-semibold text-slate-500">
-            {listLoading ? "Loading..." : listMeta ? `Showing ${(listMeta.current_page - 1) * listMeta.per_page + 1}–${Math.min(listMeta.current_page * listMeta.per_page, listMeta.total)} of ${listMeta.total}` : `Showing ${transactions.length}`}
-          </span>
+        <div className="p-4 md:p-5 border-b border-gray-100 bg-gray-50/50 space-y-3">
+          <TableSectionHeader
+            title="Transaction History"
+            summary={listLoading ? "Loading..." : listMeta ? `Showing ${(listMeta.current_page - 1) * listMeta.per_page + 1}–${Math.min(listMeta.current_page * listMeta.per_page, listMeta.total)} of ${listMeta.total}` : `Showing ${transactions.length}`}
+          />
+          <ToolbarSearch
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+            className="max-w-sm"
+          />
         </div>
         <div className="overflow-x-auto">
           {listLoading ? (
@@ -238,12 +238,12 @@ export default function Transaction() {
               <tbody className="divide-y divide-gray-50">
                 {transactions.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="p-12 text-center">
-                      <div className="flex flex-col items-center justify-center text-gray-400">
-                        <Receipt className="h-12 w-12 mb-3 opacity-20" />
-                        <p className="text-lg font-medium text-gray-500">No transactions found</p>
-                        <p className="text-sm">Adjust filters or date range.</p>
-                      </div>
+                    <td colSpan="9" className="px-6 py-2">
+                      <EmptyState
+                        icon={Receipt}
+                        title="No transactions found"
+                        description="Adjust filters or date range."
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -276,14 +276,7 @@ export default function Transaction() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => openViewModal(txn)}
-                          className="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
-                          title="View"
-                        >
-                          <Eye size={18} />
-                        </button>
+                        <ActionIconButton onClick={() => openViewModal(txn)} title="View" icon={Eye} tone="view" />
                       </td>
                     </tr>
                   ))
@@ -293,29 +286,13 @@ export default function Transaction() {
           )}
         </div>
         {listMeta && listMeta.last_page > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <span className="text-sm text-slate-600">
-              Showing {(listMeta.current_page - 1) * listMeta.per_page + 1}–{Math.min(listMeta.current_page * listMeta.per_page, listMeta.total)} of {listMeta.total}
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={listMeta.current_page <= 1}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={listMeta.current_page >= listMeta.last_page}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <TablePagination
+            summary={`Showing ${(listMeta.current_page - 1) * listMeta.per_page + 1}–${Math.min(listMeta.current_page * listMeta.per_page, listMeta.total)} of ${listMeta.total}`}
+            onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            onNext={() => setCurrentPage((p) => p + 1)}
+            previousDisabled={listMeta.current_page <= 1}
+            nextDisabled={listMeta.current_page >= listMeta.last_page}
+          />
         )}
       </div>
 

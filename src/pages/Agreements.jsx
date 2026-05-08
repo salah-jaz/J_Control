@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-    Plus, Search, Eye, X, User, Layout, Calendar, Filter, Sparkles, ShieldAlert,
+    Plus, Eye, X, User, Layout, Calendar, Filter, Sparkles, ShieldAlert,
     Pencil, Trash2, ChevronRight, ChevronLeft, Building2, Target, StickyNote,
     Layers, Briefcase, Info, Image as ImageIcon, Check, Loader2, Save, FileText
 } from "lucide-react";
@@ -13,6 +13,12 @@ import AgreementPreviewModal from "../components/AgreementPreviewModal";
 import AgreementContentDisplay from "../components/AgreementContentDisplay";
 import { getEffectiveTemplateHtml, buildAgreementPrintData, resolveTemplateHtmlWithData } from "../config/printTemplateModules";
 import { getTemplates } from "../utils/printTemplateStorage";
+import PageHeader from "../components/ui/PageHeader";
+import ToolbarSearch from "../components/ui/ToolbarSearch";
+import EmptyState from "../components/ui/EmptyState";
+import { FilterSelect } from "../components/ui/FilterControls";
+import { TableSectionHeader } from "../components/ui/DataTableSection";
+import { ActionIconButton } from "../components/ui/TableRowActions";
 
 const emptyForm = {
     client_id: "",
@@ -315,28 +321,20 @@ function Agreements() {
 
             <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-                    <div className="space-y-1.5">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] relative group overflow-hidden">
-                                <FileText className="h-5 w-5 text-white relative z-10" />
-                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                            </div>
-                            <h1 className="text-[28px] font-bold text-slate-900">Agreements</h1>
-                        </div>
-                        <p className="text-slate-500 font-medium text-[14px]">Manage and generate professional agreements for your clients.</p>
-                    </div>
-                    <button
-                        onClick={openAdd}
-                        className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
-                    >
-                        {/* Shimmer Effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
-
-                        <Plus size={20} className="relative z-10" />
-                        <span className="relative z-10">Create Agreement</span>
-                    </button>
-                </div>
+                <PageHeader
+                    title="Agreements"
+                    subtitle="Manage and generate professional agreements for your clients."
+                    primaryAction={(
+                        <button
+                            onClick={openAdd}
+                            className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
+                            <Plus size={20} className="relative z-10" />
+                            <span className="relative z-10">Create Agreement</span>
+                        </button>
+                    )}
+                />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
                 <StatCard title="Total" value={summary.total ?? 0} icon={FileText} color="bg-slate-500" />
@@ -348,44 +346,34 @@ function Agreements() {
 
             {/* Filters Bar */}
             <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
-                <div className="flex-1 min-w-[300px] relative group">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors w-4 h-4" />
-                    <input
-                        type="text"
-                        placeholder="Search agreements..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-violet-400 focus:ring-[3px] focus:ring-violet-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300"
-                    />
-                </div>
+                <ToolbarSearch
+                    placeholder="Search agreements..."
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                />
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-9">
-                        <Filter className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-                        >
+                    <FilterSelect
+                        icon={Filter}
+                        value={statusFilter}
+                        onChange={setStatusFilter}
+                    >
                             <option value="All">All Status</option>
                             {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                    </div>
-                    <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-9">
-                        <User className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
-                        <select
-                            value={clientFilter}
-                            onChange={(e) => setClientFilter(e.target.value)}
-                            className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-                        >
+                    </FilterSelect>
+                    <FilterSelect
+                        icon={User}
+                        value={clientFilter}
+                        onChange={setClientFilter}
+                    >
                             <option value="">All Clients</option>
                             {clients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
-                        </select>
-                    </div>
+                    </FilterSelect>
                 </div>
             </div>
 
             {/* List Table */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <TableSectionHeader title="Agreement List" summary={`Showing ${agreements.length}`} />
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50/50 border-b border-gray-100 text-slate-500 font-bold uppercase text-[11px] tracking-wider">
@@ -402,7 +390,15 @@ function Agreements() {
                             {loading ? (
                                 <tr><td colSpan="6" className="px-6 py-12 text-center text-slate-400">Loading agreements...</td></tr>
                             ) : agreements.length === 0 ? (
-                                <tr><td colSpan="6" className="px-6 py-12 text-center text-slate-400 italic">No agreements found.</td></tr>
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-2">
+                                        <EmptyState
+                                            icon={FileText}
+                                            title="No agreements found"
+                                            description="Create an agreement or adjust your filters."
+                                        />
+                                    </td>
+                                </tr>
                             ) : (
                                 agreements.map((a) => (
                                     <tr key={a.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -427,27 +423,9 @@ function Agreements() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-1">
-                                                <button
-                                                    onClick={() => openEdit(a)}
-                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    title="Edit"
-                                                >
-                                                    <Pencil size={18} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(a.id)}
-                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                                <button
-                                                    onClick={() => openPreviewModal(a)}
-                                                    className="p-2 text-slate-400 hover:text-violet-600 hover:bg-brand-50 rounded-lg transition-colors"
-                                                    title="Preview & Print"
-                                                >
-                                                    <Eye size={18} />
-                                                </button>
+                                                <ActionIconButton onClick={() => openEdit(a)} title="Edit" icon={Pencil} tone="edit" />
+                                                <ActionIconButton onClick={() => handleDelete(a.id)} title="Delete" icon={Trash2} tone="delete" />
+                                                <ActionIconButton onClick={() => openPreviewModal(a)} title="Preview & Print" icon={Eye} tone="view" />
                                             </div>
                                         </td>
                                     </tr>

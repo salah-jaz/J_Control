@@ -1,11 +1,17 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { Plus, Search, Edit2, Trash2, X, Building2, Phone, Mail, MapPin, Eye, Users, CheckCircle, Receipt, FileText, MoreVertical, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Filter, ChevronRight, Clock, Activity, Tag, Settings2, Calendar } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Building2, Phone, Mail, MapPin, Eye, Users, CheckCircle, Receipt, FileText, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Filter, ChevronRight, Clock, Activity, Tag, Settings2, Calendar } from 'lucide-react';
 import { useClients, useClientLocations, useSaveClient, useDeleteClient } from '../hooks/useApiQueries';
 import ClientForm from '../components/ClientForm';
 import { useLocation } from 'react-router-dom';
 import { TableSkeleton } from '../components/Skeleton';
+import PageHeader from '../components/ui/PageHeader';
+import ToolbarSearch from '../components/ui/ToolbarSearch';
+import EmptyState from '../components/ui/EmptyState';
+import { FilterSelect, ClearFiltersButton } from '../components/ui/FilterControls';
+import { TablePagination } from '../components/ui/DataTableSection';
+import { ActionDropdownMenu } from '../components/ui/TableRowActions';
 
 const SummaryCard = ({ title, description, value, icon: Icon, themeClass, iconClass, cardBg, borderColor, trend, trendUp }) => (
     <div className={clsx(
@@ -45,45 +51,6 @@ const SummaryCard = ({ title, description, value, icon: Icon, themeClass, iconCl
         </div>
     </div>
 );
-
-const ActionMenu = ({ onEdit, onView, onDelete, isOpen, onToggle, onClose }) => {
-    const menuRef = useRef(null);
-
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (isOpen && menuRef.current && !menuRef.current.contains(e.target)) {
-                onClose();
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isOpen, onClose]);
-
-    return (
-        <div className="relative" ref={menuRef}>
-            <button
-                onClick={(e) => { e.stopPropagation(); onToggle(); }}
-                className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
-            >
-                <MoreVertical className="h-5 w-5" />
-            </button>
-            {isOpen && (
-                <div className="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg shadow-slate-200/50 border border-slate-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
-                    <button onClick={(e) => { e.stopPropagation(); onView(); onClose(); }} className="w-full flex items-center gap-3 px-4 py-2 text-[14px] font-medium text-slate-700 hover:bg-violet-50 hover:text-violet-700 transition-colors">
-                        <Eye className="h-4 w-4" /> View Profile
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); onEdit(); onClose(); }} className="w-full flex items-center gap-3 px-4 py-2 text-[14px] font-medium text-slate-700 hover:bg-violet-50 hover:text-violet-700 transition-colors">
-                        <Edit2 className="h-4 w-4" /> Edit Client
-                    </button>
-                    <div className="h-px bg-slate-100 my-1"></div>
-                    <button onClick={(e) => { e.stopPropagation(); onDelete(); onClose(); }} className="w-full flex items-center gap-3 px-4 py-2 text-[14px] font-medium text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors">
-                        <Trash2 className="h-4 w-4" /> Delete
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-};
 
 const CompanyAvatar = ({ name, logo }) => {
     const initials = name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '??';
@@ -243,27 +210,21 @@ const ClientManagement = () => {
 
             <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-                    <div className="space-y-1.5">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] relative group overflow-hidden">
-                                <Users className="h-5 w-5 text-white relative z-10" />
-                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                            </div>
-                            <h1 className="text-[28px] font-bold text-slate-900">Client Management</h1>
-                        </div>
-                        <p className="text-slate-500 font-medium text-[14px]">Centralized management of your client network and business relationships.</p>
-                    </div>
-                    <button
-                        onClick={handleAddNew}
-                        title="Create new client profile"
-                        className="btn-premium group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none"></div>
-                        <Plus className="h-4 w-4 stroke-[2.5]" />
-                        <span className="relative z-10">Add Client</span>
-                    </button>
-                </div>
+                <PageHeader
+                    title="Client Management"
+                    subtitle="Centralized management of your client network and business relationships."
+                    primaryAction={(
+                        <button
+                            onClick={handleAddNew}
+                            title="Create new client profile"
+                            className="btn-premium group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none"></div>
+                            <Plus className="h-4 w-4 stroke-[2.5]" />
+                            <span className="relative z-10">Add Client</span>
+                        </button>
+                    )}
+                />
 
                 {/* Stats Overview */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -320,32 +281,24 @@ const ClientManagement = () => {
                 {/* Powerful Filter Bar */}
                 <div className="sticky top-[88px] z-30 space-y-3">
                     <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
-                        <div className="flex-1 min-w-[240px] relative group">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors w-4 h-4" />
-                            <input
-                                type="text"
-                                placeholder="Search clients by name, company, email..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-violet-400 focus:ring-[3px] focus:ring-violet-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
-                            />
-                        </div>
+                        <ToolbarSearch
+                            placeholder="Search clients by name, company, email..."
+                            value={search}
+                            onChange={setSearch}
+                        />
                         
-                        <div className="flex flex-wrap items-center gap-2 pr-1">
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-10">
-                                <Activity className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-                                >
+                        <div className="flex flex-wrap items-center gap-2 pr-1 w-full lg:w-auto">
+                            <FilterSelect
+                                icon={Activity}
+                                value={statusFilter}
+                                onChange={setStatusFilter}
+                            >
                                     <option value="all">All Status</option>
                                     <option value="active">Active</option>
                                     <option value="inactive">Inactive</option>
                                     <option value="onboarding">Onboarding</option>
                                     <option value="lead">Lead</option>
-                                </select>
-                            </div>
+                            </FilterSelect>
 
                             <button 
                                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
@@ -361,12 +314,7 @@ const ClientManagement = () => {
                             </button>
 
                             {hasActiveFilters && (
-                                <button
-                                    onClick={resetFilters}
-                                    className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-                                >
-                                    <X size={14} /> Clear
-                                </button>
+                                <ClearFiltersButton onClick={resetFilters} />
                             )}
                         </div>
                     </div>
@@ -374,47 +322,41 @@ const ClientManagement = () => {
                     {/* Advanced Filters */}
                     {showAdvancedFilters && (
                         <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[160px]">
-                                <Receipt className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
-                                <select
-                                    value={gstFilter}
-                                    onChange={(e) => setGstFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-                                >
+                            <FilterSelect
+                                icon={Receipt}
+                                value={gstFilter}
+                                onChange={setGstFilter}
+                                minWidthClass="min-w-[160px]"
+                            >
                                     <option value="all">Any Tax Status</option>
                                     <option value="gst">Registered</option>
                                     <option value="nongst">Unregistered</option>
-                                </select>
-                            </div>
+                            </FilterSelect>
 
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[170px]">
-                                <MapPin className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
-                                <select
-                                    value={locationFilter}
-                                    onChange={(e) => setLocationFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-                                >
+                            <FilterSelect
+                                icon={MapPin}
+                                value={locationFilter}
+                                onChange={setLocationFilter}
+                                minWidthClass="min-w-[170px]"
+                            >
                                     <option value="">All Locations</option>
                                     {locations.map(loc => (
                                         <option key={loc} value={loc}>{loc}</option>
                                     ))}
-                                </select>
-                            </div>
+                            </FilterSelect>
 
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-violet-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[160px]">
-                                <Calendar className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-500" />
-                                <select
-                                    value={dateFilter}
-                                    onChange={(e) => setDateFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-                                >
+                            <FilterSelect
+                                icon={Calendar}
+                                value={dateFilter}
+                                onChange={setDateFilter}
+                                minWidthClass="min-w-[160px]"
+                            >
                                     <option value="all">Registration Date</option>
                                     <option value="today">Today</option>
                                     <option value="this_month">This Month</option>
                                     <option value="last_month">Last Month</option>
                                     <option value="custom">Custom Range</option>
-                                </select>
-                            </div>
+                            </FilterSelect>
 
                             {dateFilter === 'custom' && (
                                 <div className="flex items-center gap-2">
@@ -464,10 +406,10 @@ const ClientManagement = () => {
                         {isLoading ? (
                             <TableSkeleton rows={10} cols={6} />
                         ) : (
-                        <table className="table w-full text-left border-collapse">
+                        <table className="table w-full text-left border-collapse text-xs md:text-sm">
                             <thead>
                                 <tr className="border-b border-light">
-                                    <th className="px-8 py-5 text-[14px] font-semibold text-primary w-[22%]">Client / Company</th>
+                                    <th className="px-8 py-5 text-[14px] font-semibold text-primary w-[22%] sticky left-0 z-20 bg-white">Client / Company</th>
                                     <th className="px-6 py-5 text-[14px] font-semibold text-primary text-center">Account Status</th>
                                     <th className="px-6 py-5 text-[14px] font-semibold text-primary text-center">Category Tags</th>
                                     <th className="px-6 py-5 text-[14px] font-semibold text-primary text-center">Last Activity</th>
@@ -484,7 +426,7 @@ const ClientManagement = () => {
                                             openMenuId === client.id ? "!z-50" : "z-0"
                                         )}
                                     >
-                                        <td className="px-8 py-4">
+                                        <td className="px-8 py-4 sticky left-0 z-10 bg-white group-hover:bg-slate-50">
                                             <div className="flex items-center gap-4">
                                                 <div className={clsx(
                                                     "absolute left-0 top-3 bottom-3 w-1 rounded-r-full transition-all duration-300 opacity-0 group-hover:opacity-100",
@@ -554,39 +496,35 @@ const ClientManagement = () => {
                                             </div>
                                         </td>
                                         <td className="px-8 py-4 text-right">
-                                            <ActionMenu
+                                            <ActionDropdownMenu
                                                 isOpen={openMenuId === client.id}
                                                 onToggle={() => setOpenMenuId(openMenuId === client.id ? null : client.id)}
                                                 onClose={() => setOpenMenuId(null)}
-                                                onEdit={() => handleEdit(client)}
-                                                onView={() => handleView(client)}
-                                                onDelete={() => handleDelete(client.id)}
+                                                items={[
+                                                    { label: 'View Profile', icon: Eye, onClick: () => handleView(client) },
+                                                    { label: 'Edit Client', icon: Edit2, onClick: () => handleEdit(client) },
+                                                    { label: 'Delete', icon: Trash2, onClick: () => handleDelete(client.id), destructive: true, separatorBefore: true },
+                                                ]}
                                             />
                                         </td>
                                     </tr>
                                 )) : (
                                     <tr>
                                         <td colSpan="6" className="px-8 py-24 text-center">
-                                            <div className="max-w-md mx-auto flex flex-col items-center justify-center space-y-6 animate-in fade-in duration-700">
-                                                <div className="relative">
-                                                    <div className="h-24 w-24 bg-violet-50 rounded-2xl flex items-center justify-center border-[3px] border-white shadow-xl shadow-violet-100/50">
-                                                        <Building2 className="h-10 w-10 text-violet-400 stroke-[2]" />
-                                                    </div>
-                                                    <div className="absolute -top-2 -right-2 h-8 w-8 bg-white rounded-full flex items-center justify-center shadow-lg border border-slate-50">
-                                                        <Plus className="h-4 w-4 text-violet-500" />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <h3 className="text-[18px] font-bold text-slate-900">No Clients Found</h3>
-                                                    <p className="text-slate-500 font-medium text-[14px]">Expand your portfolio by introducing new enterprise clients to the system.</p>
-                                                </div>
-                                                <button 
-                                                    onClick={handleAddNew}
-                                                    className="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-xl font-medium text-[14px] shadow-[0_8px_20px_rgba(124,58,237,0.25)] hover:shadow-[0_12px_24px_rgba(124,58,237,0.35)] hover:-translate-y-[2px] transition-all flex items-center gap-2 active:scale-[0.98]"
-                                                >
-                                                    <Plus className="h-4 w-4 stroke-[2.5]" /> Add First Client
-                                                </button>
-                                            </div>
+                                            <EmptyState
+                                                icon={Building2}
+                                                title="No clients found"
+                                                description="Expand your portfolio by introducing new enterprise clients to the system."
+                                                action={(
+                                                    <button
+                                                        onClick={handleAddNew}
+                                                        className="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-xl font-medium text-[14px] shadow-[0_8px_20px_rgba(124,58,237,0.25)] hover:shadow-[0_12px_24px_rgba(124,58,237,0.35)] hover:-translate-y-[2px] transition-all flex items-center gap-2 active:scale-[0.98]"
+                                                    >
+                                                        <Plus className="h-4 w-4 stroke-[2.5]" /> Add First Client
+                                                    </button>
+                                                )}
+                                                className="max-w-md mx-auto"
+                                            />
                                         </td>
                                     </tr>
                                 )}
@@ -596,31 +534,13 @@ const ClientManagement = () => {
                     </div>
                     
                     {clientsMeta && (clientsMeta.last_page > 1) && (
-                        <div className="px-8 py-6 border-t border-slate-100 flex items-center justify-between bg-white text-[14px]">
-                            <div className="flex items-center gap-2">
-                                 <span className="text-[14px] font-medium text-slate-500">
-                                    Showing {(clientsMeta.current_page - 1) * clientsMeta.per_page + 1}–{Math.min(clientsMeta.current_page * clientsMeta.per_page, clientsMeta.total)} of {clientsMeta.total} clients
-                                </span>
-                            </div>
-                            <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                    disabled={clientsMeta.current_page <= 1}
-                                    className="px-5 py-2.5 rounded-lg border border-slate-200 bg-white text-[13px] font-medium text-slate-700 hover:bg-slate-50 hover:text-violet-600 disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-slate-700 transition-all duration-[250ms] shadow-sm active:scale-[0.98]"
-                                >
-                                    Previous
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setCurrentPage((p) => p + 1)}
-                                    disabled={clientsMeta.current_page >= clientsMeta.last_page}
-                                    className="px-5 py-2.5 rounded-lg border border-slate-200 bg-white text-[13px] font-medium text-slate-700 hover:bg-slate-50 hover:text-violet-600 disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-slate-700 transition-all duration-[250ms] shadow-sm active:scale-[0.98]"
-                                >
-                                    Next
-                                </button>
-                            </div>
-                        </div>
+                        <TablePagination
+                            summary={`Showing ${(clientsMeta.current_page - 1) * clientsMeta.per_page + 1}–${Math.min(clientsMeta.current_page * clientsMeta.per_page, clientsMeta.total)} of ${clientsMeta.total} clients`}
+                            onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            onNext={() => setCurrentPage((p) => p + 1)}
+                            previousDisabled={clientsMeta.current_page <= 1}
+                            nextDisabled={clientsMeta.current_page >= clientsMeta.last_page}
+                        />
                     )}
                 </div>
             </div>

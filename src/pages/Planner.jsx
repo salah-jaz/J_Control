@@ -41,6 +41,11 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { toast } from 'react-hot-toast';
+import PageHeader from '../components/ui/PageHeader';
+import ToolbarSearch from '../components/ui/ToolbarSearch';
+import EmptyState from '../components/ui/EmptyState';
+import { FilterSelect, ClearFiltersButton } from '../components/ui/FilterControls';
+import { ActionIconButton } from '../components/ui/TableRowActions';
 
 const CATEGORY_COLORS = {
     meeting: '#3B82F6', // Blue
@@ -1307,17 +1312,11 @@ const Planner = () => {
                 </div>
             )}
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                        <CalendarIcon className="h-7 w-7 text-violet-600" />
-                        Planner
-                    </h1>
-                    <p className="text-slate-500 mt-1 text-sm md:text-base">
-                        Manage events, reminders, and notes from a single productivity hub.
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <PageHeader
+                title="Planner"
+                subtitle="Manage events, reminders, and notes from a single productivity hub."
+                secondaryActions={(
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
                     <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
                         <button
                             onClick={() => setCurrentView('dayGridMonth')}
@@ -1369,8 +1368,9 @@ const Planner = () => {
                         <History className="h-4 w-4" />
                         History
                     </button>
-                </div>
-            </div>
+                    </div>
+                )}
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
                 <StatCard
@@ -1425,20 +1425,16 @@ const Planner = () => {
 
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
                 <div className="flex flex-col lg:flex-row gap-4 flex-wrap items-center lg:items-end">
-                    <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <input
-                            type="text"
-                            placeholder="Search events or meetings..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 w-full transition-all shadow-sm"
-                        />
-                    </div>
-                    <select
+                    <ToolbarSearch
+                        placeholder="Search events or meetings..."
+                        value={search}
+                        onChange={setSearch}
+                        className="min-w-[200px]"
+                    />
+                    <FilterSelect
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[150px]"
+                        onChange={setStatusFilter}
+                        minWidthClass="min-w-[150px]"
                     >
                         <option value="all">All Status</option>
                         <option value="scheduled">Scheduled</option>
@@ -1446,11 +1442,11 @@ const Planner = () => {
                         <option value="rescheduled">Rescheduled</option>
                         <option value="cancelled">Cancelled</option>
                         <option value="overdue">Overdue</option>
-                    </select>
-                    <select
+                    </FilterSelect>
+                    <FilterSelect
                         value={categoryFilter}
-                        onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[150px]"
+                        onChange={setCategoryFilter}
+                        minWidthClass="min-w-[150px]"
                     >
                         <option value="all">All Categories</option>
                         <option value="meeting">Meeting</option>
@@ -1458,20 +1454,19 @@ const Planner = () => {
                         <option value="deadline">Deadline</option>
                         <option value="reminder">Reminder</option>
                         <option value="personal">Personal</option>
-                    </select>
-                    <select
+                    </FilterSelect>
+                    <FilterSelect
                         value={dateFilter}
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
+                        onChange={setDateFilter}
+                        minWidthClass="min-w-[140px]"
                     >
                         <option value="all">All Time</option>
                         <option value="today">Today</option>
                         <option value="week">This Week</option>
                         <option value="month">This Month</option>
-                    </select>
+                    </FilterSelect>
                     <div className="flex items-center gap-2 ml-auto flex-wrap">
-                        <button
-                            type="button"
+                        <ClearFiltersButton
                             onClick={() => {
                                 setSearch('');
                                 setSearchDebounced('');
@@ -1479,10 +1474,7 @@ const Planner = () => {
                                 setCategoryFilter('all');
                                 setDateFilter('all');
                             }}
-                            className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-gray-50 transition-colors"
-                        >
-                            Reset Filters
-                        </button>
+                        />
                         <button
                             onClick={openNewEventModal}
                             className="btn-primary flex items-center gap-2 shadow-lg shadow-violet-500/30 h-[38px]"
@@ -1585,8 +1577,12 @@ const Planner = () => {
                                 <tbody className="divide-y divide-gray-50">
                                     {filteredEvents.length === 0 ? (
                                         <tr>
-                                            <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
-                                                No events found. Add an event or adjust filters.
+                                            <td colSpan={9} className="px-4 py-2">
+                                                <EmptyState
+                                                    icon={CalendarDays}
+                                                    title="No events found"
+                                                    description="Add an event or adjust filters."
+                                                />
                                             </td>
                                         </tr>
                                     ) : (
@@ -1626,8 +1622,20 @@ const Planner = () => {
                                                     <td className="px-4 py-3 text-slate-600">{ev.client_name || '—'}</td>
                                                     <td className="px-4 py-3 text-slate-500 text-xs">{createdStr}</td>
                                                     <td className="px-4 py-3 text-right">
-                                                        <button type="button" onClick={(e) => { e.stopPropagation(); openEditEventModal(ev); }} className="p-1.5 rounded-lg text-slate-500 hover:bg-gray-100 mr-1" title="Edit"><Edit3 className="h-4 w-4" /></button>
-                                                        <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenCompleteModal(ev, ev.id); }} className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50" title="Complete"><CheckCircle2 className="h-4 w-4" /></button>
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <ActionIconButton
+                                                                onClick={(e) => { e.stopPropagation(); openEditEventModal(ev); }}
+                                                                title="Edit"
+                                                                icon={Edit3}
+                                                                tone="edit"
+                                                            />
+                                                            <ActionIconButton
+                                                                onClick={(e) => { e.stopPropagation(); handleOpenCompleteModal(ev, ev.id); }}
+                                                                title="Complete"
+                                                                icon={CheckCircle2}
+                                                                tone="view"
+                                                            />
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
