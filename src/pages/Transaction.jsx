@@ -148,7 +148,7 @@ export default function Transaction() {
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold text-slate-800 flex items-center gap-2">
               <Filter size={16} className="text-brand-600" />
-              Filter Records
+              Filters
             </h3>
             <button
               onClick={() => {
@@ -160,7 +160,7 @@ export default function Transaction() {
               }}
               className="text-sm text-brand-600 font-bold hover:underline"
             >
-              Reset Filters
+              Clear Filters
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

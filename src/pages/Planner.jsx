@@ -1357,7 +1357,7 @@ const Planner = () => {
                         className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-medium text-slate-600 hover:bg-gray-50 shadow-sm"
                     >
                         <Filter className="h-4 w-4" />
-                        More Filters
+                        Filters
                     </button>
                     <button
                         type="button"
@@ -1480,7 +1480,7 @@ const Planner = () => {
                             className="btn-primary flex items-center gap-2 shadow-lg shadow-violet-500/30 h-[38px]"
                         >
                             <Plus className="h-5 w-5" />
-                            Add Event
+                            Create Event
                         </button>
                     </div>
                 </div>
@@ -1942,7 +1942,7 @@ const Planner = () => {
                     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-lg w-full mx-4">
                         <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
                             <h2 className="text-lg font-bold text-slate-900">
-                                {eventForm.id ? 'Edit Event' : 'Add Event'}
+                                {eventForm.id ? 'Edit Event' : 'Create Event'}
                             </h2>
                             <button
                                 onClick={() => setIsEventModalOpen(false)}

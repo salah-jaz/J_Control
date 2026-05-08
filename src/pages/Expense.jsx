@@ -411,7 +411,7 @@ export default function Expense() {
   return (
     <div className="p-4 md:p-6 lg:p-8 w-full mx-auto animate-fade-in space-y-6 md:space-y-8">
       <PageHeader
-        title="Expense Tracking"
+        title="Expense Records"
         subtitle="Monitor and control your business spending."
         primaryAction={(
           <button

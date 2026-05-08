@@ -243,7 +243,7 @@ const Dashboard = () => {
                             >
                                 <p className="text-xs font-semibold text-amber-600 mb-1">Pending</p>
                                 <p className="text-lg font-bold text-slate-800 truncate">
-                                    View All
+                                    Open Invoices
                                 </p>
                             </div>
                         </div>
