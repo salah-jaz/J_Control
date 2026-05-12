@@ -262,7 +262,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-3xl rounded-t-[32px] sm:rounded-[24px] shadow-2xl flex flex-col max-h-[96vh] border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-[0.98] duration-300">
+      <div className="bg-white w-full max-w-6xl rounded-t-[32px] sm:rounded-[24px] shadow-2xl flex flex-col max-h-[96vh] border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-[0.98] duration-300">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-8 pt-8 pb-6 shrink-0">
@@ -287,51 +287,53 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
           </button>
         </div>
 
-        {/* ── Step Indicator ──────────────────────────────────────────────── */}
-        <div className="px-8 pb-6 shrink-0">
-          <div className="flex items-center gap-0">
-            {STEPS.map((step, idx) => {
-              const isActive   = step.id === activeTab;
-              const isDone     = idx < activeIdx;
-              const StepIcon   = step.icon;
-              return (
-                <div key={step.id} className="flex items-center flex-1">
+        <div className="flex-1 flex overflow-hidden">
+          {/* ── Sidebar Steps ─────────────────────────────────────────────── */}
+          <aside className="w-64 border-r border-slate-100 bg-slate-50/70 p-4 shrink-0 overflow-y-auto custom-scrollbar">
+            <div className="space-y-1.5">
+              {STEPS.map((step, idx) => {
+                const isActive = step.id === activeTab;
+                const isDone = idx < activeIdx;
+                const StepIcon = step.icon;
+                return (
                   <button
+                    key={step.id}
+                    type="button"
                     onClick={() => setActiveTab(step.id)}
                     className={clsx(
-                      "flex flex-col items-center gap-1.5 group transition-all flex-1",
+                      "w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all border",
+                      isActive
+                        ? "bg-white border-brand-200 text-brand-700 shadow-sm"
+                        : "border-transparent text-slate-500 hover:bg-white hover:border-slate-200"
                     )}
                   >
                     <div className={clsx(
-                      "h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 border-2",
-                      isActive  ? "bg-brand-600 border-brand-600 shadow-lg shadow-brand-500/30" :
-                      isDone    ? "bg-emerald-500 border-emerald-500" :
-                                  "bg-white border-slate-200 group-hover:border-slate-300"
+                      "h-9 w-9 rounded-lg flex items-center justify-center transition-all",
+                      isActive
+                        ? "bg-brand-600 text-white shadow-md shadow-brand-500/25"
+                        : isDone
+                          ? "bg-emerald-500 text-white"
+                          : "bg-slate-200 text-slate-500"
                     )}>
-                      {isDone
-                        ? <Check size={16} className="text-white" />
-                        : <StepIcon size={16} className={isActive ? "text-white" : "text-slate-400"} />
-                      }
+                      {isDone ? <Check size={16} /> : <StepIcon size={16} />}
                     </div>
-                    <span className={clsx("text-[11.5px] font-bold transition-colors",
-                      isActive ? "text-brand-600" : isDone ? "text-emerald-600" : "text-slate-400"
-                    )}>
-                      {step.label}
-                    </span>
+                    <div className="min-w-0">
+                      <p className={clsx(
+                        "text-[13px] font-bold leading-tight",
+                        isActive ? "text-brand-700" : isDone ? "text-emerald-700" : "text-slate-700"
+                      )}>
+                        {step.label}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{step.hint}</p>
+                    </div>
                   </button>
-                  {idx < STEPS.length - 1 && (
-                    <div className={clsx("h-0.5 flex-1 mb-5 mx-1 rounded-full transition-all duration-500",
-                      isDone ? "bg-emerald-400" : "bg-slate-100"
-                    )} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                );
+              })}
+            </div>
+          </aside>
 
-        {/* ── Content ─────────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-8 pb-4 custom-scrollbar">
+          {/* ── Content ───────────────────────────────────────────────────── */}
+          <div className="flex-1 overflow-y-auto px-8 pb-4 pt-2 custom-scrollbar">
 
           {/* Step 1: Basic Info */}
           {activeTab === 'basic' && (
@@ -766,6 +768,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
               </div>
             </div>
           )}
+          </div>
         </div>
 
         {/* ── Footer ─────────────────────────────────────────────────────── */}

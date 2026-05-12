@@ -32,7 +32,13 @@ const emptyForm = {
   qrCodeFile: null,
 };
 
-const tabs = ["Account Info", "Bank Details", "Balance", "QR Code", "Private Notes"];
+const tabs = [
+  { label: "Account Info", desc: "Owner and type", icon: Building2 },
+  { label: "Bank Details", desc: "Account identifiers", icon: CreditCard },
+  { label: "Balance", desc: "Amounts and status", icon: Wallet },
+  { label: "QR Code", desc: "Payment scan", icon: Image },
+  { label: "Private Notes", desc: "Internal memo", icon: Edit2 },
+];
 
 export default function BankAccounts() {
   const [data, setData] = useState([]);
@@ -328,7 +334,7 @@ export default function BankAccounts() {
       {/* FORM MODAL */}
       {openForm && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up overflow-hidden">
+          <div className="bg-white w-full max-w-6xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 tracking-tight">
@@ -341,24 +347,43 @@ export default function BankAccounts() {
               </button>
             </div>
 
-            {/* TABS */}
-            <div className="flex px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto hide-scrollbar flex-shrink-0">
-              {tabs.map((t, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveTab(i)}
-                  className={clsx(
-                    "px-6 py-4 text-sm font-bold uppercase tracking-wide border-b-2 transition-all whitespace-nowrap",
-                    activeTab === i ? "border-violet-600 text-violet-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
-                  )}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
+            <div className="flex-1 flex overflow-hidden">
+              {/* Sidebar Tabs */}
+              <aside className="w-64 border-r border-slate-100 bg-slate-50/70 p-4 shrink-0 overflow-y-auto">
+                {tabs.map((tabItem, i) => {
+                  const isActive = activeTab === i;
+                  const TabIcon = tabItem.icon;
+                  return (
+                    <button
+                      key={tabItem.label}
+                      type="button"
+                      onClick={() => setActiveTab(i)}
+                      className={clsx(
+                        "w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all border mb-1.5",
+                        isActive
+                          ? "bg-white border-violet-200 text-violet-700 shadow-sm"
+                          : "border-transparent text-slate-500 hover:bg-white hover:border-slate-200"
+                      )}
+                    >
+                      <div className={clsx(
+                        "h-9 w-9 rounded-lg flex items-center justify-center transition-all",
+                        isActive ? "bg-violet-600 text-white" : "bg-slate-200 text-slate-500"
+                      )}>
+                        <TabIcon size={16} />
+                      </div>
+                      <div>
+                        <p className={clsx("text-[13px] font-bold leading-tight", isActive ? "text-violet-700" : "text-slate-700")}>
+                          {tabItem.label}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{tabItem.desc}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </aside>
 
-            {/* TAB CONTENT */}
-            <div className="flex-1 overflow-y-auto p-8">
+              {/* TAB CONTENT */}
+              <div className="flex-1 overflow-y-auto p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {activeTab === 0 && (
                   <>
@@ -514,6 +539,7 @@ export default function BankAccounts() {
                     />
                   </div>
                 )}
+              </div>
               </div>
             </div>
 
