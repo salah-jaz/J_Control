@@ -13,41 +13,19 @@ import { FilterSelect, ClearFiltersButton } from '../components/ui/FilterControl
 import { TablePagination } from '../components/ui/DataTableSection';
 import { ActionDropdownMenu } from '../components/ui/TableRowActions';
 
-const SummaryCard = ({ title, description, value, icon: Icon, themeClass, iconClass, cardBg, borderColor, trend, trendUp }) => (
-    <div className={clsx(
-        "card group relative overflow-hidden cursor-default !border-0",
-        cardBg
-    )}>
-        {/* Top Gradient Line */}
-        <div className={clsx("absolute top-0 left-0 right-0 h-[2px]", themeClass.replace('bg-', 'bg-gradient-to-r from-').split(' ')[0] + " to-fuchsia-500")} />
-        
-        <div className="flex items-start justify-between mb-3">
-            <div className="flex flex-col gap-1">
-                <p className="text-[12px] font-medium text-slate-500 capitalize">{title.toLowerCase()}</p>
-                <div className="flex items-center gap-2">
-                    <h3 className="text-[24px] font-bold text-slate-900 leading-none">{value}</h3>
-                    {trend && (
-                        <div className={clsx(
-                            "flex items-center gap-1 px-2.5 py-1 rounded-md text-[12px] font-medium shadow-sm transition-all duration-[250ms] group-hover:scale-[1.02]",
-                            trendUp ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
-                        )}>
-                            {trendUp ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                            {trend}
-                        </div>
-                    )}
-                </div>
+const StatCard = ({ title, value, icon: Icon, color }) => (
+    <div className="card hover:border-brand-200/50 group h-36 flex flex-col justify-between p-6">
+        <div className="flex justify-between items-start">
+            <div className={`p-3.5 rounded-xl ${color}`}>
+                <Icon className="w-6 h-6 text-white" />
             </div>
-            <div className={clsx(
-                "h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-[250ms] group-hover:scale-110",
-                iconClass,
-                "shadow-sm"
-            )}>
-                <Icon className="w-4 h-4" />
+            <div className="text-right">
+                <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
+                <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{value}</h3>
             </div>
         </div>
-        
-        <div className="mt-2">
-            <p className="text-[12px] text-slate-500 font-medium">{description}</p>
+        <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div className={`h-full rounded-full ${color} opacity-30`} style={{ width: '70%' }}></div>
         </div>
     </div>
 );
@@ -204,11 +182,11 @@ const ClientManagement = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC]">
+        <div className="bg-slate-50 min-h-screen">
             {/* Header Background Strip */}
-            <div className="absolute top-0 left-0 right-0 h-80 bg-gradient-to-b from-violet-50/50 to-transparent pointer-events-none"></div>
+            <div className="absolute top-0 left-0 right-0 h-80 bg-gradient-to-b from-indigo-50/50 to-transparent pointer-events-none"></div>
 
-            <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <div className="relative p-4 md:p-8 space-y-8 animate-in fade-in duration-700">
                 {/* Header Section */}
                 <PageHeader
                     title="Client Management"
@@ -216,65 +194,39 @@ const ClientManagement = () => {
                     primaryAction={(
                         <button
                             onClick={handleAddNew}
-                            title="Create new client profile"
-                            className="btn-premium group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
+                            className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/30"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none"></div>
-                            <Plus className="h-4 w-4 stroke-[2.5]" />
-                            <span className="relative z-10">Add Client</span>
+                            <Plus size={18} strokeWidth={3} />
+                            <span>Add Client</span>
                         </button>
                     )}
                 />
 
                 {/* Stats Overview */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <SummaryCard
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard
                         title="Total Accounts"
-                        description="Global enterprise network"
                         value={totalClients}
                         icon={Users}
-                        trend="+3"
-                        trendUp={true}
-                        cardBg="bg-blue-50/50"
-                        borderColor="border-blue-100"
-                        iconClass="bg-blue-100/50 text-blue-500"
-                        themeClass="bg-indigo-500"
+                        color="bg-blue-600"
                     />
-                    <SummaryCard
+                    <StatCard
                         title="Active Accounts"
-                        description="Verified active entities"
                         value={activeClients}
                         icon={CheckCircle}
-                        trend="+2"
-                        trendUp={true}
-                        cardBg="bg-green-50/50"
-                        borderColor="border-green-100"
-                        iconClass="bg-green-100/50 text-emerald-500"
-                        themeClass="bg-emerald-500"
+                        color="bg-emerald-600"
                     />
-                    <SummaryCard
+                    <StatCard
                         title="Tax Registered"
-                        description="Verified GST entities"
                         value={gstClients}
                         icon={Receipt}
-                        trend="-1"
-                        trendUp={false}
-                        cardBg="bg-violet-50/50"
-                        borderColor="border-violet-100"
-                        iconClass="bg-violet-100/50 text-violet-600"
-                        themeClass="bg-violet-500"
+                        color="bg-violet-600"
                     />
-                    <SummaryCard
-                        title="Unregistered Accounts"
-                        description="Standard prospect pipeline"
+                    <StatCard
+                        title="Standard Pipeline"
                         value={totalClients - gstClients}
                         icon={FileText}
-                        trend="+12%"
-                        trendUp={true}
-                        cardBg="bg-orange-50/50"
-                        borderColor="border-orange-100"
-                        iconClass="bg-orange-100/50 text-orange-500"
-                        themeClass="bg-orange-400"
+                        color="bg-orange-600"
                     />
                 </div>
 
@@ -406,18 +358,18 @@ const ClientManagement = () => {
                         {isLoading ? (
                             <TableSkeleton rows={10} cols={6} />
                         ) : (
-                        <table className="table w-full text-left border-collapse text-xs md:text-sm">
+                        <table className="w-full text-left">
                             <thead>
-                                <tr className="border-b border-light">
-                                    <th className="px-8 py-5 text-[14px] font-semibold text-primary w-[22%] sticky left-0 z-20 bg-white">Client / Company</th>
-                                    <th className="px-6 py-5 text-[14px] font-semibold text-primary text-center">Account Status</th>
-                                    <th className="px-6 py-5 text-[14px] font-semibold text-primary text-center">Category Tags</th>
-                                    <th className="px-6 py-5 text-[14px] font-semibold text-primary text-center">Last Activity</th>
-                                    <th className="px-6 py-5 text-[14px] font-semibold text-primary text-center">Tax Info</th>
-                                    <th className="px-8 py-5 text-[14px] font-semibold text-primary text-right">Actions</th>
+                                <tr className="bg-slate-50/50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                                    <th className="px-6 py-4">Client / Company</th>
+                                    <th className="px-6 py-4 text-center">Account Status</th>
+                                    <th className="px-6 py-4 text-center">Category Tags</th>
+                                    <th className="px-6 py-4 text-center">Last Activity</th>
+                                    <th className="px-6 py-4 text-center">Tax Info</th>
+                                    <th className="px-6 py-4 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-slate-100 bg-white">
                                 {clients.length > 0 ? clients.map((client) => (
                                     <tr 
                                         key={client.id} 
@@ -518,9 +470,9 @@ const ClientManagement = () => {
                                                 action={(
                                                     <button
                                                         onClick={handleAddNew}
-                                                        className="px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-xl font-medium text-[14px] shadow-[0_8px_20px_rgba(124,58,237,0.25)] hover:shadow-[0_12px_24px_rgba(124,58,237,0.35)] hover:-translate-y-[2px] transition-all flex items-center gap-2 active:scale-[0.98]"
+                                                        className="btn-primary px-6 py-3 flex items-center gap-2 shadow-lg shadow-indigo-500/30"
                                                     >
-                                                        <Plus className="h-4 w-4 stroke-[2.5]" /> Add First Client
+                                                        <Plus className="h-4 w-4 stroke-[3]" /> Add First Client
                                                     </button>
                                                 )}
                                                 className="max-w-md mx-auto"

@@ -6,236 +6,126 @@
 
 @layer base {
   :root {
-    /* Primary Brand (Purple Premium) */
-    --primary-1: #7c3aed; /* Violet 600 */
-    --primary-2: #8b5cf6; /* Violet 500 */
-    --primary-3: #a78bfa; /* Violet 400 */
-    --brand-color: #7c3aed;
-  --primary-gradient: linear-gradient(135deg, var(--primary-1) 0%, var(--primary-2) 100%);
-  --premium-gradient: linear-gradient(135deg, #7C3AED 0%, #C026D3 100%);
-
-    /* Background System */
-    --bg-main: #F8FAFC;
-    --bg-card: rgba(255, 255, 255, 0.75);
-    --bg-hover: #F1F5F9;
-    --bg-overlay: rgba(0, 0, 0, 0.2);
-
-    /* Borders & Dividers */
-    --border-light: #E5E7EB;
-    --border-soft: rgba(0,0,0,0.05);
-
-    /* Text Colors */
-    --text-primary: #0F172A;
+    /* Enterprise Neutral Palette */
+    --bg-main: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-sidebar: #ffffff;
+    --bg-hover: #f1f5f9;
+    
+    /* Brand Accent (Stripe/Linear inspired) */
+    --brand-primary: #4f46e5;
+    --brand-primary-hover: #4338ca;
+    --brand-primary-light: #eef2ff;
+    
+    /* Text Hierarchy */
+    --text-primary: #0f172a;
     --text-secondary: #475569;
-    --text-muted: #94A3B8;
-    --text-white: #FFFFFF;
-
+    --text-muted: #94a3b8;
+    
+    /* Borders & UI */
+    --border-base: #e2e8f0;
+    --border-light: #f1f5f9;
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    
     /* Status Colors */
-    --success: #22C55E;
-    --success-bg: rgba(34,197,94,0.1);
+    --success: #10b981;
+    --success-bg: #ecfdf5;
+    --warning: #f59e0b;
+    --warning-bg: #fffbeb;
+    --error: #ef4444;
+    --error-bg: #fef2f2;
+    --info: #3b82f6;
+    --info-bg: #eff6ff;
 
-    --warning: #F59E0B;
-    --warning-bg: rgba(245,158,11,0.1);
-
-    --info: #3B82F6;
-    --info-bg: rgba(59,130,246,0.1);
-
-    --error: #EF4444;
-    --error-bg: rgba(239,68,68,0.1);
+    /* Spacing */
+    --space-compact: 0.75rem;
+    --space-normal: 1rem;
+    --space-relaxed: 1.5rem;
   }
 
   body {
     background-color: var(--bg-main);
     color: var(--text-primary);
-    @apply antialiased font-sans;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     line-height: 1.5;
+    letter-spacing: -0.011em;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-bold;
+    @apply font-semibold;
     color: var(--text-primary);
-  }
-
-  *:focus-visible {
-    outline: 2px solid rgba(124, 58, 237, 0.35);
-    outline-offset: 2px;
+    letter-spacing: -0.02em;
   }
 }
 
 @layer components {
+  /* High-Density Typography */
+  .page-title { @apply text-xl font-bold tracking-tight text-slate-900; }
+  .section-title { @apply text-sm font-semibold uppercase tracking-wider text-slate-500; }
+  .label-text { @apply text-[12px] font-medium text-slate-600; }
 
-  /* Global Typographical Hierarchy */
-  h1, .page-title { @apply text-[28px] font-bold text-slate-900; }
-  h2, h3, .section-title { @apply text-[18px] font-semibold text-slate-800; }
-  .label-text, label { @apply text-[13px] font-medium text-slate-700; }
-
-  /* Standard Global Input Style */
+  /* Enterprise Inputs */
   .input, .input-premium, select, textarea {
-    @apply w-full px-4 py-2.5 md:py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all duration-[250ms] shadow-sm hover:border-gray-300;
-  }
-
-  /* Global fix for inputs with leading icons to prevent overlap with text */
-  .relative > .absolute.left-3 + input,
-  .relative > .absolute.left-3\.5 + input,
-  .relative > .absolute.left-4 + input,
-  .relative > .absolute.left-3 + select,
-  .relative > .absolute.left-3\.5 + select,
-  .relative > .absolute.left-4 + select {
-    padding-left: 3rem !important; /* Forces pl-12 equivalent */
-  }
-  
-  /* Global fix for select fields and inputs with trailing icons */
-  .relative > .absolute.right-3 + select,
-  .relative > .absolute.right-3\.5 + select,
-  .relative > .absolute.right-4 + select,
-  .relative > .absolute.right-3 + input,
-  .relative > .absolute.right-3\.5 + input,
-  .relative > .absolute.right-4 + input {
-    padding-right: 3rem !important; /* Forces pr-12 equivalent */
+    @apply w-full px-3 py-2 bg-white border border-slate-200 rounded-md text-[13px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-sm;
   }
 
   .label {
-    @apply block text-[13px] font-medium text-slate-700 mb-1.5 ml-0.5;
+    @apply block text-[12px] font-medium text-slate-600 mb-1;
   }
 
-  .req {
-    @apply text-rose-500 ml-1 font-bold text-sm;
-  }
-
-  /* Premium Button Styles */
-  button, .btn {
-    transition: all 0.25s ease-in-out !important;
-  }
-  
+  /* Functional Buttons */
   .btn-primary {
-    @apply bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white px-4 md:px-6 py-2.5 rounded-xl transition-all duration-200 font-semibold shadow-[0_2px_10px_-3px_#7c3aed80] hover:shadow-[0_4px_12px_-2px_#7c3aed99] active:transform active:scale-[0.98] border border-transparent min-h-10;
+    @apply bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-[13px] font-medium transition-colors shadow-sm active:transform active:scale-[0.98] border border-indigo-700/10;
   }
   
   .btn-secondary {
-    @apply bg-white text-slate-700 border border-gray-200 px-4 md:px-6 py-2.5 rounded-xl hover:bg-gray-50 hover:text-slate-900 transition-all duration-200 font-medium shadow-sm hover:shadow active:transform active:scale-[0.98] min-h-10;
+    @apply bg-white text-slate-700 border border-slate-200 px-4 py-2 rounded-md text-[13px] font-medium hover:bg-slate-50 transition-colors shadow-sm active:transform active:scale-[0.98];
   }
 
-  .btn-danger {
-    @apply bg-white text-rose-600 border border-rose-100 px-4 py-2 rounded-xl hover:bg-rose-50 transition-all duration-200 font-medium active:transform active:scale-[0.98] min-h-10;
+  .btn-ghost {
+    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900 px-3 py-2 rounded-md text-[13px] font-medium transition-colors;
   }
 
-  /* Premium Buttons (Violet Theme) */
-  .btn-premium {
-    background: var(--primary-gradient) !important;
-    color: white !important;
-    border-radius: 12px !important;
-    padding: 10px 24px !important;
-    box-shadow: 0 4px 14px rgba(124,58,237,0.2) !important;
-    font-weight: 600 !important;
-    border: none !important;
-    transition: all 0.25s ease-in-out !important;
-  }
-  .btn-premium:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 12px 25px rgba(124,58,237,0.35) !important;
-  }
-  .btn-premium:active {
-    transform: scale(0.98) !important;
-  }
-  .btn-danger:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 12px rgba(225,29,72,0.15) !important;
-  }
-
-  /* Standard Card Style */
+  /* Professional Cards */
   .card {
-    @apply bg-white rounded-2xl shadow-[0_2px_8px_#0000000a] border border-gray-100/50 p-4 md:p-6 transition-shadow hover:shadow-[0_8px_24px_#0000000f];
+    @apply bg-white rounded-lg border border-slate-200 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] p-5;
   }
 
-  /* Premium Card Style (Glass - OPT-IN ONLY) */
-  .card-premium {
-    background: var(--bg-card) !important;
-    backdrop-filter: blur(10px) !important;
-    border: 1px solid var(--border-soft) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 10px 30px #0000000d !important; 
-    transition: all 0.3s ease-in-out !important;
-    position: relative;
-    overflow: hidden;
-  }
-  .card-premium::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
-    z-index: 10;
-  }
-  .card-premium:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.08) !important;
-  }
-
-  /* Status Badges */
-  .badge {
-    @apply px-2.5 py-1 text-[12px] font-medium border-0;
-    border-radius: 6px !important;
-  }
-  .badge-success {
-    background: var(--success-bg);
-    color: var(--success);
-  }
-  .badge-warning {
-    background: var(--warning-bg);
-    color: var(--warning);
-  }
-  .badge-info {
-    background: var(--info-bg);
-    color: var(--info);
-  }
-  .badge-error {
-    background: var(--error-bg);
-    color: var(--error);
-  }
-
-  /* Enterprise Table Style */
-  table {
-    width: 100% !important;
-    border-collapse: collapse;
-  }
-  .table thead, thead {
-    background: var(--bg-hover) !important;
-  }
-  .table thead th, thead th {
-    text-transform: capitalize !important;
-    letter-spacing: normal !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    color: var(--text-secondary) !important;
-    padding: 12px 16px !important;
-    border-bottom: 1px solid var(--border-light) !important;
+  /* High-Density Table */
+  .table-container {
+    @apply overflow-x-auto border border-slate-200 rounded-lg bg-white;
   }
   
-  .table tbody tr, tbody tr {
-    transition: all 0.25s ease-in-out !important;
-    background: transparent !important;
-    border-bottom: 1px solid var(--border-light) !important;
-  }
-  .table tbody tr:hover, tbody tr:hover {
-    background: var(--bg-hover) !important;
-  }
-  .table tbody td, tbody td {
-    padding: 16px !important;
-    font-size: 13px !important;
-    color: var(--text-primary) !important;
+  table {
+    @apply w-full border-collapse text-left;
   }
 
-  /* Sidebar Premium Active */
-  .sidebar-item {
-    @apply flex items-center gap-4 px-5 py-3 rounded-xl text-[14px] font-medium transition-all duration-[250ms] ease-out group overflow-hidden focus:outline-none text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm border-l-[3px] border-transparent;
+  thead th {
+    @apply bg-slate-50/50 px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200;
   }
+  
+  tbody tr {
+    @apply border-b border-slate-100 hover:bg-slate-50/50 transition-colors;
+  }
+
+  tbody td {
+    @apply px-4 py-3 text-[13px] text-slate-700;
+  }
+
+  /* Sidebar Redesign */
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all;
+  }
+
   .sidebar-item.active {
-    background: rgba(124,58,237,0.1);
-    color: var(--primary-1);
-    border-left: 3px solid var(--primary-1);
+    @apply bg-indigo-50 text-indigo-700 font-semibold;
+  }
+
+  .sidebar-item svg {
+    @apply w-4 h-4;
   }
 
   /* Planner: overdue events (red text + dot in calendar) */

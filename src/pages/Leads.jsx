@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
-    Users, Plus, Upload, Download, LayoutList, Kanban, Calendar,
-    MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X, ArrowRight, FileText, StickyNote, Loader2, Save, Send, Target, MapPin as LocationIcon, Briefcase, Activity, Filter
+  Users, Plus, Upload, Download, LayoutList, Kanban, Calendar,
+  MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X, ArrowRight, FileText, StickyNote, Loader2, Save, Send, Target, MapPin as LocationIcon, Briefcase, Activity, Filter, Search
 } from 'lucide-react';
 import { getAssignees, saveAssignee, saveLead, getLeadNotes, createLeadNote, updateLeadNote, deleteLeadNote } from '../services/db';
 import { useQueryClient } from '@tanstack/react-query';
@@ -19,6 +19,7 @@ import EmptyState from '../components/ui/EmptyState';
 import { FilterSelect, ClearFiltersButton } from '../components/ui/FilterControls';
 import { TableSectionHeader, TablePagination } from '../components/ui/DataTableSection';
 import { ActionIconButton } from '../components/ui/TableRowActions';
+import SlideOver from '../components/ui/SlideOver';
 
 const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssignee }) => {
     const [formData, setFormData] = useState({
@@ -30,16 +31,13 @@ const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssigne
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
-        if (lead) {
-            setFormData(lead);
-        } else {
-            setFormData({
-                firstName: '', lastName: '', email: '', phone: '',
-                company: '', jobTitle: '', location: '', status: 'New', source: '',
-                priority: 'Medium', score: 0, value: 0,
-                assignedTo: 'Unassigned', qualified: false, notes: ''
-            });
-        }
+        if (lead) setFormData(lead);
+        else setFormData({
+            firstName: '', lastName: '', email: '', phone: '',
+            company: '', jobTitle: '', location: '', status: 'New', source: '',
+            priority: 'Medium', score: 0, value: 0,
+            assignedTo: 'Unassigned', qualified: false, notes: ''
+        });
     }, [lead, isOpen]);
 
     const handleSubmit = async (e) => {
@@ -53,215 +51,112 @@ const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssigne
         }
     };
 
-    if (!isOpen) return null;
-
-    // Premium Label Component
     const Label = ({ children, required }) => (
-        <label className="block text-[13px] font-medium text-slate-700 mb-1.5 ml-0.5">
-            {children} {required && <span className="text-rose-500 ml-1 font-bold">*</span>}
+        <label className="block text-[12px] font-bold text-slate-700 mb-1">
+            {children} {required && <span className="text-rose-500">*</span>}
         </label>
     );
 
-    // Section Header for grouping
-    const SectionHeader = ({ title, subtitle, icon: Icon }) => (
-        <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4 mb-6 mt-2">
-            <div className="flex items-center gap-2">
-                {Icon && <Icon className="h-4 w-4 text-violet-500" />}
-                <h4 className="text-[16px] font-bold text-slate-900">{title}</h4>
-            </div>
-            {subtitle && <p className="text-[12px] font-medium text-slate-500">{subtitle}</p>}
-        </div>
-    );
+    const inputCls = "w-full px-3 py-2 bg-white border border-slate-200 rounded text-[13px] font-medium outline-none focus:border-indigo-500";
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
-            <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-white/40 animate-in zoom-in-[0.98] duration-[250ms] ease-out">
-                
-                {/* Fixed Header */}
-                <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white z-20">
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] group-hover:scale-105 transition-transform duration-[250ms]">
-                            {lead ? <Edit2 className="h-5 w-5" /> : <Plus className="h-5 w-5 stroke-[2.5]" />}
-                        </div>
-                        <div>
-                            <h3 className="text-[20px] font-bold text-slate-900 tracking-tight">
-                                {lead ? 'Advance Lead Intelligence' : 'Register New Prospect'}
-                            </h3>
-                            <p className="text-[12px] font-medium text-slate-500 mt-0.5">
-                                {lead ? 'Refine lead data and strategic positioning' : 'Onboard a new business opportunity to the pipeline'}
-                            </p>
-                        </div>
-                    </div>
-
-                    <button onClick={onClose} className="h-10 w-10 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all flex items-center justify-center active:scale-95 shadow-sm border border-slate-100">
-                        <X className="h-5 w-5" />
+        <SlideOver
+            isOpen={isOpen}
+            onClose={onClose}
+            title={lead ? 'Edit Lead' : 'New Lead'}
+            footer={(
+                <div className="flex justify-end gap-2 w-full">
+                    <button onClick={onClose} className="px-4 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100 rounded">Cancel</button>
+                    <button onClick={handleSubmit} disabled={isSaving} className="px-6 py-2 bg-indigo-600 text-white text-[13px] font-bold rounded hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2">
+                        {isSaving && <Loader2 size={16} className="animate-spin" />}
+                        {lead ? 'Save Changes' : 'Create Lead'}
                     </button>
                 </div>
-
-                {/* Body Content */}
-                <div className="flex-1 overflow-y-auto bg-white p-8 relative">
-                    <form id="lead-form" onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-8">
+            )}
+        >
+            <div className="space-y-6">
+                <div>
+                    <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 pb-1 border-b">Lead Identity</h4>
+                    <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <SectionHeader title="Lead Identity" subtitle="Primary contact and organizational information" icon={User} />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <Label required>First Name</Label>
-                                    <input type="text" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="input-premium" required placeholder="Prospect's first name" />
-                                </div>
-                                <div>
-                                    <Label required>Last Name</Label>
-                                    <input type="text" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="input-premium" required placeholder="Prospect's last name" />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <Label>Organization / Company</Label>
-                                    <div className="relative">
-                                        <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="text" value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} className="input-premium pl-10" placeholder="Enter company name" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Professional Title</Label>
-                                    <div className="relative">
-                                        <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="text" value={formData.jobTitle} onChange={e => setFormData({ ...formData, jobTitle: e.target.value })} className="input-premium pl-10" placeholder="e.g. CEO, Sales Manager" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Primary Email</Label>
-                                    <div className="relative">
-                                        <MessageSquare className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="input-premium pl-10" placeholder="prospect@company.com" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Direct Phone</Label>
-                                    <div className="relative">
-                                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="input-premium pl-10" placeholder="+1 (234) 567-8900" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Operational Location</Label>
-                                    <div className="relative">
-                                        <LocationIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="text" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} className="input-premium pl-10" placeholder="City, Country" />
-                                    </div>
-                                </div>
-                            </div>
+                            <Label required>First Name</Label>
+                            <input type="text" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className={inputCls} required />
                         </div>
-
                         <div>
-                            <SectionHeader title="Strategic Positioning" subtitle="Pipeline status, priority and valuation" icon={Target} />
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div>
-                                    <Label>Current Pipeline State</Label>
-                                    <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="input-premium">
-                                        <option>New</option>
-                                        <option>Contacted</option>
-                                        <option>Working</option>
-                                        <option>Qualified</option>
-                                        <option>Lost</option>
-                                        <option>Converted</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <Label>Strategic Priority</Label>
-                                    <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })} className="input-premium">
-                                        <option>Low</option>
-                                        <option>Medium</option>
-                                        <option>High</option>
-                                        <option>Urgent</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <Label>Lead Source</Label>
-                                    <select value={formData.source} onChange={e => setFormData({ ...formData, source: e.target.value })} className="input-premium">
-                                        <option value="">Select Source</option>
-                                        <option>Website</option>
-                                        <option>Referral</option>
-                                        <option>Social Media</option>
-                                        <option>Advertisement</option>
-                                        <option>Cold Outreach</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <Label>Potential Revenue (₹)</Label>
-                                    <input type="number" value={formData.value} onChange={e => setFormData({ ...formData, value: e.target.value })} className="input-premium" placeholder="0.00" />
-                                </div>
-                                <div>
-                                    <Label>Strategic Score (0-100)</Label>
-                                    <input type="number" value={formData.score} onChange={e => setFormData({ ...formData, score: e.target.value })} className="input-premium" placeholder="Confidence level" />
-                                </div>
-                                <div>
-                                    <Label>Stakeholder Assignment</Label>
-                                    <div className="flex gap-2">
-                                        <select value={formData.assignedTo} onChange={e => setFormData({ ...formData, assignedTo: e.target.value })} className="input-premium flex-1">
-                                            <option>Unassigned</option>
-                                            {assignees.map(a => <option key={a} value={a}>{a}</option>)}
-                                        </select>
-                                        <button type="button" onClick={() => {
-                                            const name = prompt('Stakeholder Name:');
-                                            if (name) onAddAssignee(name);
-                                        }} className="p-2 bg-slate-50 border border-slate-200 rounded-lg hover:border-violet-300 hover:text-violet-600 transition-all">
-                                            <Plus className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                            <Label required>Last Name</Label>
+                            <input type="text" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className={inputCls} required />
                         </div>
-
+                        <div className="col-span-2">
+                            <Label>Company</Label>
+                            <input type="text" value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} className={inputCls} />
+                        </div>
                         <div>
-                            <SectionHeader title="Account Intelligence" subtitle="Internal notes and strategic context" icon={StickyNote} />
-                            <div>
-                                <Label>Tactical Notes</Label>
-                                <textarea
-                                    value={formData.notes}
-                                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                                    className="input-premium min-h-[120px] pt-3"
-                                    placeholder="Document initial discovery findings or strategic requirements..."
-                                />
-                            </div>
+                            <Label>Email</Label>
+                            <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className={inputCls} />
                         </div>
-                    </form>
-                </div>
-
-                {/* Fixed Footer */}
-                <div className="px-8 py-5 border-t border-slate-100 flex justify-end items-center bg-slate-50/50 z-20">
-                    <div className="flex items-center gap-4">
-                        <button 
-                            type="button"
-                            onClick={onClose} 
-                            className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 hover:bg-slate-50 transition-all duration-[250ms] shadow-sm active:scale-[0.98]"
-                        >
-                            Abort Process
-                        </button>
-                        <button
-                            form="lead-form"
-                            type="submit"
-                            disabled={isSaving}
-                            className={clsx(
-                                "px-8 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-xl text-[14px] font-medium shadow-[0_8px_20px_rgba(124,58,237,0.25)] hover:shadow-[0_12px_24px_rgba(124,58,237,0.35)] transition-all duration-[250ms] hover:-translate-y-[2px] active:scale-[0.98] group flex items-center justify-center min-w-[180px]",
-                                isSaving && "opacity-60 grayscale cursor-not-allowed shadow-none hover:translate-y-0 active:scale-100"
-                            )}
-                        >
-                            <div className="flex items-center gap-2">
-                                {isSaving ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Processing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="h-4 w-4 stroke-[2.5]" />
-                                        Commit Prospect
-                                    </>
-                                )}
-                            </div>
-                        </button>
+                        <div>
+                            <Label>Phone</Label>
+                            <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className={inputCls} />
+                        </div>
                     </div>
                 </div>
+
+                <div>
+                    <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 pb-1 border-b">Positioning</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label>Status</Label>
+                            <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className={inputCls}>
+                                <option>New</option>
+                                <option>Contacted</option>
+                                <option>Working</option>
+                                <option>Qualified</option>
+                                <option>Lost</option>
+                                <option>Converted</option>
+                            </select>
+                        </div>
+                        <div>
+                            <Label>Priority</Label>
+                            <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })} className={inputCls}>
+                                <option>Low</option>
+                                <option>Medium</option>
+                                <option>High</option>
+                                <option>Urgent</option>
+                            </select>
+                        </div>
+                        <div>
+                            <Label>Value (₹)</Label>
+                            <input type="number" value={formData.value} onChange={e => setFormData({ ...formData, value: e.target.value })} className={inputCls} />
+                        </div>
+                        <div>
+                            <Label>Assignee</Label>
+                            <div className="flex gap-1">
+                                <select value={formData.assignedTo} onChange={e => setFormData({ ...formData, assignedTo: e.target.value })} className={clsx(inputCls, "flex-1")}>
+                                    <option>Unassigned</option>
+                                    {assignees.map(a => <option key={a} value={a}>{a}</option>)}
+                                </select>
+                                <button type="button" onClick={() => {
+                                    const name = prompt('Stakeholder Name:');
+                                    if (name) onAddAssignee(name);
+                                }} className="p-2 bg-slate-50 border border-slate-200 rounded hover:bg-slate-100">
+                                    <Plus size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <Label>Notes</Label>
+                    <textarea
+                        value={formData.notes}
+                        onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                        className={clsx(inputCls, "min-h-[100px]")}
+                        placeholder="Additional details..."
+                    />
+                </div>
             </div>
-        </div>
+        </SlideOver>
     );
 };
 
@@ -659,7 +554,7 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall
                         </div>
 
                         {/* Main Content - Tabs: Activity | Notes */}
-                        <div className="flex-1 flex flex-col bg-white min-h-0">
+                        <div className="w-full flex-1 flex flex-col bg-white min-h-0">
                             <div className="flex border-b border-gray-100 px-6 lg:px-8 pt-4 gap-1">
                                 <button
                                     type="button"
@@ -918,7 +813,7 @@ const KanbanView = ({ leads, onView }) => {
                                         <span className={clsx("px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide",
                                             lead.priority === 'Urgent' ? "bg-red-50 text-red-700 border border-red-100" :
                                                 lead.priority === 'High' ? "bg-orange-50 text-orange-700 border border-orange-100" :
-                                                    lead.priority === 'Medium' ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-gray-100 text-gray-600"
+                                                    lead.priority === 'Medium' ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-gray-100 text-gray-600"
                                         )}>{lead.priority}</span>
                                     </div>
                                     <p className="text-xs text-slate-500 font-mono mb-3 flex items-center gap-1">
@@ -1167,7 +1062,7 @@ const Leads = () => {
     };
 
     return (
-        <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
+        <div className="p-4 md:p-6 lg:p-8 animate-fade-in space-y-6 md:space-y-8">
             {/* Header */}
             <PageHeader
                 title="Lead Pipeline"

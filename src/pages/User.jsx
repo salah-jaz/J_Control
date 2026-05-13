@@ -128,7 +128,7 @@ export default function Users() {
   );
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 w-full mx-auto animate-fade-in space-y-6 md:space-y-8">
+    <div className="p-4 md:p-8 w-full animate-fade-in space-y-6 md:space-y-8">
       {/* HEADER */}
       <PageHeader
         title="User Management"

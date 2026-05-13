@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Building2, User, MapPin, FileText, Landmark, Plus, Pencil, Trash2, Loader2, Edit2, ChevronDown, Check, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
+import SlideOver from './ui/SlideOver';
 
 const emptyBankForm = () => ({
     bank_name: '',
@@ -281,15 +282,12 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
         const isTouched = touched[fieldName] || (alsoErrorKey && touched[alsoErrorKey]);
         const error = errors[fieldName] || (alsoErrorKey && errors[alsoErrorKey]);
         const hasError = isTouched && error;
-        const hasSuccess = isTouched && !error && value?.toString().trim();
 
         return clsx(
-            "w-full px-4 py-3 bg-white border rounded-lg text-sm transition-all duration-300 outline-none placeholder:text-slate-400 placeholder:font-normal pr-10",
+            "w-full px-3 py-2 bg-white border rounded text-[13px] font-medium outline-none transition-all duration-200 pr-10",
             hasError 
-                ? "border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" 
-                : hasSuccess
-                    ? "border-emerald-400 bg-emerald-50/20 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                    : "border-slate-200 text-slate-700 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 hover:border-slate-300",
+                ? "border-rose-300 bg-rose-50/50 focus:border-rose-500" 
+                : "border-slate-200 text-slate-700 focus:border-indigo-500 hover:border-slate-300",
             readOnly ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-100" : ""
         );
     };
@@ -315,16 +313,16 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
 
     // Premium Label Component
     const Label = ({ children, required }) => (
-        <label className="block text-[13px] font-medium text-slate-700 mb-1.5 ml-0.5">
-            {children} {required && <span className="text-rose-500 ml-1 font-bold text-sm">*</span>}
+        <label className="block text-[12px] font-bold text-slate-700 mb-1">
+            {children} {required && <span className="text-rose-500">*</span>}
         </label>
     );
 
     // Section Header for grouping
     const SectionHeader = ({ title, subtitle }) => (
-        <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4 mb-6 mt-2">
-            <h4 className="text-[18px] font-semibold text-slate-900">{title}</h4>
-            {subtitle && <p className="text-[13px] font-medium text-slate-500">{subtitle}</p>}
+        <div className="mb-4">
+            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 pb-1 border-b border-slate-100">{title}</h4>
+            {subtitle && <p className="text-[11px] text-slate-400 font-medium mb-2">{subtitle}</p>}
         </div>
     );
 
@@ -554,15 +552,12 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                         <SectionHeader title="Bank Details" subtitle="Financial nodes for transactions and payments" />
                         
                         {!readOnly && (
-                            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-[0_4px_20px_rgba(0,0,0,0.03)] relative overflow-hidden group hover:border-violet-200 transition-colors duration-300">
-                                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-600 to-fuchsia-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                <h5 className="text-[16px] font-semibold text-slate-900 mb-6 flex items-center gap-3">
-                                    <div className="h-8 w-8 bg-violet-50 text-violet-600 rounded-lg flex items-center justify-center font-bold shadow-sm">
-                                        <Plus className="h-4 w-4" />
-                                    </div>
+                            <div className="card p-6 mb-6">
+                                <h5 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-4 pb-2 border-b border-slate-50 flex items-center gap-2">
+                                    <Plus className="h-3 w-3" />
                                     Register New Account
                                 </h5>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
                                     <div className="sm:col-span-2">
                                         <Label required>Bank Name</Label>
                                         <input
@@ -571,43 +566,43 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                             onChange={handleBankFormChange}
                                             name="bank_name"
                                             className={clsx(
-                                                "w-full px-5 py-4 bg-white border rounded-lg text-sm transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none",
-                                                bankFormError ? "border-rose-300 ring-2 ring-rose-500/20" : "border-slate-200"
+                                                "w-full px-3 py-2 bg-white border rounded text-[13px] font-medium outline-none transition-all duration-200 pr-10",
+                                                bankFormError ? "border-rose-300 focus:border-rose-500" : "border-slate-200 focus:border-indigo-500"
                                             )}
                                             placeholder="Enter bank name"
                                         />
-                                        {bankFormError && <p className="text-[10px] text-rose-500 mt-2 font-bold uppercase tracking-wider flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-rose-500"></span> {bankFormError}</p>}
+                                        {bankFormError && <p className="text-[10px] text-rose-500 mt-1 font-bold uppercase tracking-wider flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-rose-500"></span> {bankFormError}</p>}
                                     </div>
                                     <div>
                                         <Label>Account Holder Title</Label>
-                                        <input type="text" name="account_holder_name" value={bankForm.account_holder_name} onChange={handleBankFormChange} className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500 transition-all font-medium" placeholder="E.g. Acme Corp" />
+                                        <input type="text" name="account_holder_name" value={bankForm.account_holder_name} onChange={handleBankFormChange} className="w-full px-3 py-2 bg-white border border-slate-200 rounded text-[13px] font-medium outline-none focus:border-indigo-500" placeholder="E.g. Acme Corp" />
                                     </div>
                                     <div>
                                         <Label>Account Identifier</Label>
-                                        <input type="text" name="account_number" value={bankForm.account_number} onChange={handleBankFormChange} className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500 transition-all font-medium" placeholder="Digits only" />
+                                        <input type="text" name="account_number" value={bankForm.account_number} onChange={handleBankFormChange} className="w-full px-3 py-2 bg-white border border-slate-200 rounded text-[13px] font-medium outline-none focus:border-indigo-500" placeholder="Digits only" />
                                     </div>
                                     <div>
                                         <Label>Swift / IFSC Code</Label>
-                                        <input type="text" name="ifsc_code" value={bankForm.ifsc_code} onChange={handleBankFormChange} className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500 transition-all font-medium" placeholder="RTGS/NEFT Code" />
+                                        <input type="text" name="ifsc_code" value={bankForm.ifsc_code} onChange={handleBankFormChange} className="w-full px-3 py-2 bg-white border border-slate-200 rounded text-[13px] font-medium outline-none focus:border-indigo-500" placeholder="RTGS/NEFT Code" />
                                     </div>
                                     <div>
                                         <Label>UPI Alias</Label>
-                                        <input type="text" name="upi_id" value={bankForm.upi_id} onChange={handleBankFormChange} className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-500 transition-all font-medium" placeholder="payment@bank" />
+                                        <input type="text" name="upi_id" value={bankForm.upi_id} onChange={handleBankFormChange} className="w-full px-3 py-2 bg-white border border-slate-200 rounded text-[13px] font-medium outline-none focus:border-indigo-500" placeholder="payment@bank" />
                                     </div>
                                 </div>
                                 
-                                <div className="flex items-center gap-4 mt-8 pt-6 border-t border-slate-100">
+                                <div className="flex items-center gap-3 mt-6 pt-6 border-t border-slate-50">
                                     <button
                                         type="button"
                                         onClick={handleAddOrUpdateBank}
-                                        className="px-6 py-2.5 bg-violet-50 text-violet-700 hover:bg-violet-100 rounded-xl text-[14px] font-medium shadow-sm active:scale-[0.98] flex items-center gap-2 transition-all duration-[250ms] border border-violet-100"
+                                        className="btn-primary py-2 flex items-center gap-2"
                                     >
-                                        {editingBankIndex !== null ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                        {editingBankIndex !== null ? 'Sync Changes' : 'Commit Bank'}
+                                        {editingBankIndex !== null ? <Edit2 className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                                        {editingBankIndex !== null ? 'Update Bank' : 'Add Bank'}
                                     </button>
                                     {editingBankIndex !== null && (
-                                        <button type="button" onClick={handleCancelEditBank} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:bg-slate-50 transition-all duration-[250ms] active:scale-[0.98] shadow-sm">
-                                            Abort
+                                        <button type="button" onClick={handleCancelEditBank} className="btn-secondary py-2">
+                                            Cancel
                                         </button>
                                     )}
                                 </div>
@@ -615,10 +610,10 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                         )}
 
                         {bankList.length > 0 && (
-                            <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm mt-8">
-                                <div className="px-8 py-5 bg-slate-50/80 border-b border-slate-100 flex items-center justify-between">
-                                    <h5 className="text-[14px] font-semibold text-slate-700">Validated Portfolios</h5>
-                                    <span className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[12px] font-medium text-slate-500 shadow-sm">{bankList.length} Active</span>
+                            <div className="card overflow-hidden mt-6">
+                                <div className="px-6 py-3 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
+                                    <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Validated Portfolios</h5>
+                                    <span className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-bold text-slate-400">{bankList.length} Accounts</span>
                                 </div>
                                 <div className="divide-y divide-slate-100">
                                     {bankList.map((row, index) => (
@@ -657,108 +652,76 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
-            <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-white/40 animate-in zoom-in-[0.98] duration-[250ms] ease-out">
-                
-                {/* Fixed Header */}
-                <div className="px-10 py-6 border-b border-slate-100 flex justify-between items-center bg-white z-20">
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] group-hover:scale-105 transition-transform duration-[250ms]">
-                            {readOnly ? <FileText className="h-5 w-5" /> : (client ? <Edit2 className="h-5 w-5" /> : <Plus className="h-5 w-5 stroke-[2.5]" />)}
-                        </div>
-                        <div>
-                            <h3 className="text-[22px] font-bold text-slate-900 tracking-tight">
-                                {readOnly ? 'Company Overview' : (client ? 'Edit Client Profile' : 'Add Client Profile')}
-                            </h3>
-                            <p className="text-[13px] font-medium text-slate-500 mt-1">
-                                {readOnly ? 'Strategic Account Intelligence' : 'Account Onboarding & Configuration'}
-                            </p>
-                        </div>
-                    </div>
-
-                    <button onClick={onClose} className="h-10 w-10 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all flex items-center justify-center active:scale-95 shadow-sm border border-slate-100">
-                        <X className="h-5 w-5" />
+        <SlideOver
+            isOpen={isOpen}
+            onClose={onClose}
+            title={readOnly ? 'Client Intelligence' : (client ? 'Edit Client Profile' : 'New Client Profile')}
+            size="2xl"
+            footer={(
+                <div className="flex justify-end gap-3 w-full">
+                    <button 
+                        onClick={onClose} 
+                        className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-bold hover:bg-slate-50 transition-all active:scale-95"
+                    >
+                        {readOnly ? 'Dismiss' : 'Cancel'}
                     </button>
-                </div>
-
-                {/* Body with Sidebar */}
-                <div className="flex flex-1 overflow-hidden relative">
-                    {/* Sidebar Tabs */}
-                    <div className="w-72 bg-slate-50/50 border-r border-slate-100 overflow-y-auto hidden md:block py-8">
-                        <div className="relative flex flex-col px-4 gap-2">
-                            {tabs.map((tab) => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={clsx(
-                                        "relative flex items-center gap-4 px-5 py-3 rounded-xl text-[14px] font-medium transition-all duration-[250ms] ease-out group overflow-hidden focus:outline-none",
-                                        activeTab === tab.id
-                                            ? "text-violet-800 bg-violet-100/50"
-                                            : "text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm"
-                                    )}
-                                >
-                                    {/* Sliding Indicator visually represented by a subtle left border/glow effect inside active item */}
-                                    {activeTab === tab.id && (
-                                        <div className="absolute left-0 top-[10%] bottom-[10%] w-1.5 bg-violet-600 rounded-r-full shadow-[0_0_12px_rgba(124,58,237,0.4)] animate-in slide-in-from-left-2 duration-[250ms]"></div>
-                                    )}
-                                    <tab.icon className={clsx("h-[18px] w-[18px] transition-colors duration-[250ms] relative z-10", activeTab === tab.id ? "text-violet-600" : "text-slate-400 group-hover:text-violet-500")} />
-                                    <span className="relative z-10">{tab.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Content Area */}
-                    <div className="flex-1 overflow-y-auto bg-white p-10 relative">
-                        <form id="client-form" onSubmit={handleSubmit} className="max-w-3xl mx-auto pb-10 min-h-[550px]">
-                            <fieldset disabled={readOnly} className="contents">
-                                <div key={activeTab} className="animate-in fade-in slide-in-from-right-4 duration-500 ease-out">
-                                    {renderTabContent()}
-                                </div>
-                            </fieldset>
-                        </form>
-                    </div>
-                </div>
-
-                {/* Fixed Footer */}
-                <div className="px-10 py-5 border-t border-slate-100 flex justify-end items-center bg-slate-50/50 z-20">
-                    <div className="flex items-center gap-4">
-                        <button 
-                            type="button"
-                            onClick={onClose} 
-                            className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 transition-all duration-[250ms] shadow-sm active:scale-[0.98]"
+                    {!readOnly && (
+                        <button
+                            form="client-form"
+                            type="submit"
+                            disabled={Object.keys(errors).length > 0 || isSaving}
+                            className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl text-[14px] font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
                         >
-                            {readOnly ? 'Dismiss' : 'Reset & Exit'}
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span>Saving Account...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="h-4 w-4" />
+                                    <span>Save Client</span>
+                                </>
+                            )}
                         </button>
-                        {!readOnly && (
+                    )}
+                </div>
+            )}
+        >
+            <div className="flex h-full min-h-[600px]">
+                {/* Sidebar Tabs */}
+                <div className="w-64 border-r border-slate-100 pr-6 shrink-0 hidden md:block">
+                    <div className="flex flex-col gap-1 sticky top-0">
+                        {tabs.map((tab) => (
                             <button
-                                form="client-form"
-                                type="submit"
-                                disabled={Object.keys(errors).length > 0 || isSaving}
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
                                 className={clsx(
-                                    "px-6 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-xl text-[14px] font-medium shadow-[0_8px_20px_rgba(124,58,237,0.25)] hover:shadow-[0_12px_24px_rgba(124,58,237,0.35)] transition-all duration-[250ms] hover:-translate-y-[2px] active:scale-[0.98] group flex items-center justify-center min-w-[160px]",
-                                    (Object.keys(errors).length > 0 || isSaving) && "opacity-60 grayscale cursor-not-allowed shadow-none hover:translate-y-0 active:scale-100"
+                                    "flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all",
+                                    activeTab === tab.id
+                                        ? "text-indigo-600 bg-indigo-50 shadow-sm"
+                                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                                 )}
                             >
-                                <div className="flex items-center gap-2">
-                                    {isSaving ? (
-                                        <>
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Save className="h-4 w-4 stroke-[2.5]" />
-                                            Commit Account
-                                        </>
-                                    )}
-                                </div>
+                                <tab.icon className={clsx("h-4 w-4", activeTab === tab.id ? "text-indigo-600" : "text-slate-400")} />
+                                <span>{tab.label}</span>
                             </button>
-                        )}
+                        ))}
                     </div>
                 </div>
+
+                {/* Content Area */}
+                <div className="flex-1 pl-8">
+                    <form id="client-form" onSubmit={handleSubmit} className="pb-10">
+                        <fieldset disabled={readOnly} className="contents">
+                            <div key={activeTab} className="animate-in fade-in slide-in-from-right-2 duration-300">
+                                {renderTabContent()}
+                            </div>
+                        </fieldset>
+                    </form>
+                </div>
             </div>
-        </div>
+        </SlideOver>
     );
 };
 

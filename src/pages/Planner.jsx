@@ -1092,7 +1092,7 @@ const Planner = () => {
     };
 
     return (
-        <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6">
+        <div className="p-4 md:p-6 lg:p-8 animate-fade-in space-y-6">
             {/* In-app event reminder popup at event time */}
             {reminderEvent && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4">

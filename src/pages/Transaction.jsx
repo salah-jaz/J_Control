@@ -90,7 +90,7 @@ export default function Transaction() {
   const displayStatus = (txn) => txn?.incomeStatus || txn?.status || "—";
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
+    <div className="p-4 md:p-8 animate-fade-in space-y-6 md:space-y-8">
       <PageHeader
         title="Transactions"
         subtitle="History of all financial movements."

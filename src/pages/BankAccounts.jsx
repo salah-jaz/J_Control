@@ -183,7 +183,7 @@ export default function BankAccounts() {
   };
 
   return (
-    <div className="p-6 lg:p-10 w-full mx-auto animate-fade-in space-y-8 overflow-hidden">
+    <div className="p-4 md:p-8 animate-fade-in space-y-8 overflow-hidden">
       {/* HEADER */}
       <PageHeader
         title="Bank Accounts"
