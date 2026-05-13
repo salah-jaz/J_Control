@@ -692,7 +692,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                 </div>
               )}
 
-              </div>
+
 
               {/* Balance summary */}
               {/* Installments Section */}
