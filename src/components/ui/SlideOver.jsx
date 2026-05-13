@@ -25,6 +25,8 @@ export default function SlideOver({ isOpen, onClose, title, children, footer, si
     'lg': 'max-w-lg',
     'xl': 'max-w-2xl',
     '2xl': 'max-w-4xl',
+    '3xl': 'max-w-5xl',
+    '4xl': 'max-w-7xl',
     'full': 'max-w-[95vw]'
   };
 

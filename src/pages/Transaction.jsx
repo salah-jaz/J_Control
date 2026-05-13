@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Download, ArrowUpRight, ArrowDownLeft, Filter, X, Eye, Receipt, TrendingUp, TrendingDown, Activity } from "lucide-react";
+import { Download, ArrowUpRight, ArrowDownLeft, Filter, X, Eye, Receipt, TrendingUp, TrendingDown, Activity, Search } from "lucide-react";
 import clsx from "clsx";
 import { exportToCSV } from "../utils/csvExport";
 import { useTransactionList, useTransactionSummary } from "../hooks/useApiQueries";
@@ -90,210 +90,209 @@ export default function Transaction() {
   const displayStatus = (txn) => txn?.incomeStatus || txn?.status || "—";
 
   return (
-    <div className="p-4 md:p-8 animate-fade-in space-y-6 md:space-y-8">
-      <PageHeader
-        title="Transactions"
-        subtitle="History of all financial movements."
-        secondaryActions={(
-          <>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={clsx("btn-secondary flex items-center gap-2", showFilters && "bg-slate-100 ring-2 ring-slate-200")}
-            >
-              <Filter size={18} />
-              Filter
-            </button>
-            <button
-              onClick={() => exportToCSV(transactions, "transactions_export")}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <Download size={18} />
-              Export
-            </button>
-          </>
-        )}
-      />
+    <div className="flex flex-col h-full bg-slate-50/50 animate-in fade-in duration-500 overflow-hidden">
+      <div className="px-6 lg:px-8 pt-8 pb-6 bg-white border-b border-slate-200/60 shadow-sm relative z-10">
+        <PageHeader
+          title="Financial Ledger"
+          subtitle="Comprehensive history of all organizational financial movements and capital flows."
+          secondaryActions={(
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={clsx(
+                  "p-2.5 rounded-xl border transition-all shadow-sm flex items-center gap-2 text-[13px] font-bold active:scale-95",
+                  showFilters 
+                    ? "bg-indigo-50 border-indigo-200 text-indigo-600 ring-4 ring-indigo-500/10" 
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                )}
+              >
+                <Filter size={18} />
+                <span>Intelligence Filters</span>
+              </button>
+              <button
+                onClick={() => exportToCSV(transactions, "transactions_export")}
+                className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 shadow-sm transition-all active:scale-95 flex items-center gap-2 text-[13px] font-bold"
+              >
+                <Download size={18} />
+                <span>Export Ledger</span>
+              </button>
+            </div>
+          )}
+        />
 
-      {/* STATS CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-        <StatCard
-          title="Total Transactions"
-          value={summary?.totalTransactions ?? "—"}
-          icon={Receipt}
-          color="bg-slate-600"
-        />
-        <StatCard
-          title="Total Income"
-          value={summary?.totalIncome != null ? `₹${Number(summary.totalIncome).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
-          icon={TrendingUp}
-          color="bg-emerald-600"
-        />
-        <StatCard
-          title="Total Expense"
-          value={summary?.totalExpense != null ? `₹${Number(summary.totalExpense).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
-          icon={TrendingDown}
-          color="bg-red-600"
-        />
-        <StatCard
-          title="Recent (7 days)"
-          value={summary?.recentCount ?? "—"}
-          icon={Activity}
-          color="bg-brand-600"
-        />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+          <StatCard
+            title="Total Journal Entries"
+            value={summary?.totalTransactions ?? "—"}
+            icon={Receipt}
+            color="bg-slate-800"
+          />
+          <StatCard
+            title="Aggregate Inflow"
+            value={summary?.totalIncome != null ? `₹${Number(summary.totalIncome).toLocaleString("en-IN", { minimumFractionDigits: 0 })}` : "—"}
+            icon={TrendingUp}
+            color="bg-emerald-600"
+          />
+          <StatCard
+            title="Aggregate Outflow"
+            value={summary?.totalExpense != null ? `₹${Number(summary.totalExpense).toLocaleString("en-IN", { minimumFractionDigits: 0 })}` : "—"}
+            icon={TrendingDown}
+            color="bg-rose-600"
+          />
+          <StatCard
+            title="Cycle Velocity (7d)"
+            value={summary?.recentCount ?? "—"}
+            icon={Activity}
+            color="bg-indigo-600"
+          />
+        </div>
       </div>
 
-      {/* FILTER PANEL */}
-      {showFilters && (
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-slide-up">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <Filter size={16} className="text-brand-600" />
-              Filters
-            </h3>
-            <button
-              onClick={() => {
-                setTypeFilter("");
-                setStatusFilter("");
-                setBankFilter("");
-                setDateFrom("");
-                setDateTo("");
-              }}
-              className="text-sm text-brand-600 font-bold hover:underline"
-            >
-              Clear Filters
-            </button>
+      <div className="flex-1 flex flex-col min-h-0 bg-white">
+        <div className="bg-slate-50/50 px-6 lg:px-8 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 sticky top-0 z-20">
+          <div className="flex-1 min-w-[240px]">
+            <div className="relative group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
+              <input
+                type="text"
+                placeholder="Search by ID, party, or reference..."
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          
+          <div className="flex items-center gap-2">
+             {/* Simple filter indicators if any active */}
+             {(typeFilter || statusFilter || bankFilter || dateFrom || dateTo) && (
+               <button 
+                 onClick={() => { setTypeFilter(""); setStatusFilter(""); setBankFilter(""); setDateFrom(""); setDateTo(""); }}
+                 className="px-3 py-2 text-[11px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 rounded-xl border border-rose-100 hover:bg-rose-100 transition-colors"
+               >
+                 Reset Parameters
+               </button>
+             )}
+          </div>
+        </div>
+
+        {showFilters && (
+          <div className="bg-white px-6 lg:px-8 py-6 border-b border-slate-100 grid grid-cols-1 md:grid-cols-5 gap-6 animate-in slide-in-from-top-2">
             <div>
-              <label className="label">Type</label>
-              <FilterSelect value={typeFilter} onChange={setTypeFilter}>
-                <option value="">All</option>
-                <option value="Income">Income</option>
-                <option value="Expense">Expense</option>
-              </FilterSelect>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Strategy Type</label>
+              <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                <option value="">All Transactions</option>
+                <option value="Income">Inflow (Income)</option>
+                <option value="Expense">Outflow (Expense)</option>
+              </select>
             </div>
             <div>
-              <label className="label">Status</label>
-              <FilterSelect value={statusFilter} onChange={setStatusFilter}>
-                <option value="">All</option>
-                <option value="Paid">Paid</option>
-                <option value="Received">Received</option>
-                <option value="Pending">Pending</option>
-                <option value="Completed">Completed</option>
-              </FilterSelect>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Settlement Status</label>
+              <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                <option value="">All Execution States</option>
+                <option value="Paid">Settled (Paid)</option>
+                <option value="Received">Realized (Received)</option>
+                <option value="Pending">In Transit (Pending)</option>
+                <option value="Completed">Finalized (Completed)</option>
+              </select>
             </div>
             <div>
-              <label className="label">Bank/Treasury</label>
-              <FilterSelect value={bankFilter} onChange={setBankFilter}>
-                <option value="">All</option>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Treasury Channel</label>
+              <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={bankFilter} onChange={e => setBankFilter(e.target.value)}>
+                <option value="">All Corporate Accounts</option>
                 {bankAccounts.map((b) => (
                   <option key={b.id} value={b.id}>{b.bank_name || b.bankName} - {b.account_number || b.accountNumber}</option>
                 ))}
-              </FilterSelect>
+              </select>
             </div>
             <div>
-              <label className="label">Start Date</label>
-              <input type="date" className="input" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Window Start</label>
+              <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
             </div>
             <div>
-              <label className="label">End Date</label>
-              <input type="date" className="input" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Window End</label>
+              <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* TABLE */}
-      <div className="card p-0 overflow-hidden min-h-[400px]">
-        <div className="p-4 md:p-5 border-b border-gray-100 bg-gray-50/50 space-y-3">
-          <TableSectionHeader
-            title="Transaction History"
-            summary={listLoading ? "Loading..." : listMeta ? `Showing ${(listMeta.current_page - 1) * listMeta.per_page + 1}–${Math.min(listMeta.current_page * listMeta.per_page, listMeta.total)} of ${listMeta.total}` : `Showing ${transactions.length}`}
-          />
-          <ToolbarSearch
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={setSearchQuery}
-            className="max-w-sm"
-          />
-        </div>
-        <div className="overflow-x-auto">
-          {listLoading ? (
-            <TableSkeleton rows={8} cols={9} />
-          ) : (
-            <table className="w-full text-sm text-left min-w-[800px]">
-              <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-4">ID</th>
-                  <th className="px-6 py-4">Type</th>
-                  <th className="px-6 py-4">Date</th>
-                  <th className="px-6 py-4">Reference</th>
-                  <th className="px-6 py-4">Party</th>
-                  <th className="px-6 py-4 text-right">Amount</th>
-                  <th className="px-6 py-4">Payment</th>
-                  <th className="px-6 py-4 text-right">Status</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <div className="min-w-full">
+            <table className="w-full text-left border-collapse table-fixed">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-32">Entry Ref</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-36">Nature</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Party / Counterpart</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-32">Execution</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-44">Quantum</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-36">Method</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-36">Status</th>
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-24">Ops</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
-                {transactions.length === 0 ? (
-                  <tr>
-                    <td colSpan="9" className="px-6 py-2">
-                      <EmptyState
-                        icon={Receipt}
-                        title="No transactions found"
-                        description="Adjust filters or date range."
-                      />
+              <tbody className="divide-y divide-slate-50">
+                {listLoading ? (
+                  <tr><td colSpan="8" className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse italic">Synchronizing Financial Ledger...</td></tr>
+                ) : transactions.map((txn) => (
+                  <tr key={txn.id} className="group hover:bg-slate-50/80 transition-all duration-200">
+                    <td className="px-6 lg:px-8 py-5">
+                      <span className="font-mono text-[11px] font-black text-slate-400 italic tracking-tighter">#TXN-{txn.id}</span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className={clsx(
+                        "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border shadow-sm w-fit",
+                        txn.type === "Income" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100"
+                      )}>
+                        {txn.type === "Income" ? <ArrowDownLeft size={12} strokeWidth={3} /> : <ArrowUpRight size={12} strokeWidth={3} />}
+                        {txn.type}
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-black text-slate-900 truncate">{txn.party || 'Internal Allocation'}</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1.5 truncate max-w-[200px]">{txn.reference || txn.transactionId || '—'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className="text-[12px] font-black text-slate-600 italic">{txn.date}</span>
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                      <span className={clsx(
+                        "font-mono text-[16px] font-black italic tracking-tight",
+                        txn.type === "Income" ? "text-emerald-600" : "text-rose-600"
+                      )}>
+                        ₹ {parseFloat(txn.amount || 0).toLocaleString("en-IN")}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-2 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200/50 w-fit">
+                        <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">{txn.method || 'Standard'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                      <span className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-900/10">
+                        {displayStatus(txn)}
+                      </span>
+                    </td>
+                    <td className="px-6 lg:px-8 py-5 text-right">
+                       <ActionIconButton onClick={() => openViewModal(txn)} title="Intelligence View" icon={Eye} tone="view" />
                     </td>
                   </tr>
-                ) : (
-                  transactions.map((txn) => (
-                    <tr key={txn.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4 font-mono text-xs text-slate-600 font-semibold">{txn.id}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={clsx(
-                            "px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide flex items-center gap-1 w-fit",
-                            txn.type === "Income" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
-                          )}
-                        >
-                          {txn.type === "Income" ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}
-                          {txn.type}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 font-medium">{txn.date}</td>
-                      <td className="px-6 py-4 text-slate-500 text-xs font-mono">{txn.reference || txn.transactionId || "—"}</td>
-                      <td className="px-6 py-4 font-bold text-slate-800">{txn.party || "—"}</td>
-                      <td className="px-6 py-4 font-bold text-slate-900 text-right font-mono">
-                        ₹ {parseFloat(txn.amount || 0).toLocaleString("en-IN")}
-                      </td>
-                      <td className="px-6 py-4 text-slate-600">
-                        <span className="px-2 py-1 bg-gray-100 border border-gray-200 rounded text-xs font-semibold">{txn.method || "—"}</span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className="inline-block px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-wide">
-                          {displayStatus(txn)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <ActionIconButton onClick={() => openViewModal(txn)} title="View" icon={Eye} tone="view" />
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
-          )}
+            {!listLoading && transactions.length === 0 && (
+              <div className="p-20">
+                <EmptyState icon={Receipt} title="No Transactions Indexed" description="The financial ledger is currently void for this parameter set." />
+              </div>
+            )}
+          </div>
         </div>
-        {listMeta && listMeta.last_page > 1 && (
-          <TablePagination
-            summary={`Showing ${(listMeta.current_page - 1) * listMeta.per_page + 1}–${Math.min(listMeta.current_page * listMeta.per_page, listMeta.total)} of ${listMeta.total}`}
-            onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            onNext={() => setCurrentPage((p) => p + 1)}
-            previousDisabled={listMeta.current_page <= 1}
-            nextDisabled={listMeta.current_page >= listMeta.last_page}
-          />
-        )}
+
+        <div className="bg-white border-t border-slate-100 px-6 lg:px-8 py-4 flex-shrink-0">
+          {listMeta && <TablePagination summary={`Indexed ${transactions.length} of ${listMeta.total} Capital Events`} onPrevious={() => setCurrentPage(p => Math.max(1, p - 1))} onNext={() => setCurrentPage(p => p + 1)} previousDisabled={listMeta.current_page <= 1} nextDisabled={listMeta.current_page >= listMeta.last_page} />}
+        </div>
       </div>
 
       {/* View Details Modal - uses row data, no extra fetch */}

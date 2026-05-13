@@ -3,7 +3,7 @@ import {
     Plus, Eye, X, User, Layout, Calendar, Filter, Sparkles, ShieldAlert,
     Pencil, Trash2, ChevronRight, ChevronLeft, Building2, Target, StickyNote,
     Layers, Briefcase, Info, Image as ImageIcon, Check, Loader2, Save, FileText,
-    TrendingUp, FileSpreadsheet, Search, Download, BadgeCheck, Activity
+    TrendingUp, FileSpreadsheet, Search, Download, BadgeCheck, Activity, Clock
 } from "lucide-react";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -342,95 +342,152 @@ const AgreementFormOverlay = ({ isOpen, onClose, agreement, clients, onSave }) =
             isOpen={isOpen}
             onClose={onClose}
             title={form.id ? 'Modify Legal Framework' : 'Assemble Agreement'}
-            size="full"
+            size="5xl"
             footer={(
                 <div className="flex justify-end items-center w-full px-2 gap-3">
-                    <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-all">Discard Changes</button>
-                    <button onClick={handleSubmit} disabled={isSaving} className="px-10 py-2.5 bg-violet-600 text-white text-[14px] font-bold rounded-xl hover:bg-violet-700 shadow-lg shadow-violet-500/20 flex items-center gap-2">
-                        {isSaving && <Loader2 size={18} className="animate-spin" />}
-                        <Save size={18} />
+                    <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Discard Changes</button>
+                    <button onClick={handleSubmit} disabled={isSaving} className="px-10 py-2.5 bg-violet-600 text-white text-[14px] font-black rounded-xl hover:bg-violet-700 shadow-lg shadow-violet-500/20 flex items-center gap-2 active:scale-95 transition-all">
+                        {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                         <span>{form.id ? 'Commit Update' : 'Finalize Instrument'}</span>
                     </button>
                 </div>
             )}
         >
-            <div className="flex bg-slate-100 p-1 rounded-xl mb-6 sticky top-0 z-20 border border-slate-200">
-                {['basic', 'content'].map(t => (
-                    <button key={t} onClick={() => setTab(t)} className={clsx("flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all", tab === t ? "bg-white text-violet-600 shadow-md" : "text-slate-500 hover:text-slate-700")}>
-                        {t === 'basic' ? 'Operational Specs' : 'Architectural Builder'}
-                    </button>
-                ))}
-            </div>
+            <div className="flex h-full min-h-[600px] relative">
+                {/* Sidebar Navigation */}
+                <div className="w-64 border-r-2 border-slate-100 pr-6 shrink-0 hidden md:block">
+                    <div className="flex flex-col gap-2 sticky top-0">
+                        {[
+                            { id: 'basic', label: 'Operational Specs', icon: Target },
+                            { id: 'content', label: 'Architectural Builder', icon: Layers }
+                        ].map((tabInfo, idx) => (
+                            <div key={tabInfo.id}>
+                                <button
+                                    onClick={() => setTab(tabInfo.id)}
+                                    className={clsx(
+                                        "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-[0.15em] transition-all relative group",
+                                        tab === tabInfo.id
+                                            ? "bg-violet-50 text-violet-700 shadow-sm shadow-violet-100 ring-1 ring-violet-200/50"
+                                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                                    )}
+                                >
+                                    {tab === tabInfo.id && (
+                                        <div className="absolute -right-[26px] top-3 bottom-3 w-1 bg-violet-600 rounded-l-full z-10" />
+                                    )}
+                                    <tabInfo.icon className={clsx("h-4 w-4", tab === tabInfo.id ? "text-violet-600" : "text-slate-400 group-hover:text-slate-600")} />
+                                    <span>{tabInfo.label}</span>
+                                </button>
+                                {idx < 1 && <div className="h-px bg-slate-50 mx-4 my-1 opacity-50" />}
+                            </div>
+                        ))}
+                    </div>
+                </div>
 
-            <div className="flex-1 overflow-hidden h-full">
-                {tab === 'basic' && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-right-4 max-w-4xl mx-auto">
-                        <section className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="md:col-span-2">
-                                    <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Document Designation</label>
-                                    <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[15px] font-black tracking-tight outline-none focus:border-violet-500 shadow-sm" value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="e.g. Master Service Agreement" />
-                                </div>
-                                <div>
-                                    <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Client Principal</label>
-                                    <select className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-bold outline-none focus:border-violet-500 shadow-sm" value={form.client_id} onChange={e => setForm({...form, client_id: e.target.value})}>
-                                        <option value="">Select Principal...</option>
-                                        {clients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Effective Date</label>
-                                        <input type="date" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-bold outline-none focus:border-violet-500 shadow-sm" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+                {/* Content Area */}
+                <div className="flex-1 pl-10">
+                    <div className="pb-20 h-full flex flex-col">
+                        {tab === 'basic' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="md:col-span-2">
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Document Designation</label>
+                                        <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[15px] font-black tracking-tight outline-none focus:border-violet-500 shadow-sm transition-all" value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="e.g. Master Service Agreement" />
                                     </div>
                                     <div>
-                                        <label className="text-[12px] font-bold text-slate-700 mb-1.5 block">Status</label>
-                                        <select className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-bold outline-none focus:border-violet-500 shadow-sm" value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
-                                            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Client Principal</label>
+                                        <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold outline-none focus:border-violet-500 shadow-sm transition-all appearance-none" value={form.client_id} onChange={e => setForm({...form, client_id: e.target.value})}>
+                                            <option value="">Select Principal registry...</option>
+                                            {clients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
                                         </select>
                                     </div>
-                                </div>
-                            </div>
-                        </section>
-                        <section className="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
-                            <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Building2 size={14}/> Branding Parameters</h4>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div><label className="text-[11px] font-bold text-slate-500 mb-1 block">Entity Designation</label><input className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-bold" value={form.override_company_name} onChange={e => setForm({...form, override_company_name: e.target.value})} /></div>
-                                <div><label className="text-[11px] font-bold text-slate-500 mb-1 block">Brand Tagline</label><input className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-bold" value={form.tagline} onChange={e => setForm({...form, tagline: e.target.value})} /></div>
-                            </div>
-                        </section>
-                    </div>
-                )}
-                {tab === 'content' && (
-                    <div className="h-full flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-bottom-4">
-                        <div className={clsx("flex flex-col transition-all duration-500", showPreview ? "lg:w-1/2" : "w-full")}>
-                            <AgreementBuilder value={form.content || []} onChange={v => setForm({...form, content: v})} />
-                        </div>
-                        {showPreview && (
-                            <div className="hidden lg:flex flex-col flex-1 bg-slate-200/50 rounded-3xl border border-slate-200 overflow-hidden shadow-inner">
-                                <div className="p-3 bg-white border-b border-slate-200 flex justify-between items-center">
-                                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Live Optical Renderer</span></div>
-                                    <select className="text-[10px] font-black bg-slate-100 border-none rounded px-2 py-1" value={livePreviewTemplateId} onChange={e => setLivePreviewTemplateId(e.target.value)}>
-                                        <option value="standard">Standard Form</option>
-                                        {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-12 flex justify-center">
-                                    <div className="w-[210mm] bg-white shadow-2xl min-h-[297mm] transform origin-top scale-[0.65] xl:scale-[0.8]">
-                                        {livePreviewTemplateId === 'standard' ? (
-                                            <div className="p-16">
-                                                <div className="flex justify-between items-start mb-12"><div className="space-y-1"><p className="text-[20px] font-black tracking-tighter">{form.override_company_name}</p><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{form.tagline}</p></div><div className="text-right"><p className="text-[12px] font-bold">{form.agreement_no}</p><p className="text-[10px] text-slate-400">{form.date}</p></div></div>
-                                                <div className="w-full h-1 bg-indigo-600 mb-12 rounded-full" />
-                                                <h1 className="text-[32px] font-black text-center mb-12 uppercase tracking-tighter">{form.title}</h1>
-                                                <AgreementContentDisplay blocks={form.content} />
-                                            </div>
-                                        ) : <div dangerouslySetInnerHTML={{ __html: getLivePreviewHtml() }} />}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Effective Date</label>
+                                            <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold outline-none focus:border-violet-500 shadow-sm transition-all" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Legal Status</label>
+                                            <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold outline-none focus:border-violet-500 shadow-sm transition-all appearance-none" value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
+                                                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
+
+                                <section className="bg-slate-50/50 p-8 rounded-3xl border border-slate-200 space-y-6 relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-violet-600/5 blur-[60px] rounded-full group-hover:bg-violet-600/10 transition-colors" />
+                                    <h4 className="text-[12px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2 relative z-10"><Building2 size={16} className="text-violet-500"/> Entity Branding Parameters</h4>
+                                    <div className="grid grid-cols-2 gap-8 relative z-10">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Entity Designation</label>
+                                            <input className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold outline-none focus:border-violet-500 shadow-sm transition-all" value={form.override_company_name} onChange={e => setForm({...form, override_company_name: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Brand Tagline</label>
+                                            <input className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold outline-none focus:border-violet-500 shadow-sm transition-all" value={form.tagline} onChange={e => setForm({...form, tagline: e.target.value})} />
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+                        )}
+
+                        {tab === 'content' && (
+                            <div className="flex-1 h-full flex flex-col lg:flex-row gap-8 animate-in fade-in slide-in-from-bottom-4">
+                                <div className={clsx("flex flex-col transition-all duration-500 flex-1 min-h-[500px]", showPreview ? "lg:w-1/2" : "w-full")}>
+                                    <AgreementBuilder value={form.content || []} onChange={v => setForm({...form, content: v})} />
+                                </div>
+                                {showPreview && (
+                                    <div className="hidden lg:flex flex-col w-[45%] bg-slate-50 rounded-3xl border-2 border-slate-100 overflow-hidden shadow-inner relative group">
+                                        <div className="p-4 bg-white border-b border-slate-200 flex justify-between items-center relative z-10">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                                                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Live Visual Renderer</span>
+                                            </div>
+                                            <select className="text-[11px] font-black bg-slate-100 border-none rounded-xl px-4 py-1.5 focus:ring-0 appearance-none" value={livePreviewTemplateId} onChange={e => setLivePreviewTemplateId(e.target.value)}>
+                                                <option value="standard">Standard Framework</option>
+                                                {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-8 flex justify-center bg-slate-200/30">
+                                            <div className="w-full max-w-[210mm] bg-white shadow-2xl min-h-[297mm] transform origin-top transition-transform duration-500" style={{ transform: 'scale(0.85)' }}>
+                                                {livePreviewTemplateId === 'standard' ? (
+                                                    <div className="p-12 md:p-20">
+                                                        <div className="flex justify-between items-start mb-16">
+                                                            <div className="space-y-2">
+                                                                <p className="text-[24px] font-black tracking-tighter leading-none">{form.override_company_name}</p>
+                                                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.2em]">{form.tagline}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-[13px] font-black text-slate-900">{form.agreement_no}</p>
+                                                                <p className="text-[11px] font-bold text-slate-400 uppercase mt-1">{form.date}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="w-full h-1.5 bg-violet-600 mb-16 rounded-full" />
+                                                        <h1 className="text-[36px] font-black text-center mb-16 uppercase tracking-tighter text-slate-900">{form.title || 'Untitled Agreement'}</h1>
+                                                        <div className="prose prose-slate max-w-none">
+                                                            <AgreementContentDisplay blocks={form.content} />
+                                                        </div>
+                                                    </div>
+                                                ) : <div className="p-4" dangerouslySetInnerHTML={{ __html: getLivePreviewHtml() }} />}
+                                            </div>
+                                        </div>
+                                        <div className="absolute bottom-6 right-6 z-20">
+                                            <button onClick={() => setShowPreview(false)} className="bg-slate-900 text-white p-3 rounded-2xl shadow-xl hover:bg-slate-800 transition-all active:scale-95">
+                                                <X size={20} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                {!showPreview && (
+                                    <button onClick={() => setShowPreview(true)} className="fixed bottom-12 right-12 bg-violet-600 text-white px-6 py-3 rounded-2xl shadow-2xl hover:bg-violet-700 transition-all animate-bounce flex items-center gap-2 font-black text-[12px] uppercase tracking-widest">
+                                        <Sparkles size={18} />
+                                        <span>Show Optical Preview</span>
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
-                )}
+                </div>
             </div>
         </SlideOver>
     );

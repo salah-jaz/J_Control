@@ -143,164 +143,178 @@ export default function Invoices() {
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
-      <PageHeader
-        title="Invoicing Operations"
-        subtitle="Full-cycle billing management, revenue tracking and receivable lifecycle"
-        primaryAction={(
-          <button onClick={() => { setEditingInvoice(null); setIsFormOpen(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/20">
-            <Plus size={18} strokeWidth={3} />
-            <span>New Invoice</span>
-          </button>
-        )}
-        secondaryActions={(
-          <button onClick={() => toast.error("Batch export not implemented")} className="p-2 bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-50 shadow-sm"><Download size={18} /></button>
-        )}
-      />
+    <div className="flex flex-col h-full bg-slate-50/50 animate-in fade-in duration-500 overflow-hidden">
+      <div className="px-6 lg:px-8 pt-8 pb-6 bg-white border-b border-slate-200/60 shadow-sm relative z-10">
+        <PageHeader
+          title="Billing Intelligence"
+          subtitle="Full-cycle billing management, revenue tracking and receivable lifecycle"
+          primaryAction={(
+            <button onClick={() => { setEditingInvoice(null); setIsFormOpen(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/20 group">
+              <div className="bg-white/20 p-1 rounded-lg group-hover:bg-white/30 transition-colors">
+                <Plus size={16} strokeWidth={3} />
+              </div>
+              <span>Create New Invoice</span>
+            </button>
+          )}
+          secondaryActions={(
+            <button onClick={() => toast.error("Batch export not implemented")} className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 shadow-sm transition-all active:scale-95"><Download size={18} /></button>
+          )}
+        />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Ledger Volume"
-          value={invoiceSummary != null ? String(invoiceSummary.totalInvoices ?? 0) : '—'}
-          icon={FileText}
-          colorClass="bg-slate-800"
-        />
-        <StatCard
-          title="Liquidity Realized"
-          value={invoiceSummary != null ? String(invoiceSummary.paidInvoices ?? 0) : '—'}
-          icon={BadgeCheck}
-          colorClass="bg-emerald-600"
-          subLabel="Paid Performance"
-        />
-        <StatCard
-          title="Receivable Exposure"
-          value={invoiceSummary != null ? String((invoiceSummary.pendingInvoices ?? 0) + (invoiceSummary.overdueInvoices ?? 0)) : '—'}
-          icon={AlertCircle}
-          colorClass="bg-amber-500"
-          subLabel="Pending Collection"
-        />
-        <StatCard
-          title="Gross Receivables"
-          value={invoiceSummary != null ? `₹${Number(invoiceSummary.totalRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })}` : '—'}
-          icon={TrendingUp}
-          colorClass="bg-indigo-600"
-          subLabel="Aggregate Valuation"
-        />
-      </div>
-
-      <div className="bg-white/80 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center gap-3 sticky top-4 z-20">
-        <div className="flex-1 min-w-[240px]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input
-              type="text"
-              placeholder="Search by ID, client, or number..."
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium outline-none focus:bg-white focus:border-indigo-500 transition-all shadow-inner"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <FilterSelect icon={Receipt} value={statusFilter} onChange={setStatusFilter}>
-            <option value="All">All Status</option>
-            <option value="Paid">Paid</option>
-            <option value="Pending">Pending</option>
-            <option value="Overdue">Overdue</option>
-            <option value="Draft">Draft</option>
-          </FilterSelect>
-          <FilterSelect icon={Calendar} value={dateFilter} onChange={setDateFilter}>
-            <option value="All">All Time</option>
-            <option value="Today">Today</option>
-            <option value="This Week">This Week</option>
-            <option value="This Month">This Month</option>
-            <option value="This Year">This Year</option>
-          </FilterSelect>
-          <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={clsx("p-2 border rounded-lg transition-all shadow-sm", showAdvancedFilters ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "bg-white border-slate-200 text-slate-600")}><Filter size={18} /></button>
-          {(searchQuery || statusFilter !== "All" || clientFilter || dateFilter !== "All") && <ClearFiltersButton onClick={() => { setSearchQuery(""); setStatusFilter("All"); setClientFilter(""); setDateFilter("All"); }} />}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+          <StatCard
+            title="Total Ledger Volume"
+            value={invoiceSummary != null ? String(invoiceSummary.totalInvoices ?? 0) : '—'}
+            icon={FileText}
+            colorClass="bg-slate-800"
+          />
+          <StatCard
+            title="Liquidity Realized"
+            value={invoiceSummary != null ? String(invoiceSummary.paidInvoices ?? 0) : '—'}
+            icon={BadgeCheck}
+            colorClass="bg-emerald-600"
+            subLabel="Paid Performance"
+          />
+          <StatCard
+            title="Receivable Exposure"
+            value={invoiceSummary != null ? String((invoiceSummary.pendingInvoices ?? 0) + (invoiceSummary.overdueInvoices ?? 0)) : '—'}
+            icon={AlertCircle}
+            colorClass="bg-amber-500"
+            subLabel="Pending Collection"
+          />
+          <StatCard
+            title="Gross Receivables"
+            value={invoiceSummary != null ? `₹${Number(invoiceSummary.totalRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 })}` : '—'}
+            icon={TrendingUp}
+            colorClass="bg-indigo-600"
+            subLabel="Aggregate Valuation"
+          />
         </div>
       </div>
 
-      {showAdvancedFilters && (
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
-          <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Client Parameter</label>
-            <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[13px] font-medium" value={clientFilter} onChange={e => setClientFilter(e.target.value)}>
-              <option value="">All Clients</option>
-              {clients.map(c => <option key={c.id} value={c.company_name || c.client_name}>{c.company_name || c.client_name}</option>)}
-            </select>
+      <div className="flex-1 flex flex-col min-h-0 bg-white">
+        <div className="bg-slate-50/50 px-6 lg:px-8 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 sticky top-0 z-20">
+          <div className="flex-1 min-w-[240px]">
+            <div className="relative group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
+              <input
+                type="text"
+                placeholder="Search by ID, client, or number..."
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <FilterSelect icon={Receipt} value={statusFilter} onChange={setStatusFilter}>
+              <option value="All">All Status</option>
+              <option value="Paid">Paid</option>
+              <option value="Pending">Pending</option>
+              <option value="Overdue">Overdue</option>
+              <option value="Draft">Draft</option>
+            </FilterSelect>
+            <FilterSelect icon={Calendar} value={dateFilter} onChange={setDateFilter}>
+              <option value="All">All Time Strategy</option>
+              <option value="Today">Current Cycle (Today)</option>
+              <option value="This Week">Weekly Overview</option>
+              <option value="This Month">Monthly Snapshot</option>
+              <option value="This Year">Annual Horizon</option>
+            </FilterSelect>
+            <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={clsx("p-2.5 border rounded-xl transition-all shadow-sm", showAdvancedFilters ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "bg-white border-slate-200 text-slate-600")}><Filter size={18} /></button>
+            {(searchQuery || statusFilter !== "All" || clientFilter || dateFilter !== "All") && <ClearFiltersButton onClick={() => { setSearchQuery(""); setStatusFilter("All"); setClientFilter(""); setDateFilter("All"); }} />}
           </div>
         </div>
-      )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <TableSectionHeader
-          title="Billing Registry"
-          summary={invoicesLoading ? 'Synchronizing...' : invoicesMeta
-            ? `${(invoicesMeta.current_page - 1) * invoicesMeta.per_page + 1} – ${Math.min(invoicesMeta.current_page * invoicesMeta.per_page, invoicesMeta.total)} of ${invoicesMeta.total} records`
-            : `${invoices.length} entries`}
-        />
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Identification</th>
-                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Client Source</th>
-                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Temporal</th>
-                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right">Valuation</th>
-                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
-                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {invoicesLoading ? (
-                <tr><td colSpan="6" className="p-12 text-center text-slate-400 font-medium">Synchronizing ledger data...</td></tr>
-              ) : invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <span className="font-mono text-[13px] font-black text-slate-900 italic tracking-tight">{inv.invoice_number || `#${inv.id}`}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center text-[11px] font-bold text-slate-500">{inv.client_name?.[0] || '—'}</div>
-                      <span className="text-[13px] font-bold text-slate-700 truncate max-w-[200px]">{inv.client_name || '—'}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-[12px] font-bold text-slate-500">{typeof inv.date === 'string' ? inv.date.split('T')[0] : (inv.date || '—')}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="font-mono text-[14px] font-black text-slate-900 italic">₹{parseFloat(inv.grand_total ?? inv.amount ?? 0).toLocaleString()}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={clsx(
-                        "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1.5",
-                        inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' :
-                        inv.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
-                        'bg-rose-100 text-rose-700'
-                      )}
-                    >
-                      <div className={clsx('w-1 h-1 rounded-full', inv.status === 'Paid' ? 'bg-emerald-500' : inv.status === 'Pending' ? 'bg-amber-500' : 'bg-rose-500')} />
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                      <ActionIconButton onClick={() => setViewingInvoice(inv)} title="Visual Preview" icon={Eye} tone="view" />
-                      <ActionIconButton onClick={() => { setEditingInvoice(inv); setIsFormOpen(true); }} title="Modify Registry" icon={Edit2} tone="edit" />
-                      <ActionIconButton onClick={() => handleDelete(inv.id)} title="Purge Registry" icon={Trash2} tone="delete" />
-                    </div>
-                  </td>
+        {showAdvancedFilters && (
+          <div className="bg-white px-6 lg:px-8 py-6 border-b border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Client Source Parameter</label>
+              <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={clientFilter} onChange={e => setClientFilter(e.target.value)}>
+                <option value="">All Registered Clients</option>
+                {clients.map(c => <option key={c.id} value={c.company_name || c.client_name}>{c.company_name || c.client_name}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <div className="min-w-full">
+            <table className="w-full text-left border-collapse table-fixed">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-48">Identification</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Client Source</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-32">Temporal</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-44">Valuation</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40">Status</th>
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-40">Operations</th>
                 </tr>
-              ))}
-              {!invoicesLoading && invoices.length === 0 && (
-                <tr><td colSpan="6" className="p-20"><EmptyState icon={FileText} title="No Billing Matches" description="Adjust your parameters or generate a new invoice to populate the registry." /></td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {invoicesLoading ? (
+                  <tr><td colSpan="6" className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse italic">Synchronizing Billing Registry...</td></tr>
+                ) : invoices.map((inv) => (
+                  <tr key={inv.id} className="group hover:bg-slate-50/80 transition-all duration-200">
+                    <td className="px-6 lg:px-8 py-5">
+                      <div className="flex items-center gap-2">
+                        <FileText size={14} className="text-indigo-400" />
+                        <span className="font-mono text-[13px] font-black text-slate-900 italic tracking-tight">{inv.invoice_number || `#${inv.id}`}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center text-[12px] font-black text-slate-600 shadow-inner">
+                          {inv.client_name?.[0] || 'C'}
+                        </div>
+                        <span className="text-[13px] font-black text-slate-900 truncate max-w-[240px]">{inv.client_name || '—'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className="text-[12px] font-black text-slate-500 italic">{typeof inv.date === 'string' ? inv.date.split('T')[0] : (inv.date || '—')}</span>
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                      <span className="font-mono text-[16px] font-black text-slate-900 italic tracking-tight">₹{parseFloat(inv.grand_total ?? inv.amount ?? 0).toLocaleString()}</span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className={clsx(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] inline-flex items-center gap-2 border shadow-sm",
+                          inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                          inv.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                          'bg-rose-50 text-rose-700 border-rose-100'
+                        )}
+                      >
+                        <div className={clsx('w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]', 
+                          inv.status === 'Paid' ? 'bg-emerald-500 shadow-emerald-500/50' : 
+                          inv.status === 'Pending' ? 'bg-amber-500 shadow-amber-500/50' : 
+                          'bg-rose-500 shadow-rose-500/50'
+                        )} />
+                        {inv.status}
+                      </span>
+                    </td>
+                    <td className="px-6 lg:px-8 py-5 text-right">
+                      <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                        <ActionIconButton onClick={() => setViewingInvoice(inv)} title="Intelligence Preview" icon={Eye} tone="view" />
+                        <ActionIconButton onClick={() => { setEditingInvoice(inv); setIsFormOpen(true); }} title="Modify Registry" icon={Edit2} tone="edit" />
+                        <ActionIconButton onClick={() => handleDelete(inv.id)} title="Purge Registry" icon={Trash2} tone="delete" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!invoicesLoading && invoices.length === 0 && (
+              <div className="p-20">
+                <EmptyState icon={FileText} title="No Billing Matches" description="The billing registry is currently void for this filter criteria." />
+              </div>
+            )}
+          </div>
         </div>
-        {invoicesMeta && <TablePagination summary={`Page ${invoicesMeta.current_page} of ${invoicesMeta.last_page}`} onPrevious={() => setCurrentPage(p => Math.max(1, p - 1))} onNext={() => setCurrentPage(p => p + 1)} previousDisabled={invoicesMeta.current_page <= 1} nextDisabled={invoicesMeta.current_page >= invoicesMeta.last_page} />}
+
+        <div className="bg-white border-t border-slate-100 px-6 lg:px-8 py-4 flex-shrink-0">
+          {invoicesMeta && <TablePagination summary={`Indexed ${invoices.length} of ${invoicesMeta.total} Revenue Events`} onPrevious={() => setCurrentPage(p => Math.max(1, p - 1))} onNext={() => setCurrentPage(p => p + 1)} previousDisabled={invoicesMeta.current_page <= 1} nextDisabled={invoicesMeta.current_page >= invoicesMeta.last_page} />}
+        </div>
       </div>
 
       <InvoiceForm

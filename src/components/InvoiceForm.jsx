@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Plus, Trash2, X, Landmark, Loader2, Save, FileText, Receipt,
+  Plus, Trash2, Landmark, Loader2, Save, FileText, Receipt, Layers,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
@@ -15,7 +15,7 @@ const emptyForm = {
   clientId: '',
   clientName: '',
   date: new Date().toISOString().split('T')[0],
-  status: 'Pending',
+  status: 'Draft',
   gst: 0,
   discountType: 'Flat',
   discountValue: '',
@@ -29,23 +29,10 @@ const emptyForm = {
   initialDepositBankName: '',
   extraInstallments: [],
   operationalExpenses: [],
+  invoice_no: '',
+  reference_number: '',
+  notes: '',
 };
-
-const FieldGroup = ({ label, required, error, children }) => (
-  <div className="space-y-1">
-    <label className="text-[12px] font-bold text-slate-700 flex items-center gap-1">
-      {label}
-      {required && <span className="text-rose-500">*</span>}
-    </label>
-    {children}
-    {error && <p className="text-[11px] text-rose-500 font-medium">{error}</p>}
-  </div>
-);
-
-const inputCls = (err) => clsx(
-  "w-full px-3 py-2 bg-white border rounded text-[13px] font-medium text-slate-800 placeholder:text-slate-400 outline-none transition-colors",
-  err ? "border-rose-300 focus:border-rose-500" : "border-slate-200 focus:border-indigo-500"
-);
 
 const STEPS = [
   { id: 'basic', label: 'Basic Info', icon: FileText },
@@ -61,11 +48,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
   const [products, setProducts] = useState([]);
   const [items, setItems] = useState([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
   const [errors, setErrors] = useState({});
-  const [bankModalOpen, setBankModalOpen] = useState(false);
-  const [bankModalFor, setBankModalFor] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [qrFile, setQrFile] = useState(null);
-  const [qrPreview, setQrPreview] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -100,7 +83,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
         clientId: invoice.client_id || invoice.clientId || '',
         clientName: invoice.client_name || invoice.clientName || '',
         date: typeof invoice.date === 'string' ? invoice.date.split('T')[0] : (invoice.date || ''),
-        status: invoice.status || 'Pending',
+        status: invoice.status || 'Draft',
         gst: parseFloat(invoice.gst || 0),
         discountType: invoice.discount_type || 'Flat',
         discountValue: invoice.discount != null ? String(invoice.discount) : '',
@@ -119,21 +102,22 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
           bankName: getBankDisplay(o.bank_account_id ?? o.bankAccountId) || o.bank_name || '',
           paid: o.paid === true || o.paid === '1' || o.paid === 'Paid',
         })),
+        invoice_no: invoice.invoice_no || '',
+        reference_number: invoice.reference_number || '',
+        notes: invoice.notes || '',
       });
       const invItems = invoice.items || [];
       setItems(invItems.length
         ? invItems.map((it, idx) => ({ sNo: idx + 1, serviceName: it.service_name || '', paymentStatus: it.payment_status || 'Pending', amount: it.amount != null ? String(it.amount) : '' }))
         : [{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
     } else if (!invoice && isOpen) {
-      setFormData(emptyForm);
+      setFormData({ ...emptyForm, invoice_no: nextInvoiceNumber || '' });
       setItems([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
     }
     setActiveTab('basic');
     setErrors({});
     setIsSaving(false);
-    setQrFile(null);
-    setQrPreview(null);
-  }, [invoice, isOpen, bankAccounts]);
+  }, [invoice, isOpen, bankAccounts, nextInvoiceNumber]);
 
   const subtotal = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
   const gstPct   = parseFloat(formData.gst) || 0;
@@ -144,7 +128,8 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
   const totalAmount   = Math.max(0, subtotal - discountVal + taxAmt);
   const initialDeposit = formData.initialDepositEnabled ? (parseFloat(formData.initialDepositAmount) || 0) : 0;
   const installmentsTotal = (formData.extraInstallments || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
-  const balanceDue     = Math.max(0, totalAmount - initialDeposit - installmentsTotal);
+  const totalPaid = initialDeposit + installmentsTotal;
+  const balanceDue     = Math.max(0, totalAmount - totalPaid);
 
   const validate = () => {
     const e = {};
@@ -178,27 +163,25 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
     data.append('discount', formData.discountValue || 0);
     data.append('bank_account_id', formData.bankAccountId);
     data.append('gpay_number', formData.gpayNumber || '');
-    if (qrFile) data.append('qr_code', qrFile);
     data.append('initial_deposit_enabled', formData.initialDepositEnabled ? '1' : '0');
     data.append('initial_deposit_amount', formData.initialDepositAmount || '0');
     data.append('initial_deposit_bank_id', formData.initialDepositBankId || '');
+    data.append('invoice_no', formData.invoice_no);
+    data.append('reference_number', formData.reference_number);
+    data.append('notes', formData.notes);
+
     (formData.extraInstallments || []).forEach((row, i) => {
       data.append(`extra_installments[${i}][date]`, row.date || '');
       data.append(`extra_installments[${i}][amount]`, row.amount || '');
       data.append(`extra_installments[${i}][bank_account_id]`, row.bankAccountId || '');
       data.append(`extra_installments[${i}][notes]`, row.notes || '');
     });
-    (formData.operationalExpenses || []).forEach((row, i) => {
-      data.append(`operational_expenses[${i}][name]`, row.name || '');
-      data.append(`operational_expenses[${i}][amount]`, row.amount || '');
-      data.append(`operational_expenses[${i}][bank_account_id]`, row.bankAccountId || '');
-      data.append(`operational_expenses[${i}][paid]`, row.paid ? '1' : '0');
-    });
     items.forEach((item, i) => {
       data.append(`items[${i}][service_name]`, item.serviceName);
       data.append(`items[${i}][payment_status]`, item.paymentStatus);
       data.append(`items[${i}][amount]`, item.amount);
     });
+
     try {
       if (invoice?.id) { data.append('_method', 'PUT'); await updateInvoice(invoice.id, data); toast.success('Invoice updated'); }
       else             { await createInvoice(data); toast.success('Invoice created'); }
@@ -221,11 +204,6 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
   const removeItem = (idx) => setItems(items.filter((_, i) => i !== idx).map((it, i) => ({ ...it, sNo: i + 1 })));
   const addItem    = () => setItems([...items, { sNo: items.length + 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
 
-  const updateExpense = (idx, field, val) => {
-    const next = [...formData.operationalExpenses]; next[idx] = { ...next[idx], [field]: val };
-    setFormData({ ...formData, operationalExpenses: next });
-  };
-
   const updateInstallment = (idx, field, val) => {
     const next = [...(formData.extraInstallments || [])];
     next[idx] = { ...next[idx], [field]: val };
@@ -236,340 +214,412 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
     <SlideOver
       isOpen={isOpen}
       onClose={onClose}
-      title={invoice ? 'Edit Invoice' : 'New Invoice'}
-      size="xl"
+      title={invoice ? 'Modify Financial Invoice' : 'Generate New Invoice'}
+      size="5xl"
       footer={(
-        <div className="flex items-center justify-between w-full">
-          <div className="flex gap-6">
+        <div className="flex justify-between items-center w-full px-1">
+          <div className="flex items-center gap-8">
             <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Grand Total</span>
-              <span className="text-lg font-bold text-slate-900 leading-none">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aggregate Invoice Value</span>
+              <span className="text-[22px] font-black text-slate-900 font-mono italic leading-none mt-1">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
-            <div className="flex flex-col border-l border-slate-200 pl-6">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Balance Due</span>
+            <div className="w-px h-8 bg-slate-200 hidden md:block" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Outstanding Balance</span>
               <span className={clsx(
-                "text-lg font-bold leading-none",
+                "text-[22px] font-black font-mono italic leading-none mt-1",
                 balanceDue > 0 ? "text-rose-600" : "text-emerald-600"
               )}>
                 ₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </span>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100 rounded transition-colors">Cancel</button>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
             <button
               onClick={handleSubmit}
               disabled={isSaving}
-              className="px-6 py-2 bg-indigo-600 text-white text-[13px] font-bold rounded hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-10 py-2.5 bg-indigo-600 text-white text-[14px] font-black rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95"
             >
-              {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-              {isSaving ? 'Saving...' : 'Save Invoice'}
+              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              <span>{isSaving ? 'Synchronizing...' : 'Save Invoice'}</span>
             </button>
           </div>
         </div>
       )}
     >
-      <div className="space-y-6">
-        {/* Step Navigation */}
-        <div className="flex border-b border-slate-100 mb-6">
-          {STEPS.map((step) => (
-            <button
-              key={step.id}
-              onClick={() => setActiveTab(step.id)}
-              className={clsx(
-                "flex-1 py-3 text-[12px] font-bold uppercase tracking-wider transition-colors border-b-2",
-                activeTab === step.id ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-400 hover:text-slate-600"
-              )}
-            >
-              {step.label}
-            </button>
-          ))}
+      <div className="flex h-full min-h-[600px] relative">
+        {/* Sidebar Navigation */}
+        <div className="w-64 border-r-2 border-slate-100 pr-6 shrink-0 hidden md:block">
+          <div className="flex flex-col gap-2 sticky top-0">
+            {STEPS.map((step, idx) => {
+              const StepIcon = step.id === 'basic' ? FileText : (step.id === 'services' ? Receipt : Landmark);
+              return (
+                <div key={step.id}>
+                  <button
+                    onClick={() => setActiveTab(step.id)}
+                    className={clsx(
+                      "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-[0.15em] transition-all relative group",
+                      activeTab === step.id
+                        ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100 ring-1 ring-indigo-200/50"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                    )}
+                  >
+                    {activeTab === step.id && (
+                      <div className="absolute -right-[26px] top-3 bottom-3 w-1 bg-indigo-600 rounded-l-full z-10" />
+                    )}
+                    <StepIcon className={clsx("h-4 w-4", activeTab === step.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600")} />
+                    <span>{step.label}</span>
+                  </button>
+                  {idx < STEPS.length - 1 && <div className="h-px bg-slate-50 mx-4 my-1 opacity-50" />}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {activeTab === 'basic' && (
-          <div className="space-y-4 animate-in fade-in duration-300">
-            <FieldGroup label="Client" required error={errors.clientId}>
-              <SearchableSelect
-                options={clients.map(c => ({ id: c.id, name: c.company_name || c.client_name }))}
-                value={formData.clientId}
-                onChange={(val) => {
-                  const c = clients.find(x => String(x.id) === String(val));
-                  setFormData({ ...formData, clientId: val, clientName: c ? (c.company_name || c.client_name) : '' });
-                }}
-                placeholder="Select a client..."
-              />
-            </FieldGroup>
-
-            <div className="grid grid-cols-2 gap-4">
-              <FieldGroup label="Invoice Date">
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className={inputCls()}
-                />
-              </FieldGroup>
-              <FieldGroup label="Status">
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className={inputCls()}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Paid">Paid</option>
-                  <option value="Overdue">Overdue</option>
-                  <option value="Draft">Draft</option>
-                </select>
-              </FieldGroup>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'services' && (
-          <div className="space-y-4 animate-in fade-in duration-300">
-            <div className="space-y-2">
-              <label className="text-[12px] font-bold text-slate-700">Line Items</label>
-              {items.map((item, idx) => (
-                <div key={idx} className="flex gap-2 items-start">
-                  <div className="flex-1">
+        {/* Content Area */}
+        <div className="flex-1 pl-10">
+          <div className="pb-20">
+            {activeTab === 'basic' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="col-span-2">
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Client Selection</label>
                     <SearchableSelect
-                      options={products}
-                      value={item.serviceName}
-                      onChange={(val) => updateItem(idx, 'serviceName', val)}
-                      placeholder="Service name..."
+                      options={clients.map(c => ({ id: c.id, name: c.company_name || c.client_name }))}
+                      value={formData.clientId}
+                      onChange={(val) => {
+                        const c = clients.find(x => String(x.id) === String(val));
+                        setFormData({ ...formData, clientId: val, clientName: c ? (c.company_name || c.client_name) : '' });
+                      }}
+                      placeholder="Select client registry..."
                     />
+                    {errors.clientId && <p className="text-[10px] text-rose-500 font-bold uppercase mt-1.5">{errors.clientId}</p>}
                   </div>
-                  <div className="w-24">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Invoice Number</label>
                     <input
-                      type="number"
-                      placeholder="Amount"
-                      value={item.amount}
-                      onChange={(e) => updateItem(idx, 'amount', e.target.value)}
-                      className={inputCls()}
+                      type="text"
+                      value={formData.invoice_no || ''}
+                      onChange={(e) => setFormData({ ...formData, invoice_no: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                      placeholder="INV-2024-001"
                     />
                   </div>
-                  {items.length > 1 && (
-                    <button onClick={() => removeItem(idx)} className="p-2 text-slate-400 hover:text-rose-500 rounded hover:bg-rose-50">
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button onClick={addItem} className="text-[12px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 mt-2">
-                <Plus size={14} /> Add Item
-              </button>
-            </div>
-
-            <div className="p-4 bg-slate-50 rounded-md space-y-2 border border-slate-100">
-              <div className="flex justify-between text-[13px]">
-                <span className="text-slate-500">Subtotal</span>
-                <span className="font-bold text-slate-700">₹{subtotal.toLocaleString('en-IN')}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <FieldGroup label="GST (%)">
-                  <input type="number" value={formData.gst} onChange={(e) => setFormData({ ...formData, gst: e.target.value })} className={inputCls()} />
-                </FieldGroup>
-                <FieldGroup label="Discount">
-                  <div className="flex gap-1">
-                    <select value={formData.discountType} onChange={(e) => setFormData({ ...formData, discountType: e.target.value })} className={clsx(inputCls(), "w-16 px-1")}>
-                      <option value="Flat">₹</option>
-                      <option value="Percentage">%</option>
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Issue Date</label>
+                    <input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Reference / PO</label>
+                    <input
+                      type="text"
+                      value={formData.reference_number || ''}
+                      onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                      placeholder="External PO Number"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Financial Status</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
+                    >
+                      <option value="Draft">Draft</option>
+                      <option value="Sent">Sent</option>
+                      <option value="Paid">Fully Paid</option>
+                      <option value="Partial">Partially Paid</option>
+                      <option value="Overdue">Overdue</option>
+                      <option value="Cancelled">Cancelled</option>
                     </select>
-                    <input type="number" value={formData.discountValue} onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })} className={inputCls()} />
                   </div>
-                </FieldGroup>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'bank' && (
-          <div className="space-y-4 animate-in fade-in duration-300">
-            <FieldGroup label="Bank Account" required error={errors.bankAccountId}>
-              <select
-                value={formData.bankAccountId || ''}
-                onChange={(e) => {
-                  const id = e.target.value ? Number(e.target.value) : null;
-                  const b = bankAccounts.find(x => String(x.id) === String(id));
-                  setFormData({ ...formData, bankAccountId: id, bankName: b?.bankName || '', accountNumber: b?.accountNumber || '' });
-                }}
-                className={inputCls(errors.bankAccountId)}
-              >
-                <option value="">Select account...</option>
-                {bankAccounts.map(b => (
-                  <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>
-                ))}
-              </select>
-            </FieldGroup>
-
-            <FieldGroup label="UPI / GPay (Optional)">
-              <input type="text" value={formData.gpayNumber} onChange={(e) => setFormData({ ...formData, gpayNumber: e.target.value })} placeholder="UPI ID or Number" className={inputCls()} />
-            </FieldGroup>
-
-            <div className="pt-4 border-t border-slate-100 space-y-6">
-              {/* Advance Payment Section */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <input
-                    type="checkbox"
-                    id="advance"
-                    checked={formData.initialDepositEnabled}
-                    onChange={(e) => setFormData({ ...formData, initialDepositEnabled: e.target.checked })}
-                    className="rounded text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <label htmlFor="advance" className="text-[13px] font-bold text-slate-700">Client paid an advance</label>
                 </div>
-
-                {formData.initialDepositEnabled && (
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-indigo-50/50 rounded border border-indigo-100">
-                    <FieldGroup label="Advance Amount">
-                      <input type="number" value={formData.initialDepositAmount} onChange={(e) => setFormData({ ...formData, initialDepositAmount: e.target.value })} className={inputCls()} />
-                    </FieldGroup>
-                    <FieldGroup label="Received In">
-                      <select
-                        value={formData.initialDepositBankId || ''}
-                        onChange={(e) => {
-                          const id = e.target.value ? Number(e.target.value) : null;
-                          const b = bankAccounts.find(x => String(x.id) === String(id));
-                          setFormData({ ...formData, initialDepositBankId: id, initialDepositBankName: b ? `${b.bankName} - ${b.accountNumber}` : '' });
-                        }}
-                        className={inputCls()}
-                      >
-                        <option value="">Select bank...</option>
-                        {bankAccounts.map(b => (
-                          <option key={b.id} value={b.id}>{b.bankName}</option>
-                        ))}
-                      </select>
-                    </FieldGroup>
-                  </div>
-                )}
+                <div>
+                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Administrative Notes</label>
+                  <textarea
+                    value={formData.notes || ''}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-medium outline-none focus:border-indigo-500 transition-all min-h-[120px] resize-none"
+                    placeholder="Add terms, conditions or internal notes..."
+                  />
+                </div>
               </div>
+            )}
 
-              {/* Installments Section */}
-              <div className="pt-4 border-t border-slate-50">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-[13px] font-bold text-slate-700 flex items-center gap-2">
-                    <Receipt size={16} className="text-slate-400" />
-                    Installment Payments
-                  </label>
+            {activeTab === 'services' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+                  <div className="flex flex-col">
+                    <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-widest">Invoice Line Items</h4>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase mt-1">Specify products and services rendered</p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setFormData({
-                      ...formData,
-                      extraInstallments: [...(formData.extraInstallments || []), { date: new Date().toISOString().split('T')[0], amount: '', bankAccountId: '', notes: '' }]
-                    })}
-                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                    onClick={addItem}
+                    className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group"
                   >
-                    <Plus size={14} /> Add Installment
+                    <Plus size={16} className="group-hover:rotate-90 transition-transform" />
+                    <span>Add Line Item</span>
                   </button>
                 </div>
-
-                <div className="space-y-3">
-                  {(formData.extraInstallments || []).map((inst, idx) => (
-                    <div key={idx} className="p-4 bg-slate-50/50 rounded border border-slate-100 relative group animate-in slide-in-from-top-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = [...formData.extraInstallments];
-                          next.splice(idx, 1);
-                          setFormData({ ...formData, extraInstallments: next });
-                        }}
-                        className="absolute -top-2 -right-2 h-6 w-6 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                      <div className="grid grid-cols-2 gap-3">
-                        <FieldGroup label="Payment Date">
-                          <input
-                            type="date"
-                            value={inst.date}
-                            onChange={(e) => updateInstallment(idx, 'date', e.target.value)}
-                            className={inputCls()}
+                <div className="space-y-6">
+                  {items.map((item, idx) => (
+                    <div key={idx} className="bg-slate-50/50 border border-slate-200 rounded-2xl p-6 space-y-6 relative group shadow-sm hover:border-indigo-200 transition-colors">
+                      <div className="grid grid-cols-12 gap-6">
+                        <div className="col-span-8">
+                          <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Item Name</label>
+                          <SearchableSelect
+                            options={products.map(p => ({ id: p.name, name: p.name }))}
+                            value={item.serviceName}
+                            onChange={v => updateItem(idx, 'serviceName', v)}
+                            placeholder="Search catalog..."
                           />
-                        </FieldGroup>
-                        <FieldGroup label="Amount Paid">
+                        </div>
+                        <div className="col-span-4">
+                          <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Unit Price (₹)</label>
                           <input
                             type="number"
-                            value={inst.amount}
-                            onChange={(e) => updateInstallment(idx, 'amount', e.target.value)}
-                            className={inputCls()}
-                            placeholder="0.00"
+                            value={item.amount}
+                            onChange={(e) => updateItem(idx, 'amount', e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-black italic outline-none focus:border-indigo-500 transition-all"
                           />
-                        </FieldGroup>
-                        <FieldGroup label="Received In">
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center pt-4 border-t border-slate-200/60">
+                        <div className="flex gap-8">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-slate-400 uppercase">Status</span>
+                            <select
+                              value={item.paymentStatus}
+                              onChange={e => updateItem(idx, 'paymentStatus', e.target.value)}
+                              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold"
+                            >
+                              <option value="Pending">Pending</option>
+                              <option value="Paid">Paid</option>
+                            </select>
+                          </div>
+                        </div>
+                        <span className="font-mono text-[18px] font-black text-slate-900 italic">₹{(parseFloat(item.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <button onClick={() => removeItem(idx)} className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-8 bg-slate-900 rounded-[32px] text-white space-y-4">
+                  <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-400">
+                    <span>Subtotal</span>
+                    <span className="text-white">₹{subtotal.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-8 pt-4 border-t border-slate-800">
+                    <div>
+                      <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">GST (%)</label>
+                      <input type="number" value={formData.gst} onChange={(e) => setFormData({ ...formData, gst: e.target.value })} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-[13px] font-bold outline-none focus:border-indigo-500" />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Discount</label>
+                      <div className="flex gap-2">
+                        <select value={formData.discountType} onChange={(e) => setFormData({ ...formData, discountType: e.target.value })} className="bg-slate-800 border border-slate-700 rounded-xl px-2 text-[13px] font-bold outline-none">
+                          <option value="Flat">₹</option>
+                          <option value="Percentage">%</option>
+                        </select>
+                        <input type="number" value={formData.discountValue} onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-[13px] font-bold outline-none focus:border-indigo-500" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'bank' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="bg-slate-900 rounded-3xl p-10 text-white space-y-6 shadow-2xl border border-slate-800 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] rounded-full -mr-32 -mt-32" />
+                  <div className="flex justify-between items-center relative z-10">
+                    <div className="flex flex-col">
+                      <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Aggregate Value</span>
+                      <span className="text-[36px] font-black text-white font-mono italic leading-none mt-2">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-[12px] font-black text-emerald-400 uppercase tracking-widest">Total Received</span>
+                      <span className="text-[36px] font-black text-emerald-300 font-mono italic leading-none mt-2">₹{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                  <div className="h-px bg-slate-800 relative z-10" />
+                  <div className="flex justify-between items-center relative z-10">
+                    <div className="flex flex-col">
+                      <span className="text-[12px] font-black text-rose-400 uppercase tracking-widest">Pending Balance</span>
+                      <span className="text-[28px] font-black text-white font-mono italic leading-none mt-1">₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Default Deposit Bank</label>
+                    <select
+                      value={formData.bankAccountId || ''}
+                      onChange={(e) => {
+                        const id = e.target.value ? Number(e.target.value) : null;
+                        const b = bankAccounts.find(x => String(x.id) === String(id));
+                        setFormData({ ...formData, bankAccountId: id, bankName: b?.bankName || '', accountNumber: b?.accountNumber || '' });
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
+                    >
+                      <option value="">Select account...</option>
+                      {bankAccounts.map(b => (
+                        <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>
+                      ))}
+                    </select>
+                    {errors.bankAccountId && <p className="text-[10px] text-rose-500 font-bold uppercase mt-1.5">{errors.bankAccountId}</p>}
+                  </div>
+
+                  <div className="pt-6 border-t border-slate-100">
+                    <div className="flex items-center gap-2 mb-4">
+                      <input
+                        type="checkbox"
+                        id="advance"
+                        checked={formData.initialDepositEnabled}
+                        onChange={(e) => setFormData({ ...formData, initialDepositEnabled: e.target.checked })}
+                        className="rounded text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <label htmlFor="advance" className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Record Advance Payment</label>
+                    </div>
+
+                    {formData.initialDepositEnabled && (
+                      <div className="grid grid-cols-2 gap-4 p-6 bg-indigo-50/50 rounded-2xl border border-indigo-100 animate-in slide-in-from-top-2">
+                        <div>
+                          <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Advance Amount</label>
+                          <input type="number" value={formData.initialDepositAmount} onChange={(e) => setFormData({ ...formData, initialDepositAmount: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold" />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Target Bank</label>
                           <select
-                            value={inst.bankAccountId || ''}
+                            value={formData.initialDepositBankId || ''}
                             onChange={(e) => {
                               const id = e.target.value ? Number(e.target.value) : null;
                               const b = bankAccounts.find(x => String(x.id) === String(id));
-                              updateInstallment(idx, 'bankAccountId', id);
-                              updateInstallment(idx, 'bankName', b ? b.bankName : '');
+                              setFormData({ ...formData, initialDepositBankId: id, initialDepositBankName: b ? `${b.bankName} - ${b.accountNumber}` : '' });
                             }}
-                            className={inputCls()}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold"
                           >
                             <option value="">Select bank...</option>
                             {bankAccounts.map(b => (
                               <option key={b.id} value={b.id}>{b.bankName}</option>
                             ))}
                           </select>
-                        </FieldGroup>
-                        <FieldGroup label="Notes / Ref">
-                          <input
-                            type="text"
-                            value={inst.notes}
-                            onChange={(e) => updateInstallment(idx, 'notes', e.target.value)}
-                            className={inputCls()}
-                            placeholder="Cheque No, UPI Ref..."
-                          />
-                        </FieldGroup>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
 
-                  {(formData.extraInstallments || []).length === 0 && (
-                    <div className="py-8 text-center border-2 border-dashed border-slate-100 rounded-lg">
-                      <p className="text-[12px] font-medium text-slate-400">No installments recorded yet.</p>
+                  <div className="pt-6 border-t border-slate-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-widest">Payment Installments</h4>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({
+                          ...formData,
+                          extraInstallments: [...(formData.extraInstallments || []), { date: new Date().toISOString().split('T')[0], amount: '', bankAccountId: '', notes: '' }]
+                        })}
+                        className="px-5 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[12px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2 border border-emerald-100 group"
+                      >
+                        <Plus size={16} className="group-hover:rotate-90 transition-transform" />
+                        <span>Add Installment</span>
+                      </button>
                     </div>
-                  )}
+
+                    <div className="space-y-6">
+                      {(formData.extraInstallments || []).map((inst, idx) => (
+                        <div key={idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 relative group animate-in slide-in-from-top-2">
+                          <div className="grid grid-cols-2 gap-6">
+                            <div>
+                              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Payment Date</label>
+                              <input
+                                type="date"
+                                value={inst.date}
+                                onChange={(e) => updateInstallment(idx, 'date', e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Amount Paid (₹)</label>
+                              <input
+                                type="number"
+                                value={inst.amount}
+                                onChange={(e) => updateInstallment(idx, 'amount', e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-black italic outline-none focus:border-indigo-500 transition-all"
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Deposit Target</label>
+                              <select
+                                value={inst.bankAccountId || ''}
+                                onChange={(e) => {
+                                  const id = e.target.value ? Number(e.target.value) : null;
+                                  const b = bankAccounts.find(x => String(x.id) === String(id));
+                                  updateInstallment(idx, 'bankAccountId', id);
+                                  updateInstallment(idx, 'bankName', b ? b.bankName : '');
+                                }}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
+                              >
+                                <option value="">Select Account Registry...</option>
+                                {bankAccounts.map(b => (
+                                  <option key={b.id} value={b.id}>{b.bankName}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Transaction Ref</label>
+                              <input
+                                type="text"
+                                value={inst.notes}
+                                onChange={(e) => updateInstallment(idx, 'notes', e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                placeholder="UPI, Cheque, Transfer Ref..."
+                              />
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = [...formData.extraInstallments];
+                              next.splice(idx, 1);
+                              setFormData({ ...formData, extraInstallments: next });
+                            }}
+                            className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+
+                      {(formData.extraInstallments || []).length === 0 && (
+                        <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-3xl bg-slate-50/50">
+                          <Receipt size={40} className="mx-auto text-slate-200 mb-4" />
+                          <p className="text-[13px] font-bold text-slate-400 uppercase tracking-widest">No installment records found</p>
+                          <p className="text-[11px] text-slate-300 uppercase tracking-wider mt-1">Add payments to track outstanding balance</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Bank Modal (if still needed for complex flows, but simplified here) */}
-      {bankModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-white rounded shadow-xl w-full max-w-sm overflow-hidden p-6">
-            <h3 className="font-bold text-slate-800 mb-4">Select Bank Account</h3>
-            <div className="space-y-2">
-              {bankAccounts.map(b => (
-                <button
-                  key={b.id}
-                  onClick={() => {
-                    const name = `${b.bankName} - ${b.accountNumber}`;
-                    if (bankModalFor === 'initial') {
-                      setFormData(p => ({ ...p, initialDepositBankId: b.id, initialDepositBankName: name }));
-                    } else if (bankModalFor?.startsWith('installment-')) {
-                      const idx = parseInt(bankModalFor.split('-')[1]);
-                      const next = [...formData.extraInstallments];
-                      next[idx] = { ...next[idx], bankAccountId: b.id, bankName: name };
-                      setFormData(p => ({ ...p, extraInstallments: next }));
-                    }
-                    setBankModalOpen(false);
-                  }}
-                  className="w-full p-3 text-left border border-slate-100 rounded hover:bg-slate-50 transition-colors"
-                >
-                  <p className="font-bold text-[13px]">{b.bankName}</p>
-                  <p className="text-[11px] text-slate-400 font-mono">{b.accountNumber}</p>
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setBankModalOpen(false)} className="w-full mt-4 py-2 text-[13px] font-bold text-slate-400">Cancel</button>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </SlideOver>
   );
 };

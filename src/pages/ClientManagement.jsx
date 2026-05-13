@@ -14,37 +14,27 @@ import { TablePagination } from '../components/ui/DataTableSection';
 import { ActionDropdownMenu } from '../components/ui/TableRowActions';
 
 const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="card hover:border-brand-200/50 group h-36 flex flex-col justify-between p-6">
-        <div className="flex justify-between items-start">
-            <div className={`p-3.5 rounded-xl ${color}`}>
-                <Icon className="w-6 h-6 text-white" />
-            </div>
-            <div className="text-right">
-                <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
-                <h3 className="text-3xl font-bold text-slate-800 tracking-tight">{value}</h3>
-            </div>
+    <div className="bg-white p-8 rounded-[32px] border-2 border-slate-50 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 group relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform duration-700">
+            <Icon size={120} />
         </div>
-        <div className="w-full bg-gray-100 h-1.5 rounded-full mt-4 overflow-hidden">
-            <div className={`h-full rounded-full ${color} opacity-30`} style={{ width: '70%' }}></div>
+        <div className="relative z-10">
+            <div className={`h-14 w-14 rounded-2xl ${color} flex items-center justify-center text-white mb-6 shadow-lg`}>
+                <Icon size={24} />
+            </div>
+            <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{title}</p>
+            <h3 className="text-4xl font-black text-slate-900 tracking-tight">{value}</h3>
         </div>
     </div>
 );
 
 const CompanyAvatar = ({ name, logo }) => {
     const initials = name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '??';
-    const bgColors = [
-        'bg-indigo-50 text-indigo-600 border-indigo-100',
-        'bg-emerald-50 text-emerald-600 border-emerald-100',
-        'bg-violet-50 text-violet-600 border-violet-100',
-        'bg-amber-50 text-amber-600 border-amber-100',
-        'bg-rose-50 text-rose-600 border-rose-100',
-    ];
-    const bgColor = bgColors[name.length % bgColors.length];
-
-    if (logo) return <img src={logo} alt={name} className="h-12 w-12 rounded-lg object-cover border-2 border-white shadow-sm" />;
+    
+    if (logo) return <img src={logo} alt={name} className="h-12 w-12 rounded-xl object-cover border-2 border-white shadow-sm" />;
 
     return (
-        <div className={clsx("h-12 w-12 rounded-lg flex items-center justify-center text-sm font-black border", bgColor)}>
+        <div className="h-12 w-12 rounded-xl flex items-center justify-center text-[13px] font-black border-2 border-indigo-50 bg-indigo-50/50 text-indigo-600">
             {initials}
         </div>
     );
@@ -54,7 +44,7 @@ const defaultFilters = {
     search: '',
     statusFilter: 'all',
     gstFilter: 'all',
-    locationFilter: '',
+    locationFilter: 'all',
     dateFilter: 'all',
     dateFrom: '',
     dateTo: '',
@@ -182,317 +172,225 @@ const ClientManagement = () => {
     };
 
     return (
-        <div className="bg-slate-50 min-h-screen">
-            {/* Header Background Strip */}
-            <div className="absolute top-0 left-0 right-0 h-80 bg-gradient-to-b from-indigo-50/50 to-transparent pointer-events-none"></div>
-
-            <div className="relative p-4 md:p-8 space-y-8 animate-in fade-in duration-700">
+        <div className="bg-[#fcfcfd] min-h-screen">
+            <div className="p-8 md:p-12 space-y-12 max-w-[1600px] mx-auto animate-in fade-in duration-700">
                 {/* Header Section */}
-                <PageHeader
-                    title="Client Management"
-                    subtitle="Centralized management of your client network and business relationships."
-                    primaryAction={(
-                        <button
-                            onClick={handleAddNew}
-                            className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/30"
-                        >
-                            <Plus size={18} strokeWidth={3} />
-                            <span>Add Client</span>
-                        </button>
-                    )}
-                />
-
-                {/* Stats Overview */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard
-                        title="Total Accounts"
-                        value={totalClients}
-                        icon={Users}
-                        color="bg-blue-600"
-                    />
-                    <StatCard
-                        title="Active Accounts"
-                        value={activeClients}
-                        icon={CheckCircle}
-                        color="bg-emerald-600"
-                    />
-                    <StatCard
-                        title="Tax Registered"
-                        value={gstClients}
-                        icon={Receipt}
-                        color="bg-violet-600"
-                    />
-                    <StatCard
-                        title="Standard Pipeline"
-                        value={totalClients - gstClients}
-                        icon={FileText}
-                        color="bg-orange-600"
-                    />
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+                    <div className="space-y-2">
+                        <h1 className="text-[40px] font-black text-slate-900 tracking-tight leading-none">Client Management</h1>
+                        <p className="text-[15px] font-bold text-slate-400 max-w-xl">Centralized management of your corporate network and strategic business relationships.</p>
+                    </div>
+                    <button
+                        onClick={handleAddNew}
+                        className="btn-primary h-14 px-8 flex items-center gap-3 shadow-xl shadow-indigo-500/20 rounded-2xl active:scale-95 transition-all"
+                    >
+                        <Plus size={20} strokeWidth={3} />
+                        <span className="text-[14px] font-black uppercase tracking-widest">Register Client</span>
+                    </button>
                 </div>
 
-                {/* Powerful Filter Bar */}
-                <div className="sticky top-[88px] z-30 space-y-3">
-                    <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
-                        <ToolbarSearch
-                            placeholder="Search clients by name, company, email..."
-                            value={search}
-                            onChange={setSearch}
-                        />
+                {/* Stats Overview */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <StatCard title="Total Accounts" value={totalClients} icon={Users} color="bg-indigo-600" />
+                    <StatCard title="Active Entities" value={activeClients} icon={CheckCircle} color="bg-emerald-500" />
+                    <StatCard title="Tax Registered" value={gstClients} icon={Receipt} color="bg-violet-600" />
+                    <StatCard title="Standard Pipeline" value={totalClients - gstClients} icon={FileText} color="bg-orange-500" />
+                </div>
+
+                {/* Filter Infrastructure */}
+                <div className="sticky top-6 z-40">
+                    <div className="bg-white/80 backdrop-blur-2xl p-4 rounded-[28px] border-2 border-slate-50 shadow-2xl shadow-slate-200/50 flex flex-wrap items-center gap-4">
+                        <div className="flex-1 min-w-[300px]">
+                            <ToolbarSearch
+                                placeholder="Search by name, organization, or email protocol..."
+                                value={search}
+                                onChange={setSearch}
+                                className="!bg-slate-50/50 !border-slate-100 !rounded-2xl !h-14 !px-6 !text-[14px] font-bold"
+                            />
+                        </div>
                         
-                        <div className="flex flex-wrap items-center gap-2 pr-1 w-full lg:w-auto">
+                        <div className="flex items-center gap-3">
                             <FilterSelect
                                 icon={Activity}
                                 value={statusFilter}
                                 onChange={setStatusFilter}
+                                className="!h-14 !bg-slate-50/50 !border-slate-100 !rounded-2xl !px-6 !text-[12px] font-black uppercase tracking-widest"
                             >
-                                    <option value="all">All Status</option>
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                    <option value="onboarding">Onboarding</option>
-                                    <option value="lead">Lead</option>
+                                <option value="all">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="onboarding">Onboarding</option>
                             </FilterSelect>
 
                             <button 
                                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                                 className={clsx(
-                                    "h-10 px-3.5 border rounded-lg flex items-center gap-2 transition-all active:scale-[0.98] group/adv shadow-sm text-[13px] font-bold",
+                                    "h-14 px-6 border-2 rounded-2xl flex items-center gap-3 transition-all active:scale-95 text-[11px] font-black uppercase tracking-widest",
                                     showAdvancedFilters 
-                                        ? "bg-violet-50 border-violet-200 text-violet-700" 
-                                        : "bg-white border-slate-200 text-slate-600 hover:border-violet-300 hover:bg-slate-50"
+                                        ? "bg-slate-900 border-slate-900 text-white" 
+                                        : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
                                 )}
                             >
-                                <Filter size={16} className={clsx("transition-transform", showAdvancedFilters && "rotate-180")} />
+                                <Filter size={16} />
                                 Filters
                             </button>
 
                             {hasActiveFilters && (
-                                <ClearFiltersButton onClick={resetFilters} />
+                                <button onClick={resetFilters} className="h-14 w-14 flex items-center justify-center bg-rose-50 text-rose-600 rounded-2xl hover:bg-rose-100 transition-all active:scale-95">
+                                    <X size={20} strokeWidth={3} />
+                                </button>
                             )}
                         </div>
                     </div>
 
-                    {/* Advanced Filters */}
                     {showAdvancedFilters && (
-                        <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
-                            <FilterSelect
-                                icon={Receipt}
-                                value={gstFilter}
-                                onChange={setGstFilter}
-                                minWidthClass="min-w-[160px]"
-                            >
-                                    <option value="all">Any Tax Status</option>
-                                    <option value="gst">Registered</option>
-                                    <option value="nongst">Unregistered</option>
-                            </FilterSelect>
-
-                            <FilterSelect
-                                icon={MapPin}
-                                value={locationFilter}
-                                onChange={setLocationFilter}
-                                minWidthClass="min-w-[170px]"
-                            >
-                                    <option value="">All Locations</option>
-                                    {locations.map(loc => (
-                                        <option key={loc} value={loc}>{loc}</option>
-                                    ))}
-                            </FilterSelect>
-
-                            <FilterSelect
-                                icon={Calendar}
-                                value={dateFilter}
-                                onChange={setDateFilter}
-                                minWidthClass="min-w-[160px]"
-                            >
-                                    <option value="all">Registration Date</option>
-                                    <option value="today">Today</option>
-                                    <option value="this_month">This Month</option>
-                                    <option value="last_month">Last Month</option>
-                                    <option value="custom">Custom Range</option>
-                            </FilterSelect>
-
-                            {dateFilter === 'custom' && (
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="date"
-                                        value={dateFrom}
-                                        onChange={(e) => setDateFrom(e.target.value)}
-                                        className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 outline-none focus:border-violet-400 h-10 shadow-sm"
-                                    />
-                                    <span className="text-slate-400 text-xs font-bold px-1">to</span>
-                                    <input
-                                        type="date"
-                                        value={dateTo}
-                                        onChange={(e) => setDateTo(e.target.value)}
-                                        className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 outline-none focus:border-violet-400 h-10 shadow-sm"
-                                    />
+                        <div className="mt-4 p-8 bg-white rounded-[32px] border-2 border-slate-50 shadow-xl animate-in slide-in-from-top-4 duration-500">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                <div className="space-y-3">
+                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Regulatory Status</label>
+                                    <FilterSelect icon={Receipt} value={gstFilter} onChange={setGstFilter} className="!w-full !bg-slate-50/50 !border-slate-100 !rounded-2xl !h-14">
+                                        <option value="all">Any Tax Status</option>
+                                        <option value="gst">Registered</option>
+                                        <option value="nongst">Unregistered</option>
+                                    </FilterSelect>
                                 </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Filter Chips */}
-                    {hasActiveFilters && (
-                        <div className="flex flex-wrap gap-2 px-2 animate-in fade-in slide-in-from-top-1 duration-300">
-                            {statusFilter !== 'all' && (
-                                <span className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-md text-[13px] font-medium border border-violet-100 shadow-sm">
-                                    Status: <span className="capitalize">{statusFilter}</span> <X className="h-3.5 w-3.5 cursor-pointer opacity-70 hover:opacity-100" onClick={() => setStatusFilter('all')} />
-                                </span>
-                            )}
-                            {gstFilter !== 'all' && (
-                                <span className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-md text-[13px] font-medium border border-blue-100 shadow-sm">
-                                    Tax: <span className="capitalize">{gstFilter}</span> <X className="h-3.5 w-3.5 cursor-pointer opacity-70 hover:opacity-100" onClick={() => setGstFilter('all')} />
-                                </span>
-                            )}
-                            {search && (
-                                <span className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-md text-[13px] font-medium border border-slate-200 shadow-sm">
-                                    Search: {search} <X className="h-3.5 w-3.5 cursor-pointer opacity-70 hover:opacity-100" onClick={() => setSearch('')} />
-                                </span>
-                            )}
+                                <div className="space-y-3">
+                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Jurisdiction</label>
+                                    <FilterSelect icon={MapPin} value={locationFilter} onChange={setLocationFilter} className="!w-full !bg-slate-50/50 !border-slate-100 !rounded-2xl !h-14">
+                                        <option value="">All Locations</option>
+                                        {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                                    </FilterSelect>
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Registration Timeline</label>
+                                    <FilterSelect icon={Calendar} value={dateFilter} onChange={setDateFilter} className="!w-full !bg-slate-50/50 !border-slate-100 !rounded-2xl !h-14">
+                                        <option value="all">All Time</option>
+                                        <option value="today">Today</option>
+                                        <option value="this_month">This Month</option>
+                                        <option value="custom">Custom Range</option>
+                                    </FilterSelect>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {/* Modern Table Component */}
-                <div className="card overflow-hidden min-h-[500px] flex flex-col !p-0 mt-6 !border-0 backdrop-blur-0">
-                    <div className="flex-1 overflow-x-auto">
+                {/* Data Grid Section */}
+                <div className="bg-white rounded-[40px] border-2 border-slate-50 shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
                         {isLoading ? (
                             <TableSkeleton rows={10} cols={6} />
                         ) : (
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="bg-slate-50/50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                                    <th className="px-6 py-4">Client / Company</th>
-                                    <th className="px-6 py-4 text-center">Account Status</th>
-                                    <th className="px-6 py-4 text-center">Category Tags</th>
-                                    <th className="px-6 py-4 text-center">Last Activity</th>
-                                    <th className="px-6 py-4 text-center">Tax Info</th>
-                                    <th className="px-6 py-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 bg-white">
-                                {clients.length > 0 ? clients.map((client) => (
-                                    <tr 
-                                        key={client.id} 
-                                        className={clsx(
-                                            "group hover:bg-slate-50 hover:-translate-y-[1px] transition-all duration-[250ms] border-b border-slate-100 last:border-0 relative bg-white even:bg-slate-50/50",
-                                            openMenuId === client.id ? "!z-50" : "z-0"
-                                        )}
-                                    >
-                                        <td className="px-8 py-4 sticky left-0 z-10 bg-white group-hover:bg-slate-50">
-                                            <div className="flex items-center gap-4">
-                                                <div className={clsx(
-                                                    "absolute left-0 top-3 bottom-3 w-1 rounded-r-full transition-all duration-300 opacity-0 group-hover:opacity-100",
-                                                    (!client.status || client.status === 'active') ? "bg-emerald-500" : "bg-violet-400 shadow-[0_0_8px_rgba(139,92,246,0.2)]"
-                                                )}></div>
-
-                                                <div className="relative flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
-                                                    <CompanyAvatar name={client.company_name || client.client_name || '??'} logo={client.company_logo} />
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50/50 border-b-2 border-slate-100">
+                                        <th className="px-10 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Client / Organization</th>
+                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Protocol Status</th>
+                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Portfolio Tags</th>
+                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Liaison</th>
+                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Tax Registry</th>
+                                        <th className="px-10 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Operations</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y-2 divide-slate-50">
+                                    {clients.length > 0 ? clients.map((client) => (
+                                        <tr key={client.id} className="group hover:bg-slate-50/50 transition-all duration-300 relative">
+                                            <td className="px-10 py-6">
+                                                <div className="flex items-center gap-6">
                                                     <div className={clsx(
-                                                        "absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-[2px] border-white transition-all shadow-sm",
-                                                        (!client.status || client.status === 'active') ? "bg-emerald-500" : "bg-slate-400"
+                                                        "absolute left-0 top-6 bottom-6 w-1 rounded-r-full transition-all duration-500",
+                                                        (!client.status || client.status === 'active') ? "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]" : "bg-slate-300"
                                                     )}></div>
-                                                </div>
-
-                                                <div className="space-y-0.5">
-                                                    <div className="text-[15px] font-semibold text-slate-800 leading-tight group-hover:text-violet-600 transition-colors flex items-center gap-2">
-                                                        {client.company_name || client.client_name || 'Anonymous Account'}
+                                                    <CompanyAvatar name={client.company_name || client.client_name} logo={client.company_logo} />
+                                                    <div className="space-y-1">
+                                                        <h4 className="text-[16px] font-black text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">
+                                                            {client.company_name || client.client_name || 'Anonymous Entity'}
+                                                        </h4>
+                                                        <div className="flex items-center gap-3 text-[12px] font-bold text-slate-400">
+                                                            <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px]">ID: #{client.id}</span>
+                                                            <span className="flex items-center gap-1"><MapPin size={12} /> {client.city || 'Global'}</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-[13px] font-medium text-slate-500">
-                                                        Id: #{client.id} • {client.city || 'Generic location'}
-                                                    </div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <div className={clsx(
-                                                "inline-flex items-center gap-2 px-3 py-1 rounded-full text-[12px] font-medium transition-all duration-300",
-                                                (!client.status || client.status === 'active') 
-                                                    ? "bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100" 
-                                                    : client.status === 'inactive'
-                                                        ? "bg-rose-50 text-rose-700 shadow-sm border border-rose-100"
-                                                        : "bg-slate-50 text-slate-600 shadow-sm border border-slate-200"
-                                            )}>
-                                                <span className={clsx(
-                                                    "h-1.5 w-1.5 rounded-full", 
-                                                    (!client.status || client.status === 'active') ? "bg-emerald-500" : 
-                                                    client.status === 'inactive' ? "bg-rose-500" : "bg-slate-400"
-                                                )}></span>
-                                                <span className="capitalize">{client.status ? client.status.toLowerCase() : 'Active'}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <span className="px-3 py-1 bg-violet-50 text-violet-700 rounded-full text-[12px] font-medium border border-violet-100 shadow-sm transition-transform hover:-translate-y-[1px]">VIP</span>
-                                                <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-[12px] font-medium border border-blue-100 shadow-sm transition-transform hover:-translate-y-[1px]">New</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <div className="flex flex-col items-center">
-                                                <span className="text-[14px] font-medium text-slate-700">
-                                                    {Math.floor(Math.random() * 10) + 1}h ago
-                                                </span>
-                                                <span className="text-[12px] text-slate-500">Login Activity</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <div className="flex items-center justify-center gap-2">
+                                            </td>
+                                            <td className="px-8 py-6 text-center">
+                                                <div className={clsx(
+                                                    "inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all",
+                                                    (!client.status || client.status === 'active') 
+                                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
+                                                        : "bg-slate-100 text-slate-500 border border-slate-200"
+                                                )}>
+                                                    <div className={clsx("h-1.5 w-1.5 rounded-full animate-pulse", (!client.status || client.status === 'active') ? "bg-emerald-500" : "bg-slate-400")}></div>
+                                                    {client.status || 'Active'}
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6 text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-100 shadow-sm">Enterprise</span>
+                                                    {client.gst_number && <span className="px-3 py-1 bg-violet-50 text-violet-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-violet-100 shadow-sm">Tax+</span>}
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6 text-center">
+                                                <div className="space-y-1">
+                                                    <p className="text-[13px] font-black text-slate-800">{client.contact_person_name || 'N/A'}</p>
+                                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{client.mobile_number || 'No Phone'}</p>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6 text-center">
                                                 {client.gst_number ? (
-                                                    <div className="px-3 py-1 bg-emerald-50 text-emerald-700 text-[12px] font-medium rounded-full border border-emerald-100 shadow-sm">
-                                                        GST Registered
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="text-[12px] font-black text-slate-900 font-mono">{client.gst_number}</span>
+                                                        <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Verified GSTIN</span>
                                                     </div>
                                                 ) : (
-                                                    <div className="px-3 py-1 bg-slate-50 text-slate-500 text-[12px] font-medium rounded-full border border-slate-200 shadow-sm">
-                                                        Basic
-                                                    </div>
+                                                    <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">Unregistered</span>
                                                 )}
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-4 text-right">
-                                            <ActionDropdownMenu
-                                                isOpen={openMenuId === client.id}
-                                                onToggle={() => setOpenMenuId(openMenuId === client.id ? null : client.id)}
-                                                onClose={() => setOpenMenuId(null)}
-                                                items={[
-                                                    { label: 'View Profile', icon: Eye, onClick: () => handleView(client) },
-                                                    { label: 'Edit Client', icon: Edit2, onClick: () => handleEdit(client) },
-                                                    { label: 'Delete', icon: Trash2, onClick: () => handleDelete(client.id), destructive: true, separatorBefore: true },
-                                                ]}
-                                            />
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan="6" className="px-8 py-24 text-center">
-                                            <EmptyState
-                                                icon={Building2}
-                                                title="No clients found"
-                                                description="Expand your portfolio by introducing new enterprise clients to the system."
-                                                action={(
-                                                    <button
-                                                        onClick={handleAddNew}
-                                                        className="btn-primary px-6 py-3 flex items-center gap-2 shadow-lg shadow-indigo-500/30"
-                                                    >
-                                                        <Plus className="h-4 w-4 stroke-[3]" /> Add First Client
-                                                    </button>
-                                                )}
-                                                className="max-w-md mx-auto"
-                                            />
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                            </td>
+                                            <td className="px-10 py-6 text-right">
+                                                <ActionDropdownMenu
+                                                    isOpen={openMenuId === client.id}
+                                                    onToggle={() => setOpenMenuId(openMenuId === client.id ? null : client.id)}
+                                                    onClose={() => setOpenMenuId(null)}
+                                                    items={[
+                                                        { label: 'View Profile', icon: Eye, onClick: () => handleView(client) },
+                                                        { label: 'Modify Entity', icon: Edit2, onClick: () => handleEdit(client) },
+                                                        { label: 'Terminate Registry', icon: Trash2, onClick: () => handleDelete(client.id), destructive: true, separatorBefore: true },
+                                                    ]}
+                                                />
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="6" className="px-10 py-32 text-center">
+                                                <EmptyState
+                                                    icon={Building2}
+                                                    title="No corporate entities found"
+                                                    description="Expand your professional network by registering new enterprise clients into the ecosystem."
+                                                    action={
+                                                        <button onClick={handleAddNew} className="btn-primary px-8 py-4 flex items-center gap-3 shadow-xl shadow-indigo-500/20 rounded-2xl">
+                                                            <Plus size={18} strokeWidth={3} />
+                                                            <span className="text-[13px] font-black uppercase tracking-widest">Register First Client</span>
+                                                        </button>
+                                                    }
+                                                />
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         )}
                     </div>
                     
                     {clientsMeta && (clientsMeta.last_page > 1) && (
-                        <TablePagination
-                            summary={`Showing ${(clientsMeta.current_page - 1) * clientsMeta.per_page + 1}–${Math.min(clientsMeta.current_page * clientsMeta.per_page, clientsMeta.total)} of ${clientsMeta.total} clients`}
-                            onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                            onNext={() => setCurrentPage((p) => p + 1)}
-                            previousDisabled={clientsMeta.current_page <= 1}
-                            nextDisabled={clientsMeta.current_page >= clientsMeta.last_page}
-                        />
+                        <div className="p-10 border-t-2 border-slate-50 bg-slate-50/30">
+                            <TablePagination
+                                summary={`Exhibiting ${(clientsMeta.current_page - 1) * clientsMeta.per_page + 1}–${Math.min(clientsMeta.current_page * clientsMeta.per_page, clientsMeta.total)} of ${clientsMeta.total} corporate accounts`}
+                                onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                onNext={() => setCurrentPage((p) => p + 1)}
+                                previousDisabled={clientsMeta.current_page <= 1}
+                                nextDisabled={clientsMeta.current_page >= clientsMeta.last_page}
+                            />
+                        </div>
                     )}
                 </div>
             </div>

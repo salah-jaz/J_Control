@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { 
   Plus, Eye, Edit2, Trash2, X, Package, ShoppingBag, AlertTriangle, 
   Loader2, Filter, Activity, Save, Search, Download, ChevronRight,
-  TrendingUp, Layers, CheckCircle2, ShoppingCart
+  TrendingUp, Layers, CheckCircle2, ShoppingCart, Target, Briefcase, Calendar
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "../hooks/useApiQueries";
@@ -121,123 +121,144 @@ export default function Products() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 p-4 md:p-8">
-      <PageHeader
-        title="Product & Service Catalog"
-        subtitle="Manage organizational offerings, pricing models, and service parameters"
-        primaryAction={(
-          <button onClick={() => { setEditItem(null); setOpenForm(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/20">
-            <Plus size={18} />
-            <span>Create Entry</span>
-          </button>
-        )}
-        secondaryActions={(
-          <button onClick={() => toast.error("Export not implemented")} className="p-2 bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-50 shadow-sm"><Download size={18} /></button>
-        )}
-      />
+    <div className="flex flex-col h-full bg-slate-50/50 animate-in fade-in duration-500 overflow-hidden">
+      <div className="px-6 lg:px-8 pt-8 pb-6 bg-white border-b border-slate-200/60 shadow-sm relative z-10">
+        <PageHeader
+          title="Product & Service Catalog"
+          subtitle="Manage organizational offerings, pricing models, and service parameters"
+          primaryAction={(
+            <button onClick={() => { setEditItem(null); setOpenForm(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/20 group">
+              <div className="bg-white/20 p-1 rounded-lg group-hover:bg-white/30 transition-colors">
+                <Plus size={16} />
+              </div>
+              <span>Create Catalog Entry</span>
+            </button>
+          )}
+          secondaryActions={(
+            <button onClick={() => toast.error("Export not implemented")} className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 shadow-sm transition-all active:scale-95"><Download size={18} /></button>
+          )}
+        />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard title="Total Catalog" value={stats.total} icon={Package} colorClass="bg-slate-800" />
-        <StatCard title="Active Offering" value={stats.active} icon={CheckCircle2} colorClass="bg-emerald-600" />
-        <StatCard title="Products" value={stats.products} icon={ShoppingCart} colorClass="bg-indigo-600" />
-        <StatCard title="Services" value={stats.services} icon={Activity} colorClass="bg-violet-600" />
-      </div>
-
-      <div className="bg-white/80 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center gap-3 sticky top-4 z-20">
-        <div className="flex-1 min-w-[240px]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input
-              type="text"
-              placeholder="Search by ID, name, or description..."
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium outline-none focus:bg-white focus:border-indigo-500 transition-all shadow-inner"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <FilterSelect icon={CheckCircle2} value={statusFilter} onChange={setStatusFilter}>
-            <option value="all">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </FilterSelect>
-          <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={clsx("p-2 border rounded-lg transition-all shadow-sm", showAdvancedFilters ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "bg-white border-slate-200 text-slate-600")}><Filter size={18} /></button>
-          {(searchQuery || statusFilter !== "all" || typeFilter !== "all") && <ClearFiltersButton onClick={() => { setSearchQuery(""); setStatusFilter("all"); setTypeFilter("all"); }} />}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
+          <StatCard title="Total Catalog" value={stats.total} icon={Package} colorClass="bg-slate-800" />
+          <StatCard title="Active Offering" value={stats.active} icon={CheckCircle2} colorClass="bg-emerald-600" />
+          <StatCard title="Products" value={stats.products} icon={ShoppingCart} colorClass="bg-indigo-600" />
+          <StatCard title="Services" value={stats.services} icon={Activity} colorClass="bg-violet-600" />
         </div>
       </div>
 
-      {showAdvancedFilters && (
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
-          <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Type Classification</label>
-            <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[13px] font-medium" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-              <option value="all">All Types</option>
-              <option value="Product">Product</option>
-              <option value="Service">Service</option>
-            </select>
+      <div className="flex-1 flex flex-col min-h-0 bg-white">
+        <div className="bg-slate-50/50 px-6 lg:px-8 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 sticky top-0 z-20">
+          <div className="flex-1 min-w-[240px]">
+            <div className="relative group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
+              <input
+                type="text"
+                placeholder="Search by ID, name, or description..."
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <FilterSelect icon={CheckCircle2} value={statusFilter} onChange={setStatusFilter}>
+              <option value="all">All Status</option>
+              <option value="Active">Active Offering</option>
+              <option value="Inactive">Inactive/Legacy</option>
+            </FilterSelect>
+            <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={clsx("p-2.5 border rounded-xl transition-all shadow-sm", showAdvancedFilters ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "bg-white border-slate-200 text-slate-600")}><Filter size={18} /></button>
+            {(searchQuery || statusFilter !== "all" || typeFilter !== "all") && <ClearFiltersButton onClick={() => { setSearchQuery(""); setStatusFilter("all"); setTypeFilter("all"); }} />}
           </div>
         </div>
-      )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <TableSectionHeader title="Catalog Registry" summary={`${filteredData.length} records found`} />
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Identification</th>
-                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Classification</th>
-                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right">Standard Rate</th>
-                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
-                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isLoading ? (
-                <tr><td colSpan="5" className="p-12 text-center text-slate-400 font-medium">Synchronizing catalog data...</td></tr>
-              ) : filteredData.map(item => (
-                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="font-mono text-[11px] font-bold text-slate-400">#{item.id}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-bold text-slate-900">{item.name}</span>
-                        {isAlertActive(item) && <AlertTriangle size={14} className="text-amber-500 animate-pulse" />}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className={clsx("w-2 h-2 rounded-full", item.type === 'Product' ? 'bg-indigo-500' : 'bg-violet-500')}></div>
-                      <span className="text-[12px] font-bold text-slate-600">{item.type}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="font-mono text-[14px] font-black text-slate-900 italic">
-                      ₹{parseFloat(item.price || 0).toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={clsx("px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider", item.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600')}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                      <ActionIconButton onClick={() => openViewDetail(item)} title="View Detail" icon={Eye} tone="view" />
-                      <ActionIconButton onClick={() => openEdit(item)} title="Edit Entry" icon={Edit2} tone="edit" />
-                      <ActionIconButton onClick={() => handleDelete(item.id)} title="Purge Entry" icon={Trash2} tone="delete" />
-                    </div>
-                  </td>
+        {showAdvancedFilters && (
+          <div className="bg-white px-6 lg:px-8 py-6 border-b border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Type Classification</label>
+              <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                <option value="all">All Classification Types</option>
+                <option value="Product">Physical Products</option>
+                <option value="Service">Professional Services</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <div className="min-w-full">
+            <table className="w-full text-left border-collapse table-fixed">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-48">Identification</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40">Classification</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-44">Standard Rate</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40">Lifecycle</th>
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-40">Operations</th>
                 </tr>
-              ))}
-              {!isLoading && filteredData.length === 0 && (
-                <tr><td colSpan="5" className="p-20"><EmptyState icon={Package} title="No Catalog Matches" description="Adjust your filters or create a new entry to populate the registry." /></td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {isLoading ? (
+                  <tr><td colSpan="5" className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse italic">Synchronizing Catalog Intelligence...</td></tr>
+                ) : filteredData.map(item => (
+                  <tr key={item.id} className="group hover:bg-slate-50/80 transition-all duration-200">
+                    <td className="px-6 lg:px-8 py-5">
+                      <div className="flex flex-col">
+                        <span className="font-mono text-[11px] font-black text-slate-400 italic tracking-tighter">#CAT-{item.id}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[13px] font-black text-slate-900 truncate">{item.name}</span>
+                          {isAlertActive(item) && (
+                            <div className="p-1 bg-amber-50 rounded-lg animate-bounce">
+                              <AlertTriangle size={12} className="text-amber-500" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-2.5">
+                        <div className={clsx("w-2 h-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]", item.type === 'Product' ? 'bg-indigo-500 shadow-indigo-500/50' : 'bg-violet-500 shadow-violet-500/50')}></div>
+                        <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">{item.type}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                      <span className="font-mono text-[16px] font-black text-slate-900 italic tracking-tight">
+                        Γé╣{parseFloat(item.price || 0).toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className={clsx(
+                        "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] inline-flex items-center gap-2 border shadow-sm",
+                        item.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-100'
+                      )}>
+                        <div className={clsx('w-1.5 h-1.5 rounded-full', item.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-300')} />
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-6 lg:px-8 py-5 text-right">
+                      <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                        <ActionIconButton onClick={() => openViewDetail(item)} title="Intelligence Detail" icon={Eye} tone="view" />
+                        <ActionIconButton onClick={() => openEdit(item)} title="Modify Entry" icon={Edit2} tone="edit" />
+                        <ActionIconButton onClick={() => handleDelete(item.id)} title="Purge Entry" icon={Trash2} tone="delete" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!isLoading && filteredData.length === 0 && (
+              <div className="p-20">
+                <EmptyState icon={Package} title="No Catalog Matches" description="The catalog registry is currently void for this filter criteria." />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white border-t border-slate-100 px-6 lg:px-8 py-4 flex-shrink-0">
+           <div className="flex justify-between items-center">
+             <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">Indexed {filteredData.length} Corporate Offerings</span>
+           </div>
         </div>
       </div>
 
@@ -312,11 +333,18 @@ const ProductForm = ({ isOpen, onClose, product, onSave }) => {
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('specs');
+
+  const TABS = [
+    { id: 'specs', label: 'Catalog Specs', icon: Target },
+    { id: 'params', label: 'Operational Parameters', icon: Activity },
+  ];
 
   useEffect(() => {
     if (product) setForm({ ...emptyForm, ...product });
     else setForm(emptyForm);
     setErrors({});
+    setActiveTab('specs');
   }, [product, isOpen]);
 
   const validate = () => {
@@ -338,95 +366,132 @@ const ProductForm = ({ isOpen, onClose, product, onSave }) => {
   };
 
   const Label = ({ children, required }) => (
-    <label className="block text-[12px] font-bold text-slate-700 mb-1">
+    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
       {children} {required && <span className="text-rose-500">*</span>}
     </label>
   );
 
-  const inputCls = "w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-[13px] font-medium outline-none focus:border-indigo-500 transition-all";
+  const inputCls = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm";
 
   return (
     <SlideOver
       isOpen={isOpen}
       onClose={onClose}
+      size="5xl"
       title={product ? 'Modify Entry Profile' : 'Configure New Catalog Entry'}
       footer={(
-        <div className="flex justify-end items-center w-full px-1 gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100 rounded transition-colors">Discard</button>
-          <button onClick={handleSubmit} disabled={isSaving} className="px-6 py-2 bg-indigo-600 text-white text-[13px] font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20">
-            {isSaving && <Loader2 size={16} className="animate-spin" />}
-            {product ? 'Commit Changes' : 'Record Entry'}
+        <div className="flex justify-end items-center w-full px-1 gap-3">
+          <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Discard</button>
+          <button onClick={handleSubmit} disabled={isSaving} className="px-10 py-2.5 bg-indigo-600 text-white text-[14px] font-black rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
+            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            <span>{isSaving ? 'Synchronizing...' : (product ? 'Commit Changes' : 'Record Entry')}</span>
           </button>
         </div>
       )}
     >
-      <div className="space-y-6">
-        <div className="space-y-4">
-          <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
-            <h4 className="text-[12px] font-bold text-slate-900 flex items-center gap-2 uppercase tracking-widest">
-              <div className="h-1.5 w-1.5 rounded-full bg-indigo-500"></div>
-              General Configuration
-            </h4>
-          </div>
-          
-          <div>
-            <Label required>Entry Name</Label>
-            <input className={clsx(inputCls, errors.name && "border-rose-400")} placeholder="e.g. Enterprise Cloud Compute" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label required>Standard Price (₹)</Label>
-              <input type="number" className={clsx(inputCls, "font-bold")} placeholder="0.00" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} />
-            </div>
-            <div>
-              <Label>Classification</Label>
-              <select className={inputCls} value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
-                <option>Service</option>
-                <option>Product</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <Label>Technical Scope / Description</Label>
-            <textarea className={clsx(inputCls, "min-h-[100px] resize-none")} placeholder="Specify operational details..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+      <div className="flex h-full min-h-[600px] relative">
+        {/* Sidebar Navigation */}
+        <div className="w-64 border-r-2 border-slate-100 pr-6 shrink-0 hidden md:block">
+          <div className="flex flex-col gap-2 sticky top-0">
+            {TABS.map((t, idx) => (
+              <div key={t.id}>
+                <button
+                  onClick={() => setActiveTab(t.id)}
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-[0.15em] transition-all relative group",
+                    activeTab === t.id
+                      ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100 ring-1 ring-indigo-200/50"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                  )}
+                >
+                  {activeTab === t.id && (
+                    <div className="absolute -right-[26px] top-3 bottom-3 w-1 bg-indigo-600 rounded-l-full z-10" />
+                  )}
+                  <t.icon className={clsx("h-4 w-4", activeTab === t.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600")} />
+                  <span>{t.label}</span>
+                </button>
+                {idx < TABS.length - 1 && <div className="h-px bg-slate-50 mx-4 my-1 opacity-50" />}
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="space-y-4 pt-4">
-          <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
-            <h4 className="text-[12px] font-bold text-slate-900 flex items-center gap-2 uppercase tracking-widest">
-              <div className="h-1.5 w-1.5 rounded-full bg-violet-500"></div>
-              Operational Parameters
-            </h4>
-          </div>
+        {/* Content Area */}
+        <div className="flex-1 pl-10 overflow-y-auto">
+          <div className="pb-20">
+            {activeTab === 'specs' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="col-span-2">
+                    <Label required>Entry Nomenclature / Identity</Label>
+                    <div className="relative">
+                      <Package size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input className={clsx(inputCls, "pl-11", errors.name && "border-rose-400")} placeholder="e.g. Enterprise Cloud Compute Infrastructure" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+                    </div>
+                    {errors.name && <p className="text-[10px] text-rose-500 mt-2 font-bold uppercase tracking-widest">{errors.name}</p>}
+                  </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Lifecycle Status</Label>
-              <select className={inputCls} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                <option>Active</option>
-                <option>Inactive</option>
-              </select>
-            </div>
-            <div className="flex items-end pb-2">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" checked={form.enable_alert} onChange={e => setForm({ ...form, enable_alert: e.target.checked })} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                <span className="text-[13px] font-bold text-slate-700">Maturity Alerts</span>
-              </label>
-            </div>
-          </div>
+                  <div>
+                    <Label required>Standard Financial Valuation (₹)</Label>
+                    <input type="number" className={clsx(inputCls, "font-black italic text-slate-900 text-lg")} placeholder="0.00" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} />
+                    {errors.price && <p className="text-[10px] text-rose-500 mt-2 font-bold uppercase tracking-widest">{errors.price}</p>}
+                  </div>
+                  <div>
+                    <Label>Catalog Classification</Label>
+                    <select className={clsx(inputCls, "appearance-none")} value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
+                      <option>Service</option>
+                      <option>Product</option>
+                    </select>
+                  </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Start / Deployment Date</Label>
-              <input type="date" className={inputCls} value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} />
-            </div>
-            <div>
-              <Label>End / Renewal Date</Label>
-              <input type="date" className={inputCls} value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} />
-            </div>
+                  <div className="col-span-2">
+                    <Label>Technical Specification / Scope</Label>
+                    <textarea className={clsx(inputCls, "min-h-[200px] resize-none")} placeholder="Detailed breakdown of operational scope..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'params' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="grid grid-cols-2 gap-8">
+                  <div>
+                    <Label>Lifecycle Status</Label>
+                    <select className={clsx(inputCls, "appearance-none")} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                      <option>Active</option>
+                      <option>Inactive</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center mt-6">
+                    <label className={clsx("w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all cursor-pointer", form.enable_alert ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-100")}>
+                      <div className="flex items-center gap-3">
+                        <input type="checkbox" checked={form.enable_alert} onChange={e => setForm({ ...form, enable_alert: e.target.checked })} className="h-5 w-5 rounded-lg border-slate-300 text-amber-600 focus:ring-amber-500" />
+                        <div>
+                          <p className="text-[12px] font-black text-slate-900 uppercase tracking-widest leading-none">Maturity Alerts</p>
+                          <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase">Monitor renewal cycles</p>
+                        </div>
+                      </div>
+                      <AlertTriangle size={18} className={form.enable_alert ? "text-amber-500" : "text-slate-300"} />
+                    </label>
+                  </div>
+
+                  <div>
+                    <Label>Start / Deployment Protocol</Label>
+                    <div className="relative">
+                      <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input type="date" className={clsx(inputCls, "pl-11")} value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Termination / Renewal Date</Label>
+                    <div className="relative">
+                      <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input type="date" className={clsx(inputCls, "pl-11")} value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

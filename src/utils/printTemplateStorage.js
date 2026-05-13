@@ -258,11 +258,11 @@ function fetchDbTemplates() {
   return data.map(normalizeTemplate);
 }
 
-function pushSeedTemplatesToDb(list) {
-  const seeds = getSeedTemplates(list);
+function pushSeedTemplatesToDb(allList, dbList) {
+  const seeds = getSeedTemplates(allList);
   seeds.forEach((seed) => {
-    const exists = list.some((x) => x.id === seed.id);
-    if (!exists) {
+    const existsInDb = dbList.some((x) => x.id === seed.id);
+    if (!existsInDb) {
       syncApi('POST', API_BASE, toDbPayload(seed));
     } else {
       syncApi('PUT', `${API_BASE}/${encodeURIComponent(seed.id)}`, toDbPayload(seed));
@@ -278,7 +278,7 @@ function syncFromDbIfNeeded(force = false) {
   if (dbList) {
     const seeded = upsertSeeds(dbList);
     if (seeded.changed) {
-      pushSeedTemplatesToDb(seeded.list);
+      pushSeedTemplatesToDb(seeded.list, dbList);
     }
     memoryCache = seeded.list;
     saveRaw(memoryCache);

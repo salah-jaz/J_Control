@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import clsx from 'clsx';
 import { LayoutTemplate, Plus, Pencil, Trash2, X, FileText, Check, Settings2, FileCode2, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { MODULES, MODULE_FIELDS, getDefaultCss, buildFullTemplateHtml, getSampleData, resolveTemplateHtmlWithData } from '../config/printTemplateModules';
@@ -523,21 +524,22 @@ font-size:14px;
                         <FileText className="w-5 h-5 text-indigo-500 mr-2" />
                         <span className="font-semibold text-slate-700 mr-4">Print Templates</span>
 
-                        <div className="flex items-center gap-1 border border-slate-200/80 rounded-lg p-1 bg-slate-100/50 shadow-inner">
-                            <button
-                                onClick={() => setActiveTab('All')}
-                                className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all whitespace-nowrap ${activeTab === 'All' ? 'bg-white shadow-sm text-slate-800 border-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                            >
-                                All
-                            </button>
-                            {MODULES.map(m => (
-                                <button
-                                    key={m.value}
-                                    onClick={() => setActiveTab(m.value)}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all whitespace-nowrap ${activeTab === m.value ? 'bg-white shadow-sm text-slate-800 border-slate-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                                >
-                                    {m.label}
-                                </button>
+                        <div className="flex items-center gap-1 border border-slate-200 rounded-xl p-1 bg-slate-50 shadow-inner">
+                            {['All', ...MODULES.map(m => m.value)].map((t, idx) => (
+                                <React.Fragment key={t}>
+                                    {idx > 0 && <div className="w-px bg-slate-200 my-1.5"></div>}
+                                    <button
+                                        onClick={() => setActiveTab(t)}
+                                        className={clsx(
+                                            "px-4 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                                            activeTab === t
+                                                ? "bg-white text-indigo-600 shadow-md border border-slate-100"
+                                                : "text-slate-500 hover:text-slate-700"
+                                        )}
+                                    >
+                                        {t === 'All' ? 'All Modules' : MODULES.find(m => m.value === t)?.label || t}
+                                    </button>
+                                </React.Fragment>
                             ))}
                         </div>
                     </div>
