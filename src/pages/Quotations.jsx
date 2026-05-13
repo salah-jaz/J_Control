@@ -34,6 +34,7 @@ import EmptyState from "../components/ui/EmptyState";
 import { FilterSelect, ClearFiltersButton } from "../components/ui/FilterControls";
 import { TableSectionHeader, TablePagination } from "../components/ui/DataTableSection";
 import { ActionIconButton } from "../components/ui/TableRowActions";
+import SearchableSelect from "../components/ui/SearchableSelect";
 
 const QuotationView = lazy(() => import("../components/QuotationView"));
 
@@ -554,7 +555,7 @@ function Quotations() {
 
       {openForm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
-          <div className="bg-white/90 backdrop-blur-xl w-full max-w-6xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-[0.98] duration-[250ms] border border-white/40 overflow-hidden">
+          <div className="bg-white/95 backdrop-blur-2xl w-full max-w-[1400px] rounded-[32px] shadow-2xl flex flex-col h-[92vh] max-h-[95vh] animate-in zoom-in-[0.99] duration-[300ms] border border-white/40 overflow-hidden">
             
             {/* Header */}
             <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white z-20">
@@ -628,7 +629,7 @@ function Quotations() {
 
               {/* Main Content Area */}
               <div className="flex-1 overflow-y-auto bg-white p-8 custom-scrollbar relative">
-                <div className="max-w-4xl mx-auto">
+                <div className="max-w-full mx-auto">
                   {tab === "basic" && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-[350ms]">
                       <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4 mb-2">
@@ -776,41 +777,32 @@ function Quotations() {
                         <table className="w-full text-sm text-left border-collapse">
                           <thead>
                             <tr className="bg-slate-50 text-[11px] font-black text-slate-500 uppercase tracking-[0.1em] border-b border-slate-100">
-                              <th className="px-5 py-4 w-[40%]">Service or Product Name</th>
-                              <th className="px-5 py-4 w-[25%]">Description</th>
+                              <th className="px-5 py-4 w-[25%]">Service or Product Name</th>
+                              <th className="px-5 py-4 w-[40%]">Description</th>
                               <th className="px-5 py-4 w-[15%]">Rate (₹)</th>
-                              <th className="px-5 py-4 w-[10%] text-center">Tax %</th>
-                              <th className="px-5 py-4 w-[13%] text-right bg-slate-100/30 font-bold">Total</th>
-                              <th className="px-5 py-4 w-[5%]"></th>
+                              <th className="px-5 py-4 w-[7%] text-center">Tax %</th>
+                              <th className="px-5 py-4 w-[10%] text-right bg-slate-100/30 font-bold">Total</th>
+                              <th className="px-5 py-4 w-[3%]"></th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 bg-white">
                             {(form.items || []).map((row, index) => (
                               <tr key={index} className="group hover:bg-slate-50/50 transition-colors">
                                 <td className="px-4 py-3 align-top">
-                                    <input
-                                      type="text"
-                                      list="quotation-product-list"
+                                    <SearchableSelect
+                                      options={safeProducts}
                                       value={row.item}
-                                      onChange={(e) => updateItem(index, "item", e.target.value)}
-                                      className="w-full bg-transparent border-0 border-b border-transparent focus:border-violet-500 focus:ring-0 text-[14px] font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-300 transition-all"
+                                      onChange={(val) => updateItem(index, "item", val)}
                                       placeholder="Service or Product Name..."
                                     />
-                                    <datalist id="quotation-product-list">
-                                      {safeProducts.map((p) => (
-                                        <option key={p.id} value={p.name}>
-                                          {p.price ? `₹${p.price}` : ""}
-                                        </option>
-                                      ))}
-                                    </datalist>
                                 </td>
                                 <td className="px-4 py-3 align-top">
                                   <textarea
                                     value={row.description}
                                     onChange={(e) => updateItem(index, "description", e.target.value)}
-                                    className="w-full bg-transparent border-0 border-b border-transparent focus:border-violet-500 focus:ring-0 text-[13px] text-slate-600 placeholder:text-slate-300 resize-none py-0 min-h-[24px]"
+                                    className="w-full bg-transparent border-0 border-b border-transparent focus:border-violet-500 focus:ring-0 text-[13px] text-slate-600 placeholder:text-slate-300 resize-none py-1 min-h-[60px]"
                                     placeholder="Enter description..."
-                                    rows={1}
+                                    rows={2}
                                   />
                                 </td>
 

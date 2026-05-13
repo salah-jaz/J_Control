@@ -120,198 +120,6 @@ class InvoiceController extends Controller
         ];
     }
 
-    private function getPaymentEntries(Invoice $invoice): array
-    {
-        $entries = [];
-        $date = $invoice->date ? $invoice->date->format('Y-m-d') : now()->toDateString();
-
-        if ($invoice->initial_deposit_enabled && (float) $invoice->initial_deposit_amount > 0 && $invoice->initial_deposit_bank_id) {
-            $entries[] = [
-                'amount' => (float) $invoice->initial_deposit_amount,
-                'bank_account_id' => (int) $invoice->initial_deposit_bank_id,
-                'date' => $date,
-                'note' => 'Initial deposit',
-            ];
-        }
-
-        foreach ($invoice->extra_installments ?? [] as $row) {
-            $amt = (float) ($row['amount'] ?? 0);
-            $bankId = isset($row['bank_account_id']) ? (int) $row['bank_account_id'] : null;
-            if ($amt > 0 && $bankId) {
-                $entries[] = [
-                    'amount' => $amt,
-                    'bank_account_id' => $bankId,
-                    'date' => !empty($row['date']) ? $row['date'] : $date,
-                    'note' => $row['notes'] ?? $row['note'] ?? '',
-                ];
-            }
-        }
-
-        return $entries;
-    }
-
-    /**
-     * Create Transaction records and credit bank balances for an invoice.
-     */
-    private function applyInvoicePayments(Invoice $invoice, Income $income): void
-    {
-        $entries = $this->getPaymentEntries($invoice);
-        foreach ($entries as $entry) {
-            $bank = BankAccount::find($entry['bank_account_id']);
-            if (!$bank) {
-                continue;
-            }
-            $bank->current_balance = (float) $bank->current_balance + $entry['amount'];
-            $bank->save();
-
-            Transaction::create([
-                'type' => 'Income',
-                'date' => $entry['date'],
-                'amount' => $entry['amount'],
-                'currency' => 'INR',
-                'category' => 'Sales',
-                'method' => 'Bank Transfer',
-                'bank' => $bank->bank_name ?? $bank->nick_name,
-                'bank_account_id' => $bank->id,
-                'reference_id' => $invoice->invoice_number,
-                'description' => $entry['note'] ?: "Payment for Invoice {$invoice->invoice_number}",
-                'status' => 'Cleared',
-                'related_id' => $income->id,
-                'related_type' => Income::class,
-                'invoice_id' => $invoice->id,
-            ]);
-        }
-    }
-
-    /**
-     * Reverse transactions for an invoice: refund Income (credit), add back Expense (debit).
-     */
-    private function reverseInvoicePayments(Invoice $invoice): void
-    {
-        $transactions = Transaction::where('invoice_id', $invoice->id)->get();
-        foreach ($transactions as $tx) {
-            if ($tx->bank_account_id) {
-                $bank = BankAccount::find($tx->bank_account_id);
-                if ($bank) {
-                    $amount = (float) $tx->amount;
-                    if ($tx->type === 'Expense') {
-                        $bank->current_balance = (float) $bank->current_balance + $amount;
-                    } else {
-                        $bank->current_balance = (float) $bank->current_balance - $amount;
-                    }
-                    $bank->save();
-                }
-            }
-            $tx->delete();
-        }
-    }
-
-    /**
-     * Get operational expense entries (Paid only) for applying to bank/transactions.
-     */
-    private function getOperationalExpenseEntries(Invoice $invoice): array
-    {
-        $entries = [];
-        $date = $invoice->date ? $invoice->date->format('Y-m-d') : now()->toDateString();
-        foreach ($invoice->operational_expenses ?? [] as $row) {
-            $paid = isset($row['paid']) ? filter_var($row['paid'], FILTER_VALIDATE_BOOLEAN) : false;
-            if (!$paid) {
-                continue;
-            }
-            $amt = (float) ($row['amount'] ?? 0);
-            $bankId = isset($row['bank_account_id']) ? (int) $row['bank_account_id'] : null;
-            if ($amt > 0 && $bankId) {
-                $entries[] = [
-                    'name' => $row['name'] ?? 'Operational expense',
-                    'amount' => $amt,
-                    'bank_account_id' => $bankId,
-                    'date' => $date,
-                ];
-            }
-        }
-        return $entries;
-    }
-
-    /**
-     * Create Expense transactions and debit bank balances for invoice operational expenses.
-     */
-    private function applyOperationalExpenses(Invoice $invoice): void
-    {
-        $entries = $this->getOperationalExpenseEntries($invoice);
-        $invNumber = $invoice->invoice_number ?? (string) $invoice->id;
-        foreach ($entries as $entry) {
-            $bank = BankAccount::find($entry['bank_account_id']);
-            if (!$bank) {
-                continue;
-            }
-            $bank->current_balance = (float) $bank->current_balance - $entry['amount'];
-            $bank->save();
-
-            Transaction::create([
-                'type' => 'Expense',
-                'date' => $entry['date'],
-                'amount' => $entry['amount'],
-                'currency' => 'INR',
-                'category' => 'Operational',
-                'method' => 'Bank Transfer',
-                'bank' => $bank->bank_name ?? $bank->nick_name,
-                'bank_account_id' => $bank->id,
-                'reference_id' => $invNumber,
-                'description' => "Operational expense: {$entry['name']} (Invoice {$invNumber})",
-                'status' => 'Cleared',
-                'invoice_id' => $invoice->id,
-            ]);
-        }
-    }
-
-    private function syncIncomeFromInvoice(Invoice $invoice): void
-    {
-        $income = Income::where('invoice_id', $invoice->id)->first();
-
-        $grandTotal = (float) $invoice->grand_total;
-        $entries = $this->getPaymentEntries($invoice);
-        $paidAmount = array_sum(array_column($entries, 'amount'));
-        $status = $paidAmount <= 0 ? 'Unpaid' : ($paidAmount >= round($grandTotal, 2) ? 'Fully Paid' : 'Partially Paid');
-
-        $incomeData = [
-            'invoice_id' => $invoice->id,
-            'client' => $invoice->client_name,
-            'source' => 'Invoice',
-            'invoice_no' => $invoice->invoice_number ?? (string) $invoice->id,
-            'amount' => (float) $invoice->amount,
-            'currency' => 'INR',
-            'method' => 'Bank Transfer',
-            'received_date' => $invoice->date ? $invoice->date->format('Y-m-d') : now()->toDateString(),
-            'status' => $status,
-            'gst_applied' => (float) $invoice->gst > 0 ? 'Yes' : 'No',
-            'gst_percent' => (float) $invoice->gst,
-            'gst_amount' => (float) $invoice->amount * ((float) $invoice->gst / 100),
-            'net_amount' => $grandTotal,
-            'notes' => "Created from Invoice {$invoice->invoice_number}",
-            'category' => 'Sales',
-            'bank_account_id' => $invoice->bank_account_id,
-            'bank' => $invoice->bank_name,
-            'initial_deposit_amount' => $invoice->initial_deposit_enabled ? $invoice->initial_deposit_amount : null,
-            'initial_deposit_bank_id' => $invoice->initial_deposit_bank_id,
-            'extra_installments' => $invoice->extra_installments,
-        ];
-
-        if ($income) {
-            $income->update($incomeData);
-        } else {
-            $income = Income::create($incomeData);
-        }
-
-        $this->reverseInvoicePayments($invoice);
-        $this->applyInvoicePayments($invoice, $income);
-    }
-
-    private function removeIncomeForInvoice(Invoice $invoice): void
-    {
-        $this->reverseInvoicePayments($invoice);
-        Income::where('invoice_id', $invoice->id)->delete();
-    }
-
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -391,9 +199,6 @@ class InvoiceController extends Controller
                 'amount' => $item['amount'],
             ]);
         }
-
-        $this->syncIncomeFromInvoice($invoice);
-        $this->applyOperationalExpenses($invoice);
 
         return response()->json($invoice->load('items'), 201);
     }
@@ -506,15 +311,11 @@ class InvoiceController extends Controller
             ]);
         }
 
-        $this->syncIncomeFromInvoice($invoice);
-        $this->applyOperationalExpenses($invoice);
-
         return response()->json($invoice->load('items'));
     }
 
     public function destroy(Invoice $invoice)
     {
-        $this->removeIncomeForInvoice($invoice);
         $invoice->delete();
         return response()->noContent();
     }

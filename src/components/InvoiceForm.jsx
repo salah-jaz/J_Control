@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
+import SearchableSelect from './ui/SearchableSelect';
 import { createInvoice, updateInvoice } from '../services/invoiceService';
 import { getClients } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
@@ -165,7 +166,8 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
     : parseFloat(formData.discountValue) || 0;
   const totalAmount   = Math.max(0, subtotal - discountVal + taxAmt);
   const initialDeposit = formData.initialDepositEnabled ? (parseFloat(formData.initialDepositAmount) || 0) : 0;
-  const balanceDue     = Math.max(0, totalAmount - initialDeposit);
+  const installmentsTotal = (formData.extraInstallments || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+  const balanceDue     = Math.max(0, totalAmount - initialDeposit - installmentsTotal);
 
   // ── Validation ────────────────────────────────────────────────────────────
   const validate = () => {
@@ -259,10 +261,16 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
     setFormData({ ...formData, operationalExpenses: next });
   };
 
+  const updateInstallment = (idx, field, val) => {
+    const next = [...(formData.extraInstallments || [])];
+    next[idx] = { ...next[idx], [field]: val };
+    setFormData({ ...formData, extraInstallments: next });
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-6xl rounded-t-[32px] sm:rounded-[24px] shadow-2xl flex flex-col max-h-[96vh] border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-[0.98] duration-300">
+      <div className="bg-white w-full max-w-[1400px] rounded-t-[32px] sm:rounded-[32px] shadow-2xl flex flex-col h-[92vh] max-h-[95vh] border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-[0.98] duration-300">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-8 pt-8 pb-6 shrink-0">
@@ -433,21 +441,13 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                   {items.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-3 group bg-slate-50/60 border border-slate-100 hover:border-slate-200 rounded-2xl px-4 py-3 transition-all">
                       <span className="text-[12px] font-black text-slate-300 w-5 shrink-0 text-center">{idx + 1}</span>
-                      <input
-                        type="text"
-                        list="invoice-product-list"
-                        placeholder="Service or product name…"
+                      <SearchableSelect
+                        options={products}
                         value={item.serviceName}
-                        onChange={(e) => updateItem(idx, 'serviceName', e.target.value)}
-                        className="flex-1 bg-transparent border-none outline-none text-[14px] font-semibold text-slate-800 placeholder:text-slate-300"
+                        onChange={(val) => updateItem(idx, 'serviceName', val)}
+                        placeholder="Service or product name…"
+                        className="flex-1"
                       />
-                      <datalist id="invoice-product-list">
-                        {products.map((p) => (
-                          <option key={p.id} value={p.name}>
-                            {p.price ? `₹${p.price}` : ""}
-                          </option>
-                        ))}
-                      </datalist>
                       <div className="flex items-center gap-1 shrink-0">
                         <span className="text-[13px] font-bold text-slate-400">₹</span>
                         <input
@@ -692,11 +692,95 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                 </div>
               )}
 
+              </div>
+
               {/* Balance summary */}
-              {formData.initialDepositEnabled && initialDeposit > 0 && (
-                <div className="flex items-center justify-between px-5 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
-                  <span className="text-[13px] font-bold text-amber-700">Balance Due After Advance</span>
-                  <span className="text-[18px] font-extrabold text-amber-600">₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              {/* Installments Section */}
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-[14px] font-bold text-slate-800">Additional Payments / Installments</p>
+                    <p className="text-[12px] text-slate-400 font-medium">Record further payments received for this invoice</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, extraInstallments: [...(formData.extraInstallments || []), { date: new Date().toISOString().split('T')[0], amount: '', bankAccountId: null, bankName: '', notes: '' }] })}
+                    className="flex items-center gap-1.5 text-[12.5px] font-bold text-emerald-600 hover:text-emerald-700 px-3 py-1.5 hover:bg-emerald-50 rounded-lg transition-all"
+                  >
+                    <Plus size={14} /> Add payment
+                  </button>
+                </div>
+
+                {(formData.extraInstallments || []).length > 0 && (
+                  <div className="space-y-3">
+                    {formData.extraInstallments.map((row, idx) => (
+                      <div key={idx} className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 animate-in slide-in-from-top-2 duration-200 group relative">
+                        <div className="grid grid-cols-2 gap-4">
+                          <FieldGroup label="Amount (₹)">
+                            <input
+                              type="number"
+                              placeholder="0.00"
+                              value={row.amount}
+                              onChange={(e) => updateInstallment(idx, 'amount', e.target.value)}
+                              className={inputCls(false)}
+                            />
+                          </FieldGroup>
+                          <FieldGroup label="Date Received">
+                            <input
+                              type="date"
+                              value={row.date}
+                              onChange={(e) => updateInstallment(idx, 'date', e.target.value)}
+                              className={inputCls(false)}
+                            />
+                          </FieldGroup>
+                          <FieldGroup label="Received In">
+                            <button
+                              type="button"
+                              onClick={() => { setBankModalFor(`installment-${idx}`); setBankModalOpen(true); }}
+                              className={clsx(inputCls(false), "text-left flex items-center justify-between")}
+                            >
+                              <span className={row.bankName ? 'text-slate-800' : 'text-slate-300'}>
+                                {row.bankName || 'Select account…'}
+                              </span>
+                              <ChevronDown size={14} className="text-slate-300" />
+                            </button>
+                          </FieldGroup>
+                          <FieldGroup label="Notes (optional)">
+                            <input
+                              type="text"
+                              placeholder="e.g. 2nd installment"
+                              value={row.notes}
+                              onChange={(e) => updateInstallment(idx, 'notes', e.target.value)}
+                              className={inputCls(false)}
+                            />
+                          </FieldGroup>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, extraInstallments: formData.extraInstallments.filter((_, i) => i !== idx) })}
+                          className="absolute -top-2 -right-2 h-7 w-7 bg-white shadow-md text-slate-300 hover:text-rose-500 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 border border-slate-100"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Balance summary */}
+              {(initialDeposit > 0 || installmentsTotal > 0) && (
+                <div className="mt-4 flex items-center justify-between px-6 py-4 bg-amber-50 border border-amber-200 rounded-[24px] shadow-sm">
+                  <div>
+                    <span className="text-[14px] font-bold text-amber-700 block">Total Remaining Balance</span>
+                    <p className="text-[11px] text-amber-600 font-medium">After all recorded payments & installments</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[20px] font-black text-amber-600 block">₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    {balanceDue === 0 && (
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider bg-emerald-100 px-2 py-0.5 rounded-md">Fully Paid</span>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -779,7 +863,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
             <span className="text-[22px] font-black text-slate-900 leading-tight">
               ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </span>
-            {formData.initialDepositEnabled && initialDeposit > 0 && (
+            {(initialDeposit > 0 || installmentsTotal > 0) && (
               <span className="text-[11px] text-slate-400 font-medium">Balance: ₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             )}
           </div>
@@ -828,6 +912,11 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                         const name = `${b.bankName} – ${b.accountNumber}`;
                         if (bankModalFor === 'initial') {
                           setFormData((prev) => ({ ...prev, initialDepositBankId: b.id, initialDepositBankName: name }));
+                        } else if (typeof bankModalFor === 'string' && bankModalFor.startsWith('installment-')) {
+                          const idx = parseInt(bankModalFor.split('-')[1]);
+                          const next = [...(formData.extraInstallments || [])];
+                          next[idx] = { ...next[idx], bankAccountId: b.id, bankName: name };
+                          setFormData((prev) => ({ ...prev, extraInstallments: next }));
                         }
                         setBankModalOpen(false);
                       }}
