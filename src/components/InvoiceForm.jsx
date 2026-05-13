@@ -237,11 +237,23 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
       isOpen={isOpen}
       onClose={onClose}
       title={invoice ? 'Edit Invoice' : 'New Invoice'}
+      size="xl"
       footer={(
         <div className="flex items-center justify-between w-full">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Grand Total</span>
-            <span className="text-lg font-bold text-slate-900 leading-none">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+          <div className="flex gap-6">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Grand Total</span>
+              <span className="text-lg font-bold text-slate-900 leading-none">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex flex-col border-l border-slate-200 pl-6">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Balance Due</span>
+              <span className={clsx(
+                "text-lg font-bold leading-none",
+                balanceDue > 0 ? "text-rose-600" : "text-emerald-600"
+              )}>
+                ₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
           </div>
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100 rounded transition-colors">Cancel</button>
@@ -394,41 +406,133 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
               <input type="text" value={formData.gpayNumber} onChange={(e) => setFormData({ ...formData, gpayNumber: e.target.value })} placeholder="UPI ID or Number" className={inputCls()} />
             </FieldGroup>
 
-            <div className="pt-4 border-t border-slate-100">
-              <div className="flex items-center gap-2 mb-4">
-                <input
-                  type="checkbox"
-                  id="advance"
-                  checked={formData.initialDepositEnabled}
-                  onChange={(e) => setFormData({ ...formData, initialDepositEnabled: e.target.checked })}
-                  className="rounded text-indigo-600 focus:ring-indigo-500"
-                />
-                <label htmlFor="advance" className="text-[13px] font-bold text-slate-700">Client paid an advance</label>
+            <div className="pt-4 border-t border-slate-100 space-y-6">
+              {/* Advance Payment Section */}
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    type="checkbox"
+                    id="advance"
+                    checked={formData.initialDepositEnabled}
+                    onChange={(e) => setFormData({ ...formData, initialDepositEnabled: e.target.checked })}
+                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <label htmlFor="advance" className="text-[13px] font-bold text-slate-700">Client paid an advance</label>
+                </div>
+
+                {formData.initialDepositEnabled && (
+                  <div className="grid grid-cols-2 gap-4 p-4 bg-indigo-50/50 rounded border border-indigo-100">
+                    <FieldGroup label="Advance Amount">
+                      <input type="number" value={formData.initialDepositAmount} onChange={(e) => setFormData({ ...formData, initialDepositAmount: e.target.value })} className={inputCls()} />
+                    </FieldGroup>
+                    <FieldGroup label="Received In">
+                      <select
+                        value={formData.initialDepositBankId || ''}
+                        onChange={(e) => {
+                          const id = e.target.value ? Number(e.target.value) : null;
+                          const b = bankAccounts.find(x => String(x.id) === String(id));
+                          setFormData({ ...formData, initialDepositBankId: id, initialDepositBankName: b ? `${b.bankName} - ${b.accountNumber}` : '' });
+                        }}
+                        className={inputCls()}
+                      >
+                        <option value="">Select bank...</option>
+                        {bankAccounts.map(b => (
+                          <option key={b.id} value={b.id}>{b.bankName}</option>
+                        ))}
+                      </select>
+                    </FieldGroup>
+                  </div>
+                )}
               </div>
 
-              {formData.initialDepositEnabled && (
-                <div className="grid grid-cols-2 gap-4 p-4 bg-indigo-50/50 rounded border border-indigo-100">
-                  <FieldGroup label="Advance Amount">
-                    <input type="number" value={formData.initialDepositAmount} onChange={(e) => setFormData({ ...formData, initialDepositAmount: e.target.value })} className={inputCls()} />
-                  </FieldGroup>
-                  <FieldGroup label="Received In">
-                    <select
-                      value={formData.initialDepositBankId || ''}
-                      onChange={(e) => {
-                        const id = e.target.value ? Number(e.target.value) : null;
-                        const b = bankAccounts.find(x => String(x.id) === String(id));
-                        setFormData({ ...formData, initialDepositBankId: id, initialDepositBankName: b ? `${b.bankName} - ${b.accountNumber}` : '' });
-                      }}
-                      className={inputCls()}
-                    >
-                      <option value="">Select bank...</option>
-                      {bankAccounts.map(b => (
-                        <option key={b.id} value={b.id}>{b.bankName}</option>
-                      ))}
-                    </select>
-                  </FieldGroup>
+              {/* Installments Section */}
+              <div className="pt-4 border-t border-slate-50">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-[13px] font-bold text-slate-700 flex items-center gap-2">
+                    <Receipt size={16} className="text-slate-400" />
+                    Installment Payments
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({
+                      ...formData,
+                      extraInstallments: [...(formData.extraInstallments || []), { date: new Date().toISOString().split('T')[0], amount: '', bankAccountId: '', notes: '' }]
+                    })}
+                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                  >
+                    <Plus size={14} /> Add Installment
+                  </button>
                 </div>
-              )}
+
+                <div className="space-y-3">
+                  {(formData.extraInstallments || []).map((inst, idx) => (
+                    <div key={idx} className="p-4 bg-slate-50/50 rounded border border-slate-100 relative group animate-in slide-in-from-top-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = [...formData.extraInstallments];
+                          next.splice(idx, 1);
+                          setFormData({ ...formData, extraInstallments: next });
+                        }}
+                        className="absolute -top-2 -right-2 h-6 w-6 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                      <div className="grid grid-cols-2 gap-3">
+                        <FieldGroup label="Payment Date">
+                          <input
+                            type="date"
+                            value={inst.date}
+                            onChange={(e) => updateInstallment(idx, 'date', e.target.value)}
+                            className={inputCls()}
+                          />
+                        </FieldGroup>
+                        <FieldGroup label="Amount Paid">
+                          <input
+                            type="number"
+                            value={inst.amount}
+                            onChange={(e) => updateInstallment(idx, 'amount', e.target.value)}
+                            className={inputCls()}
+                            placeholder="0.00"
+                          />
+                        </FieldGroup>
+                        <FieldGroup label="Received In">
+                          <select
+                            value={inst.bankAccountId || ''}
+                            onChange={(e) => {
+                              const id = e.target.value ? Number(e.target.value) : null;
+                              const b = bankAccounts.find(x => String(x.id) === String(id));
+                              updateInstallment(idx, 'bankAccountId', id);
+                              updateInstallment(idx, 'bankName', b ? b.bankName : '');
+                            }}
+                            className={inputCls()}
+                          >
+                            <option value="">Select bank...</option>
+                            {bankAccounts.map(b => (
+                              <option key={b.id} value={b.id}>{b.bankName}</option>
+                            ))}
+                          </select>
+                        </FieldGroup>
+                        <FieldGroup label="Notes / Ref">
+                          <input
+                            type="text"
+                            value={inst.notes}
+                            onChange={(e) => updateInstallment(idx, 'notes', e.target.value)}
+                            className={inputCls()}
+                            placeholder="Cheque No, UPI Ref..."
+                          />
+                        </FieldGroup>
+                      </div>
+                    </div>
+                  ))}
+
+                  {(formData.extraInstallments || []).length === 0 && (
+                    <div className="py-8 text-center border-2 border-dashed border-slate-100 rounded-lg">
+                      <p className="text-[12px] font-medium text-slate-400">No installments recorded yet.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
