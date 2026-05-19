@@ -8,6 +8,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { invalidateCache } from "../utils/apiFetch";
 import { queryKeys } from "../query/queryKeys";
 import { TableSkeleton } from "../components/Skeleton";
+import PageHeader from "../components/ui/PageHeader";
+import ToolbarSearch from "../components/ui/ToolbarSearch";
+import EmptyState from "../components/ui/EmptyState";
+import { TableSectionHeader, TablePagination } from "../components/ui/DataTableSection";
+import { ActionIconButton } from "../components/ui/TableRowActions";
 
 const emptyForm = {
   name: "",
@@ -123,161 +128,119 @@ export default function Users() {
   );
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 w-full mx-auto animate-fade-in space-y-6 md:space-y-8">
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">User Management</h1>
-          <p className="text-slate-500 mt-1 text-base md:text-lg">Manage team members and their access permissions.</p>
-        </div>
-        <button
-          onClick={openAdd}
-          className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30"
-        >
-          <UserPlus size={20} />
-          Add User
-        </button>
+    <div className="flex flex-col h-full bg-slate-50/50 animate-in fade-in duration-500 overflow-hidden">
+      <div className="px-6 lg:px-8 pt-8 pb-6 bg-white border-b border-slate-200/60 shadow-sm relative z-10">
+        <PageHeader
+          title="Team & Identity Management"
+          subtitle="Administer organizational access, departmental hierarchy, and user credentials."
+          primaryAction={(
+            <button onClick={openAdd} className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/20 group">
+              <div className="bg-white/20 p-1 rounded-lg group-hover:bg-white/30 transition-colors">
+                <UserPlus size={16} />
+              </div>
+              <span>Register User</span>
+            </button>
+          )}
+        />
       </div>
 
-      {/* TABLE */}
-      <div className="card p-0 overflow-hidden min-h-[400px]">
-        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/50">
-          <h3 className="font-bold text-slate-800">Team Members</h3>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search users..."
-              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full transition-all"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-        {meta && (
-          <div className="px-4 md:px-6 py-2 border-b border-gray-100 bg-gray-50/30 text-xs font-semibold text-slate-500">
-            {meta
-              ? `Showing ${(meta.current_page - 1) * meta.per_page + 1}–${Math.min(
-                  meta.current_page * meta.per_page,
-                  meta.total
-                )} of ${meta.total}`
-              : `Showing ${filteredData.length}`}
-          </div>
-        )}
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-sm text-left min-w-[800px]">
-            <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
-              <tr>
-                <th className="px-6 py-4">Name</th>
-                <th className="px-6 py-4">Email & Phone</th>
-                <th className="px-6 py-4">Role</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {isLoading ? (
-                <tr>
-                  <td colSpan="5" className="p-0">
-                    <TableSkeleton rows={6} cols={5} />
-                  </td>
-                </tr>
-              ) : filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="p-12 text-center text-slate-400 italic">
-                    No users found
-                  </td>
-                </tr>
-              ) : (
-                filteredData.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-lg">
-                          {item.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900">{item.name}</p>
-                          <p className="text-xs text-slate-500">{item.department || "No Dept."}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-slate-600 text-xs">
-                          <Mail size={12} className="text-slate-400" /> {item.email}
-                        </div>
-                        {item.phone && (
-                          <div className="flex items-center gap-2 text-slate-600 text-xs">
-                            <Phone size={12} className="text-slate-400" /> {item.phone}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-100 text-slate-600 text-xs font-semibold w-fit border border-gray-200">
-                        <Shield size={12} />
-                        {item.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={clsx(
-                          "px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide border",
-                          item.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-red-50 text-red-700 border-red-100"
-                        )}
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 rounded-lg text-slate-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                          onClick={() => openViewModal(item)} title="View">
-                          <Eye size={18} />
-                        </button>
-                        <button className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                          onClick={() => openEdit(item)} title="Edit">
-                          <Edit2 size={18} />
-                        </button>
-                        <button className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                          onClick={() => handleDelete(item.id)} title="Delete">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        {meta && meta.last_page > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <span className="text-sm text-slate-600">
-              Showing {(meta.current_page - 1) * meta.per_page + 1}–
-              {Math.min(meta.current_page * meta.per_page, meta.total)} of {meta.total}
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={meta.current_page <= 1}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={meta.current_page >= meta.last_page}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
+      <div className="flex-1 flex flex-col min-h-0 bg-white">
+        <div className="bg-slate-50/50 px-6 lg:px-8 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 sticky top-0 z-20">
+          <div className="flex-1 min-w-[240px]">
+            <div className="relative group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
+              <input
+                type="text"
+                placeholder="Search by name, email, or department..."
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
-        )}
+        </div>
+
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <div className="min-w-full">
+            <table className="w-full text-left border-collapse table-fixed">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Identity Profile</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-64">Contact Intelligence</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40">Privileges</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-36">Status</th>
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-40">Operations</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {isLoading ? (
+                  <tr><td colSpan="5" className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse italic">Synchronizing User Directory...</td></tr>
+                ) : filteredData.length === 0 ? (
+                  <tr><td colSpan="5" className="p-20"><EmptyState icon={UserCheck} title="No Users Indexed" description="The organizational directory is currently void for this filter criteria." /></td></tr>
+                ) : (
+                  filteredData.map((item) => (
+                    <tr key={item.id} className="group hover:bg-slate-50/80 transition-all duration-200">
+                      <td className="px-6 lg:px-8 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-11 h-11 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 font-black text-lg shadow-inner border border-indigo-100/50">
+                            {item.name.charAt(0)}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[14px] font-black text-slate-900 leading-none">{item.name}</span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2 flex items-center gap-1.5">
+                              <div className="w-1 h-1 rounded-full bg-slate-300"></div>
+                              {item.department || "Independent Unit"}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2 text-slate-600 text-[12px] font-bold">
+                            <Mail size={12} className="text-indigo-400" /> {item.email}
+                          </div>
+                          {item.phone && (
+                            <div className="flex items-center gap-2 text-slate-500 text-[11px] font-medium">
+                              <Phone size={11} className="text-slate-300" /> {item.phone}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-black uppercase tracking-wider w-fit">
+                          <Shield size={12} className="text-indigo-500" />
+                          {item.role}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={clsx(
+                          "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] inline-flex items-center gap-2 border shadow-sm",
+                          item.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100"
+                        )}>
+                          <div className={clsx('w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]', 
+                            item.status === "Active" ? "bg-emerald-500 shadow-emerald-500/50" : "bg-rose-500 shadow-rose-500/50"
+                          )} />
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="px-6 lg:px-8 py-5 text-right">
+                        <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                          <ActionIconButton onClick={() => openViewModal(item)} title="Audit Profile" icon={Eye} tone="view" />
+                          <ActionIconButton onClick={() => openEdit(item)} title="Modify Credentials" icon={Edit2} tone="edit" />
+                          <ActionIconButton onClick={() => handleDelete(item.id)} title="Purge Account" icon={Trash2} tone="delete" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="bg-white border-t border-slate-100 px-6 lg:px-8 py-4 flex-shrink-0">
+          {meta && <TablePagination summary={`Indexed ${filteredData.length} of ${meta.total} Corporate Identities`} onPrevious={() => setCurrentPage(p => Math.max(1, p - 1))} onNext={() => setCurrentPage(p => p + 1)} previousDisabled={meta.current_page <= 1} nextDisabled={meta.current_page >= meta.last_page} />}
+        </div>
       </div>
 
       {/* VIEW MODAL */}

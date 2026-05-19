@@ -13,9 +13,18 @@ return new class extends Migration
      */
     public function up()
     {
+        if (! Schema::hasTable('agreements')) {
+            return;
+        }
+
         Schema::table('agreements', function (Blueprint $table) {
-            $table->string('tagline')->nullable()->after('title');
-            $table->string('override_company_name')->nullable()->after('tagline');
+            if (! Schema::hasColumn('agreements', 'tagline')) {
+                $table->string('tagline')->nullable()->after('title');
+            }
+
+            if (! Schema::hasColumn('agreements', 'override_company_name')) {
+                $table->string('override_company_name')->nullable()->after('tagline');
+            }
         });
     }
 
@@ -26,8 +35,24 @@ return new class extends Migration
      */
     public function down()
     {
+        if (! Schema::hasTable('agreements')) {
+            return;
+        }
+
         Schema::table('agreements', function (Blueprint $table) {
-            $table->dropColumn(['tagline', 'override_company_name']);
+            $columns = [];
+
+            if (Schema::hasColumn('agreements', 'tagline')) {
+                $columns[] = 'tagline';
+            }
+
+            if (Schema::hasColumn('agreements', 'override_company_name')) {
+                $columns[] = 'override_company_name';
+            }
+
+            if (! empty($columns)) {
+                $table->dropColumn($columns);
+            }
         });
     }
 };

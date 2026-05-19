@@ -39,6 +39,7 @@ const defaultDashboardStats = {
   pendingAmount: 0,
   todayIncome: 0,
   recentInvoices: [],
+  recentIncomes: [],
   monthlyRevenue: [],
   invoiceStatusCounts: [],
   todaysEvents: [],
@@ -51,11 +52,13 @@ export function useDashboardData() {
     staleTime: STALE_TWO_MIN,
   });
   const stats = statsQuery.data ?? defaultDashboardStats;
-  const todayIncome = stats.todayIncome ?? 0;
+  const todayIncome = stats.recentIncomes ?? [];
+  const todayIncomeSum = stats.todayIncome ?? 0;
   const todaysEvents = stats.todaysEvents ?? [];
   return {
     stats,
     todayIncome,
+    todayIncomeSum,
     todaysEvents,
     isLoading: statsQuery.isLoading,
     isFetching: statsQuery.isFetching,

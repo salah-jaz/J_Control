@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-    Users, Plus, Upload, Download, Search, LayoutList, Kanban, Calendar,
-    MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X, ArrowRight, FileText, StickyNote, Loader2, Save, Send, Target, MapPin as LocationIcon, Briefcase, Activity, Filter
+  Users, Plus, Upload, Download, LayoutList, Kanban, Calendar,
+  MoreHorizontal, CheckCircle2, Clock, CheckSquare, AlertCircle, Trash2, Edit2, Eye, Phone, MessageSquare, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Building2, MapPin, X, ArrowRight, FileText, StickyNote, Loader2, Save, Send, Target, MapPin as LocationIcon, Briefcase, Activity, Filter, Search, Mail
 } from 'lucide-react';
 import { getAssignees, saveAssignee, saveLead, getLeadNotes, createLeadNote, updateLeadNote, deleteLeadNote } from '../services/db';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,6 +13,13 @@ import LogCallModal from '../components/LogCallModal';
 import FollowUpCalendar from './FollowUpCalendar';
 import { TableSkeleton } from '../components/Skeleton';
 import toast from 'react-hot-toast';
+import PageHeader from '../components/ui/PageHeader';
+import ToolbarSearch from '../components/ui/ToolbarSearch';
+import EmptyState from '../components/ui/EmptyState';
+import { FilterSelect, ClearFiltersButton } from '../components/ui/FilterControls';
+import { TableSectionHeader, TablePagination } from '../components/ui/DataTableSection';
+import { ActionIconButton } from '../components/ui/TableRowActions';
+import SlideOver from '../components/ui/SlideOver';
 
 const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssignee }) => {
     const [formData, setFormData] = useState({
@@ -22,22 +29,21 @@ const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssigne
         assignedTo: 'Unassigned', qualified: false, notes: ''
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState('identity');
 
     useEffect(() => {
-        if (lead) {
-            setFormData(lead);
-        } else {
-            setFormData({
-                firstName: '', lastName: '', email: '', phone: '',
-                company: '', jobTitle: '', location: '', status: 'New', source: '',
-                priority: 'Medium', score: 0, value: 0,
-                assignedTo: 'Unassigned', qualified: false, notes: ''
-            });
-        }
+        if (lead) setFormData(lead);
+        else setFormData({
+            firstName: '', lastName: '', email: '', phone: '',
+            company: '', jobTitle: '', location: '', status: 'New', source: '',
+            priority: 'Medium', score: 0, value: 0,
+            assignedTo: 'Unassigned', qualified: false, notes: ''
+        });
+        setActiveTab('identity');
     }, [lead, isOpen]);
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         setIsSaving(true);
         try {
             await onSave({ ...formData, id: lead ? lead.id : null });
@@ -47,215 +53,181 @@ const LeadModal = ({ isOpen, onClose, lead, onSave, assignees = [], onAddAssigne
         }
     };
 
-    if (!isOpen) return null;
-
-    // Premium Label Component
     const Label = ({ children, required }) => (
-        <label className="block text-[13px] font-medium text-slate-700 mb-1.5 ml-0.5">
-            {children} {required && <span className="text-rose-500 ml-1 font-bold">*</span>}
+        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+            {children} {required && <span className="text-rose-500">*</span>}
         </label>
     );
 
-    // Section Header for grouping
-    const SectionHeader = ({ title, subtitle, icon: Icon }) => (
-        <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4 mb-6 mt-2">
-            <div className="flex items-center gap-2">
-                {Icon && <Icon className="h-4 w-4 text-violet-500" />}
-                <h4 className="text-[16px] font-bold text-slate-900">{title}</h4>
-            </div>
-            {subtitle && <p className="text-[12px] font-medium text-slate-500">{subtitle}</p>}
-        </div>
-    );
+    const inputCls = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm";
+
+    const TABS = [
+        { id: 'identity', label: 'Lead Identity', icon: User },
+        { id: 'positioning', label: 'Strategic Positioning', icon: Target },
+        { id: 'notes', label: 'Interaction Notes', icon: StickyNote },
+    ];
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-[4px] animate-in fade-in duration-[250ms]">
-            <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden border border-white/40 animate-in zoom-in-[0.98] duration-[250ms] ease-out">
-                
-                {/* Fixed Header */}
-                <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white z-20">
+        <SlideOver
+            isOpen={isOpen}
+            onClose={onClose}
+            title={lead ? 'Modify Strategic Lead' : 'Initialize New Prospect'}
+            size="5xl"
+            footer={(
+                <div className="flex justify-between items-center w-full px-1">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(124,58,237,0.3)] group-hover:scale-105 transition-transform duration-[250ms]">
-                            {lead ? <Edit2 className="h-5 w-5" /> : <Plus className="h-5 w-5 stroke-[2.5]" />}
-                        </div>
-                        <div>
-                            <h3 className="text-[20px] font-bold text-slate-900 tracking-tight">
-                                {lead ? 'Advance Lead Intelligence' : 'Register New Prospect'}
-                            </h3>
-                            <p className="text-[12px] font-medium text-slate-500 mt-0.5">
-                                {lead ? 'Refine lead data and strategic positioning' : 'Onboard a new business opportunity to the pipeline'}
-                            </p>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Potential Value</span>
+                            <span className="text-[18px] font-black text-slate-900 font-mono italic mt-1 leading-none">₹{(formData.value || 0).toLocaleString('en-IN')}</span>
                         </div>
                     </div>
-
-                    <button onClick={onClose} className="h-10 w-10 bg-slate-50 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all flex items-center justify-center active:scale-95 shadow-sm border border-slate-100">
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
-
-                {/* Body Content */}
-                <div className="flex-1 overflow-y-auto bg-white p-8 relative">
-                    <form id="lead-form" onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-8">
-                        <div>
-                            <SectionHeader title="Lead Identity" subtitle="Primary contact and organizational information" icon={User} />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <Label required>First Name</Label>
-                                    <input type="text" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className="input-premium" required placeholder="Prospect's first name" />
-                                </div>
-                                <div>
-                                    <Label required>Last Name</Label>
-                                    <input type="text" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className="input-premium" required placeholder="Prospect's last name" />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <Label>Organization / Company</Label>
-                                    <div className="relative">
-                                        <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="text" value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} className="input-premium pl-10" placeholder="Enter company name" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Professional Title</Label>
-                                    <div className="relative">
-                                        <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="text" value={formData.jobTitle} onChange={e => setFormData({ ...formData, jobTitle: e.target.value })} className="input-premium pl-10" placeholder="e.g. CEO, Sales Manager" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Primary Email</Label>
-                                    <div className="relative">
-                                        <MessageSquare className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="input-premium pl-10" placeholder="prospect@company.com" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Direct Phone</Label>
-                                    <div className="relative">
-                                        <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="input-premium pl-10" placeholder="+1 (234) 567-8900" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label>Operational Location</Label>
-                                    <div className="relative">
-                                        <LocationIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <input type="text" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} className="input-premium pl-10" placeholder="City, Country" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <SectionHeader title="Strategic Positioning" subtitle="Pipeline status, priority and valuation" icon={Target} />
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div>
-                                    <Label>Current Pipeline State</Label>
-                                    <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="input-premium">
-                                        <option>New</option>
-                                        <option>Contacted</option>
-                                        <option>Working</option>
-                                        <option>Qualified</option>
-                                        <option>Lost</option>
-                                        <option>Converted</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <Label>Strategic Priority</Label>
-                                    <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })} className="input-premium">
-                                        <option>Low</option>
-                                        <option>Medium</option>
-                                        <option>High</option>
-                                        <option>Urgent</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <Label>Lead Source</Label>
-                                    <select value={formData.source} onChange={e => setFormData({ ...formData, source: e.target.value })} className="input-premium">
-                                        <option value="">Select Source</option>
-                                        <option>Website</option>
-                                        <option>Referral</option>
-                                        <option>Social Media</option>
-                                        <option>Advertisement</option>
-                                        <option>Cold Outreach</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <Label>Potential Revenue (₹)</Label>
-                                    <input type="number" value={formData.value} onChange={e => setFormData({ ...formData, value: e.target.value })} className="input-premium" placeholder="0.00" />
-                                </div>
-                                <div>
-                                    <Label>Strategic Score (0-100)</Label>
-                                    <input type="number" value={formData.score} onChange={e => setFormData({ ...formData, score: e.target.value })} className="input-premium" placeholder="Confidence level" />
-                                </div>
-                                <div>
-                                    <Label>Stakeholder Assignment</Label>
-                                    <div className="flex gap-2">
-                                        <select value={formData.assignedTo} onChange={e => setFormData({ ...formData, assignedTo: e.target.value })} className="input-premium flex-1">
-                                            <option>Unassigned</option>
-                                            {assignees.map(a => <option key={a} value={a}>{a}</option>)}
-                                        </select>
-                                        <button type="button" onClick={() => {
-                                            const name = prompt('Stakeholder Name:');
-                                            if (name) onAddAssignee(name);
-                                        }} className="p-2 bg-slate-50 border border-slate-200 rounded-lg hover:border-violet-300 hover:text-violet-600 transition-all">
-                                            <Plus className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <SectionHeader title="Account Intelligence" subtitle="Internal notes and strategic context" icon={StickyNote} />
-                            <div>
-                                <Label>Tactical Notes</Label>
-                                <textarea
-                                    value={formData.notes}
-                                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                                    className="input-premium min-h-[120px] pt-3"
-                                    placeholder="Document initial discovery findings or strategic requirements..."
-                                />
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                {/* Fixed Footer */}
-                <div className="px-8 py-5 border-t border-slate-100 flex justify-end items-center bg-slate-50/50 z-20">
-                    <div className="flex items-center gap-4">
-                        <button 
-                            type="button"
-                            onClick={onClose} 
-                            className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[14px] font-medium hover:border-slate-300 hover:bg-slate-50 transition-all duration-[250ms] shadow-sm active:scale-[0.98]"
-                        >
-                            Abort Process
-                        </button>
+                    <div className="flex gap-3">
+                        <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
                         <button
-                            form="lead-form"
-                            type="submit"
+                            onClick={handleSubmit}
                             disabled={isSaving}
-                            className={clsx(
-                                "px-8 py-2.5 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white rounded-xl text-[14px] font-medium shadow-[0_8px_20px_rgba(124,58,237,0.25)] hover:shadow-[0_12px_24px_rgba(124,58,237,0.35)] transition-all duration-[250ms] hover:-translate-y-[2px] active:scale-[0.98] group flex items-center justify-center min-w-[180px]",
-                                isSaving && "opacity-60 grayscale cursor-not-allowed shadow-none hover:translate-y-0 active:scale-100"
-                            )}
+                            className="px-10 py-2.5 bg-indigo-600 text-white text-[14px] font-black rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95"
                         >
-                            <div className="flex items-center gap-2">
-                                {isSaving ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Processing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="h-4 w-4 stroke-[2.5]" />
-                                        Commit Prospect
-                                    </>
-                                )}
-                            </div>
+                            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                            <span>{isSaving ? 'Synchronizing...' : (lead ? 'Save Changes' : 'Initialize Lead')}</span>
                         </button>
+                    </div>
+                </div>
+            )}
+        >
+            <div className="flex h-full min-h-[600px] relative">
+                {/* Sidebar Navigation */}
+                <div className="w-64 border-r-2 border-slate-100 pr-6 shrink-0 hidden md:block">
+                    <div className="flex flex-col gap-2 sticky top-0">
+                        {TABS.map((tab, idx) => (
+                            <div key={tab.id}>
+                                <button
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={clsx(
+                                        "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-[0.15em] transition-all relative group",
+                                        activeTab === tab.id
+                                            ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100 ring-1 ring-indigo-200/50"
+                                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                                    )}
+                                >
+                                    {activeTab === tab.id && (
+                                        <div className="absolute -right-[26px] top-3 bottom-3 w-1 bg-indigo-600 rounded-l-full z-10" />
+                                    )}
+                                    <tab.icon className={clsx("h-4 w-4", activeTab === tab.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600")} />
+                                    <span>{tab.label}</span>
+                                </button>
+                                {idx < TABS.length - 1 && <div className="h-px bg-slate-50 mx-4 my-1 opacity-50" />}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Content Area */}
+                <div className="flex-1 pl-10">
+                    <div className="pb-20">
+                        {activeTab === 'identity' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div>
+                                        <Label required>First Name</Label>
+                                        <input type="text" value={formData.firstName} onChange={e => setFormData({ ...formData, firstName: e.target.value })} className={inputCls} placeholder="John" required />
+                                    </div>
+                                    <div>
+                                        <Label required>Last Name</Label>
+                                        <input type="text" value={formData.lastName} onChange={e => setFormData({ ...formData, lastName: e.target.value })} className={inputCls} placeholder="Doe" required />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <Label>Company Entity</Label>
+                                        <div className="relative">
+                                            <Building2 size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                            <input type="text" value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} className={clsx(inputCls, "pl-11")} placeholder="Corporate designation..." />
+                                        </div>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <Label>Email Address</Label>
+                                        <div className="relative">
+                                            <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                            <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className={clsx(inputCls, "pl-11")} placeholder="john.doe@company.com" />
+                                        </div>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <Label>Phone Connection</Label>
+                                        <div className="relative">
+                                            <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                            <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className={clsx(inputCls, "pl-11")} placeholder="+91 00000 00000" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'positioning' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div>
+                                        <Label>Lifecycle Status</Label>
+                                        <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className={clsx(inputCls, "appearance-none")}>
+                                            <option>New</option>
+                                            <option>Contacted</option>
+                                            <option>Working</option>
+                                            <option>Qualified</option>
+                                            <option>Lost</option>
+                                            <option>Converted</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <Label>Strategic Priority</Label>
+                                        <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })} className={clsx(inputCls, "appearance-none")}>
+                                            <option>Low</option>
+                                            <option>Medium</option>
+                                            <option>High</option>
+                                            <option>Urgent</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <Label>Estimated Value (₹)</Label>
+                                        <input type="number" value={formData.value} onChange={e => setFormData({ ...formData, value: e.target.value })} className={clsx(inputCls, "font-mono italic")} />
+                                    </div>
+                                    <div>
+                                        <Label>Executive Assignee</Label>
+                                        <div className="flex gap-2">
+                                            <select value={formData.assignedTo} onChange={e => setFormData({ ...formData, assignedTo: e.target.value })} className={clsx(inputCls, "flex-1 appearance-none")}>
+                                                <option>Unassigned</option>
+                                                {assignees.map(a => <option key={a} value={a}>{a}</option>)}
+                                            </select>
+                                            <button type="button" onClick={() => {
+                                                const name = prompt('Stakeholder Name:');
+                                                if (name) onAddAssignee(name);
+                                            }} className="px-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 transition-all active:scale-95">
+                                                <Plus size={20} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <Label>Lead Source</Label>
+                                        <input type="text" value={formData.source} onChange={e => setFormData({ ...formData, source: e.target.value })} className={inputCls} placeholder="Organic, Referral, LinkedIn etc." />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'notes' && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div>
+                                    <Label>Engagement Notes & Strategic Insights</Label>
+                                    <textarea
+                                        value={formData.notes}
+                                        onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                                        className={clsx(inputCls, "min-h-[300px] resize-none py-6")}
+                                        placeholder="Add critical background, interaction history, or strategic notes..."
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
-        </div>
+        </SlideOver>
     );
 };
 
@@ -522,7 +494,7 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall
                         <div className="text-sm text-slate-600 mt-1 bg-purple-50 p-3 rounded-xl border border-purple-100/50">
                             <div className="flex items-center gap-3 mb-1.5 text-xs font-medium text-purple-700">
                                 <span>Outcome: {act.outcome || 'N/A'}</span>
-                                {act.duration && <span>ΓÇó {act.duration}m</span>}
+                                {act.duration && <span>• {act.duration}m</span>}
                             </div>
                             <p className="italic text-slate-600 text-xs leading-relaxed">"{act.notes}"</p>
                         </div>
@@ -556,7 +528,7 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall
 
     return (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-hidden">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] animate-slide-up">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl flex flex-col max-h-[90vh] animate-slide-up">
                 <div className="p-6 border-b border-gray-100 flex justify-between items-start bg-white flex-shrink-0">
                     <div>
                         <div className="flex items-center gap-3 mb-1">
@@ -567,7 +539,7 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall
                         </div>
                         <p className="text-sm text-slate-500 font-mono flex items-center gap-2">
                             LEAD-{lead.id}
-                            {lead.company && <span className="flex items-center gap-1 before:content-['ΓÇó'] before:mx-1 before:text-slate-300 text-slate-600">{lead.company}</span>}
+                            {lead.company && <span className="flex items-center gap-1 before:content-['•'] before:mx-1 before:text-slate-300 text-slate-600">{lead.company}</span>}
                         </p>
                     </div>
                     <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
@@ -653,32 +625,26 @@ const ViewLeadModal = ({ isOpen, onClose, lead, onEdit, onSetFollowUp, onLogCall
                         </div>
 
                         {/* Main Content - Tabs: Activity | Notes */}
-                        <div className="flex-1 flex flex-col bg-white min-h-0">
-                            <div className="flex border-b border-gray-100 px-6 lg:px-8 pt-4 gap-1">
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab('activity')}
-                                    className={clsx(
-                                        "pb-3 px-4 text-sm font-bold border-b-2 transition-colors -mb-px",
-                                        activeTab === 'activity'
-                                            ? "border-brand-500 text-brand-700"
-                                            : "border-transparent text-slate-500 hover:text-slate-700"
-                                    )}
-                                >
-                                    <Clock className="inline w-4 h-4 mr-2 align-middle text-current" /> Activity
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab('notes')}
-                                    className={clsx(
-                                        "pb-3 px-4 text-sm font-bold border-b-2 transition-colors -mb-px",
-                                        activeTab === 'notes'
-                                            ? "border-brand-500 text-brand-700"
-                                            : "border-transparent text-slate-500 hover:text-slate-700"
-                                    )}
-                                >
-                                    <FileText className="inline w-4 h-4 mr-2 align-middle text-current" /> Notes {notes.length > 0 && <span className="text-slate-400 font-normal">({notes.length})</span>}
-                                </button>
+                        <div className="w-full flex-1 flex flex-col bg-white min-h-0">
+                            <div className="px-6 lg:px-8 pt-6">
+                                <div className="flex bg-slate-100 p-1 rounded-xl mb-6 border border-slate-200 shadow-sm">
+                                    {['activity', 'notes'].map((t, idx) => (
+                                        <React.Fragment key={t}>
+                                            {idx > 0 && <div className="w-px bg-slate-200 my-2 shadow-[0_0_1px_rgba(0,0,0,0.1)]"></div>}
+                                            <button
+                                                onClick={() => setActiveTab(t)}
+                                                className={clsx(
+                                                    "flex-1 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all",
+                                                    activeTab === t
+                                                        ? "bg-white text-violet-600 shadow-md"
+                                                        : "text-slate-500 hover:text-slate-700"
+                                                )}
+                                            >
+                                                {t === 'activity' ? 'Timeline Activity' : 'Internal Notes'}
+                                            </button>
+                                        </React.Fragment>
+                                    ))}
+                                </div>
                             </div>
                             <div className="flex-1 overflow-y-auto p-6 lg:p-8">
                                 {activeTab === 'activity' && (
@@ -887,7 +853,7 @@ const KanbanView = ({ leads, onView }) => {
             {columns.map(col => (
                 <div key={col.id} className="min-w-[320px] bg-gray-50/50 rounded-2xl flex flex-col h-full border border-gray-100/50 shadow-sm">
                     <div className={`p-4 border-b border-gray-100 bg-white rounded-t-2xl flex justify-between items-center sticky top-0 z-10 shadow-sm`}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                             <div className={`w-2 h-8 rounded-full ${col.bg.replace('bg-', 'bg-')} ${col.color.replace('border-', 'bg-')}`}></div>
                             <h3 className="font-bold text-slate-800">{col.label}</h3>
                         </div>
@@ -912,7 +878,7 @@ const KanbanView = ({ leads, onView }) => {
                                         <span className={clsx("px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wide",
                                             lead.priority === 'Urgent' ? "bg-red-50 text-red-700 border border-red-100" :
                                                 lead.priority === 'High' ? "bg-orange-50 text-orange-700 border border-orange-100" :
-                                                    lead.priority === 'Medium' ? "bg-blue-50 text-blue-700 border border-blue-100" : "bg-gray-100 text-gray-600"
+                                                    lead.priority === 'Medium' ? "bg-blue-50 text-blue-700 border-blue-100" : "bg-gray-100 text-gray-600"
                                         )}>{lead.priority}</span>
                                     </div>
                                     <p className="text-xs text-slate-500 font-mono mb-3 flex items-center gap-1">
@@ -945,102 +911,84 @@ const KanbanView = ({ leads, onView }) => {
 };
 
 const Leads = () => {
-    const [viewMode, setViewMode] = useState('list');
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [editingLead, setEditingLead] = useState(null);
-    const [isViewMode, setIsViewMode] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [activeView, setActiveView] = useState('list');
+    const [openModal, setOpenModal] = useState(false);
+    const [editLead, setEditLead] = useState(null);
+    const [viewLeadModalOpen, setViewLeadModalOpen] = useState(false);
+    const [viewingLead, setViewingLead] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const [searchDebounced, setSearchDebounced] = useState('');
-    const [statusFilter, setStatusFilter] = useState('All Statuses');
-    const [sourceFilter, setSourceFilter] = useState('All Sources');
-    const [priorityFilter, setPriorityFilter] = useState('All Priorities');
-    const [assigneeFilter, setAssigneeFilter] = useState('All Assignees');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [priorityFilter, setPriorityFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [assignees, setAssignees] = useState([]);
-    const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
-    const [followUpLead, setFollowUpLead] = useState(null);
-    const [previousFollowUp, setPreviousFollowUp] = useState(null);
-    const [isLogCallModalOpen, setIsLogCallModalOpen] = useState(false);
-    const [logCallLead, setLogCallLead] = useState(null);
-    const [isOverdueModalOpen, setIsOverdueModalOpen] = useState(false);
-    const [filterByOverdue, setFilterByOverdue] = useState(false);
+    const [followUpOpen, setFollowUpOpen] = useState(false);
+    const [logCallOpen, setLogCallOpen] = useState(false);
+    const [targetLead, setTargetLead] = useState(null);
+    const [showOverdue, setShowOverdue] = useState(false);
     const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
+    const queryClient = useQueryClient();
     const filters = useMemo(() => ({
         search: searchDebounced.trim() || undefined,
-        status: statusFilter === 'All Statuses' ? undefined : statusFilter,
-        source: sourceFilter === 'All Sources' ? undefined : sourceFilter,
-        priority: priorityFilter === 'All Priorities' ? undefined : priorityFilter,
-        assigned_to: assigneeFilter === 'All Assignees' ? undefined : assigneeFilter,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        priority: priorityFilter === 'all' ? undefined : priorityFilter,
         page: currentPage,
-        per_page: 20,
-    }), [searchDebounced, statusFilter, sourceFilter, priorityFilter, assigneeFilter, currentPage]);
+        per_page: 25,
+    }), [searchDebounced, statusFilter, priorityFilter, currentPage]);
 
-    const queryClient = useQueryClient();
     const { data: leadsResult, isLoading } = useLeads(filters);
-    const saveLeadMutation = useSaveLead();
-    const deleteLeadMutation = useDeleteLead();
+    const saveMutation = useSaveLead();
+    const deleteMutation = useDeleteLead();
 
-    const leads = Array.isArray(leadsResult?.data) ? leadsResult.data : [];
-    const leadsMeta = leadsResult?.meta ?? null;
-    const totalLeadsCount = leadsMeta?.total ?? leads.length;
+    const data = Array.isArray(leadsResult?.data) ? leadsResult.data : [];
+    const meta = leadsResult?.meta ?? null;
 
     useEffect(() => {
         setAssignees(getAssignees());
     }, []);
 
     useEffect(() => {
-        const t = setTimeout(() => setSearchDebounced(searchTerm), 300);
+        const t = setTimeout(() => setSearchDebounced(searchQuery), 300);
         return () => clearTimeout(t);
-    }, [searchTerm]);
+    }, [searchQuery]);
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchDebounced, statusFilter, sourceFilter, priorityFilter, assigneeFilter]);
+    }, [searchDebounced, statusFilter, priorityFilter]);
 
-    const handleAddAssignee = (name) => {
-        if (name) {
-            const updated = saveAssignee(name);
-            setAssignees(updated);
-        }
-    };
-
-    const fileInputRef = useRef(null);
-
-    const handleSave = async (lead) => {
+    const handleSaveLead = async (lead) => {
         try {
-            await saveLeadMutation.mutateAsync({ ...lead });
-            setIsFormOpen(false);
-            setEditingLead(null);
-            toast.success('Lead saved successfully');
+            await saveMutation.mutateAsync(lead);
+            toast.success('Lead strategy synchronized');
+            setOpenModal(false);
         } catch (err) {
-            console.error('Failed to save lead', err);
-            toast.error(err?.response?.data?.message || 'Failed to save lead');
+            toast.error(err?.response?.data?.message || 'Synchronization failed');
         }
     };
 
     const handleDelete = async (id) => {
-        if (!confirm("Are you sure you want to delete this lead?")) return;
+        if (!confirm("Are you sure you want to purge this record from the pipeline?")) return;
         try {
-            await deleteLeadMutation.mutateAsync(id);
-            toast.success('Lead deleted');
+            await deleteMutation.mutateAsync(id);
+            toast.success('Lead purged');
         } catch (err) {
-            console.error('Failed to delete lead', err);
-            toast.error('Failed to delete lead');
+            toast.error('Purge failed');
         }
     };
 
-    // Keep editingLead in sync when leads refetch (e.g. after follow-up or call log)
-    useEffect(() => {
-        if (editingLead?.id && leads.length > 0) {
-            const updated = leads.find((l) => l.id === editingLead.id);
-            if (updated) setEditingLead(updated);
-        }
-    }, [leads]);
+    const openViewLead = (lead) => {
+        setViewingLead(lead);
+        setViewLeadModalOpen(true);
+    };
 
-    // Overdue: follow-up date < today AND lead status is NOT Lost, Converted, or Closed
+    const handleAddAssignee = (name) => {
+        const updated = saveAssignee(name);
+        setAssignees(updated);
+    };
+
     const EXCLUDED_OVERDUE_STATUSES = ['Lost', 'Converted', 'Closed'];
-    const overdueLeads = leads.filter(l => {
+    const overdueLeads = data.filter(l => {
         if (EXCLUDED_OVERDUE_STATUSES.includes(l.status)) return false;
         return (l.followUps || []).some(f => {
             if (f.status === 'completed') return false;
@@ -1049,501 +997,276 @@ const Leads = () => {
         });
     });
 
-    const handleEdit = (lead) => {
-        setEditingLead(lead);
-        setIsViewMode(false);
-        setIsFormOpen(true);
-    };
-
-    const handleView = (lead) => {
-        setEditingLead(lead);
-        setIsViewMode(true);
-        setIsFormOpen(true);
-    };
-
-    const handleExportCSV = () => {
-        const headers = ['ID', 'First Name', 'Last Name', 'Email', 'Phone', 'Company', 'Job Title', 'Status', 'Source', 'Priority', 'Score', 'Value', 'Assigned To', 'Qualified', 'Notes', 'Created At'];
-        const csvContent = [
-            headers.join(','),
-            ...leads.map(lead => [
-                lead.id,
-                `"${lead.firstName}"`,
-                `"${lead.lastName}"`,
-                `"${lead.email}"`,
-                `"${lead.phone || ''}"`,
-                `"${lead.company || ''}"`,
-                `"${lead.jobTitle || ''}"`,
-                lead.status,
-                lead.source,
-                lead.priority,
-                lead.score,
-                lead.value,
-                lead.assignedTo,
-                lead.qualified,
-                `"${(lead.notes || '').replace(/"/g, '""')}"`,
-                lead.createdAt || ''
-            ].join(','))
-        ].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', 'leads_export.csv');
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    };
-
-    const handleImportLeads = () => {
-        fileInputRef.current.click();
-    };
-
-    const handleFileChange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const text = e.target.result;
-                const lines = text.split('\n');
-                // Skip header row
-                for (let i = 1; i < lines.length; i++) {
-                    if (lines[i].trim() === '') continue;
-
-                    // Simple CSV parsing (this is basic and might break on commas in quotes, but sufficient for now)
-                    // For robust parsing, a library like PapaParse is recommended, but we'll try a regex approach or simple split if complexity is low
-                    // Trying a slightly better split that handles quotes
-                    const matches = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-                    // Fallback to simple split if regex fails or for simple testing
-                    const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
-
-                    if (cols.length >= 3) { // Ensure at least name and email
-                        const newLead = {
-                            firstName: cols[1] || 'Unknown',
-                            lastName: cols[2] || 'Unknown',
-                            email: cols[3] || '',
-                            phone: cols[4] || '',
-                            company: cols[5] || '',
-                            jobTitle: cols[6] || '',
-                            status: cols[7] || 'New',
-                            source: cols[8] || 'Other',
-                            priority: cols[9] || 'Medium',
-                            score: parseInt(cols[10]) || 0,
-                            value: parseFloat(cols[11]) || 0,
-                            assignedTo: cols[12] || 'Unassigned',
-                            qualified: cols[13] === 'true',
-                            notes: cols[14] || '',
-                            createdAt: cols[15] || new Date().toISOString()
-                        };
-                        // Using temporary ID to allow saveLead to generate proper one if needed, or if ID is column 0 but we ignore imports usually to create new
-                        saveLead(newLead);
-                    }
-                }
-                queryClient.invalidateQueries({ queryKey: queryKeys.leads.all });
-                alert('Leads imported successfully!');
-            };
-            reader.readAsText(file);
-        }
-        event.target.value = null; // Reset input
-    };
-
-    const baseLeadsForFilter = filterByOverdue ? overdueLeads : leads;
-    const filteredLeads = baseLeadsForFilter;
-
     const stats = {
-        total: totalLeadsCount,
-        new: leads.filter((l) => l.status === 'New').length,
-        qualified: leads.filter((l) => l.status === 'Qualified').length,
-        converted: leads.filter((l) => l.status === 'Converted').length,
+        total: meta?.total || data.length,
+        value: data.reduce((acc, l) => acc + (parseFloat(l.value) || 0), 0),
+        contacted: data.filter(l => l.status === 'Contacted').length
     };
+
+    const filteredLeads = data; // Already filtered by API
 
     return (
-        <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Lead Pipeline</h1>
-                    <p className="text-slate-500 mt-1 text-base md:text-lg">Manage and track your potential customers effectively.</p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                    <button onClick={() => { setEditingLead(null); setIsFormOpen(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-brand-500/30">
-                        <Plus className="w-5 h-5" /> Add New Lead
-                    </button>
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        style={{ display: 'none' }}
-                        onChange={handleFileChange}
-                        accept=".csv"
+        <div className="flex flex-col h-full bg-slate-50/50 animate-in fade-in duration-500 overflow-hidden">
+            {/* Header section with Stats */}
+            <div className="px-6 lg:px-8 pt-8 pb-6 bg-white border-b border-slate-200/60 shadow-sm relative z-10">
+                <PageHeader
+                    title="Intelligence Pipeline"
+                    subtitle="Manage strategic leads, opportunity scoring, and stakeholder engagement across the conversion lifecycle."
+                    primaryAction={(
+                        <button onClick={() => { setEditLead(null); setOpenModal(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/20 group">
+                            <div className="bg-white/20 p-1 rounded-lg group-hover:bg-white/30 transition-colors">
+                                <Plus size={16} />
+                            </div>
+                            <span>Create Prospect</span>
+                        </button>
+                    )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
+                    <StatCard title="Total Inventory" value={stats.total} icon={Target} color="bg-slate-800" />
+                    <StatCard title="Pipeline Value" value={`$${stats.value.toLocaleString()}`} icon={Activity} color="bg-indigo-600" />
+                    <StatCard title="Engagement Ratio" value={`${stats.total ? Math.round((stats.contacted / stats.total) * 100) : 0}%`} icon={Users} color="bg-violet-600" />
+                    <OverdueFollowUpsCard 
+                        count={overdueLeads.length} 
+                        onClick={() => overdueLeads.length > 0 && setShowOverdue(true)} 
+                        hasOverdue={overdueLeads.length > 0} 
                     />
-                    <button onClick={handleImportLeads} className="p-2.5 bg-white border border-gray-200 text-slate-600 rounded-xl hover:bg-gray-50 shadow-sm transition-colors" title="Import CSV">
-                        <Upload className="w-5 h-5" />
-                    </button>
-                    <button onClick={handleExportCSV} className="p-2.5 bg-white border border-gray-200 text-slate-600 rounded-xl hover:bg-gray-50 shadow-sm transition-colors" title="Export Leads">
-                        <Download className="w-5 h-5" />
-                    </button>
                 </div>
             </div>
 
-            {/* Overdue Alert */}
-            {overdueLeads.length > 0 && (
-                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-pulse-slow">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 rounded-full text-red-600">
-                            <AlertCircle className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="font-bold text-red-900">Attention Needed</p>
-                            <p className="text-sm text-red-700">You have <span className="font-bold">{overdueLeads.length} overdue</span> follow-up tasks requiring action.</p>
+            <div className="flex-1 flex flex-col min-h-0 bg-white">
+                <div className="bg-slate-50/50 px-6 lg:px-8 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 sticky top-0 z-20">
+                    <div className="flex-1 min-w-[240px]">
+                        <div className="relative group">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search by name, company, or identification..."
+                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
                         </div>
                     </div>
-                    <button
-                        onClick={() => setIsOverdueModalOpen(true)}
-                        className="px-4 py-2 bg-white text-red-600 text-sm font-bold rounded-xl shadow-sm hover:shadow border border-red-100 transition-all"
-                    >
-                        View Overdue Items
-                    </button>
-                </div>
-            )}
 
-            {/* Stats Overview */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                <StatCard title="Total Leads" value={stats.total} icon={Users} color="bg-blue-600" />
-                <StatCard title="New Leads" value={stats.new} icon={Plus} color="bg-brand-600" />
-                <StatCard title="Qualified" value={stats.qualified} icon={CheckCircle2} color="bg-emerald-600" />
-                <StatCard title="Converted" value={stats.converted} icon={CheckSquare} color="bg-indigo-600" />
-                <OverdueFollowUpsCard
-                    count={overdueLeads.length}
-                    hasOverdue={overdueLeads.length > 0}
-                    onClick={() => {
-                        if (overdueLeads.length > 0) {
-                            setFilterByOverdue(true);
-                            setViewMode('list');
-                            setIsOverdueModalOpen(true);
-                        }
-                    }}
-                />
-            </div>
-
-            {/* Main Content Area */}
-            <div className="space-y-6">
-                {/* Overdue filter active indicator */}
-                {filterByOverdue && (
-                    <div className="flex items-center justify-between gap-3 flex-wrap bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 shadow-sm">
-                        <p className="text-sm font-medium text-amber-800">
-                            Showing <span className="font-bold">{overdueLeads.length} overdue</span> follow-up lead{overdueLeads.length !== 1 ? 's' : ''} only.
-                        </p>
-                        <button
-                            type="button"
-                            onClick={() => setFilterByOverdue(false)}
-                            className="text-sm font-semibold text-amber-700 hover:text-amber-900 underline"
+                    <div className="flex items-center gap-3">
+                        <ViewToggle active={activeView} onChange={setActiveView} />
+                        <div className="w-px h-6 bg-slate-200 mx-1"></div>
+                        <FilterSelect icon={Target} value={statusFilter} onChange={setStatusFilter}>
+                            <option value="all">All Stages</option>
+                            <option value="New">Initial Prospect</option>
+                            <option value="Contacted">Active Outreach</option>
+                            <option value="Working">Engaged/Nurture</option>
+                            <option value="Qualified">Sales Ready</option>
+                            <option value="Converted">Realized/Closed</option>
+                            <option value="Lost">Closed/Lost</option>
+                        </FilterSelect>
+                        <button 
+                            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} 
+                            className={clsx(
+                                "p-2.5 rounded-xl border transition-all shadow-sm active:scale-95",
+                                showAdvancedFilters ? "bg-indigo-50 border-indigo-200 text-indigo-600 ring-4 ring-indigo-500/10" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                            )}
                         >
-                            Clear filter
+                            <Filter size={18} />
                         </button>
+                        {(searchQuery || statusFilter !== "all" || priorityFilter !== "all") && (
+                            <ClearFiltersButton onClick={() => { setSearchQuery(""); setStatusFilter("all"); setPriorityFilter("all"); }} />
+                        )}
+                    </div>
+                </div>
+
+                {showAdvancedFilters && (
+                    <div className="bg-white px-6 lg:px-8 py-6 border-b border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-6 animate-in slide-in-from-top-2">
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Priority State</label>
+                            <select 
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" 
+                                value={priorityFilter} 
+                                onChange={e => setPriorityFilter(e.target.value)}
+                            >
+                                <option value="all">All Priorities</option>
+                                <option value="Urgent">Critical/Urgent</option>
+                                <option value="High">Strategic/High</option>
+                                <option value="Medium">Standard/Medium</option>
+                                <option value="Low">Trivial/Low</option>
+                            </select>
+                        </div>
                     </div>
                 )}
 
-                {/* Filters & Actions Bar */}
-                <div className="space-y-4">
-                    <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
-                        <ViewToggle active={viewMode} onChange={setViewMode} />
-                        
-                        <div className="flex-1 min-w-[240px] relative group">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
-                            <input
-                                type="text"
-                                placeholder="Search leads by name, email, company..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-12 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
-                            />
+                <div className="flex-1 overflow-hidden relative">
+                    {activeView === 'list' && (
+                        <div className="h-full overflow-auto custom-scrollbar">
+                            <div className="min-w-full">
+                                <table className="w-full text-left border-collapse table-fixed">
+                                    <thead>
+                                        <tr className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
+                                            <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-56">Lead Profile</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-48">Contact Logic</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-36">Execution</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-40">Valuation</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40">Pipeline Status</th>
+                                            <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-40">Ops</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {isLoading ? (
+                                            <tr><td colSpan="6" className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse italic">Synchronizing Intelligence Pipeline...</td></tr>
+                                        ) : filteredLeads.length === 0 ? (
+                                            <tr><td colSpan="6" className="p-20"><EmptyState icon={Target} title="No Prospect Matches" description="Adjust your parameters or initialize a new record." /></td></tr>
+                                        ) : (
+                                            filteredLeads.map((item) => (
+                                                <tr key={item.id} className="group hover:bg-slate-50/80 transition-all duration-200">
+                                                    <td className="px-6 lg:px-8 py-5">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-11 h-11 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl flex items-center justify-center text-slate-600 font-black text-lg shadow-inner border border-slate-200/50">
+                                                                {item.firstName.charAt(0)}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[14px] font-black text-slate-900 leading-none">{item.firstName} {item.lastName}</span>
+                                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2 flex items-center gap-1.5">
+                                                                    <div className="w-1 h-1 rounded-full bg-slate-300"></div>
+                                                                    {item.company || "Independent Entity"}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-5">
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="flex items-center gap-2 text-slate-600 text-[12px] font-bold">
+                                                                <Mail size={12} className="text-indigo-400" /> {item.email}
+                                                            </div>
+                                                            {item.phone && (
+                                                                <div className="flex items-center gap-2 text-slate-500 text-[11px] font-medium">
+                                                                    <Phone size={11} className="text-slate-300" /> {item.phone}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-5">
+                                                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                                            <User size={12} className="text-slate-300" />
+                                                            {item.assignedTo}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-5 text-right">
+                                                        <span className="font-mono text-[16px] font-black text-slate-900 italic tracking-tight">
+                                                            ${item.value?.toLocaleString() || '0'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-5">
+                                                        <span className={clsx(
+                                                            "px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] inline-flex items-center gap-2 border shadow-sm",
+                                                            item.status === 'Converted' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100'
+                                                        )}>
+                                                            <div className={clsx('w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)]', 
+                                                                item.status === 'Converted' ? "bg-emerald-500 shadow-emerald-500/50" : "bg-indigo-500 shadow-indigo-500/50"
+                                                            )} />
+                                                            {item.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 lg:px-8 py-5 text-right">
+                                                        <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                                                            <ActionIconButton onClick={() => openViewLead(item)} title="Audit Lifecycle" icon={Eye} tone="view" />
+                                                            <ActionIconButton onClick={() => { setEditLead(item); setOpenModal(true); }} title="Modify Intel" icon={Edit2} tone="edit" />
+                                                            <ActionIconButton onClick={() => handleDelete(item.id)} title="Purge Record" icon={Trash2} tone="delete" />
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                        
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-                                <Activity className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-                                >
-                                    <option value="All Statuses">All Statuses</option>
-                                    <option value="New">New</option>
-                                    <option value="Contacted">Contacted</option>
-                                    <option value="Qualified">Qualified</option>
-                                    <option value="Proposal Sent">Proposal Sent</option>
-                                    <option value="Negotiation">Negotiation</option>
-                                    <option value="Converted">Converted</option>
-                                    <option value="Lost">Lost</option>
-                                    <option value="Inactive">Inactive</option>
-                                </select>
-                            </div>
+                    )}
 
-                            <button
-                                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                                className={clsx(
-                                    "flex items-center gap-2 px-4 h-10 rounded-lg text-[13px] font-bold transition-all border shadow-sm",
-                                    showAdvancedFilters 
-                                        ? "bg-brand-50 border-brand-200 text-brand-700" 
-                                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                                )}
-                            >
-                                <Filter size={16} className={clsx("transition-transform", showAdvancedFilters && "rotate-180")} />
-                                Filters
-                            </button>
-
-                            {(searchTerm || statusFilter !== "All Statuses" || priorityFilter !== "All Priorities" || assigneeFilter !== "All Assignees") && (
-                                <button
-                                    onClick={() => {
-                                        setSearchTerm("");
-                                        setStatusFilter("All Statuses");
-                                        setPriorityFilter("All Priorities");
-                                        setAssigneeFilter("All Assignees");
-                                        setFilterByOverdue(false);
-                                    }}
-                                    className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-                                >
-                                    <X size={14} /> Clear
-                                </button>
-                            )}
+                    {activeView === 'kanban' && (
+                        <div className="h-full bg-slate-50/50 p-6 lg:px-8 overflow-hidden">
+                            <KanbanView leads={filteredLeads} onView={openViewLead} />
                         </div>
-                    </div>
+                    )}
 
-                    {/* Advanced Filters */}
-                    {showAdvancedFilters && (
-                        <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[160px]">
-                                <AlertCircle className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-                                <select
-                                    value={priorityFilter}
-                                    onChange={(e) => setPriorityFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-                                >
-                                    <option value="All Priorities">All Priorities</option>
-                                    <option value="Low">Low</option>
-                                    <option value="Medium">Medium</option>
-                                    <option value="High">High</option>
-                                    <option value="Urgent">Urgent</option>
-                                </select>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
-                                <User className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-                                <select
-                                    value={assigneeFilter}
-                                    onChange={(e) => setAssigneeFilter(e.target.value)}
-                                    className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-                                >
-                                    <option value="All Assignees">All Assignees</option>
-                                    <option value="Unassigned">Unassigned</option>
-                                    {assignees.map(user => (
-                                        <option key={user} value={user}>{user}</option>
-                                    ))}
-                                </select>
-                            </div>
+                    {activeView === 'calendar' && (
+                        <div className="h-full bg-white overflow-auto custom-scrollbar">
+                            <FollowUpCalendar leads={data} onLeadClick={openViewLead} />
                         </div>
                     )}
                 </div>
 
-                {viewMode === 'list' && (
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
-                            <h3 className="font-bold text-slate-800">All Leads</h3>
-                            <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg">
-                                {isLoading ? 'Loading...' : leadsMeta
-                                    ? `Showing ${(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}ΓÇô${Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of ${leadsMeta.total}`
-                                    : `Showing ${filteredLeads.length} of ${totalLeadsCount}`}
-                            </span>
-                        </div>
-                        <div className="overflow-x-auto custom-scrollbar">
-                            {isLoading ? (
-                                <TableSkeleton rows={8} cols={8} />
-                            ) : (
-                            <table className="w-full text-sm text-left min-w-[1000px]">
-                                <thead className="bg-gray-50/50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100">
-                                    <tr>
-                                        <th className="px-6 py-4 w-10"><input type="checkbox" className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" /></th>
-                                        <th className="px-6 py-4">Lead Info</th>
-                                        <th className="px-6 py-4">Status</th>
-                                        <th className="px-6 py-4">Priority</th>
-                                        <th className="px-6 py-4">Value</th>
-                                        <th className="px-6 py-4">Assigned To</th>
-                                        <th className="px-6 py-4">Next Action</th>
-                                        <th className="px-6 py-4 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {filteredLeads.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="8" className="px-6 py-12 text-center">
-                                                <div className="flex flex-col items-center justify-center text-gray-400">
-                                                    <User className="h-12 w-12 mb-3 opacity-20" />
-                                                    <p className="text-lg font-medium text-gray-500">No leads found</p>
-                                                    <p className="text-sm">Add a lead or adjust your filters.</p>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        filteredLeads.map(lead => (
-                                            <tr key={lead.id} className="hover:bg-slate-50/50 transition-colors group">
-                                                <td className="px-6 py-4"><input type="checkbox" className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" /></td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-slate-800 text-sm">{lead.firstName} {lead.lastName}</span>
-                                                        <span className="text-xs text-slate-500">{lead.company}</span>
-                                                        <a href={`mailto:${lead.email}`} className="text-xs text-brand-600 hover:underline mt-0.5">{lead.email}</a>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={clsx("px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide border",
-                                                        lead.status === 'Converted' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                                                            lead.status === 'Lost' ? "bg-red-50 text-red-700 border-red-100" :
-                                                                lead.status === 'New' ? "bg-blue-50 text-blue-700 border-blue-100" :
-                                                                    "bg-gray-50 text-gray-700 border-gray-100"
-                                                    )}>
-                                                        {lead.status}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className={clsx("px-2.5 py-1 rounded-lg text-xs font-bold",
-                                                        lead.priority === 'Urgent' ? "bg-red-50 text-red-700" :
-                                                            lead.priority === 'High' ? "bg-orange-50 text-orange-700" :
-                                                                "bg-gray-100 text-gray-700"
-                                                    )}>
-                                                        {lead.priority}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 font-mono text-sm text-slate-600">
-                                                    {lead.value ? `$${lead.value.toLocaleString()}` : '-'}
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-slate-600">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                                                            {(lead.assignedTo || 'U').charAt(0)}
-                                                        </div>
-                                                        {lead.assignedTo}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-sm">
-                                                    <div className="flex flex-col gap-1">
-                                                        {lead.followUps && lead.followUps.length > 0 ? (
-                                                            <span className="text-xs text-slate-600 flex items-center gap-1">
-                                                                <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />
-                                                                {new Date(lead.followUps.sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at))[0].scheduled_at).toLocaleDateString()}
-                                                            </span>
-                                                        ) : <span className="text-xs text-slate-400 italic">None scheduled</span>}
-                                                        {(lead.notesCount ?? 0) > 0 && (
-                                                            <span className="text-xs text-amber-600 flex items-center gap-1">
-                                                                <FileText className="w-3.5 h-3.5" /> Notes ({lead.notesCount})
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => { setFollowUpLead(lead); setIsFollowUpModalOpen(true); }} className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg transition-colors" title="Set Follow-up"><CalendarIcon className="w-4 h-4" /></button>
-                                                        <button onClick={() => handleView(lead)} className="p-2 text-slate-500 hover:bg-gray-100 rounded-lg transition-colors" title="View Details"><Eye className="w-4 h-4" /></button>
-                                                        <button onClick={() => handleEdit(lead)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit"><Edit2 className="w-4 h-4" /></button>
-                                                        <button onClick={() => handleDelete(lead.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                            )}
-                        </div>
-                        {leadsMeta && leadsMeta.last_page > 1 && (
-                            <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-                                <span className="text-sm text-slate-600">
-                                    Showing {(leadsMeta.current_page - 1) * leadsMeta.per_page + 1}ΓÇô{Math.min(leadsMeta.current_page * leadsMeta.per_page, leadsMeta.total)} of {leadsMeta.total}
-                                </span>
-                                <div className="flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                        disabled={leadsMeta.current_page <= 1}
-                                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Previous
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setCurrentPage((p) => p + 1)}
-                                        disabled={leadsMeta.current_page >= leadsMeta.last_page}
-                                        className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        Next
-                                    </button>
-                                </div>
-                            </div>
-                        )}
+                <div className="bg-white border-t border-slate-100 px-6 lg:px-8 py-4 flex-shrink-0">
+                    <div className="flex justify-between items-center">
+                         <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">Indexed {filteredLeads.length} Strategy Targets</span>
+                         {meta && <TablePagination 
+                            summary={`Showing ${(meta.current_page - 1) * meta.per_page + 1}–${Math.min(meta.current_page * meta.per_page, meta.total)} of ${meta.total}`} 
+                            onPrevious={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                            onNext={() => setCurrentPage(p => p + 1)} 
+                            previousDisabled={meta.current_page <= 1} 
+                            nextDisabled={meta.current_page >= meta.last_page} 
+                         />}
                     </div>
-                )}
-
-                {viewMode === 'kanban' && <KanbanView leads={filteredLeads} onView={handleView} />}
-                {viewMode === 'calendar' && <FollowUpCalendar />}
+                </div>
             </div>
 
-            {isViewMode && editingLead ? (
-                <ViewLeadModal
-                    isOpen={isFormOpen}
-                    onClose={() => setIsFormOpen(false)}
-                    lead={editingLead}
-                    onEdit={handleEdit}
-                    onSetFollowUp={(lead) => {
-                        setFollowUpLead(lead);
-                        setIsFollowUpModalOpen(true);
-                    }}
-                    onLogCall={(lead) => {
-                        setLogCallLead(lead);
-                        setIsLogCallModalOpen(true);
-                    }}
-                />
-            ) : (
-                <LeadModal
-                    isOpen={isFormOpen}
-                    onClose={() => setIsFormOpen(false)}
-                    lead={editingLead}
-                    onSave={handleSave}
-                    assignees={assignees}
-                    onAddAssignee={handleAddAssignee}
-                />
-            )}
-            <SetFollowUpModal
-                isOpen={isFollowUpModalOpen}
-                onClose={() => {
-                    setIsFollowUpModalOpen(false);
-                    setPreviousFollowUp(null);
+            <LeadModal
+                isOpen={openModal}
+                onClose={() => setOpenModal(false)}
+                lead={editLead}
+                onSave={handleSaveLead}
+                assignees={assignees}
+                onAddAssignee={handleAddAssignee}
+            />
+
+            <ViewLeadModal
+                isOpen={viewLeadModalOpen}
+                onClose={() => setViewLeadModalOpen(false)}
+                lead={viewingLead}
+                onEdit={(l) => {
+                    setViewLeadModalOpen(false);
+                    setEditLead(l);
+                    setOpenModal(true);
                 }}
-                lead={followUpLead}
-                previousFollowUp={previousFollowUp}
-                onSave={async () => {
-                    setPreviousFollowUp(null);
-                    await queryClient.invalidateQueries({ queryKey: queryKeys.leads.all });
+                onSetFollowUp={(l) => {
+                    setTargetLead(l);
+                    setFollowUpOpen(true);
+                }}
+                onLogCall={(l) => {
+                    setTargetLead(l);
+                    setLogCallOpen(true);
                 }}
             />
+
             <OverdueModal
-                isOpen={isOverdueModalOpen}
-                onClose={() => setIsOverdueModalOpen(false)}
+                isOpen={showOverdue}
+                onClose={() => setShowOverdue(false)}
                 overdueLeads={overdueLeads}
-                onReschedule={(lead, followUp) => {
-                    setFollowUpLead(lead);
-                    setPreviousFollowUp(followUp);
-                    setIsFollowUpModalOpen(true);
+                onReschedule={(l, f) => {
+                    setTargetLead(l);
+                    setFollowUpOpen(true);
                 }}
-                onView={handleView}
+                onView={openViewLead}
             />
+
+            <SetFollowUpModal
+                isOpen={followUpOpen}
+                onClose={() => setFollowUpOpen(false)}
+                lead={targetLead}
+                onSaved={() => {
+                    setFollowUpOpen(false);
+                    invalidateCache('/leads');
+                    queryClient.invalidateQueries({ queryKey: queryKeys.leads.all });
+                }}
+            />
+
             <LogCallModal
-                isOpen={isLogCallModalOpen}
-                onClose={() => setIsLogCallModalOpen(false)}
-                lead={logCallLead}
-                onSave={async () => {
-                    await queryClient.invalidateQueries({ queryKey: queryKeys.leads.all });
+                isOpen={logCallOpen}
+                onClose={() => setLogCallOpen(false)}
+                lead={targetLead}
+                onSaved={() => {
+                    setLogCallOpen(false);
+                    invalidateCache('/leads');
+                    queryClient.invalidateQueries({ queryKey: queryKeys.leads.all });
                 }}
             />
         </div>

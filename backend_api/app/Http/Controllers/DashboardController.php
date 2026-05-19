@@ -66,6 +66,22 @@ class DashboardController extends Controller
             ->groupBy('status')
             ->get();
 
+        // Recent Incomes
+        $recentIncomes = Income::select(['id', 'client', 'amount', 'method', 'received_date', 'category'])
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(function($inc) {
+                return [
+                    'id' => $inc->id,
+                    'client' => $inc->client,
+                    'amount' => (float) $inc->amount,
+                    'method' => $inc->method,
+                    'receivedDate' => $inc->received_date,
+                    'category' => $inc->category,
+                ];
+            });
+
         return response()->json([
             'totalClients' => $totalClients,
             'activeClients' => $activeClients,
@@ -74,6 +90,7 @@ class DashboardController extends Controller
             'pendingAmount' => $pendingAmount,
             'todayIncome' => round($todayIncome, 2),
             'recentInvoices' => $recentInvoices,
+            'recentIncomes' => $recentIncomes,
             'monthlyRevenue' => $monthlyRevenue,
             'invoiceStatusCounts' => $invoiceStatusCounts,
             'todaysEvents' => $todaysEvents,

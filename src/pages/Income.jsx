@@ -4,7 +4,7 @@ import {
   TrendingUp, AlertCircle, Receipt, Loader2, Save, Layers, User, Target, 
   Building2, Calendar as CalendarIcon, Phone, Mail, BadgeCheck, Activity, 
   Briefcase, Filter, MessageSquare, CreditCard, Banknote, CheckCircle2,
-  ChevronDown, ChevronRight
+  ChevronDown, ChevronRight, FileText
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,10 +14,16 @@ import { createIncome, updateIncome, deleteIncome } from "../services/incomeServ
 import { getBankAccounts } from "../services/bankAccountService";
 import { getIncomeCategories, createIncomeCategory, deleteIncomeCategory } from "../services/incomeCategoryService";
 import { useIncomeList, useIncomeSummary, useClients } from "../hooks/useApiQueries";
-import { invalidateCache } from "../utils/apiFetch";
 import { queryKeys } from "../query/queryKeys";
 import clsx from "clsx";
 import { TableSkeleton } from "../components/Skeleton";
+import PageHeader from "../components/ui/PageHeader";
+import ToolbarSearch from "../components/ui/ToolbarSearch";
+import EmptyState from "../components/ui/EmptyState";
+import { FilterSelect, ClearFiltersButton } from "../components/ui/FilterControls";
+import { TableSectionHeader, TablePagination } from "../components/ui/DataTableSection";
+import { ActionIconButton } from "../components/ui/TableRowActions";
+import SlideOver from "../components/ui/SlideOver";
 
 const emptyForm = {
   client: "",
@@ -27,14 +33,12 @@ const emptyForm = {
   invoiceNo: "",
   amount: "",
   currency: "INR",
-
   method: "Other",
   transactionId: "",
   bank: "",
   bankAccountId: null,
   receivedDate: "",
   status: "Received",
-
   staff: "",
   department: "",
   notes: "",
@@ -51,8 +55,6 @@ const emptyForm = {
   followUpDate: "",
   commission: "",
   taxCategory: "",
-
-  // Financial Summary
   autoCalculateAmount: true,
   discount: "",
   taxAmount: "",
@@ -63,63 +65,394 @@ const emptyForm = {
   extraInstallments: [],
 };
 
-const SectionHeader = ({ icon: Icon, title, color }) => {
-  const colors = {
-    blue: "from-blue-600 to-cyan-500 shadow-blue-500/20",
-    indigo: "from-indigo-600 to-blue-500 shadow-indigo-500/20",
-    violet: "from-violet-600 to-purple-500 shadow-violet-500/20",
-    fuchsia: "from-fuchsia-600 to-pink-500 shadow-fuchsia-500/20",
-    rose: "from-rose-600 to-pink-500 shadow-rose-500/20",
-    amber: "from-amber-500 to-orange-400 shadow-amber-500/20"
+const IncomeForm = ({ isOpen, onClose, income, onSave, clients = [], bankAccounts = [], incomeCategories = [], onAddCategory }) => {
+  const [form, setForm] = useState(emptyForm);
+  const [errors, setErrors] = useState({});
+  const [tab, setTab] = useState("basic");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (income) {
+      const extra = Array.isArray(income.extraInstallments) ? income.extraInstallments : [];
+      const hasInitial = income.initialDepositAmount != null && income.initialDepositAmount !== "" && parseFloat(income.initialDepositAmount) > 0;
+      setForm({
+        ...emptyForm,
+        ...income,
+        discount: income.discountAmount != null && income.discountAmount !== "" ? String(income.discountAmount) : "",
+        taxAmount: income.gstAmount != null && income.gstAmount !== "" ? String(income.gstAmount) : "",
+        initialDepositEnabled: !!hasInitial,
+        initialDepositAmount: hasInitial ? String(income.initialDepositAmount) : "",
+        extraInstallments: extra.map(i => ({ ...i, bankName: i.bankName || getBankDisplayName(i.bankAccountId) })),
+      });
+    } else {
+      setForm(emptyForm);
+    }
+    setTab("basic");
+    setErrors({});
+  }, [income, isOpen]);
+
+  const getBankDisplayName = (bankId) => {
+    const b = bankAccounts.find((x) => x.id === bankId);
+    return b ? `${b.bankName} - ${b.accountNumber}` : "";
   };
-  
+
+  const validate = () => {
+    const e = {};
+    if (!form.client) e.client = "Client is required";
+    if (!form.amount) e.amount = "Base amount is required";
+    if (form.initialDepositEnabled && (parseFloat(form.initialDepositAmount) || 0) > 0 && !form.initialDepositBankId) {
+      e.initialDepositBank = "Select bank for advance payment";
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) return;
+    setIsSaving(true);
+    try {
+      await onSave(form);
+      onClose();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const subtotal = parseFloat(form.amount) || 0;
+  const discountVal = parseFloat(form.discount) || 0;
+  const taxVal = parseFloat(form.taxAmount) || 0;
+  const totalAmount = subtotal - discountVal + taxVal;
+
+  const TABS = [
+    { id: 'basic', label: 'Operational Specs', icon: Target },
+    { id: 'financial', label: 'Financial Analytics', icon: Wallet },
+    { id: 'installments', label: 'Installment Schedule', icon: Layers },
+    { id: 'internal', label: 'Administrative', icon: Briefcase },
+  ];
+
+  const Label = ({ children, required }) => (
+    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+      {children} {required && <span className="text-rose-500">*</span>}
+    </label>
+  );
+
+  const inputCls = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm";
+
   return (
-    <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
-      <div className="flex items-center gap-3">
-        <div className={clsx("h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center text-white shadow-lg", colors[color] || colors.blue)}>
-          <Icon size={16} className="stroke-[2.5]" />
+    <SlideOver
+      isOpen={isOpen}
+      onClose={onClose}
+      size="5xl"
+      title={income ? 'Modify Treasury Inflow' : 'Record New Revenue Stream'}
+      footer={(
+        <div className="flex justify-between items-center w-full px-1">
+          <div className="flex items-center gap-8">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Aggregate Inflow</span>
+              <span className="text-[24px] font-black text-emerald-600 font-mono italic leading-none mt-1">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Discard Entry</button>
+            <button onClick={handleSubmit} disabled={isSaving} className="px-10 py-2.5 bg-indigo-600 text-white text-[14px] font-black rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
+              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              <span>{isSaving ? 'Synchronizing...' : (income ? 'Commit Modifications' : 'Finalize Entry')}</span>
+            </button>
+          </div>
         </div>
-        <h4 className="text-[14px] font-bold text-slate-900 uppercase tracking-widest leading-none">
-          {title}
-        </h4>
+      )}
+    >
+      <div className="flex h-full min-h-[600px] relative">
+        {/* Sidebar Navigation */}
+        <div className="w-64 border-r-2 border-slate-100 pr-6 shrink-0 hidden md:block">
+          <div className="flex flex-col gap-2 sticky top-0">
+            {TABS.map((t, idx) => (
+              <div key={t.id}>
+                <button
+                  onClick={() => setTab(t.id)}
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-[0.15em] transition-all relative group",
+                    tab === t.id
+                      ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100 ring-1 ring-indigo-200/50"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                  )}
+                >
+                  {tab === t.id && (
+                    <div className="absolute -right-[26px] top-3 bottom-3 w-1 bg-indigo-600 rounded-l-full z-10" />
+                  )}
+                  <t.icon className={clsx("h-4 w-4", tab === t.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600")} />
+                  <span>{t.label}</span>
+                </button>
+                {idx < TABS.length - 1 && <div className="h-px bg-slate-50 mx-4 my-1 opacity-50" />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 pl-10 overflow-y-auto">
+          <div className="pb-20">
+            {tab === 'basic' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="col-span-2">
+                    <Label required>Client Principal</Label>
+                    <div className="relative">
+                      <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <select className={clsx(inputCls, "pl-11 appearance-none")} value={form.client} onChange={e => setForm({ ...form, client: e.target.value })}>
+                        <option value="">Select Client registry...</option>
+                        {clients.map(c => <option key={c.id} value={c.company_name || c.client_name}>{c.company_name || c.client_name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <Label required>Income Designation / Source</Label>
+                    <input className={inputCls} placeholder="e.g. Enterprise Consulting Protocol" value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Category Classification</Label>
+                    <div className="flex gap-2">
+                      <select className={clsx(inputCls, "flex-1 appearance-none")} value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                        <option value="">Uncategorized</option>
+                        {incomeCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                      </select>
+                      <button onClick={() => {
+                        const name = prompt('New category designation:');
+                        if (name) onAddCategory(name);
+                      }} className="px-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-100 transition-all"><Plus size={18}/></button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Associated Invoice</Label>
+                    <div className="relative">
+                      <FileText size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input className={clsx(inputCls, "pl-11")} placeholder="INV-2024-001" value={form.invoiceNo} onChange={e => setForm({ ...form, invoiceNo: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Technical Description</Label>
+                    <textarea className={clsx(inputCls, "min-h-[120px] resize-none")} placeholder="Detailed breakdown of revenue source..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tab === 'financial' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-6 relative overflow-hidden group shadow-2xl border border-slate-800">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-600/10 blur-[100px] rounded-full -mr-32 -mt-32 group-hover:bg-emerald-600/20 transition-colors" />
+                  <div className="flex justify-between items-center relative z-10">
+                    <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em]">Revenue Absorption Model</h4>
+                    <TrendingUp className="text-emerald-500" size={24} />
+                  </div>
+                  <div className="space-y-4 relative z-10">
+                    <div className="flex justify-between items-end border-b border-slate-800 pb-4">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase">Gross Subtotal</span>
+                      <span className="text-[18px] font-black font-mono tracking-tight italic">₹{subtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between items-end border-b border-slate-800 pb-4">
+                      <span className="text-[11px] font-bold text-rose-400 uppercase tracking-widest">Adjustments (Discount)</span>
+                      <span className="text-[18px] font-black font-mono tracking-tight italic text-rose-400">- ₹{discountVal.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between items-end border-b border-slate-800 pb-4">
+                      <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest">Regulatory (Tax)</span>
+                      <span className="text-[18px] font-black font-mono tracking-tight italic text-emerald-400">+ ₹{taxVal.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between items-end pt-4">
+                      <span className="text-[13px] font-black text-white uppercase tracking-[0.3em]">Aggregate Value</span>
+                      <span className="text-[32px] font-black font-mono tracking-tighter italic text-indigo-400 leading-none">₹{totalAmount.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8">
+                  <div>
+                    <Label required>Base Unit Amount (₹)</Label>
+                    <input type="number" className={clsx(inputCls, "font-black italic text-slate-900 text-lg")} placeholder="0.00" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Discount</Label>
+                      <input type="number" className={inputCls} placeholder="0.00" value={form.discount} onChange={e => setForm({ ...form, discount: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Tax Amount</Label>
+                      <input type="number" className={inputCls} placeholder="0.00" value={form.taxAmount} onChange={e => setForm({ ...form, taxAmount: e.target.value })} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Absorption Mode</Label>
+                    <select className={clsx(inputCls, "appearance-none")} value={form.method} onChange={e => setForm({ ...form, method: e.target.value })}>
+                      {['Bank Transfer', 'UPI', 'Cash', 'Cheque', 'Card', 'Other'].map(m => <option key={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <Label>Current Settlement Status</Label>
+                    <select className={clsx(inputCls, "appearance-none")} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                      {['Received', 'Pending', 'Partial', 'Overdue'].map(s => <option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <Label>Value Date</Label>
+                    <input type="date" className={inputCls} value={form.receivedDate} onChange={e => setForm({ ...form, receivedDate: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Protocol Ref / UTR</Label>
+                    <input className={inputCls} placeholder="Transaction ID..." value={form.transactionId} onChange={e => setForm({ ...form, transactionId: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className={clsx("p-8 rounded-3xl border-2 transition-all group relative overflow-hidden", form.initialDepositEnabled ? "bg-indigo-50/50 border-indigo-200" : "bg-slate-50 border-slate-100 hover:border-slate-200 cursor-pointer")} onClick={() => !form.initialDepositEnabled && setForm({ ...form, initialDepositEnabled: true })}>
+                  <div className="flex items-center gap-4 relative z-10">
+                    <input type="checkbox" checked={form.initialDepositEnabled} onChange={e => setForm({ ...form, initialDepositEnabled: e.target.checked })} className="h-5 w-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all" />
+                    <div>
+                      <p className="text-[14px] font-black text-slate-900 uppercase tracking-widest leading-none">Register Advance Settlement</p>
+                      <p className="text-[11px] font-bold text-slate-500 mt-1 uppercase">Track initial treasury injection</p>
+                    </div>
+                  </div>
+                  {form.initialDepositEnabled && (
+                    <div className="mt-8 grid grid-cols-2 gap-6 animate-in slide-in-from-top-4 duration-300 relative z-10">
+                      <div>
+                        <Label>Advance Value (₹)</Label>
+                        <input type="number" className={clsx(inputCls, "bg-white")} value={form.initialDepositAmount} onChange={e => setForm({ ...form, initialDepositAmount: e.target.value })} />
+                      </div>
+                      <div>
+                        <Label>Strategic Bank Channel</Label>
+                        <select className={clsx(inputCls, "bg-white appearance-none")} value={form.initialDepositBankId} onChange={e => {
+                          const b = bankAccounts.find(x => x.id === parseInt(e.target.value));
+                          setForm({ ...form, initialDepositBankId: e.target.value, initialDepositBankName: b ? `${b.bankName} - ${b.accountNumber}` : '' });
+                        }}>
+                          <option value="">Select Channel registry...</option>
+                          {bankAccounts.map(b => <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {tab === 'installments' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+                  <div>
+                    <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-widest">Inflow Pipeline</h4>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase mt-1">Fragmented payment execution schedule</p>
+                  </div>
+                  <button onClick={() => setForm({ ...form, extraInstallments: [...form.extraInstallments, { date: '', amount: '', bankAccountId: null, bankName: '', note: '' }] })} className="px-6 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group">
+                    <Plus size={18} className="group-hover:rotate-90 transition-transform" />
+                    <span>Add Milestone</span>
+                  </button>
+                </div>
+                
+                <div className="space-y-6">
+                  {form.extraInstallments.length === 0 ? (
+                    <div className="py-20 border-2 border-dashed border-slate-100 rounded-3xl text-center bg-slate-50/50">
+                      <Layers size={48} className="mx-auto text-slate-200 mb-4" />
+                      <p className="text-[14px] font-black text-slate-400 uppercase tracking-widest">No Milestones Projected</p>
+                      <p className="text-[11px] text-slate-300 mt-1 uppercase">Initialize installments to track long-term revenue</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-6">
+                      {form.extraInstallments.map((row, idx) => (
+                        <div key={idx} className="bg-slate-50/50 border border-slate-200 rounded-2xl p-6 relative group hover:border-indigo-200 transition-colors shadow-sm">
+                          <div className="grid grid-cols-12 gap-6">
+                            <div className="col-span-4">
+                              <Label>Execution Date</Label>
+                              <input type="date" className={clsx(inputCls, "bg-white")} value={row.date} onChange={e => {
+                                const n = [...form.extraInstallments];
+                                n[idx].date = e.target.value;
+                                setForm({ ...form, extraInstallments: n });
+                              }} />
+                            </div>
+                            <div className="col-span-4">
+                              <Label>Settlement Value (₹)</Label>
+                              <input type="number" className={clsx(inputCls, "bg-white font-black italic")} value={row.amount} onChange={e => {
+                                const n = [...form.extraInstallments];
+                                n[idx].amount = e.target.value;
+                                setForm({ ...form, extraInstallments: n });
+                              }} />
+                            </div>
+                            <div className="col-span-4">
+                              <Label>Channel Registry</Label>
+                              <select className={clsx(inputCls, "bg-white appearance-none")} value={row.bankAccountId} onChange={e => {
+                                const b = bankAccounts.find(x => x.id === parseInt(e.target.value));
+                                const n = [...form.extraInstallments];
+                                n[idx].bankAccountId = e.target.value;
+                                n[idx].bankName = b ? `${b.bankName} - ${b.accountNumber}` : '';
+                                setForm({ ...form, extraInstallments: n });
+                              }}>
+                                <option value="">Select Channel...</option>
+                                {bankAccounts.map(b => <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                          <button onClick={() => setForm({ ...form, extraInstallments: form.extraInstallments.filter((_, i) => i !== idx) })} className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100"><Trash2 size={18}/></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {tab === 'internal' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="grid grid-cols-2 gap-8">
+                  <div>
+                    <Label>Assignee staff</Label>
+                    <div className="relative">
+                      <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input className={clsx(inputCls, "pl-11")} placeholder="Staff designation..." value={form.staff} onChange={e => setForm({ ...form, staff: e.target.value })} />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Operational Department</Label>
+                    <div className="relative">
+                      <Building2 size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input className={clsx(inputCls, "pl-11")} placeholder="Corporate unit..." value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Administrative follow-up</Label>
+                    <div className="relative">
+                      <CalendarIcon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input type="date" className={clsx(inputCls, "pl-11")} value={form.followUpDate} onChange={e => setForm({ ...form, followUpDate: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Internal Administrative Logs</Label>
+                    <textarea className={clsx(inputCls, "min-h-[200px] resize-none")} placeholder="Private audit trail and coordination notes..." value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+    </SlideOver>
   );
 };
 
-const Label = ({ text, required }) => (
-  <label className="text-[13px] font-bold text-slate-700 ml-0.5 flex items-center gap-1">
-    {text}
-    {required && <span className="text-rose-500 font-black">*</span>}
-  </label>
+const StatCard = ({ title, value, icon: Icon, colorClass }) => (
+  <div className="bg-white p-4 rounded-md border border-slate-200 shadow-sm flex items-center gap-4">
+    <div className={clsx("w-10 h-10 rounded flex items-center justify-center", colorClass)}>
+      <Icon size={20} className="text-white" />
+    </div>
+    <div>
+      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{title}</p>
+      <p className="text-[20px] font-bold text-slate-900">{value}</p>
+    </div>
+  </div>
 );
 
 export default function Income() {
   const [bankAccounts, setBankAccounts] = useState([]);
-  const [form, setForm] = useState(emptyForm);
-  const [errors, setErrors] = useState({});
-  const [tab, setTab] = useState("basic");
-
   const [openForm, setOpenForm] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewDetail, setViewDetail] = useState(null);
-
-  const [editId, setEditId] = useState(null);
-  const [savedExtraInstallmentsCount, setSavedExtraInstallmentsCount] = useState(0);
+  const [editIncome, setEditIncome] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [bankModalOpen, setBankModalOpen] = useState(false);
-  const [bankModalFor, setBankModalFor] = useState(null);
-  const [firstInvalidBankKey, setFirstInvalidBankKey] = useState(null);
-  const firstInvalidBankRef = useRef(null);
-
-  const [incomeCategories, setIncomeCategories] = useState([]);
-  const [addCategoryModalOpen, setAddCategoryModalOpen] = useState(false);
-  const [manageCategoriesModalOpen, setManageCategoriesModalOpen] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [addCategorySaving, setAddCategorySaving] = useState(false);
-
   const [searchDebounced, setSearchDebounced] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -130,6 +463,9 @@ export default function Income() {
   const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [incomeCategories, setIncomeCategories] = useState([]);
+
+  const queryClient = useQueryClient();
 
   const filters = useMemo(() => {
     const now = new Date();
@@ -168,20 +504,14 @@ export default function Income() {
   }, [searchDebounced, statusFilter, categoryFilter, bankFilter, clientFilter, dateFilter, dateFrom, dateTo, currentPage]);
 
   const { data: incomeResult, isLoading: incomeLoading } = useIncomeList(filters);
-
-  // Build summary filters (same as list filters but without pagination)
-  const summaryFilters = useMemo(() => {
-    const { page: _p, per_page: _pp, ...rest } = filters;
+  const { data: incomeSummary } = useIncomeSummary(useMemo(() => {
+    const { page, per_page, ...rest } = filters;
     return rest;
-  }, [filters]);
-
-  const { data: incomeSummaryFromQuery } = useIncomeSummary(summaryFilters);
+  }, [filters]));
   const { data: clientsResult } = useClients({ per_page: 100 });
-  const queryClient = useQueryClient();
 
   const incomeRecords = Array.isArray(incomeResult?.data) ? incomeResult.data : [];
   const incomeMeta = incomeResult?.meta ?? null;
-  const incomeSummary = incomeSummaryFromQuery ?? null;
   const clients = Array.isArray(clientsResult?.data) ? clientsResult.data : [];
 
   useEffect(() => {
@@ -190,1071 +520,450 @@ export default function Income() {
   }, [searchQuery]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchDebounced, statusFilter, categoryFilter, bankFilter, clientFilter, dateFilter, dateFrom, dateTo]);
-
-  /* Load banks and categories for forms/filters */
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      getIncomeCategories().catch(() => []),
-      getBankAccounts().then((b) => b),
-    ]).then(([categories, banks]) => {
-      if (!cancelled) {
-        setIncomeCategories(categories || []);
-        setBankAccounts(Array.isArray(banks) ? banks : []);
-      }
-    });
-    return () => { cancelled = true; };
+    getBankAccounts().then(setBankAccounts);
+    getIncomeCategories().then(setIncomeCategories);
   }, []);
 
-  /* Auto-focus first invalid bank field when save is blocked by bank validation */
-  useEffect(() => {
-    if (!firstInvalidBankKey) return;
-    const timer = setTimeout(() => {
-      if (firstInvalidBankRef.current) {
-        firstInvalidBankRef.current.focus();
-      }
-      setFirstInvalidBankKey(null);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [firstInvalidBankKey]);
-
-  const loadData = async () => {
+  const handleSave = async (formData) => {
     try {
+      if (editIncome) {
+        await updateIncome(editIncome.id, formData);
+        toast.success("Income updated");
+      } else {
+        await createIncome(formData);
+        toast.success("Income recorded");
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
-      const [categories, banks] = await Promise.all([
-        getIncomeCategories().catch(() => []),
-        getBankAccounts().then((b) => (Array.isArray(b) ? b : [])),
-      ]);
-      setIncomeCategories(categories || []);
-      setBankAccounts(Array.isArray(banks) ? banks : []);
+      setOpenForm(false);
     } catch (e) {
-      console.error("Failed to load data", e);
+      toast.error(e.response?.data?.message || "Failed to save income");
     }
-  };
-
-  const subtotal = parseFloat(form.amount) || 0;
-  const discountVal = parseFloat(form.discount) || 0;
-  const taxVal = parseFloat(form.taxAmount) || 0;
-  const totalAmount = subtotal - discountVal + taxVal;
-  const initialDeposit = form.initialDepositEnabled ? (parseFloat(form.initialDepositAmount) || 0) : 0;
-  const sumInstallments = (form.extraInstallments || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
-  const balanceDue = totalAmount - initialDeposit - sumInstallments;
-  const isSavedRecord = !!editId;
-
-  const openAdd = () => {
-    setForm(emptyForm);
-    setErrors({});
-    setEditId(null);
-    setSavedExtraInstallmentsCount(0);
-    setFirstInvalidBankKey(null);
-    setTab("basic");
-    setIsSaving(false);
-    setOpenForm(true);
-  };
-
-  const getBankDisplayName = (bankId) => {
-    const b = bankAccounts.find((x) => x.id === bankId);
-    return b ? `${b.bankName} - ${b.accountNumber}` : "";
-  };
-
-  const openEdit = (item) => {
-    const extra = Array.isArray(item.extraInstallments) ? item.extraInstallments : [];
-    const hasInitial = item.initialDepositAmount != null && item.initialDepositAmount !== "" && parseFloat(item.initialDepositAmount) > 0;
-    const loaded = {
-      ...emptyForm,
-      ...item,
-      discount: item.discountAmount != null && item.discountAmount !== "" ? String(item.discountAmount) : "",
-      taxAmount: item.gstAmount != null && item.gstAmount !== "" ? String(item.gstAmount) : "",
-      extraInstallments: extra.map((i) => ({ ...i, bankName: i.bankName || getBankDisplayName(i.bankAccountId) })),
-      initialDepositEnabled: !!hasInitial,
-      initialDepositAmount: hasInitial ? String(item.initialDepositAmount) : "",
-      initialDepositBankId: item.initialDepositBankId || null,
-      initialDepositBankName: item.initialDepositBankName || getBankDisplayName(item.initialDepositBankId),
-    };
-    setForm(loaded);
-    setErrors({});
-    setEditId(item.id);
-    setSavedExtraInstallmentsCount(extra.length);
-    setFirstInvalidBankKey(null);
-    setTab("basic");
-    setIsSaving(false);
-    setOpenForm(true);
-  };
-
-  const openViewModal = (income) => {
-    if (!income?.id) return;
-    setViewDetail(income);
-    setViewModalOpen(true);
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this income record?")) return;
     try {
       await deleteIncome(id);
-      toast.success("Income record deleted successfully");
-      invalidateCache("/incomes");
-      invalidateCache("/transactions");
+      toast.success("Income deleted");
       queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
-      loadData();
     } catch (e) {
-      toast.error("Failed to delete record");
+      toast.error("Deletion failed");
     }
   };
 
-  const validate = () => {
-    const e = {};
-    if (!form.client) e.client = "Client is required";
-    if (!form.amount) e.amount = "Subtotal (Amount) is required";
-
-    // Initial Deposit: if enabled and amount > 0, bank is required
-    const initialAmt = parseFloat(form.initialDepositAmount) || 0;
-    if (form.initialDepositEnabled && initialAmt > 0 && !form.initialDepositBankId) {
-      e.initialDepositBank = "Please select bank account for initial deposit";
-    }
-
-    // Extra Installments: if amount > 0, bank is required for that row
-    (form.extraInstallments || []).forEach((row, idx) => {
-      const amt = parseFloat(row.amount) || 0;
-      if (amt > 0 && !row.bankAccountId) {
-        e[`installmentBank_${idx}`] = "Please select bank account for installment payment";
-      }
-    });
-
-    // Category optional; if entered, must be from dropdown
-    if (form.category && !incomeCategories.some((c) => c.name === form.category)) {
-      e.category = "Please select a category from the list";
-    }
-
-    if (Object.keys(e).length > 0) {
-      setErrors(e);
-      const bankMsg = e.initialDepositBank || (() => {
-        const k = Object.keys(e).find((key) => key.startsWith("installmentBank_"));
-        return k ? e[k] : null;
-      })();
-      toast.error(bankMsg || e.client || e.source || e.amount || Object.values(e)[0]);
-      if (e.initialDepositBank) {
-        setFirstInvalidBankKey("initialDepositBank");
-        setTab("summary");
-      } else {
-        const firstIdx = (form.extraInstallments || []).findIndex((_, i) => e[`installmentBank_${i}`]);
-        if (firstIdx >= 0) {
-          setFirstInvalidBankKey(`installmentBank_${firstIdx}`);
-          setTab("installments");
-        }
-      }
-      return false;
-    }
-    setFirstInvalidBankKey(null);
-    return true;
+  const openViewModal = (income) => {
+    setViewDetail(income);
+    setViewModalOpen(true);
   };
 
-  const handleSave = async () => {
-    if (isSaving) return;
-    if (!validate()) return;
-
-    setIsSaving(true);
+  const handleAddCategory = async (name) => {
     try {
-      if (editId) {
-        await updateIncome(editId, form);
-        toast.success("Income updated successfully");
-      } else {
-        await createIncome(form);
-        toast.success("Income added successfully");
-      }
-      queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
-      await queryClient.refetchQueries({ queryKey: queryKeys.income.all });
-      await loadData();
-      setOpenForm(false);
+      await createIncomeCategory(name);
+      const list = await getIncomeCategories();
+      setIncomeCategories(list);
+      toast.success("Category added");
     } catch (e) {
-      console.error("Failed to save", e);
-      setIsSaving(false);
-      
-      if (e.response && e.response.data && e.response.data.errors) {
-        // Normalize snake_case keys from backend to camelCase for the frontend UI
-        const backendErrors = e.response.data.errors;
-        const normalizedErrors = {};
-        
-        Object.keys(backendErrors).forEach(key => {
-          const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
-          normalizedErrors[camelKey] = Array.isArray(backendErrors[key]) 
-            ? backendErrors[key][0] 
-            : backendErrors[key];
-        });
-        
-        setErrors(normalizedErrors);
-        toast.error("Server validation failed. Please check the form.");
-      } else {
-        const msg = e.response?.data?.message || e.message || "Unknown error";
-        toast.error("Failed to save record: " + msg);
-      }
+      toast.error("Failed to add category");
     }
-  };
-
-  const inputClass = (f) => `input ${errors[f] ? "border-red-500 focus:border-red-500 focus:ring-red-200" : ""}`;
-
-  const Req = () => <span className="text-red-500 ml-1 font-bold">*</span>;
-
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="card group relative overflow-hidden cursor-default !border-0 p-5 h-[140px] flex flex-col justify-between">
-      {/* Top Gradient Line */}
-      <div className={clsx("absolute top-0 left-0 right-0 h-[2px]", "bg-gradient-to-r from-brand-500 to-brand-300")} />
-      
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-0.5">
-          <p className="text-[12px] font-semibold text-slate-500 capitalize">{title.toLowerCase()}</p>
-          <h3 className="text-[26px] font-bold text-slate-900 leading-none mt-1">{value}</h3>
-        </div>
-        <div className={clsx(
-          "h-10 w-10 rounded-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110",
-          color,
-          "bg-opacity-10",
-          color.replace('bg-', 'text-')
-        )}>
-          <Icon className="w-5 h-5 font-bold" />
-        </div>
-      </div>
-      
-      <div className="space-y-2 mt-4">
-        <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-          <div className={clsx("h-full rounded-full transition-all duration-1000", color)} style={{ width: '70%' }}></div>
-        </div>
-        <p className="text-[11px] text-slate-400 font-medium tracking-tight">Financial metrics</p>
-      </div>
-    </div>
-  );
-
-  const displayStatus = (status) => {
-    if (status === "Fully Paid") return "Paid";
-    if (status === "Partially Paid") return "Partial";
-    return status || "—";
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Income Records</h1>
-          <p className="text-slate-500 mt-1 text-base md:text-lg">Track and manage your incoming payments.</p>
-        </div>
-        <button
-          onClick={openAdd}
-          className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
-        >
-          {/* Shimmer Effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
-          <Plus size={20} className="relative z-10" />
-          <span className="relative z-10">Add Income</span>
-        </button>
-      </div>
-
-      {/* SUMMARY CARDS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-        <StatCard
-          title="Total Income"
-          value={incomeSummary != null ? `₹${Number(incomeSummary.totalIncome || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
-          icon={Wallet}
-          color="bg-slate-600"
-        />
-        <StatCard
-          title="Amount Received"
-          value={incomeSummary != null ? `₹${Number(incomeSummary.totalReceived || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
-          icon={TrendingUp}
-          color="bg-emerald-600"
-        />
-        <StatCard
-          title="Balance Due"
-          value={incomeSummary != null ? `₹${Number(incomeSummary.totalBalance || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
-          icon={AlertCircle}
-          color="bg-amber-600"
-        />
-        <StatCard
-          title="Total Transactions"
-          value={incomeSummary != null ? String(incomeSummary.totalCount ?? 0) : "—"}
-          icon={Receipt}
-          color="bg-blue-600"
-        />
-      </div>
-
-      {/* Filters Bar */}
-      <div className="space-y-3">
-        <div className="bg-white/70 backdrop-blur-xl px-4 py-3 rounded-lg border border-slate-100 shadow-xl shadow-slate-200/20 flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[240px] relative group">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-600 transition-colors w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search income by ID, invoice, or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-brand-400 focus:ring-[3px] focus:ring-brand-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300 h-10"
-            />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-              <Receipt className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-              >
-                <option value="All">All Status</option>
-                <option value="Paid">Paid</option>
-                <option value="Partial">Partial</option>
-                <option value="Unpaid">Unpaid</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10">
-              <CalendarIcon className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer"
-              >
-                <option value="All">All Time</option>
-                <option value="Today">Today</option>
-                <option value="This Week">This Week</option>
-                <option value="This Month">This Month</option>
-                <option value="This Year">This Year</option>
-              </select>
-            </div>
-
-            <button
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={clsx(
-                "flex items-center gap-2 px-4 h-10 rounded-lg text-[13px] font-bold transition-all border shadow-sm",
-                showAdvancedFilters 
-                  ? "bg-brand-50 border-brand-200 text-brand-700" 
-                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-              )}
-            >
-              <Filter className={clsx("w-4 h-4 transition-transform", showAdvancedFilters && "rotate-180")} />
-              Filters
-            </button>
-
-            {(searchQuery || statusFilter !== "All" || categoryFilter || bankFilter || clientFilter || dateFilter !== "All" || dateFrom || dateTo) && (
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter("All");
-                  setCategoryFilter("");
-                  setBankFilter("");
-                  setClientFilter("");
-                  setDateFilter("All");
-                  setDateFrom("");
-                  setDateTo("");
-                }}
-                className="flex items-center gap-1.5 px-3.5 h-10 text-[13px] font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-100"
-              >
-                <X size={14} /> Clear
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Advanced Filters */}
-        {showAdvancedFilters && (
-          <div className="bg-slate-50/50 p-4 rounded-lg border border-slate-100 flex flex-wrap items-center gap-4 animate-in slide-in-from-top-2 duration-300">
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[180px]">
-              <Check className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-              >
-                <option value="">All Categories</option>
-                {incomeCategories.map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
-              <Landmark className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={bankFilter}
-                onChange={(e) => setBankFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-              >
-                <option value="">All Banks</option>
-                {bankAccounts.map((b) => (
-                  <option key={b.id} value={b.id}>{b.bankName}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1.5 px-3.5 bg-white rounded-lg border border-slate-200 hover:border-brand-300 transition-all cursor-pointer group shadow-sm h-10 min-w-[200px]">
-              <Wallet className="h-3.5 w-3.5 text-slate-500 group-hover:text-brand-500" />
-              <select
-                value={clientFilter}
-                onChange={(e) => setClientFilter(e.target.value)}
-                className="bg-transparent text-[13px] py-1.5 font-medium text-slate-700 outline-none cursor-pointer w-full"
-              >
-                <option value="">All Clients</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.company_name || c.client_name}>
-                    {c.company_name || c.client_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {(dateFilter === "All" || dateFilter === "") && (
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-2">Period:</span>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 outline-none focus:border-brand-400 h-10 shadow-sm"
-                />
-                <span className="text-slate-400 text-xs font-bold px-1">-</span>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] font-medium text-slate-600 outline-none focus:border-brand-400 h-10 shadow-sm"
-                />
+    <div className="flex flex-col h-full bg-slate-50/50 animate-in fade-in duration-500 overflow-hidden">
+      <div className="px-6 lg:px-8 pt-8 pb-6 bg-white border-b border-slate-200/60 shadow-sm relative z-10">
+        <PageHeader
+          title="Revenue Intelligence"
+          subtitle="Track and manage all revenue streams and payments"
+          primaryAction={(
+            <button onClick={() => { setEditIncome(null); setOpenForm(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/20 group">
+              <div className="bg-white/20 p-1 rounded-lg group-hover:bg-white/30 transition-colors">
+                <Plus size={16} />
               </div>
-            )}
+              <span>Record New Income</span>
+            </button>
+          )}
+          secondaryActions={(
+            <button onClick={() => exportToCSV(incomeRecords, "income_export")} className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 shadow-sm transition-all active:scale-95"><Download size={18} /></button>
+          )}
+        />
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+          <StatCard title="Total Volume" value={`₹${Number(incomeSummary?.totalIncome || 0).toLocaleString()}`} icon={Wallet} colorClass="bg-slate-800" />
+          <StatCard title="Received" value={`₹${Number(incomeSummary?.totalReceived || 0).toLocaleString()}`} icon={TrendingUp} colorClass="bg-emerald-600" />
+          <StatCard title="Outstanding" value={`₹${Number(incomeSummary?.totalBalance || 0).toLocaleString()}`} icon={AlertCircle} colorClass="bg-amber-600" />
+          <StatCard title="Records" value={incomeMeta?.total || 0} icon={Receipt} colorClass="bg-indigo-600" />
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col min-h-0 bg-white">
+        <div className="bg-slate-50/50 px-6 lg:px-8 py-3 border-b border-slate-100 flex flex-wrap items-center gap-3 sticky top-0 z-20">
+          <div className="flex-1 min-w-[240px]">
+            <div className="relative group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
+              <input
+                type="text"
+                placeholder="Search by ID, client, or reference..."
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <FilterSelect icon={CheckCircle2} value={statusFilter} onChange={setStatusFilter}>
+              <option value="All">All Status</option>
+              <option value="Received">Received</option>
+              <option value="Pending">Pending</option>
+              <option value="Partial">Partial</option>
+              <option value="Overdue">Overdue</option>
+            </FilterSelect>
+            <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={clsx("p-2.5 border rounded-xl transition-all shadow-sm", showAdvancedFilters ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "bg-white border-slate-200 text-slate-600")}><Filter size={18} /></button>
+            {(searchQuery || statusFilter !== "All" || categoryFilter || bankFilter || dateFilter !== "All") && <ClearFiltersButton onClick={() => { setSearchQuery(""); setStatusFilter("All"); setCategoryFilter(""); setBankFilter(""); setDateFilter("All"); }} />}
+          </div>
+        </div>
+
+        {showAdvancedFilters && (
+          <div className="bg-white px-6 lg:px-8 py-6 border-b border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Category Classification</label>
+              <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+                <option value="">All Categories</option>
+                {incomeCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Deposit Channel</label>
+              <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={bankFilter} onChange={e => setBankFilter(e.target.value)}>
+                <option value="">All Registered Accounts</option>
+                {bankAccounts.map(b => <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Temporal Window</label>
+              <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
+                <option value="All">All Time Strategy</option>
+                <option value="Today">Current Cycle (Today)</option>
+                <option value="This Month">Monthly Snapshot</option>
+                <option value="This Year">Annual Horizon</option>
+              </select>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* TABLE */}
-      <div className="card p-0 overflow-hidden">
-        <div className="px-4 py-4 md:px-6 md:py-5 border-b border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gray-50/50 gap-4">
-          <h3 className="font-bold text-slate-800">Income Records</h3>
-          <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-            <span className="text-xs font-semibold text-slate-500 bg-gray-100 px-2 py-1 rounded-lg self-center">
-              {incomeLoading ? "Loading..." : incomeMeta
-                ? `Showing ${(incomeMeta.current_page - 1) * incomeMeta.per_page + 1}–${Math.min(incomeMeta.current_page * incomeMeta.per_page, incomeMeta.total)} of ${incomeMeta.total}`
-                : `Showing ${incomeRecords.length} of ${incomeRecords.length}`}
-            </span>
-            <button
-              onClick={() => exportToCSV(incomeRecords.map((r) => ({ id: r.id, client: r.client, amount: r.netAmount || r.amount, method: r.method, date: r.receivedDate, bank: r.bank, status: r.status })), "income_records")}
-              className="p-2 bg-white border border-gray-200 rounded-lg text-slate-500 hover:bg-gray-50 transition-colors"
-              title="Export to CSV"
-            >
-              <Download size={18} />
-            </button>
-          </div>
-        </div>
-        <div className="overflow-x-auto custom-scrollbar">
-          {incomeLoading ? (
-            <TableSkeleton rows={6} cols={7} />
-          ) : (
-          <table className="w-full text-sm text-left min-w-[800px]">
-            <thead className="bg-slate-50/80 text-[13px] font-semibold text-slate-600 capitalize tracking-normal border-b border-gray-100">
-              <tr>
-                <th className="px-6 py-4">ID</th>
-                <th className="px-6 py-4">Client</th>
-                <th className="px-6 py-4 text-right">Amount</th>
-                <th className="px-6 py-4">Method</th>
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">Bank</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {incomeRecords.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-gray-400">
-                      <Receipt className="h-12 w-12 mb-3 opacity-20" />
-                      <p className="text-lg font-medium text-gray-500">No income records found</p>
-                      <p className="text-sm">Add an income record or adjust your filters.</p>
-                    </div>
-                  </td>
+        <div className="flex-1 overflow-auto custom-scrollbar">
+          <div className="min-w-full">
+            <table className="w-full text-left border-collapse table-fixed">
+              <thead>
+                <tr className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-32">Entry Ref</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Payer Identity</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-44">Settled Amount</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40">Execution Mode</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-44">Timeline</th>
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-40">Operations</th>
                 </tr>
-              ) : (
-                incomeRecords.map((income) => (
-                  <tr key={income.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-600">{income.id}</td>
-                    <td className="px-6 py-4 font-medium text-slate-900">{income.client || "-"}</td>
-                    <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono">
-                      ₹{parseFloat(income.netAmount || income.amount || 0).toLocaleString("en-IN")}
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {incomeLoading ? (
+                  <tr><td colSpan="6" className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse italic">Synchronizing Treasury Journal...</td></tr>
+                ) : incomeRecords.map(item => (
+                  <tr key={item.id} className="group hover:bg-slate-50/80 transition-all duration-200">
+                    <td className="px-6 lg:px-8 py-5">
+                      <div className="flex flex-col">
+                        <span className="font-mono text-[11px] font-black text-indigo-500 italic tracking-tighter">#INC-{item.id}</span>
+                        <span className="text-[13px] font-black text-slate-900 mt-1 truncate">{item.source || 'General Revenue'}</span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 bg-gray-100 border border-gray-200 rounded-lg text-xs font-semibold text-slate-600">
-                        {income.method || "-"}
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center text-[12px] font-black text-slate-600 shadow-inner">
+                          {item.client?.[0] || 'C'}
+                        </div>
+                        <span className="text-[13px] font-black text-slate-900 truncate max-w-[180px]">{item.client || '—'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                      <span className="font-mono text-[16px] font-black text-emerald-600 italic tracking-tight">
+                        ₹{parseFloat(item.netAmount || item.amount || 0).toLocaleString()}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-slate-600 font-mono text-xs">{income.receivedDate || "-"}</td>
-                    <td className="px-6 py-4 text-slate-600 text-xs">{income.bank || "-"}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        {income.invoice_id && (
-                          <span className="px-2 py-1 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-xs font-semibold" title="Created from Invoice">
-                            Invoice Linked
-                          </span>
-                        )}
-                        <button
-                          onClick={() => openViewModal(income)}
-                          title="View"
-                          className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-brand-50 transition-colors"
-                        >
-                          <Eye size={18} />
-                        </button>
-                        {!income.invoice_id && (
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-2 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200/50 w-fit">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                        <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">{item.method || 'Standard'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex flex-col leading-none">
+                        <div className="flex items-center gap-1.5 text-[12px] font-black text-slate-700">
+                           <CalendarIcon size={12} className="text-slate-300" />
+                           {item.receivedDate || '—'}
+                        </div>
+                        {item.invoiceNo && <span className="text-[10px] text-indigo-500 font-bold mt-2 flex items-center gap-1"> <Receipt size={10} /> Ref: {item.invoiceNo}</span>}
+                      </div>
+                    </td>
+                    <td className="px-6 lg:px-8 py-5 text-right">
+                      <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                        <ActionIconButton onClick={() => openViewModal(item)} title="Intelligence View" icon={Eye} tone="view" />
+                        {!item.invoice_id && (
                           <>
-                            <button
-                              onClick={() => openEdit(income)}
-                              title="Edit"
-                              className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                            >
-                              <Edit2 size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(income.id)}
-                              title="Delete"
-                              className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 size={18} />
-                            </button>
+                            <ActionIconButton onClick={() => { setEditIncome(item); setOpenForm(true); }} title="Modify Entry" icon={Edit2} tone="edit" />
+                            <ActionIconButton onClick={() => handleDelete(item.id)} title="Purge Record" icon={Trash2} tone="delete" />
                           </>
                         )}
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          )}
-        </div>
-        {incomeMeta && incomeMeta.last_page > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <span className="text-sm text-slate-600">
-              Showing {(incomeMeta.current_page - 1) * incomeMeta.per_page + 1}–{Math.min(incomeMeta.current_page * incomeMeta.per_page, incomeMeta.total)} of {incomeMeta.total}
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={incomeMeta.current_page <= 1}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={incomeMeta.current_page >= incomeMeta.last_page}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-medium text-slate-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
+                ))}
+              </tbody>
+            </table>
+            {!incomeLoading && incomeRecords.length === 0 && (
+              <div className="p-20">
+                <EmptyState icon={Receipt} title="Journal Entries Empty" description="The revenue ledger is currently void. Initialize a new income record to begin tracking." />
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        <div className="bg-white border-t border-slate-100 px-6 lg:px-8 py-4 flex-shrink-0">
+          {incomeMeta && <TablePagination summary={`Indexed ${incomeRecords.length} of ${incomeMeta.total} Revenue Events`} onPrevious={() => setCurrentPage(p => Math.max(1, p - 1))} onNext={() => setCurrentPage(p => p + 1)} previousDisabled={incomeMeta.current_page <= 1} nextDisabled={incomeMeta.current_page >= incomeMeta.last_page} />}
+        </div>
       </div>
 
-      {/* Income details modal - uses current list row (viewDetail) */}
-      {viewModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-2 md:p-4 backdrop-blur-sm">
-          <div className="bg-white max-w-lg w-full rounded-2xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden">
-            <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">Income Details</h2>
-              <button
-                onClick={() => {
-                  setViewModalOpen(false);
-                  setViewDetail(null);
-                }}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-4 md:p-6 overflow-y-auto">
-              {viewDetail ? (
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="text-slate-500">ID</div>
-                  <div className="font-semibold text-slate-800">{viewDetail.id}</div>
-                  <div className="text-slate-500">Amount</div>
-                  <div className="font-bold text-slate-900">₹ {parseFloat(viewDetail.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
-                  <div className="text-slate-500">Bank</div>
-                  <div className="font-medium text-slate-800">{viewDetail.bank || "-"}</div>
-                  <div className="text-slate-500">Client</div>
-                  <div className="font-medium text-slate-800">{viewDetail.client || "-"}</div>
-                  <div className="text-slate-500">Date</div>
-                  <div className="font-medium text-slate-800">{viewDetail.receivedDate || "-"}</div>
-                  <div className="text-slate-500">Method</div>
-                  <div className="font-medium text-slate-800">{viewDetail.method || "-"}</div>
-                  <div className="text-slate-500">Status</div>
-                  <div className="font-medium text-slate-800">{displayStatus(viewDetail.status)}</div>
-                  <div className="text-slate-500">Reference</div>
-                  <div className="font-mono text-xs text-slate-700">{viewDetail.referenceNumber || "-"}</div>
-                </div>
-              ) : (
-                <p className="text-slate-500 text-center py-8">No details available.</p>
-              )}
-              {viewDetail?.description && (
-                <div className="mt-4">
-                  <div className="text-slate-500 text-sm mb-1">Description</div>
-                  <p className="text-slate-800 text-sm">{viewDetail.description}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <IncomeForm
+        isOpen={openForm}
+        onClose={() => setOpenForm(false)}
+        income={editIncome}
+        onSave={handleSave}
+        clients={clients}
+        bankAccounts={bankAccounts}
+        incomeCategories={incomeCategories}
+        onAddCategory={handleAddCategory}
+      />
 
-      {/* FORM MODAL */}
-      {openForm && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-3xl rounded-t-[32px] sm:rounded-[24px] shadow-2xl flex flex-col max-h-[96vh] border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-[0.98] duration-300">
+      <SlideOver
+        isOpen={viewModalOpen}
+        onClose={() => setViewModalOpen(false)}
+        title="Revenue Intelligence Profile"
+        size="2xl"
+        footer={<div className="flex justify-end w-full px-2"><button onClick={() => setViewModalOpen(false)} className="px-8 py-2.5 bg-slate-900 text-white text-[13px] font-black rounded-xl hover:bg-black transition-all active:scale-95 shadow-lg shadow-slate-900/10">Dismiss Detail</button></div>}
+      >
+        {viewDetail && (
+          <div className="space-y-10 pb-10">
+            <div className="flex items-center gap-6 p-8 bg-gradient-to-br from-slate-900 to-indigo-950 rounded-3xl text-white relative overflow-hidden shadow-2xl">
+               <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12"><Wallet size={120} /></div>
+               <div className="relative z-10">
+                 <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Validated Receipt</p>
+                 </div>
+                 <h3 className="text-[28px] font-black tracking-tight italic">{viewDetail.source || 'General Revenue'}</h3>
+                 <div className="flex items-center gap-4 mt-3">
+                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 flex items-center gap-2">
+                      <CreditCard size={10} className="text-indigo-400" />
+                      ID: <span className="font-mono text-white italic">{viewDetail.transactionId || 'EXTERNAL-REF'}</span>
+                    </p>
+                 </div>
+               </div>
+            </div>
 
-            {/* Header */}
-            <div className="flex items-center justify-between px-8 pt-8 pb-6 shrink-0">
+            <div className="grid grid-cols-2 gap-10 px-2">
               <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <div className="h-9 w-9 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/30">
-                    <TrendingUp size={18} className="text-white" />
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Engagement Entity</p>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-lg shadow-inner border border-indigo-100/50">
+                    {viewDetail.client?.[0] || 'C'}
                   </div>
-                  <h2 className="text-[22px] font-extrabold text-slate-900 tracking-tight">
-                    {editId ? 'Edit Income Entry' : 'New Income Entry'}
-                  </h2>
+                  <div className="flex flex-col">
+                    <p className="text-[16px] font-black text-slate-900 leading-none">{viewDetail.client || 'Anonymous Payer'}</p>
+                    <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{viewDetail.category || 'General Classification'}</p>
+                  </div>
                 </div>
-                <p className="text-[13.5px] text-slate-400 font-medium ml-12">Fill in the details for this transaction.</p>
               </div>
-              <button onClick={() => setOpenForm(false)} className="h-9 w-9 bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full flex items-center justify-center transition-all active:scale-90">
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Step Tabs */}
-            <div className="px-8 pb-6 shrink-0">
-              <div className="flex items-center gap-0">
-                {[
-                  { id:'basic',label:'Basic',icon:User },
-                  { id:'financial',label:'Payment',icon:Wallet },
-                  { id:'installments',label:'Installments',icon:Layers },
-                  { id:'internal',label:'Internal',icon:Briefcase },
-                ].map((step, idx, arr) => {
-                  const isActive = step.id === tab;
-                  const order = ['basic','financial','installments','internal'];
-                  const isDone = order.indexOf(tab) > idx;
-                  const StepIcon = step.icon;
-                  return (
-                    <div key={step.id} className="flex items-center flex-1">
-                      <button onClick={() => setTab(step.id)} className="flex flex-col items-center gap-1.5 group transition-all flex-1">
-                        <div className={clsx("h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 border-2", isActive?"bg-brand-600 border-brand-600 shadow-lg shadow-brand-500/30":isDone?"bg-emerald-500 border-emerald-500":"bg-white border-slate-200 group-hover:border-slate-300")}>
-                          {isDone?<Check size={16} className="text-white"/>:<StepIcon size={16} className={isActive?"text-white":"text-slate-400"}/>}
-                        </div>
-                        <span className={clsx("text-[11.5px] font-bold transition-colors",isActive?"text-brand-600":isDone?"text-emerald-600":"text-slate-400")}>{step.label}</span>
-                      </button>
-                      {idx<arr.length-1&&<div className={clsx("h-0.5 flex-1 mb-5 mx-1 rounded-full transition-all duration-500",isDone?"bg-emerald-400":"bg-slate-100")}/>}
-                    </div>
-                  );
-                })}
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Net Realized Value</p>
+                <p className="text-[32px] font-black text-indigo-600 font-mono italic leading-none tracking-tighter">₹{parseFloat(viewDetail.amount || 0).toLocaleString()}</p>
+                <div className="flex items-center gap-2 mt-2">
+                   <TrendingUp size={12} className="text-emerald-500" />
+                   <span className="text-[10px] font-black text-emerald-600 uppercase">Capital Inflow Verified</span>
+                </div>
               </div>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto px-8 pb-4 custom-scrollbar">
-
-              {tab==='basic'&&(
-                <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700 flex items-center gap-1">Client <span className="text-rose-500 text-[11px] font-black">required</span></label>
-                      <div className="relative">
-                        <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        <select className={clsx("w-full pl-10 pr-10 py-3 bg-white border rounded-xl text-[14px] font-semibold text-slate-800 outline-none transition-all appearance-none",errors.client?"border-rose-300 ring-2 ring-rose-100":"border-slate-200 hover:border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15")} value={form.client} onChange={(e)=>setForm({...form,client:e.target.value})}>
-                          <option value="">Select Client</option>
-                          {clients.map(c=><option key={c.id} value={c.company_name||c.client_name}>{c.company_name||c.client_name}</option>)}
-                        </select>
-                        <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                      </div>
-                      {errors.client&&<p className="text-[11.5px] text-rose-500 flex items-center gap-1"><AlertCircle size={11}/> {errors.client}</p>}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700 flex items-center gap-1">Income Source <span className="text-rose-500 text-[11px] font-black">required</span></label>
-                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="e.g. Consulting" value={form.source} onChange={(e)=>setForm({...form,source:e.target.value})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Project / Service</label>
-                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="e.g. Website Redesign" value={form.project} onChange={(e)=>setForm({...form,project:e.target.value})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Category</label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <select className={clsx("w-full px-4 py-3 bg-white border rounded-xl text-[14px] font-semibold text-slate-800 outline-none transition-all appearance-none",errors.category?"border-rose-300":"border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15")} value={form.category} onChange={(e)=>{if(e.target.value==='__add__')return setAddCategoryModalOpen(true);if(e.target.value==='__manage__')return setManageCategoriesModalOpen(true);setForm({...form,category:e.target.value});}}>
-                            <option value="">Select category</option>
-                            {incomeCategories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
-                            <option value="__add__">+ Add New</option>
-                            <option value="__manage__">Manage List</option>
-                          </select>
-                          <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        </div>
-                        <button type="button" onClick={()=>setAddCategoryModalOpen(true)} className="h-[46px] w-[46px] bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl flex items-center justify-center transition-all active:scale-95"><Plus size={18}/></button>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Invoice No</label>
-                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="—" value={form.invoiceNo} onChange={(e)=>setForm({...form,invoiceNo:e.target.value})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700 flex items-center gap-1">Base Amount (₹) <span className="text-rose-500 text-[11px] font-black">required</span></label>
-                      <input type="number" step="0.01" className={clsx("w-full px-4 py-3 bg-white border rounded-xl text-[14px] font-bold text-slate-800 placeholder:text-slate-300 outline-none transition-all",errors.amount?"border-rose-300 ring-2 ring-rose-100":"border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15")} placeholder="0.00" value={form.amount} onChange={(e)=>setForm({...form,amount:e.target.value})}/>
-                      {errors.amount&&<p className="text-[11.5px] text-rose-500 flex items-center gap-1"><AlertCircle size={11}/> {errors.amount}</p>}
-                    </div>
-                    <div className="space-y-1 sm:col-span-2">
-                      <label className="text-[13px] font-semibold text-slate-700">Description</label>
-                      <textarea className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-medium text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all min-h-[80px] resize-none" placeholder="Detailed description of the income" value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Reference Number</label>
-                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Internal reference or PO number" value={form.referenceNumber} onChange={(e)=>setForm({...form,referenceNumber:e.target.value})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Invoice Date</label>
-                      <div className="relative">
-                        <CalendarIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        <input type="date" className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" value={form.invoiceDate} onChange={(e)=>setForm({...form,invoiceDate:e.target.value})}/>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Client Email</label>
-                      <div className="relative">
-                        <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        <input type="email" className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="client@email.com" value={form.clientEmail} onChange={(e)=>setForm({...form,clientEmail:e.target.value})}/>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Client Phone</label>
-                      <div className="relative">
-                        <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        <input className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Phone number" value={form.clientPhone} onChange={(e)=>setForm({...form,clientPhone:e.target.value})}/>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-end pt-2">
-                    <button type="button" onClick={()=>setTab('financial')} className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-[13.5px] font-bold rounded-xl hover:bg-brand-700 transition-all active:scale-95 shadow-lg shadow-brand-500/20">Next: Payment <ChevronRight size={16}/></button>
-                  </div>
-                </div>
-              )}
-
-              {tab==='financial'&&(
-                <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
-                  <div className="bg-slate-900 rounded-2xl p-5 text-white space-y-2">
-                    <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400 mb-2">Revenue Summary</h4>
-                    <div className="flex justify-between text-[13px] text-slate-400"><span>Base Amount</span><span className="text-white font-semibold">₹{Number(form.amount||0).toLocaleString()}</span></div>
-                    {parseFloat(form.discount)>0&&<div className="flex justify-between text-[13px] text-emerald-400"><span>Discount</span><span>- ₹{parseFloat(form.discount).toLocaleString()}</span></div>}
-                    {parseFloat(form.taxAmount)>0&&<div className="flex justify-between text-[13px] text-slate-400"><span>Tax</span><span className="text-white">+ ₹{parseFloat(form.taxAmount).toLocaleString()}</span></div>}
-                    <div className="flex justify-between text-[18px] font-black pt-2 border-t border-slate-700"><span>Total</span><span className="text-brand-400">₹{totalAmount.toLocaleString()}</span></div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Discount (₹)</label>
-                      <input type="number" step="0.01" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="0.00" value={form.discount} onChange={(e)=>setForm({...form,discount:e.target.value})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Tax Amount (₹)</label>
-                      <input type="number" step="0.01" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="0.00" value={form.taxAmount} onChange={(e)=>setForm({...form,taxAmount:e.target.value})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Payment Method</label>
-                      <div className="relative">
-                        <select className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all appearance-none" value={form.method} onChange={(e)=>setForm({...form,method:e.target.value})}>
-                          {['Bank Transfer','UPI','Cash','Cheque','Card','Other'].map(m=><option key={m}>{m}</option>)}
-                        </select>
-                        <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Status</label>
-                      <div className="relative">
-                        <select className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all appearance-none" value={form.status} onChange={(e)=>setForm({...form,status:e.target.value})}>
-                          {['Received','Pending','Partial','Overdue'].map(s=><option key={s}>{s}</option>)}
-                        </select>
-                        <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Transaction ID</label>
-                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="UTR / Ref number" value={form.transactionId} onChange={(e)=>setForm({...form,transactionId:e.target.value})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Received Date</label>
-                      <div className="relative">
-                        <CalendarIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        <input type="date" className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" value={form.receivedDate} onChange={(e)=>setForm({...form,receivedDate:e.target.value})}/>
-                      </div>
-                    </div>
-                  </div>
-                  <div onClick={()=>setForm({...form,initialDepositEnabled:!form.initialDepositEnabled})} className={clsx("flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all",form.initialDepositEnabled?"bg-brand-50 border-brand-200":"bg-slate-50 border-slate-100 hover:border-slate-200")}>
-                    <div className={clsx("h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0",form.initialDepositEnabled?"bg-brand-600 border-brand-600":"bg-white border-slate-300")}>
-                      {form.initialDepositEnabled&&<Check size={14} className="text-white"/>}
-                    </div>
-                    <div>
-                      <p className="text-[14px] font-bold text-slate-800">Client paid an advance / deposit</p>
-                      <p className="text-[12px] text-slate-400 font-medium">Record an upfront partial payment</p>
-                    </div>
-                  </div>
-                  {form.initialDepositEnabled&&(
-                    <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-brand-200 ml-3 animate-in slide-in-from-top-2 duration-200">
-                      <div className="space-y-1">
-                        <label className="text-[13px] font-semibold text-slate-700">Advance Amount (₹)</label>
-                        <input type="number" step="0.01" readOnly={editId&&savedExtraInstallmentsCount>0} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-bold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 transition-all" placeholder="0.00" value={form.initialDepositAmount} onChange={(e)=>setForm({...form,initialDepositAmount:e.target.value})}/>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[13px] font-semibold text-slate-700">Received In</label>
-                        <button type="button" disabled={editId&&savedExtraInstallmentsCount>0} onClick={()=>{setBankModalFor('initial');setBankModalOpen(true);}} className={clsx("w-full px-4 py-3 bg-white border rounded-xl text-[14px] font-semibold text-left flex items-center justify-between transition-all",errors.initialDepositBank?"border-rose-300":"border-slate-200 hover:border-slate-300")}>
-                          <span className={form.initialDepositBankName?'text-slate-800':'text-slate-300'}>{form.initialDepositBankName||'Select bank account…'}</span>
-                          <Landmark size={15} className="text-slate-300"/>
-                        </button>
-                        {errors.initialDepositBank&&<p className="text-[11.5px] text-rose-500">{errors.initialDepositBank}</p>}
-                      </div>
-                    </div>
-                  )}
-                  {form.initialDepositEnabled&&parseFloat(form.initialDepositAmount)>0&&(
-                    <div className="flex items-center justify-between px-5 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
-                      <span className="text-[13px] font-bold text-amber-700">Balance Due After Advance</span>
-                      <span className="text-[18px] font-extrabold text-amber-600">₹{Math.max(0,balanceDue).toLocaleString()}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between pt-2">
-                    <button type="button" onClick={()=>setTab('basic')} className="flex items-center gap-1.5 px-5 py-2.5 text-slate-500 hover:text-slate-700 text-[13.5px] font-bold transition-all">← Back</button>
-                    <button type="button" onClick={()=>setTab('installments')} className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-[13.5px] font-bold rounded-xl hover:bg-brand-700 transition-all active:scale-95 shadow-lg shadow-brand-500/20">Next: Installments <ChevronRight size={16}/></button>
-                  </div>
-                </div>
-              )}
-
-              {tab==='installments'&&(
-                <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
-                  <p className="text-[13px] text-slate-500 font-medium">Track additional payment installments for this income record.</p>
-                  <div className="space-y-3">
-                    {(!form.extraInstallments||form.extraInstallments.length===0)?(
-                      <div className="py-16 flex flex-col items-center justify-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-                        <div className="h-14 w-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-slate-300 mb-3"><Layers size={28}/></div>
-                        <p className="text-[14px] font-medium text-slate-400">No installments added yet.</p>
-                      </div>
-                    ):form.extraInstallments.map((row,idx)=>{
-                      const rowIsSaved=editId&&idx<savedExtraInstallmentsCount;
-                      return(
-                        <div key={idx} className={clsx("flex items-center gap-3 group rounded-2xl px-4 py-3 border transition-all",rowIsSaved?"bg-slate-50 border-slate-100 opacity-70":"bg-white border-slate-200 hover:border-slate-300")}>
-                          <span className="text-[12px] font-black text-slate-300 w-5 shrink-0 text-center">{idx+1}</span>
-                          <div className="relative shrink-0">
-                            <CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                            <input type="date" readOnly={rowIsSaved} className="w-36 pl-9 pr-3 py-2.5 bg-transparent border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-700 outline-none focus:border-brand-400" value={row.date} onChange={(e)=>{const n=[...form.extraInstallments];n[idx].date=e.target.value;setForm({...form,extraInstallments:n});}}/>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <span className="text-[13px] font-bold text-slate-400">₹</span>
-                            <input type="number" readOnly={rowIsSaved} className="w-28 bg-transparent border border-slate-200 rounded-xl px-3 py-2.5 text-[13px] font-black text-slate-900 outline-none focus:border-brand-400" placeholder="0.00" value={row.amount} onChange={(e)=>{const n=[...form.extraInstallments];n[idx].amount=e.target.value;setForm({...form,extraInstallments:n});}}/>
-                          </div>
-                          <button type="button" disabled={rowIsSaved} onClick={()=>{setBankModalFor({type:'installment',index:idx});setBankModalOpen(true);}} className={clsx("flex-1 px-3 py-2.5 bg-white border rounded-xl text-[12px] font-semibold text-left truncate transition-all",errors[`installmentBank_${idx}`]?"border-rose-300":"border-slate-200 hover:border-slate-300")}>
-                            {row.bankName||<span className="text-slate-300">Select bank…</span>}
-                          </button>
-                          <input type="text" readOnly={rowIsSaved} className="w-28 bg-transparent border border-slate-200 rounded-xl px-3 py-2.5 text-[12px] font-medium text-slate-600 placeholder:text-slate-300 outline-none focus:border-brand-400" placeholder="Note…" value={row.note} onChange={(e)=>{const n=[...form.extraInstallments];n[idx].note=e.target.value;setForm({...form,extraInstallments:n});}}/>
-                          {!rowIsSaved&&<button type="button" onClick={()=>setForm({...form,extraInstallments:form.extraInstallments.filter((_,i)=>i!==idx)})} className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <button type="button" onClick={()=>setForm({...form,extraInstallments:[...(form.extraInstallments||[]),{date:'',amount:'',bankAccountId:null,bankName:'',note:''}]})} className="flex items-center gap-2 text-[13px] font-bold text-brand-600 hover:text-brand-700 px-4 py-2 hover:bg-brand-50 rounded-xl transition-all active:scale-95">
-                    <Plus size={16}/> Add Installment
-                  </button>
-                  <div className="flex justify-between pt-2">
-                    <button type="button" onClick={()=>setTab('financial')} className="flex items-center gap-1.5 px-5 py-2.5 text-slate-500 hover:text-slate-700 text-[13.5px] font-bold transition-all">← Back</button>
-                    <button type="button" onClick={()=>setTab('internal')} className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-[13.5px] font-bold rounded-xl hover:bg-brand-700 transition-all active:scale-95 shadow-lg shadow-brand-500/20">Next: Internal <ChevronRight size={16}/></button>
-                  </div>
-                </div>
-              )}
-
-              {tab==='internal'&&(
-                <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
-                  <p className="text-[13px] text-slate-500 font-medium">Internal details for staff, audit, and follow-up tracking.</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Assigned Staff</label>
-                      <div className="relative">
-                        <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        <input className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Lead agent" value={form.staff} onChange={(e)=>setForm({...form,staff:e.target.value})}/>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Department</label>
-                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="Sales / Ops / Treasury" value={form.department} onChange={(e)=>setForm({...form,department:e.target.value})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Payment Status</label>
-                      <div className="relative">
-                        <select className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all appearance-none" value={form.collectionStatus} onChange={(e)=>setForm({...form,collectionStatus:e.target.value})}>
-                          {['Collected','Overdue','Partially Paid','Written Off'].map(s=><option key={s}>{s}</option>)}
-                        </select>
-                        <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Commission (₹)</label>
-                      <input type="number" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" placeholder="0.00" value={form.commission} onChange={(e)=>setForm({...form,commission:e.target.value})}/>
-                    </div>
-                    <div className="space-y-1 sm:col-span-2">
-                      <label className="text-[13px] font-semibold text-slate-700">Internal Notes</label>
-                      <textarea className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-medium text-slate-800 placeholder:text-slate-300 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all min-h-[80px] resize-none" placeholder="Restricted notes for internal audit only…" value={form.notes} onChange={(e)=>setForm({...form,notes:e.target.value})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[13px] font-semibold text-slate-700">Follow-up Date</label>
-                      <div className="relative">
-                        <CalendarIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"/>
-                        <input type="date" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-[14px] font-semibold text-slate-800 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 transition-all" value={form.followUpDate} onChange={(e)=>setForm({...form,followUpDate:e.target.value})}/>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-start pt-2">
-                    <button type="button" onClick={()=>setTab('installments')} className="flex items-center gap-1.5 px-5 py-2.5 text-slate-500 hover:text-slate-700 text-[13.5px] font-bold transition-all">← Back</button>
-                  </div>
-                </div>
-              )}
+            <div className="bg-slate-50 border border-slate-200/60 rounded-3xl p-8 space-y-6 shadow-sm">
+               <div className="grid grid-cols-2 gap-8">
+                 <div>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Settlement Methodology</p>
+                   <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+                      <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500"><Banknote size={16}/></div>
+                      <p className="text-[13px] font-black text-slate-800 uppercase tracking-wide">{viewDetail.method || 'Standard Electronic'}</p>
+                   </div>
+                 </div>
+                 <div>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Treasury Destination</p>
+                   <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+                      <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500"><Landmark size={16}/></div>
+                      <p className="text-[13px] font-black text-slate-800 truncate">{viewDetail.bank || 'Corporate Vault-01'}</p>
+                   </div>
+                 </div>
+               </div>
+               <div className="grid grid-cols-2 gap-8 pt-6 border-t border-slate-200/60">
+                 <div>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Execution Timestamp</p>
+                   <div className="flex items-center gap-3">
+                      <CalendarIcon size={14} className="text-indigo-500" />
+                      <p className="text-[14px] font-black text-slate-800 italic">{viewDetail.receivedDate || 'N/A'}</p>
+                   </div>
+                 </div>
+                 <div>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Verification Status</p>
+                   <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] inline-flex items-center gap-2 shadow-sm">
+                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                     {viewDetail.status || 'Verified Record'}
+                   </span>
+                 </div>
+               </div>
             </div>
 
-            {/* Footer */}
-            <div className="shrink-0 px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-4">
-              <div className="flex flex-col">
-                <span className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Total Inflow</span>
-                <span className="text-[22px] font-black text-slate-900 leading-tight">₹{totalAmount.toLocaleString()}</span>
-                {form.initialDepositEnabled&&parseFloat(form.initialDepositAmount)>0&&(
-                  <span className="text-[11px] text-slate-400 font-medium">Balance: ₹{Math.max(0,balanceDue).toLocaleString()}</span>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <button type="button" onClick={()=>setOpenForm(false)} className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-[14px] font-bold rounded-xl hover:bg-slate-50 transition-all active:scale-95">Cancel</button>
-                <button type="button" onClick={handleSave} disabled={isSaving} className="flex items-center gap-2.5 px-8 py-3 bg-brand-600 hover:bg-brand-700 text-white text-[14px] font-extrabold rounded-xl shadow-xl shadow-brand-500/25 hover:shadow-brand-500/40 transition-all active:scale-95 disabled:opacity-60">
-                  {isSaving?<Loader2 size={18} className="animate-spin"/>:<Save size={18}/>}
-                  {isSaving?'Saving…':editId?'Save Changes':'Save Record'}
-                </button>
-              </div>
-            </div>
-
-            {/* Nested Modals: Bank, Category Add/Manage */}
-            {bankModalOpen && (
-              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-[0.95] duration-200">
-                  <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                    <h3 className="text-[16px] font-bold text-slate-800">Assign Treasury Channel</h3>
-                    <button onClick={() => { setBankModalOpen(false); setBankModalFor(null); }} className="h-8 w-8 text-slate-400 hover:text-rose-500 transition-colors">
-                      <X size={18} />
-                    </button>
-                  </div>
-                  <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                    {bankAccounts.length === 0 ? (
-                      <div className="p-12 text-center text-slate-400 text-[14px]">No reserve vaults found.</div>
-                    ) : (
-                      bankAccounts.map((b) => (
-                        <button
-                          key={b.id}
-                          type="button"
-                          onClick={() => {
-                            const name = `${b.bankName} – ${b.accountNumber}`;
-                            if (bankModalFor === "initial") {
-                              setForm((prev) => ({ ...prev, initialDepositBankId: b.id, initialDepositBankName: name }));
-                              setErrors((prev) => { const n = { ...prev }; delete n.initialDepositBank; return n; });
-                            } else if (bankModalFor?.type === "installment") {
-                              const next = [...form.extraInstallments];
-                              next[bankModalFor.index] = { ...next[bankModalFor.index], bankAccountId: b.id, bankName: name };
-                              setForm((prev) => ({ ...prev, extraInstallments: next }));
-                              setErrors((prev) => { const n = { ...prev }; delete n[`installmentBank_${bankModalFor.index}`]; return n; });
-                            }
-                            setBankModalOpen(false);
-                            setBankModalFor(null);
-                          }}
-                          className="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-100 hover:border-violet-200 hover:bg-violet-50/50 text-left transition-all group"
-                        >
-                          <div className="h-10 w-10 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center group-hover:bg-violet-100 group-hover:text-violet-600 transition-colors">
-                            <Landmark size={20} />
-                          </div>
-                          <div>
-                            <p className="text-[14px] font-bold text-slate-800 tracking-tight">{b.bankName}</p>
-                            <p className="text-[12px] font-medium text-slate-400 font-mono italic">Account: {b.accountNumber}</p>
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
+            {viewDetail.description && (
+              <div className="px-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Contextual Intelligence</p>
+                <div className="p-6 bg-slate-50/50 border border-slate-100 rounded-2xl text-[14px] font-medium text-slate-600 leading-relaxed italic shadow-inner">
+                  "{viewDetail.description}"
                 </div>
               </div>
             )}
 
-            {addCategoryModalOpen && (
-              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100 animate-in zoom-in-[0.95] duration-200">
-                    <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                       <h3 className="text-[16px] font-bold text-slate-800">New Logic Classification</h3>
-                       <button onClick={() => setAddCategoryModalOpen(false)} className="h-8 w-8 text-slate-400 hover:text-rose-500 transition-colors">
-                          <X size={18} />
-                       </button>
+            {viewDetail.extraInstallments?.length > 0 && (
+              <div className="px-2">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Installment Amortization</p>
+                  <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100 uppercase">{viewDetail.extraInstallments.length} Sequential Events</span>
+                </div>
+                <div className="space-y-3">
+                  {viewDetail.extraInstallments.map((inst, i) => (
+                    <div key={i} className="flex justify-between items-center p-5 bg-white border border-slate-100 rounded-2xl shadow-sm hover:border-indigo-200 transition-all group active:scale-[0.99]">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-[12px] font-black text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner">
+                           {i+1 < 10 ? `0${i+1}` : i+1}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[14px] font-black text-slate-900 italic tracking-tight">{inst.date}</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">{inst.bankName || 'General Account'}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="font-mono text-[16px] font-black text-slate-900 italic tracking-tighter">₹{parseFloat(inst.amount).toLocaleString()}</span>
+                        <div className="flex items-center gap-1.5 mt-1">
+                           <div className="w-1 h-1 rounded-full bg-indigo-400"></div>
+                           <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Scheduled Flow</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="p-6 space-y-4">
-                       <div className="space-y-1.5">
-                          <Label text="Classification Name" />
-                          <input type="text" className="input-premium" placeholder="e.g. Asset Liquidation" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} />
-                       </div>
-                       <button 
-                         onClick={async () => {
-                            const name = newCategoryName.trim();
-                            if (!name) return;
-                            setAddCategorySaving(true);
-                            try {
-                              const created = await createIncomeCategory(name);
-                              const list = await getIncomeCategories();
-                              setIncomeCategories(list);
-                              setForm(prev => ({ ...prev, category: created.name }));
-                              setAddCategoryModalOpen(false);
-                              setNewCategoryName("");
-                              toast.success("Logic channel established");
-                            } catch (e) {
-                              toast.error(e.response?.data?.message || "Protocol Failure");
-                            } finally { setAddCategorySaving(false); }
-                         }}
-                         disabled={!newCategoryName.trim() || addCategorySaving}
-                         className="w-full py-3 bg-violet-600 text-white rounded-xl text-[14px] font-bold shadow-lg shadow-violet-500/20 active:scale-95 transition-all disabled:opacity-50"
-                       >
-                         {addCategorySaving ? "Initializing Channel..." : "Establish Logic Channel"}
-                       </button>
-                    </div>
-                 </div>
-              </div>
-            )}
-
-            {manageCategoriesModalOpen && (
-              <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                 <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-[0.95] duration-200">
-                    <div className="px-6 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                       <h3 className="text-[16px] font-bold text-slate-800">Audit Classification Channels</h3>
-                       <button onClick={() => setManageCategoriesModalOpen(false)} className="h-8 w-8 text-slate-400 hover:text-rose-500 transition-colors">
-                          <X size={18} />
-                       </button>
-                    </div>
-                    <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                       {incomeCategories.map(c => (
-                         <div key={c.id} className="flex items-center justify-between p-3.5 px-5 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-violet-100 hover:bg-white transition-all">
-                            <span className="text-[14px] font-bold text-slate-700">{c.name}</span>
-                            <button onClick={async () => {
-                               try {
-                                 await deleteIncomeCategory(c.id);
-                                 const list = await getIncomeCategories();
-                                 setIncomeCategories(list);
-                                 if (form.category === c.name) setForm(prev => ({ ...prev, category: "" }));
-                                 toast.success("Classification Decommissioned");
-                               } catch (e) { toast.error("Audit Constraint: Active usage detected"); }
-                            }} className="h-8 w-8 text-rose-400 hover:bg-rose-50 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                               <Trash2 size={16} />
-                            </button>
-                         </div>
-                       ))}
-                    </div>
-                 </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </SlideOver>
+
+      <IncomeForm
+        isOpen={openForm}
+        onClose={() => setOpenForm(false)}
+        income={editIncome}
+        onSave={handleSave}
+        clients={clients}
+        bankAccounts={bankAccounts}
+        incomeCategories={incomeCategories}
+        onAddCategory={handleAddCategory}
+      />
+
+      <SlideOver
+        isOpen={viewModalOpen}
+        onClose={() => setViewModalOpen(false)}
+        title="Revenue Intelligence"
+        footer={<div className="flex justify-end w-full px-2"><button onClick={() => setViewModalOpen(false)} className="px-6 py-2 bg-slate-900 text-white text-[13px] font-bold rounded hover:bg-black transition-colors">Dismiss Detail</button></div>}
+      >
+        {viewDetail && (
+          <div className="space-y-8">
+            <div className="flex items-center gap-5 p-6 bg-slate-900 rounded-2xl text-white relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-8 opacity-10"><Wallet size={120} /></div>
+               <div className="relative z-10">
+                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-1">Financial Receipt</p>
+                 <h3 className="text-[24px] font-black tracking-tight">{viewDetail.source || 'General Revenue'}</h3>
+                 <p className="text-[12px] text-slate-400 font-medium mt-1">Transaction ID: <span className="font-mono">{viewDetail.transactionId || 'N/A'}</span></p>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 px-2">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Payer Details</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center font-black">{viewDetail.client?.[0]}</div>
+                  <p className="text-[15px] font-bold text-slate-800">{viewDetail.client || 'Anonymous Payer'}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Net Volume</p>
+                <p className="text-[22px] font-black text-indigo-600 font-mono italic leading-none">₹{parseFloat(viewDetail.amount || 0).toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-5">
+               <div className="grid grid-cols-2 gap-6">
+                 <div>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Settlement Mode</p>
+                   <p className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5"><CreditCard size={14} className="text-slate-400"/> {viewDetail.method || 'Standard'}</p>
+                 </div>
+                 <div>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Treasury Channel</p>
+                   <p className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5"><Landmark size={14} className="text-slate-400"/> {viewDetail.bank || 'Main Vault'}</p>
+                 </div>
+               </div>
+               <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-200/60">
+                 <div>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Execution Time</p>
+                   <p className="text-[13px] font-bold text-slate-800">{viewDetail.receivedDate || '—'}</p>
+                 </div>
+                 <div>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Current Status</p>
+                   <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded text-[10px] font-black uppercase tracking-wider">{viewDetail.status || 'Verified'}</span>
+                 </div>
+               </div>
+            </div>
+
+            {viewDetail.description && (
+              <div className="px-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Operational Context</p>
+                <div className="p-4 bg-white border border-slate-100 rounded-xl text-[13px] text-slate-600 leading-relaxed shadow-sm italic">
+                  "{viewDetail.description}"
+                </div>
+              </div>
+            )}
+
+            {viewDetail.extraInstallments?.length > 0 && (
+              <div className="px-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Installment Breakdown</p>
+                <div className="space-y-2">
+                  {viewDetail.extraInstallments.map((inst, i) => (
+                    <div key={i} className="flex justify-between items-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-indigo-200 transition-colors group">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-slate-50 rounded flex items-center justify-center text-[11px] font-bold text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600">#{i+1}</div>
+                        <div className="flex flex-col">
+                          <span className="text-[13px] font-bold text-slate-800">{inst.date}</span>
+                          <span className="text-[11px] text-slate-500 font-medium">{inst.bankName}</span>
+                        </div>
+                      </div>
+                      <span className="font-mono text-[14px] font-black text-slate-900">₹{parseFloat(inst.amount).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </SlideOver>
     </div>
   );
 }

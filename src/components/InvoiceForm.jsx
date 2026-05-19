@@ -1,22 +1,21 @@
 import { useState, useEffect } from 'react';
 import {
-  Plus, Trash2, X, User, Layers, Landmark,
-  Calendar as CalendarIcon, CheckCircle2, Loader2,
-  ChevronDown, Save, FileText, Info, ChevronRight, Check,
-  AlertCircle, Receipt, Smartphone, Upload, Image
+  Plus, Trash2, Landmark, Loader2, Save, FileText, Receipt, Layers,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
+import SearchableSelect from './ui/SearchableSelect';
 import { createInvoice, updateInvoice } from '../services/invoiceService';
 import { getClients } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
 import { getProducts } from '../services/productService';
+import SlideOver from './ui/SlideOver';
 
 const emptyForm = {
   clientId: '',
   clientName: '',
   date: new Date().toISOString().split('T')[0],
-  status: 'Pending',
+  status: 'Draft',
   gst: 0,
   discountType: 'Flat',
   discountValue: '',
@@ -30,63 +29,26 @@ const emptyForm = {
   initialDepositBankName: '',
   extraInstallments: [],
   operationalExpenses: [],
+  invoice_no: '',
+  reference_number: '',
+  notes: '',
 };
 
-// ─── Reusable Field Components ──────────────────────────────────────────────
-
-const FieldGroup = ({ label, hint, required, error, children }) => (
-  <div className="space-y-1">
-    <label className="flex items-center gap-1.5 text-[13px] font-semibold text-slate-700">
-      {label}
-      {required && <span className="text-rose-500 text-[11px] font-black">required</span>}
-    </label>
-    {children}
-    {hint && !error && (
-      <p className="text-[11.5px] text-slate-400 flex items-center gap-1 ml-0.5">
-        <Info size={11} /> {hint}
-      </p>
-    )}
-    {error && (
-      <p className="text-[11.5px] text-rose-500 flex items-center gap-1 ml-0.5 animate-in slide-in-from-top-1 duration-200">
-        <AlertCircle size={11} /> {error}
-      </p>
-    )}
-  </div>
-);
-
-const inputCls = (err) => clsx(
-  "w-full px-4 py-3 bg-white border rounded-xl text-[14px] font-medium text-slate-800 placeholder:text-slate-300 outline-none transition-all duration-200",
-  err
-    ? "border-rose-300 ring-2 ring-rose-100 focus:border-rose-400"
-    : "border-slate-200 hover:border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
-);
-
-const selectCls = (err) => clsx(
-  "appearance-none",
-  inputCls(err)
-);
-
-// ─── Step Configuration ──────────────────────────────────────────────────────
 const STEPS = [
-  { id: 'basic',    label: 'Basic Info',       icon: FileText, hint: 'Client & date' },
-  { id: 'services', label: 'Line Items',        icon: Receipt,  hint: 'Services & pricing' },
-  { id: 'bank',     label: 'Payment',          icon: Landmark, hint: 'Bank & deposit' },
+  { id: 'basic', label: 'Basic Info', icon: FileText },
+  { id: 'services', label: 'Line Items', icon: Receipt },
+  { id: 'bank', label: 'Payment', icon: Landmark },
 ];
 
-// ─── Main Component ──────────────────────────────────────────────────────────
 const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, nextInvoiceNumberLoading }) => {
-  const [clients, setClients]         = useState([]);
+  const [clients, setClients] = useState([]);
   const [bankAccounts, setBankAccounts] = useState([]);
-  const [activeTab, setActiveTab]     = useState('basic');
-  const [formData, setFormData]       = useState(emptyForm);
-  const [products, setProducts]       = useState([]);
-  const [items, setItems]             = useState([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
-  const [errors, setErrors]           = useState({});
-  const [bankModalOpen, setBankModalOpen] = useState(false);
-  const [bankModalFor, setBankModalFor]   = useState(null);
-  const [isSaving, setIsSaving]       = useState(false);
-  const [qrFile, setQrFile]           = useState(null);
-  const [qrPreview, setQrPreview]     = useState(null);
+  const [activeTab, setActiveTab] = useState('basic');
+  const [formData, setFormData] = useState(emptyForm);
+  const [products, setProducts] = useState([]);
+  const [items, setItems] = useState([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
+  const [errors, setErrors] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -121,7 +83,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
         clientId: invoice.client_id || invoice.clientId || '',
         clientName: invoice.client_name || invoice.clientName || '',
         date: typeof invoice.date === 'string' ? invoice.date.split('T')[0] : (invoice.date || ''),
-        status: invoice.status || 'Pending',
+        status: invoice.status || 'Draft',
         gst: parseFloat(invoice.gst || 0),
         discountType: invoice.discount_type || 'Flat',
         discountValue: invoice.discount != null ? String(invoice.discount) : '',
@@ -140,23 +102,23 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
           bankName: getBankDisplay(o.bank_account_id ?? o.bankAccountId) || o.bank_name || '',
           paid: o.paid === true || o.paid === '1' || o.paid === 'Paid',
         })),
+        invoice_no: invoice.invoice_no || '',
+        reference_number: invoice.reference_number || '',
+        notes: invoice.notes || '',
       });
       const invItems = invoice.items || [];
       setItems(invItems.length
         ? invItems.map((it, idx) => ({ sNo: idx + 1, serviceName: it.service_name || '', paymentStatus: it.payment_status || 'Pending', amount: it.amount != null ? String(it.amount) : '' }))
         : [{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
     } else if (!invoice && isOpen) {
-      setFormData(emptyForm);
+      setFormData({ ...emptyForm, invoice_no: nextInvoiceNumber || '' });
       setItems([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
     }
     setActiveTab('basic');
     setErrors({});
     setIsSaving(false);
-    setQrFile(null);
-    setQrPreview(null);
-  }, [invoice, isOpen, bankAccounts]);
+  }, [invoice, isOpen, bankAccounts, nextInvoiceNumber]);
 
-  // ── Calculations ──────────────────────────────────────────────────────────
   const subtotal = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
   const gstPct   = parseFloat(formData.gst) || 0;
   const taxAmt   = subtotal * (gstPct / 100);
@@ -165,28 +127,27 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
     : parseFloat(formData.discountValue) || 0;
   const totalAmount   = Math.max(0, subtotal - discountVal + taxAmt);
   const initialDeposit = formData.initialDepositEnabled ? (parseFloat(formData.initialDepositAmount) || 0) : 0;
-  const balanceDue     = Math.max(0, totalAmount - initialDeposit);
+  const installmentsTotal = (formData.extraInstallments || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+  const totalPaid = initialDeposit + installmentsTotal;
+  const balanceDue     = Math.max(0, totalAmount - totalPaid);
 
-  // ── Validation ────────────────────────────────────────────────────────────
   const validate = () => {
     const e = {};
-    if (!formData.clientId)       e.clientId       = 'Please select a client';
-    if (!formData.bankAccountId)  e.bankAccountId  = 'Please select a bank account';
+    if (!formData.clientId)       e.clientId       = 'Select a client';
+    if (!formData.bankAccountId)  e.bankAccountId  = 'Select a bank account';
     if (items.some((i) => !i.serviceName)) e.items = 'Each service needs a name';
     if (items.some((i) => !i.amount))      e.items = e.items || 'Each service needs an amount';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e?.preventDefault();
     if (!validate()) {
-      // Navigate to the first tab with errors
-      if (errors.clientId) { setActiveTab('basic'); }
-      else if (errors.items) { setActiveTab('services'); }
-      else if (errors.bankAccountId) { setActiveTab('bank'); }
-      toast.error('Please fill the required fields');
+      if (errors.clientId) setActiveTab('basic');
+      else if (errors.items) setActiveTab('services');
+      else if (errors.bankAccountId) setActiveTab('bank');
+      toast.error('Please fix errors');
       return;
     }
     setIsSaving(true);
@@ -202,650 +163,464 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
     data.append('discount', formData.discountValue || 0);
     data.append('bank_account_id', formData.bankAccountId);
     data.append('gpay_number', formData.gpayNumber || '');
-    if (qrFile) data.append('qr_code', qrFile);
     data.append('initial_deposit_enabled', formData.initialDepositEnabled ? '1' : '0');
     data.append('initial_deposit_amount', formData.initialDepositAmount || '0');
     data.append('initial_deposit_bank_id', formData.initialDepositBankId || '');
+    data.append('invoice_no', formData.invoice_no);
+    data.append('reference_number', formData.reference_number);
+    data.append('notes', formData.notes);
+
     (formData.extraInstallments || []).forEach((row, i) => {
       data.append(`extra_installments[${i}][date]`, row.date || '');
       data.append(`extra_installments[${i}][amount]`, row.amount || '');
       data.append(`extra_installments[${i}][bank_account_id]`, row.bankAccountId || '');
       data.append(`extra_installments[${i}][notes]`, row.notes || '');
     });
-    (formData.operationalExpenses || []).forEach((row, i) => {
-      data.append(`operational_expenses[${i}][name]`, row.name || '');
-      data.append(`operational_expenses[${i}][amount]`, row.amount || '');
-      data.append(`operational_expenses[${i}][bank_account_id]`, row.bankAccountId || '');
-      data.append(`operational_expenses[${i}][paid]`, row.paid ? '1' : '0');
-    });
     items.forEach((item, i) => {
       data.append(`items[${i}][service_name]`, item.serviceName);
       data.append(`items[${i}][payment_status]`, item.paymentStatus);
       data.append(`items[${i}][amount]`, item.amount);
     });
+
     try {
-      if (invoice?.id) { data.append('_method', 'PUT'); await updateInvoice(invoice.id, data); toast.success('✅ Invoice updated!'); }
-      else             { await createInvoice(data); toast.success('✅ Invoice created!'); }
+      if (invoice?.id) { data.append('_method', 'PUT'); await updateInvoice(invoice.id, data); toast.success('Invoice updated'); }
+      else             { await createInvoice(data); toast.success('Invoice created'); }
       onSave(); onClose();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong. Please try again.');
+      toast.error(err.response?.data?.message || 'Failed to save');
     } finally { setIsSaving(false); }
   };
 
-  if (!isOpen) return null;
-
-  const activeIdx = STEPS.findIndex(s => s.id === activeTab);
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
   const updateItem = (idx, field, val) => {
     const next = [...items];
     let updatedItem = { ...next[idx], [field]: val };
-
     if (field === 'serviceName') {
       const selectedProduct = products.find(p => p.name === val);
-      if (selectedProduct) {
-        updatedItem.amount = selectedProduct.price || '';
-      }
+      if (selectedProduct) updatedItem.amount = selectedProduct.price || '';
     }
-
     next[idx] = updatedItem;
     setItems(next);
   };
   const removeItem = (idx) => setItems(items.filter((_, i) => i !== idx).map((it, i) => ({ ...it, sNo: i + 1 })));
   const addItem    = () => setItems([...items, { sNo: items.length + 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
 
-  const updateExpense = (idx, field, val) => {
-    const next = [...formData.operationalExpenses]; next[idx] = { ...next[idx], [field]: val };
-    setFormData({ ...formData, operationalExpenses: next });
+  const updateInstallment = (idx, field, val) => {
+    const next = [...(formData.extraInstallments || [])];
+    next[idx] = { ...next[idx], [field]: val };
+    setFormData({ ...formData, extraInstallments: next });
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-3xl rounded-t-[32px] sm:rounded-[24px] shadow-2xl flex flex-col max-h-[96vh] border border-slate-100 overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-[0.98] duration-300">
-
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-8 pt-8 pb-6 shrink-0">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="h-9 w-9 bg-brand-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/30">
-                <FileText size={18} className="text-white" />
-              </div>
-              <h2 className="text-[22px] font-extrabold text-slate-900 tracking-tight">
-                {invoice ? 'Edit Invoice' : 'New Invoice'}
-              </h2>
+    <SlideOver
+      isOpen={isOpen}
+      onClose={onClose}
+      title={invoice ? 'Modify Financial Invoice' : 'Generate New Invoice'}
+      size="5xl"
+      footer={(
+        <div className="flex justify-between items-center w-full px-1">
+          <div className="flex items-center gap-8">
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Aggregate Invoice Value</span>
+              <span className="text-[22px] font-semibold text-slate-900 font-mono  leading-none mt-1">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
-            <p className="text-[13.5px] text-slate-400 font-medium ml-12">
-              {invoice ? `Editing ${invoice.invoice_number}` : 'Fill in the details to generate an invoice'}
-            </p>
+            <div className="w-px h-8 bg-slate-200 hidden md:block" />
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold text-rose-400 uppercase tracking-wider">Outstanding Balance</span>
+              <span className={clsx(
+                "text-[22px] font-semibold font-mono  leading-none mt-1",
+                balanceDue > 0 ? "text-rose-600" : "text-emerald-600"
+              )}>
+                ₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="h-9 w-9 bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full flex items-center justify-center transition-all active:scale-90"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
+            <button
+              onClick={handleSubmit}
+              disabled={isSaving}
+              className="px-10 py-2.5 bg-indigo-600 text-slate-900 text-[14px] font-semibold rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95"
+            >
+              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              <span>{isSaving ? 'Synchronizing...' : 'Save Invoice'}</span>
+            </button>
+          </div>
         </div>
-
-        {/* ── Step Indicator ──────────────────────────────────────────────── */}
-        <div className="px-8 pb-6 shrink-0">
-          <div className="flex items-center gap-0">
+      )}
+    >
+      <div className="flex h-full min-h-[600px] relative">
+        {/* Sidebar Navigation */}
+        <div className="w-64 border-r-2 border-slate-100 pr-6 shrink-0 hidden md:block">
+          <div className="flex flex-col gap-2 sticky top-0">
             {STEPS.map((step, idx) => {
-              const isActive   = step.id === activeTab;
-              const isDone     = idx < activeIdx;
-              const StepIcon   = step.icon;
+              const StepIcon = step.id === 'basic' ? FileText : (step.id === 'services' ? Receipt : Landmark);
               return (
-                <div key={step.id} className="flex items-center flex-1">
+                <div key={step.id}>
                   <button
                     onClick={() => setActiveTab(step.id)}
                     className={clsx(
-                      "flex flex-col items-center gap-1.5 group transition-all flex-1",
+                      "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all relative group",
+                      activeTab === step.id
+                        ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100 ring-1 ring-indigo-200/50"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                     )}
                   >
-                    <div className={clsx(
-                      "h-9 w-9 rounded-full flex items-center justify-center transition-all duration-300 border-2",
-                      isActive  ? "bg-brand-600 border-brand-600 shadow-lg shadow-brand-500/30" :
-                      isDone    ? "bg-emerald-500 border-emerald-500" :
-                                  "bg-white border-slate-200 group-hover:border-slate-300"
-                    )}>
-                      {isDone
-                        ? <Check size={16} className="text-white" />
-                        : <StepIcon size={16} className={isActive ? "text-white" : "text-slate-400"} />
-                      }
-                    </div>
-                    <span className={clsx("text-[11.5px] font-bold transition-colors",
-                      isActive ? "text-brand-600" : isDone ? "text-emerald-600" : "text-slate-400"
-                    )}>
-                      {step.label}
-                    </span>
+                    {activeTab === step.id && (
+                      <div className="absolute -right-[26px] top-3 bottom-3 w-1 bg-indigo-600 rounded-l-full z-10" />
+                    )}
+                    <StepIcon className={clsx("h-4 w-4", activeTab === step.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600")} />
+                    <span>{step.label}</span>
                   </button>
-                  {idx < STEPS.length - 1 && (
-                    <div className={clsx("h-0.5 flex-1 mb-5 mx-1 rounded-full transition-all duration-500",
-                      isDone ? "bg-emerald-400" : "bg-slate-100"
-                    )} />
-                  )}
+                  {idx < STEPS.length - 1 && <div className="h-px bg-slate-50 mx-4 my-1 opacity-50" />}
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* ── Content ─────────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-8 pb-4 custom-scrollbar">
-
-          {/* Step 1: Basic Info */}
-          {activeTab === 'basic' && (
-            <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {/* Invoice Number */}
-                <FieldGroup label="Invoice Number" hint="Auto-assigned when saved">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
-                    <Receipt size={16} className="text-slate-300 shrink-0" />
-                    <span className="text-[14px] text-slate-400 font-medium">
-                      {invoice ? invoice.invoice_number : (nextInvoiceNumberLoading ? 'Generating…' : nextInvoiceNumber || 'Auto Generated')}
-                    </span>
-                  </div>
-                </FieldGroup>
-
-                {/* Client */}
-                <FieldGroup label="Client" required hint="Who is this invoice for?" error={errors.clientId}>
-                  <div className="relative">
-                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
-                    <select
+        {/* Content Area */}
+        <div className="flex-1 pl-10">
+          <div className="pb-20">
+            {activeTab === 'basic' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Client Selection</label>
+                    <SearchableSelect
+                      options={clients.map(c => ({ id: c.id, name: c.company_name || c.client_name }))}
                       value={formData.clientId}
-                      onChange={(e) => {
-                        const c = clients.find((x) => String(x.id) === String(e.target.value));
-                        setFormData({ ...formData, clientId: e.target.value, clientName: c ? (c.company_name || c.client_name) : '' });
-                        if (errors.clientId) setErrors({ ...errors, clientId: '' });
+                      onChange={(val) => {
+                        const c = clients.find(x => String(x.id) === String(val));
+                        setFormData({ ...formData, clientId: val, clientName: c ? (c.company_name || c.client_name) : '' });
                       }}
-                      className={clsx(selectCls(errors.clientId), "pl-10 pr-10")}
-                    >
-                      <option value="">Select a client…</option>
-                      {clients.map((c) => (
-                        <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
+                      placeholder="Select client registry..."
+                    />
+                    {errors.clientId && <p className="text-xs text-rose-500 font-bold uppercase mt-1.5">{errors.clientId}</p>}
                   </div>
-                </FieldGroup>
-
-                {/* Date */}
-                <FieldGroup label="Invoice Date" hint="Default is today">
-                  <div className="relative">
-                    <CalendarIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Invoice Number</label>
+                    <input
+                      type="text"
+                      value={formData.invoice_no || ''}
+                      onChange={(e) => setFormData({ ...formData, invoice_no: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                      placeholder="INV-2024-001"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Issue Date</label>
                     <input
                       type="date"
                       value={formData.date}
                       onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                      className={clsx(inputCls(false), "pl-10")}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
                     />
                   </div>
-                </FieldGroup>
-
-                {/* Status */}
-                <FieldGroup label="Payment Status" hint="Current state of this invoice">
-                  <div className="relative">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Reference / PO</label>
+                    <input
+                      type="text"
+                      value={formData.reference_number || ''}
+                      onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                      placeholder="External PO Number"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Financial Status</label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className={clsx(selectCls(false), "pl-4 pr-10")}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
                     >
-                      <option value="Pending">🕐 Pending</option>
-                      <option value="Paid">✅ Paid</option>
-                      <option value="Overdue">⚠️ Overdue</option>
-                      <option value="Draft">📝 Draft</option>
+                      <option value="Draft">Draft</option>
+                      <option value="Sent">Sent</option>
+                      <option value="Paid">Fully Paid</option>
+                      <option value="Partial">Partially Paid</option>
+                      <option value="Overdue">Overdue</option>
+                      <option value="Cancelled">Cancelled</option>
                     </select>
-                    <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
                   </div>
-                </FieldGroup>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Administrative Notes</label>
+                  <textarea
+                    value={formData.notes || ''}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-medium outline-none focus:border-indigo-500 transition-all min-h-[120px] resize-none"
+                    placeholder="Add terms, conditions or internal notes..."
+                  />
+                </div>
               </div>
+            )}
 
-              {/* Next Button */}
-              <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('services')}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-[13.5px] font-bold rounded-xl hover:bg-brand-700 transition-all active:scale-95 shadow-lg shadow-brand-500/20"
-                >
-                  Next: Add Services <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Line Items */}
-          {activeTab === 'services' && (
-            <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
-              <div>
-                <p className="text-[13px] text-slate-500 font-medium mb-4">
-                  Add the services or products you provided. Each row becomes a line item on the invoice.
-                </p>
-
-                {errors.items && (
-                  <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-600 text-[13px] font-semibold px-4 py-2.5 rounded-xl mb-4">
-                    <AlertCircle size={14} /> {errors.items}
+            {activeTab === 'services' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+                  <div className="flex flex-col">
+                    <h4 className="text-[14px] font-semibold text-slate-900 uppercase tracking-wider">Invoice Line Items</h4>
+                    <p className="text-sm font-bold text-slate-400 uppercase mt-1">Specify products and services rendered</p>
                   </div>
-                )}
-
-                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-semibold uppercase tracking-wider hover:bg-indigo-600 hover:text-slate-900 transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group"
+                  >
+                    <Plus size={16} className="group-hover:rotate-90 transition-transform" />
+                    <span>Add Line Item</span>
+                  </button>
+                </div>
+                <div className="space-y-6">
                   {items.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-3 group bg-slate-50/60 border border-slate-100 hover:border-slate-200 rounded-2xl px-4 py-3 transition-all">
-                      <span className="text-[12px] font-black text-slate-300 w-5 shrink-0 text-center">{idx + 1}</span>
-                      <input
-                        type="text"
-                        list="invoice-product-list"
-                        placeholder="Service or product name…"
-                        value={item.serviceName}
-                        onChange={(e) => updateItem(idx, 'serviceName', e.target.value)}
-                        className="flex-1 bg-transparent border-none outline-none text-[14px] font-semibold text-slate-800 placeholder:text-slate-300"
-                      />
-                      <datalist id="invoice-product-list">
-                        {products.map((p) => (
-                          <option key={p.id} value={p.name}>
-                            {p.price ? `₹${p.price}` : ""}
-                          </option>
-                        ))}
-                      </datalist>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-[13px] font-bold text-slate-400">₹</span>
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          value={item.amount}
-                          onChange={(e) => updateItem(idx, 'amount', e.target.value)}
-                          className="w-28 bg-transparent border-none outline-none text-[14px] font-black text-slate-900 text-right placeholder:text-slate-300"
-                        />
+                    <div key={idx} className="bg-slate-50/50 border border-slate-200 rounded-xl p-6 space-y-6 relative group shadow-sm hover:border-indigo-200 transition-colors">
+                      <div className="grid grid-cols-12 gap-6">
+                        <div className="col-span-8">
+                          <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Item Name</label>
+                          <SearchableSelect
+                            options={products.map(p => ({ id: p.name, name: p.name }))}
+                            value={item.serviceName}
+                            onChange={v => updateItem(idx, 'serviceName', v)}
+                            placeholder="Search catalog..."
+                          />
+                        </div>
+                        <div className="col-span-4">
+                          <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Unit Price (₹)</label>
+                          <input
+                            type="number"
+                            value={item.amount}
+                            onChange={(e) => updateItem(idx, 'amount', e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-semibold  outline-none focus:border-indigo-500 transition-all"
+                          />
+                        </div>
                       </div>
-                      {items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeItem(idx)}
-                          className="h-7 w-7 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                      <div className="flex justify-between items-center pt-4 border-t border-slate-200/60">
+                        <div className="flex gap-8">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-400 uppercase">Status</span>
+                            <select
+                              value={item.paymentStatus}
+                              onChange={e => updateItem(idx, 'paymentStatus', e.target.value)}
+                              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-sm font-bold"
+                            >
+                              <option value="Pending">Pending</option>
+                              <option value="Paid">Paid</option>
+                            </select>
+                          </div>
+                        </div>
+                        <span className="font-mono text-[18px] font-semibold text-slate-900 ">₹{(parseFloat(item.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <button onClick={() => removeItem(idx)} className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-slate-900 transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100">
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   ))}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="mt-3 flex items-center gap-2 text-[13px] font-bold text-brand-600 hover:text-brand-700 px-4 py-2 hover:bg-brand-50 rounded-xl transition-all active:scale-95"
-                >
-                  <Plus size={16} />  Add another service
-                </button>
-              </div>
-
-              {/* Pricing Summary */}
-              <div className="bg-slate-900 rounded-2xl p-5 text-white space-y-3">
-                <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400 mb-3">Price Breakdown</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Discount</label>
-                    <div className="flex gap-2">
-                      <select
-                        value={formData.discountType}
-                        onChange={(e) => setFormData({ ...formData, discountType: e.target.value })}
-                        className="flex-1 bg-slate-800 border border-slate-700 text-[13px] font-semibold text-white rounded-lg px-3 py-2 outline-none focus:border-brand-400"
-                      >
-                        <option value="Flat">Flat (₹)</option>
-                        <option value="Percentage">Percent (%)</option>
-                      </select>
-                      <input
-                        type="number"
-                        placeholder="0"
-                        value={formData.discountValue}
-                        onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
-                        className="w-24 bg-slate-800 border border-slate-700 text-[13px] font-bold text-white rounded-lg px-3 py-2 outline-none focus:border-brand-400 text-right"
-                      />
+                <div className="p-8 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                  <div className="flex justify-between items-center text-sm font-semibold uppercase tracking-wider text-slate-400">
+                    <span>Subtotal</span>
+                    <span className="text-slate-900">₹{subtotal.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-8 pt-4 border-t border-slate-200">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">GST (%)</label>
+                      <input type="number" value={formData.gst} onChange={(e) => setFormData({ ...formData, gst: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold outline-none focus:border-indigo-500" />
                     </div>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">GST Rate</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        placeholder="0"
-                        value={formData.gst}
-                        onChange={(e) => setFormData({ ...formData, gst: e.target.value })}
-                        className="flex-1 bg-slate-800 border border-slate-700 text-[13px] font-bold text-white rounded-lg px-3 py-2 outline-none focus:border-brand-400"
-                      />
-                      <span className="text-slate-400 font-bold text-sm">%</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-700 pt-3 mt-2 space-y-1.5">
-                  <div className="flex justify-between text-[13px] text-slate-400">
-                    <span>Subtotal</span><span className="font-semibold text-white">₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  {discountVal > 0 && (
-                    <div className="flex justify-between text-[13px] text-emerald-400">
-                      <span>Discount</span><span>- ₹{discountVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  )}
-                  {taxAmt > 0 && (
-                    <div className="flex justify-between text-[13px] text-slate-400">
-                      <span>GST ({gstPct}%)</span><span className="text-white">+ ₹{taxAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-[18px] font-black pt-1 border-t border-slate-700">
-                    <span>Total</span><span className="text-brand-400">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-between pt-2">
-                <button type="button" onClick={() => setActiveTab('basic')} className="flex items-center gap-1.5 px-5 py-2.5 text-slate-500 hover:text-slate-700 text-[13.5px] font-bold transition-all">
-                  ← Back
-                </button>
-                <button type="button" onClick={() => setActiveTab('bank')} className="flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white text-[13.5px] font-bold rounded-xl hover:bg-brand-700 transition-all active:scale-95 shadow-lg shadow-brand-500/20">
-                  Next: Payment Details <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Payment / Bank */}
-          {activeTab === 'bank' && (
-            <div className="space-y-5 animate-in fade-in slide-in-from-right-3 duration-300">
-              <p className="text-[13px] text-slate-500 font-medium">
-                Select where the payment will be received. Optionally record an advance payment.
-              </p>
-
-              {/* Bank Account */}
-              <FieldGroup label="Receiving Bank Account" required hint="Payment will be directed to this account" error={errors.bankAccountId}>
-                <div className="relative">
-                  <Landmark size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
-                  <select
-                    value={formData.bankAccountId || ''}
-                    onChange={(e) => {
-                      const id = e.target.value ? Number(e.target.value) : null;
-                      const b  = bankAccounts.find((x) => String(x.id) === String(id));
-                      setFormData({ ...formData, bankAccountId: id, bankName: b?.bankName || '', accountNumber: b?.accountNumber || '' });
-                      if (errors.bankAccountId) setErrors({ ...errors, bankAccountId: '' });
-                    }}
-                    className={clsx(selectCls(errors.bankAccountId), "pl-10 pr-10")}
-                  >
-                    <option value="">Choose a bank account…</option>
-                    {bankAccounts.map((b) => (
-                      <option key={b.id} value={b.id}>{b.bankName} — {b.accountNumber}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
-                </div>
-              </FieldGroup>
-
-              {/* GPay Number + QR Upload */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* GPay Number */}
-                <FieldGroup label="GPay / UPI Number" hint="Client can pay via this UPI ID or number">
-                  <div className="relative">
-                    <Smartphone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="e.g. 9876543210 or name@upi"
-                      value={formData.gpayNumber}
-                      onChange={(e) => setFormData({ ...formData, gpayNumber: e.target.value })}
-                      className={clsx(inputCls(false), 'pl-10')}
-                    />
-                  </div>
-                </FieldGroup>
-
-                {/* QR Code Upload */}
-                <FieldGroup label="Payment QR Code" hint="Upload a QR image for client to scan">
-                  <label className="block cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        if (file.size > 2 * 1024 * 1024) {
-                          toast.error('QR image must be under 2 MB');
-                          return;
-                        }
-                        setQrFile(file);
-                        const reader = new FileReader();
-                        reader.onload = (ev) => setQrPreview(ev.target.result);
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                    {qrPreview ? (
-                      <div className="relative w-full h-[112px] border-2 border-brand-300 rounded-2xl overflow-hidden group">
-                        <img src={qrPreview} alt="QR Preview" className="w-full h-full object-contain bg-slate-50" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-1">
-                          <Upload size={18} className="text-white" />
-                          <span className="text-white text-[11px] font-bold">Change QR</span>
-                        </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Discount</label>
+                      <div className="flex gap-2">
+                        <select value={formData.discountType} onChange={(e) => setFormData({ ...formData, discountType: e.target.value })} className="bg-white border border-slate-200 rounded-xl px-2 text-[13px] font-bold outline-none">
+                          <option value="Flat">₹</option>
+                          <option value="Percentage">%</option>
+                        </select>
+                        <input type="number" value={formData.discountValue} onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold outline-none focus:border-indigo-500" />
                       </div>
-                    ) : (
-                      <div className="w-full h-[112px] border-2 border-dashed border-slate-200 hover:border-brand-300 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all bg-slate-50 hover:bg-brand-50/30 group">
-                        <div className="h-9 w-9 bg-white border border-slate-200 rounded-xl flex items-center justify-center shadow-sm group-hover:border-brand-200 transition-all">
-                          <Image size={18} className="text-slate-400 group-hover:text-brand-500" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'bank' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="bg-slate-50 rounded-xl p-8 border border-slate-200 space-y-6 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 hidden rounded-full -mr-32 -mt-32" />
+                  <div className="flex justify-between items-center relative z-10">
+                    <div className="flex flex-col">
+                      <span className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Aggregate Value</span>
+                      <span className="text-[36px] font-semibold text-slate-900 font-mono  leading-none mt-2">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-[12px] font-semibold text-emerald-400 uppercase tracking-wider">Total Received</span>
+                      <span className="text-[36px] font-semibold text-emerald-300 font-mono  leading-none mt-2">₹{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                  <div className="h-px bg-slate-800 relative z-10" />
+                  <div className="flex justify-between items-center relative z-10">
+                    <div className="flex flex-col">
+                      <span className="text-[12px] font-semibold text-rose-400 uppercase tracking-wider">Pending Balance</span>
+                      <span className="text-[28px] font-semibold text-slate-900 font-mono  leading-none mt-1">₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Default Deposit Bank</label>
+                    <select
+                      value={formData.bankAccountId || ''}
+                      onChange={(e) => {
+                        const id = e.target.value ? Number(e.target.value) : null;
+                        const b = bankAccounts.find(x => String(x.id) === String(id));
+                        setFormData({ ...formData, bankAccountId: id, bankName: b?.bankName || '', accountNumber: b?.accountNumber || '' });
+                      }}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
+                    >
+                      <option value="">Select account...</option>
+                      {bankAccounts.map(b => (
+                        <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>
+                      ))}
+                    </select>
+                    {errors.bankAccountId && <p className="text-xs text-rose-500 font-bold uppercase mt-1.5">{errors.bankAccountId}</p>}
+                  </div>
+
+                  <div className="pt-6 border-t border-slate-100">
+                    <div className="flex items-center gap-2 mb-4">
+                      <input
+                        type="checkbox"
+                        id="advance"
+                        checked={formData.initialDepositEnabled}
+                        onChange={(e) => setFormData({ ...formData, initialDepositEnabled: e.target.checked })}
+                        className="rounded text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <label htmlFor="advance" className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Record Advance Payment</label>
+                    </div>
+
+                    {formData.initialDepositEnabled && (
+                      <div className="grid grid-cols-2 gap-4 p-6 bg-indigo-50/50 rounded-xl border border-indigo-100 animate-in slide-in-from-top-2">
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Advance Amount</label>
+                          <input type="number" value={formData.initialDepositAmount} onChange={(e) => setFormData({ ...formData, initialDepositAmount: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold" />
                         </div>
-                        <span className="text-[12px] font-semibold text-slate-400 group-hover:text-brand-500 transition-colors">Click to upload QR</span>
-                        <span className="text-[10.5px] text-slate-300">PNG, JPG up to 2 MB</span>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Target Bank</label>
+                          <select
+                            value={formData.initialDepositBankId || ''}
+                            onChange={(e) => {
+                              const id = e.target.value ? Number(e.target.value) : null;
+                              const b = bankAccounts.find(x => String(x.id) === String(id));
+                              setFormData({ ...formData, initialDepositBankId: id, initialDepositBankName: b ? `${b.bankName} - ${b.accountNumber}` : '' });
+                            }}
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold"
+                          >
+                            <option value="">Select bank...</option>
+                            {bankAccounts.map(b => (
+                              <option key={b.id} value={b.id}>{b.bankName}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     )}
-                  </label>
-                  {qrPreview && (
-                    <button
-                      type="button"
-                      onClick={() => { setQrFile(null); setQrPreview(null); }}
-                      className="flex items-center gap-1 text-[11.5px] font-bold text-rose-500 hover:text-rose-600 mt-1 ml-0.5 transition-colors"
-                    >
-                      <X size={12} /> Remove QR
-                    </button>
-                  )}
-                </FieldGroup>
-              </div>
-
-              {/* Advance / Initial Deposit toggle */}
-              <div
-                onClick={() => setFormData({ ...formData, initialDepositEnabled: !formData.initialDepositEnabled })}
-                className={clsx(
-                  "flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all",
-                  formData.initialDepositEnabled ? "bg-brand-50 border-brand-200" : "bg-slate-50 border-slate-100 hover:border-slate-200"
-                )}
-              >
-                <div className={clsx(
-                  "h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all shrink-0",
-                  formData.initialDepositEnabled ? "bg-brand-600 border-brand-600 shadow-md shadow-brand-500/30" : "bg-white border-slate-300"
-                )}>
-                  {formData.initialDepositEnabled && <Check size={14} className="text-white" />}
-                </div>
-                <div>
-                  <p className="text-[14px] font-bold text-slate-800">Client paid an advance / deposit</p>
-                  <p className="text-[12px] text-slate-400 font-medium">Enable this to record a partial upfront payment</p>
-                </div>
-              </div>
-
-              {formData.initialDepositEnabled && (
-                <div className="grid grid-cols-2 gap-4 pl-4 border-l-2 border-brand-200 ml-3 animate-in slide-in-from-top-2 duration-200">
-                  <FieldGroup label="Advance Amount (₹)" hint="How much was paid upfront?">
-                    <input
-                      type="number"
-                      placeholder="e.g. 5000"
-                      value={formData.initialDepositAmount}
-                      onChange={(e) => setFormData({ ...formData, initialDepositAmount: e.target.value })}
-                      className={inputCls(false)}
-                    />
-                  </FieldGroup>
-                  <FieldGroup label="Received In" hint="Which account?">
-                    <button
-                      type="button"
-                      onClick={() => { setBankModalFor('initial'); setBankModalOpen(true); }}
-                      className={clsx(inputCls(false), "text-left flex items-center justify-between")}
-                    >
-                      <span className={formData.initialDepositBankName ? 'text-slate-800' : 'text-slate-300'}>
-                        {formData.initialDepositBankName || getBankDisplay(formData.initialDepositBankId) || 'Select account…'}
-                      </span>
-                      <ChevronDown size={14} className="text-slate-300" />
-                    </button>
-                  </FieldGroup>
-                </div>
-              )}
-
-              {/* Balance summary */}
-              {formData.initialDepositEnabled && initialDeposit > 0 && (
-                <div className="flex items-center justify-between px-5 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
-                  <span className="text-[13px] font-bold text-amber-700">Balance Due After Advance</span>
-                  <span className="text-[18px] font-extrabold text-amber-600">₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                </div>
-              )}
-
-              {/* Operational Expenses (collapsible feel) */}
-              <div className="mt-2">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-[13.5px] font-bold text-slate-700">Operational Expenses <span className="text-slate-400 font-normal">(optional)</span></p>
-                    <p className="text-[11.5px] text-slate-400 font-medium">Internal costs related to this invoice</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, operationalExpenses: [...(formData.operationalExpenses || []), { name: '', amount: '', bankAccountId: null, bankName: '', paid: false }] })}
-                    className="flex items-center gap-1.5 text-[12.5px] font-bold text-brand-600 hover:text-brand-700 px-3 py-1.5 hover:bg-brand-50 rounded-lg transition-all"
-                  >
-                    <Plus size={14} /> Add expense
-                  </button>
-                </div>
 
-                {(formData.operationalExpenses || []).length > 0 && (
-                  <div className="space-y-2.5">
-                    {formData.operationalExpenses.map((row, idx) => (
-                      <div key={idx} className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 group">
-                        <input
-                          type="text"
-                          placeholder="e.g. Travel, Materials…"
-                          value={row.name}
-                          onChange={(e) => updateExpense(idx, 'name', e.target.value)}
-                          className="flex-1 bg-transparent border-none outline-none text-[13.5px] font-semibold text-slate-800 placeholder:text-slate-300"
-                        />
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-[12px] font-bold text-slate-400">₹</span>
-                          <input
-                            type="number"
-                            placeholder="0"
-                            value={row.amount}
-                            onChange={(e) => updateExpense(idx, 'amount', e.target.value)}
-                            className="w-20 bg-transparent border-none outline-none text-[13.5px] font-black text-slate-900 text-right placeholder:text-slate-300"
-                          />
+                  <div className="pt-6 border-t border-slate-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-[14px] font-semibold text-slate-900 uppercase tracking-wider">Payment Installments</h4>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({
+                          ...formData,
+                          extraInstallments: [...(formData.extraInstallments || []), { date: new Date().toISOString().split('T')[0], amount: '', bankAccountId: '', notes: '' }]
+                        })}
+                        className="px-5 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[12px] font-semibold uppercase tracking-wider hover:bg-emerald-600 hover:text-slate-900 transition-all shadow-sm flex items-center gap-2 border border-emerald-100 group"
+                      >
+                        <Plus size={16} className="group-hover:rotate-90 transition-transform" />
+                        <span>Add Installment</span>
+                      </button>
+                    </div>
+
+                    <div className="space-y-6">
+                      {(formData.extraInstallments || []).map((inst, idx) => (
+                        <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-6 relative group animate-in slide-in-from-top-2">
+                          <div className="grid grid-cols-2 gap-6">
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Payment Date</label>
+                              <input
+                                type="date"
+                                value={inst.date}
+                                onChange={(e) => updateInstallment(idx, 'date', e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Amount Paid (₹)</label>
+                              <input
+                                type="number"
+                                value={inst.amount}
+                                onChange={(e) => updateInstallment(idx, 'amount', e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-semibold  outline-none focus:border-indigo-500 transition-all"
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Deposit Target</label>
+                              <select
+                                value={inst.bankAccountId || ''}
+                                onChange={(e) => {
+                                  const id = e.target.value ? Number(e.target.value) : null;
+                                  const b = bankAccounts.find(x => String(x.id) === String(id));
+                                  updateInstallment(idx, 'bankAccountId', id);
+                                  updateInstallment(idx, 'bankName', b ? b.bankName : '');
+                                }}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
+                              >
+                                <option value="">Select Account Registry...</option>
+                                {bankAccounts.map(b => (
+                                  <option key={b.id} value={b.id}>{b.bankName}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Transaction Ref</label>
+                              <input
+                                type="text"
+                                value={inst.notes}
+                                onChange={(e) => updateInstallment(idx, 'notes', e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                placeholder="UPI, Cheque, Transfer Ref..."
+                              />
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = [...formData.extraInstallments];
+                              next.splice(idx, 1);
+                              setFormData({ ...formData, extraInstallments: next });
+                            }}
+                            className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-slate-900 transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
-                        <select
-                          value={row.paid ? 'Paid' : 'Unpaid'}
-                          onChange={(e) => updateExpense(idx, 'paid', e.target.value === 'Paid')}
-                          className={clsx(
-                            "text-[11px] font-extrabold px-2.5 py-1 rounded-lg border outline-none transition-all",
-                            row.paid ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-slate-100 text-slate-500 border-slate-200"
-                          )}
-                        >
-                          <option value="Unpaid">UNPAID</option>
-                          <option value="Paid">PAID</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, operationalExpenses: formData.operationalExpenses.filter((_, i) => i !== idx) })}
-                          className="h-7 w-7 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
+                      ))}
+
+                      {(formData.extraInstallments || []).length === 0 && (
+                        <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
+                          <Receipt size={40} className="mx-auto text-slate-200 mb-4" />
+                          <p className="text-[13px] font-bold text-slate-400 uppercase tracking-wider">No installment records found</p>
+                          <p className="text-sm text-slate-300 uppercase tracking-wider mt-1">Add payments to track outstanding balance</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
-
-              <div className="flex justify-start pt-2">
-                <button type="button" onClick={() => setActiveTab('services')} className="flex items-center gap-1.5 px-5 py-2.5 text-slate-500 hover:text-slate-700 text-[13.5px] font-bold transition-all">
-                  ← Back
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Footer ─────────────────────────────────────────────────────── */}
-        <div className="shrink-0 px-8 py-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-4">
-          {/* Total summary pill */}
-          <div className="flex flex-col">
-            <span className="text-[10.5px] font-extrabold text-slate-400 uppercase tracking-widest">Invoice Total</span>
-            <span className="text-[22px] font-black text-slate-900 leading-tight">
-              ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-            </span>
-            {formData.initialDepositEnabled && initialDeposit > 0 && (
-              <span className="text-[11px] text-slate-400 font-medium">Balance: ₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             )}
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-3 bg-white border border-slate-200 text-slate-600 text-[14px] font-bold rounded-xl hover:bg-slate-50 transition-all active:scale-95"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={isSaving}
-              onClick={handleSubmit}
-              className="flex items-center gap-2.5 px-8 py-3 bg-brand-600 hover:bg-brand-700 text-white text-[14px] font-extrabold rounded-xl shadow-xl shadow-brand-500/25 hover:shadow-brand-500/40 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              {isSaving ? 'Saving…' : invoice ? 'Save Changes' : 'Create Invoice'}
-            </button>
-          </div>
         </div>
-
-        {/* ── Bank Modal ──────────────────────────────────────────────────── */}
-        {bankModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-            <div className="bg-white rounded-[28px] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
-              <div className="px-6 py-5 border-b border-slate-50 flex justify-between items-center">
-                <div>
-                  <h3 className="text-[16px] font-extrabold text-slate-900">Select Bank Account</h3>
-                  <p className="text-[12px] text-slate-400 font-medium mt-0.5">Where was the payment received?</p>
-                </div>
-                <button onClick={() => setBankModalOpen(false)} className="h-8 w-8 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full flex items-center justify-center transition-all">
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="p-4 space-y-2 max-h-[55vh] overflow-y-auto custom-scrollbar">
-                {bankAccounts.length === 0
-                  ? <p className="text-center text-slate-400 text-[13px] py-8">No bank accounts found.</p>
-                  : bankAccounts.map((b) => (
-                    <button
-                      key={b.id}
-                      type="button"
-                      onClick={() => {
-                        const name = `${b.bankName} – ${b.accountNumber}`;
-                        if (bankModalFor === 'initial') {
-                          setFormData((prev) => ({ ...prev, initialDepositBankId: b.id, initialDepositBankName: name }));
-                        }
-                        setBankModalOpen(false);
-                      }}
-                      className="w-full flex items-center gap-4 p-4 rounded-2xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50/40 text-left transition-all group"
-                    >
-                      <div className="h-10 w-10 bg-slate-100 text-slate-400 rounded-xl flex items-center justify-center group-hover:bg-brand-100 group-hover:text-brand-600 transition-colors shrink-0">
-                        <Landmark size={18} />
-                      </div>
-                      <div>
-                        <p className="text-[14px] font-bold text-slate-900">{b.bankName}</p>
-                        <p className="text-[12px] text-slate-400 font-medium font-mono">…{String(b.accountNumber).slice(-4)}</p>
-                      </div>
-                    </button>
-                  ))
-                }
-              </div>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+    </SlideOver>
   );
 };
 

@@ -5,6 +5,9 @@ import { useReactToPrint } from "react-to-print";
 import { exportToCSV } from "../utils/csvExport";
 import { useReportsSummary, useReportDetails, useReportFilters } from "../hooks/useApiQueries";
 import { TableSkeleton } from "../components/Skeleton";
+import PageHeader from "../components/ui/PageHeader";
+import EmptyState from "../components/ui/EmptyState";
+import { TableSectionHeader } from "../components/ui/DataTableSection";
 
 // =====================================
 // Report Types
@@ -169,11 +172,11 @@ const ReportTable = ({ report, data, isLoading }) => {
 
   return (
     <div className="card p-0 overflow-hidden" ref={componentRef}>
-      <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-        <div className="flex items-center gap-2">
-          <FileText size={20} className="text-slate-400" />
-          <h2 className="text-lg font-bold text-slate-800 tracking-tight">{report.label} Details</h2>
-        </div>
+      <TableSectionHeader
+        title={`${report.label} Details`}
+        summary={`${safeData.length} row${safeData.length !== 1 ? 's' : ''}`}
+      />
+      <div className="px-6 py-3 border-b border-gray-100 flex justify-end items-center bg-gray-50/30">
         <div className="flex flex-col sm:flex-row gap-2 print:hidden">
           <button
             onClick={handlePrint}
@@ -210,8 +213,12 @@ const ReportTable = ({ report, data, isLoading }) => {
             <tbody className="divide-y divide-gray-50">
               {safeData.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center text-slate-500 italic">
-                    No records found for the selected period.
+                  <td colSpan="4" className="px-6 py-2">
+                    <EmptyState
+                      icon={FileText}
+                      title="No records found"
+                      description="Try changing date range or report filters."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -260,11 +267,11 @@ const Reports = () => {
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6 md:space-y-8">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Financial Reports</h1>
-        <p className="text-slate-500 mt-1 text-base md:text-lg">Gain insights into your business performance.</p>
-      </div>
+    <div className="p-4 md:p-6 lg:p-8 animate-fade-in space-y-6 md:space-y-8">
+      <PageHeader
+        title="Financial Reports"
+        subtitle="Gain insights into your business performance."
+      />
 
       <FiltersBar filters={filters} setFilters={setFilters} options={options} />
 

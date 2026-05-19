@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Phone, Mail, Building2, X } from 'lucide-react';
-import { getCustomers, saveCustomer, deleteCustomer } from '../services/db';
-import clsx from 'clsx';
+import SlideOver from '../components/ui/SlideOver';
+import PageHeader from '../components/ui/PageHeader';
+import { TableSectionHeader, TablePagination } from '../components/ui/DataTableSection';
+import { ToolbarSearch, ActionIconButton, EmptyState } from '../components/ui/DataTableSection';
 
-const CustomerModal = ({ isOpen, onClose, customer, onSave }) => {
+const CustomerForm = ({ isOpen, onClose, customer, onSave }) => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -12,11 +12,8 @@ const CustomerModal = ({ isOpen, onClose, customer, onSave }) => {
     });
 
     useEffect(() => {
-        if (customer) {
-            setFormData(customer);
-        } else {
-            setFormData({ name: '', email: '', phone: '', status: 'Active' });
-        }
+        if (customer) setFormData(customer);
+        else setFormData({ name: '', email: '', phone: '', status: 'Active' });
     }, [customer, isOpen]);
 
     const handleSubmit = (e) => {
@@ -25,96 +22,79 @@ const CustomerModal = ({ isOpen, onClose, customer, onSave }) => {
         onClose();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up flex flex-col">
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
-                    <div>
-                        <h3 className="text-xl font-bold text-slate-900 tracking-tight">{customer ? 'Edit Customer' : 'Add New Customer'}</h3>
-                        <p className="text-sm text-slate-500 mt-1">Manage customer details.</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
-                        <X size={20} />
+        <SlideOver
+            isOpen={isOpen}
+            onClose={onClose}
+            title={customer ? 'Edit Customer' : 'New Customer'}
+            footer={(
+                <div className="flex justify-end gap-2 w-full">
+                    <button onClick={onClose} className="px-4 py-2 text-[13px] font-bold text-slate-600 hover:bg-slate-100 rounded">Cancel</button>
+                    <button onClick={handleSubmit} className="px-6 py-2 bg-indigo-600 text-white text-[13px] font-bold rounded hover:bg-indigo-700">
+                        Save Customer
                     </button>
                 </div>
-                <form onSubmit={handleSubmit} className="p-8 space-y-5">
-                    <div>
-                        <label className="label">Company Name</label>
-                        <input
-                            type="text"
-                            required
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="input"
-                            placeholder="e.g. Acme Corp"
-                        />
-                    </div>
-                    <div>
-                        <label className="label">Email Address</label>
-                        <input
-                            type="email"
-                            required
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="input"
-                            placeholder="contact@company.com"
-                        />
-                    </div>
-                    <div>
-                        <label className="label">Phone Number</label>
-                        <input
-                            type="tel"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            className="input"
-                            placeholder="+1 (555) 000-0000"
-                        />
-                    </div>
-                    <div>
-                        <label className="label">Status</label>
-                        <select
-                            value={formData.status}
-                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                            className="input"
-                        >
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                        </select>
-                    </div>
-
-                    <div className="pt-6 flex gap-3">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="btn-secondary"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="btn-primary"
-                        >
-                            Save Customer
-                        </button>
-                    </div>
-                </form>
+            )}
+        >
+            <div className="space-y-4">
+                <div className="space-y-1">
+                    <label className="text-[12px] font-bold text-slate-700">Company Name</label>
+                    <input
+                        type="text"
+                        required
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded text-[13px] font-medium outline-none focus:border-indigo-500"
+                        placeholder="e.g. Acme Corp"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[12px] font-bold text-slate-700">Email Address</label>
+                    <input
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded text-[13px] font-medium outline-none focus:border-indigo-500"
+                        placeholder="contact@company.com"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[12px] font-bold text-slate-700">Phone Number</label>
+                    <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded text-[13px] font-medium outline-none focus:border-indigo-500"
+                        placeholder="+1 (555) 000-0000"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[12px] font-bold text-slate-700">Status</label>
+                    <select
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded text-[13px] font-medium outline-none focus:border-indigo-500"
+                    >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
             </div>
-        </div>
+        </SlideOver>
     );
 };
 
 const Customers = () => {
     const [customers, setCustomers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState(null);
 
     useEffect(() => {
         const fetchCustomers = async () => {
             const data = await getCustomers();
-            setCustomers(data);
+            setCustomers(Array.isArray(data) ? data : []);
         };
         fetchCustomers();
     }, []);
@@ -122,140 +102,106 @@ const Customers = () => {
     const handleSave = async (customer) => {
         await saveCustomer(customer);
         const data = await getCustomers();
-        setCustomers(data);
+        setCustomers(Array.isArray(data) ? data : []);
     };
 
     const handleDelete = async (id) => {
         if (confirm('Are you sure you want to delete this customer?')) {
             await deleteCustomer(id);
             const data = await getCustomers();
-            setCustomers(data);
+            setCustomers(Array.isArray(data) ? data : []);
         }
     };
 
-    const openModal = (customer = null) => {
-        setEditingCustomer(customer);
-        setIsModalOpen(true);
-    };
-
     const filteredCustomers = customers.filter(c =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.email.toLowerCase().includes(searchTerm.toLowerCase())
+        (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.email || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC]">
-        {/* Header Background Strip */}
-        <div className="absolute top-0 left-0 right-0 h-80 bg-gradient-to-b from-violet-50/50 to-transparent pointer-events-none" />
+        <div className="p-4 md:p-6 lg:p-8 animate-in fade-in duration-500 space-y-6">
+            <PageHeader
+                title="Customers"
+                subtitle="Manage your client base and contacts"
+                primaryAction={(
+                    <button
+                        onClick={() => { setEditingCustomer(null); setIsFormOpen(true); }}
+                        className="btn-primary flex items-center gap-2"
+                    >
+                        <Plus size={18} />
+                        <span>New Customer</span>
+                    </button>
+                )}
+            />
 
-        <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-gradient-to-br from-violet-600 to-fuchsia-500 rounded-xl shadow-[0_4px_12px_rgba(124,58,237,0.3)] relative group overflow-hidden">
-                            <Users className="h-5 w-5 text-white relative z-10" />
-                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                        </div>
-                        <h1 className="text-[28px] font-bold text-slate-900">Customers</h1>
-                    </div>
-                    <p className="text-slate-500 font-medium text-[14px]">Manage your client base and contacts efficiently.</p>
-                </div>
-                <button
-                    onClick={() => openModal()}
-                    className="btn-primary group relative flex items-center gap-2 overflow-hidden shadow-[0_8px_20px_rgba(124,58,237,0.25)]"
-                >
-                    {/* Shimmer Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer transition-none" />
-
-                    <Plus size={20} className="relative z-10" />
-                    <span className="relative z-10">New Customer</span>
-                </button>
+            <div className="bg-white px-4 py-3 rounded-md border border-slate-200 flex items-center gap-3">
+                <ToolbarSearch
+                    placeholder="Search customers..."
+                    value={searchTerm}
+                    onChange={setSearchTerm}
+                />
             </div>
 
-            <div className="card p-0 overflow-hidden min-h-[500px]">
-                <div className="px-6 py-4 border-b border-gray-100 flex flex-wrap justify-between items-center bg-white gap-4">
-                    <h3 className="font-bold text-slate-800">Customer Database</h3>
-                    <div className="relative group min-w-[300px]">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-violet-600 transition-colors w-4 h-4" />
-                        <input
-                            type="text"
-                            placeholder="Search customers..."
-                            className="w-full pl-10 pr-5 py-2 bg-slate-50 border border-slate-200/60 rounded-lg text-[13px] font-medium text-slate-700 shadow-inner placeholder:text-slate-400 focus:bg-white focus:border-violet-400 focus:ring-[3px] focus:ring-violet-500/15 transition-all duration-[250ms] outline-none hover:border-slate-300"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                </div>
-                <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full text-sm text-left min-w-[700px]">
-                        <thead className="bg-slate-50/80 text-[13px] font-semibold text-slate-600 capitalize tracking-normal border-b border-gray-100">
+            <div className="card p-0 overflow-hidden">
+                <TableSectionHeader
+                    title="Customer Database"
+                    summary={`${filteredCustomers.length} entries`}
+                />
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
                             <tr>
-                                <th className="px-6 py-4">Company Name</th>
-                                <th className="px-6 py-4">Contact</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
+                                <th className="px-6 py-3">Customer</th>
+                                <th className="px-6 py-3">Contact</th>
+                                <th className="px-6 py-3">Status</th>
+                                <th className="px-6 py-3 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                             {filteredCustomers.map((customer) => (
                                 <tr key={customer.id} className="hover:bg-slate-50/50 transition-colors group">
-                                    <td className="px-6 py-4 text-slate-900 font-medium">
+                                    <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-xl bg-brand-50 text-violet-600 flex items-center justify-center font-bold text-lg shadow-sm border border-violet-100">
-                                                {customer.name.substring(0, 1).toUpperCase()}
+                                            <div className="h-8 w-8 rounded bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs">
+                                                {(customer.name || 'C').substring(0, 1).toUpperCase()}
                                             </div>
-                                            <div>
-                                                <p className="font-bold text-slate-900">{customer.name}</p>
-                                                <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                                                    <Building2 size={10} />
-                                                    Corporate
-                                                </p>
-                                            </div>
+                                            <span className="font-bold text-slate-900">{customer.name}</span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-slate-600">
-                                        <div className="flex flex-col gap-1.5">
-                                            <div className="flex items-center gap-2 text-xs font-medium">
-                                                <Mail className="h-3.5 w-3.5 text-slate-400" />
-                                                {customer.email}
-                                            </div>
-                                            {customer.phone && (
-                                                <div className="flex items-center gap-2 text-xs font-medium">
-                                                    <Phone className="h-3.5 w-3.5 text-slate-400" />
-                                                    {customer.phone}
-                                                </div>
-                                            )}
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[13px] font-medium text-slate-600">{customer.email}</span>
+                                            <span className="text-[11px] text-slate-400 font-mono">{customer.phone}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={clsx(
-                                            "inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide border",
-                                            customer.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-gray-50 text-gray-600 border-gray-200'
+                                            "px-2 py-0.5 rounded text-[11px] font-bold inline-flex items-center gap-1.5",
+                                            customer.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
                                         )}>
                                             <span className={clsx(
-                                                "w-1.5 h-1.5 rounded-full mr-1.5",
-                                                customer.status === 'Active' ? 'bg-emerald-500' : 'bg-gray-400'
+                                                "w-1 h-1 rounded-full",
+                                                customer.status === 'Active' ? 'bg-emerald-500' : 'bg-slate-400'
                                             )}></span>
                                             {customer.status}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => openModal(customer)} className="p-2 text-slate-400 hover:text-violet-600 hover:bg-brand-50 rounded-lg transition-colors" title="Edit">
-                                                <Edit2 className="h-4 w-4" />
-                                            </button>
-                                            <button onClick={() => handleDelete(customer.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
+                                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <ActionIconButton onClick={() => { setEditingCustomer(customer); setIsFormOpen(true); }} title="Edit" icon={Edit2} tone="edit" />
+                                            <ActionIconButton onClick={() => handleDelete(customer.id)} title="Delete" icon={Trash2} tone="delete" />
                                         </div>
                                     </td>
                                 </tr>
                             ))}
                             {filteredCustomers.length === 0 && (
                                 <tr>
-                                    <td colSpan="4" className="px-6 py-12 text-center text-slate-400 italic">
-                                        No customers found. Try adding one!
+                                    <td colSpan="4" className="px-6 py-12">
+                                        <EmptyState
+                                            icon={Building2}
+                                            title="No customers found"
+                                            description="Start by adding your first customer."
+                                        />
                                     </td>
                                 </tr>
                             )}
@@ -264,13 +210,12 @@ const Customers = () => {
                 </div>
             </div>
 
-            <CustomerModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+            <CustomerForm
+                isOpen={isFormOpen}
+                onClose={() => setIsFormOpen(false)}
                 customer={editingCustomer}
-            onSave={handleSave}
+                onSave={handleSave}
             />
-            </div>
         </div>
     );
 };

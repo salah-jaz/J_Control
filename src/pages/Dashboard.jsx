@@ -1,66 +1,65 @@
 import { useNavigate } from 'react-router-dom';
-import { DollarSign, Users, FileText, Activity, ArrowUpRight, ArrowDownRight, ArrowRight } from 'lucide-react';
+import { 
+  DollarSign, Users, FileText, Activity, ArrowUpRight, ArrowDownRight, 
+  ArrowRight, Landmark, Wallet, TrendingUp, AlertCircle, Receipt,
+  CheckCircle2, Clock, Briefcase, Plus, Filter, Search, Download,
+  Layers, UserCheck, BarChart3, PieChart as PieChartIcon
+} from 'lucide-react';
 import { useDashboardData } from '../hooks/useApiQueries';
 import clsx from 'clsx';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
+  ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area 
+} from 'recharts';
 import { StatCardsSkeleton } from '../components/Skeleton';
+import PageHeader from '../components/ui/PageHeader';
+import { TableSectionHeader } from '../components/ui/DataTableSection';
 
-const StatCard = ({ title, value, icon: Icon, trend, color, subValue = null, subLabel = null }) => (
-    <div className="card group relative overflow-hidden cursor-default !border-0 p-5 h-[160px] flex flex-col justify-between">
-        {/* Top Gradient Line */}
-        <div className={clsx("absolute top-0 left-0 right-0 h-[2px]", "bg-gradient-to-r from-violet-500 to-fuchsia-500")} />
-        
-        <div className="flex items-start justify-between z-10">
-            <div className="flex flex-col gap-1">
-                <p className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">{title}</p>
-                <h3 className="text-[28px] font-bold text-slate-900 leading-none mt-1" title={value}>{value}</h3>
-            </div>
-            <div className={clsx(
-                "h-12 w-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 shadow-sm border border-slate-100/50",
-                color.replace('bg-', 'bg-opacity-10 '),
-                color.replace('bg-', 'text-')
-            )}>
-                <Icon className="w-6 h-6" />
-            </div>
-        </div>
-        
-        <div className="mt-auto z-10 w-full space-y-3">
-            {subValue && (
-                <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
-                    <span className="text-slate-400 truncate uppercase tracking-tighter">{subLabel}</span>
-                    <span className="text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full flex-shrink-0 border border-violet-100/50">{subValue}</span>
-                </div>
-            )}
-            
-            <div className="flex items-center justify-between">
-                <div className="flex-1 max-w-[100px] h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={clsx("h-full rounded-full transition-all duration-1000", color)} style={{ width: '75%' }}></div>
-                </div>
-                {trend && (
-                    <div className={clsx(
-                        "flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors",
-                        trend > 0 
-                            ? "text-emerald-600 bg-emerald-50 border-emerald-100" 
-                            : "text-rose-600 bg-rose-50 border-rose-100"
-                    )}>
-                        {trend > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-                        {Math.abs(trend)}%
-                    </div>
-                )}
-            </div>
-        </div>
+const StatCard = ({ title, value, icon: Icon, trend, colorClass, subValue, subLabel }) => (
+  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all group relative overflow-hidden">
+    <div className="flex items-start justify-between relative z-10">
+      <div className="flex flex-col gap-1">
+        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em]">{title}</span>
+        <h3 className="text-[26px] font-black text-slate-900 tracking-tight leading-none mt-1">{value}</h3>
+      </div>
+      <div className={clsx("p-2.5 rounded-xl text-white shadow-lg", colorClass)}>
+        <Icon size={20} strokeWidth={2.5} />
+      </div>
     </div>
+    
+    <div className="flex items-center justify-between mt-6 relative z-10">
+      <div className="flex flex-col">
+        {subValue && (
+          <>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-1">{subLabel}</span>
+            <span className="text-[13px] font-black text-slate-700 tracking-tight">{subValue}</span>
+          </>
+        )}
+      </div>
+      {trend && (
+        <div className={clsx(
+          "flex items-center gap-1 px-2 py-1 rounded-full text-[12px] font-black shadow-sm",
+          trend > 0 ? "text-emerald-600 bg-emerald-50" : "text-rose-600 bg-rose-50"
+        )}>
+          {trend > 0 ? <ArrowUpRight size={14} strokeWidth={3} /> : <ArrowDownRight size={14} strokeWidth={3} />}
+          {Math.abs(trend)}%
+        </div>
+      )}
+    </div>
+    
+    {/* Subtle Background Pattern */}
+    <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
+      <Icon size={120} />
+    </div>
+  </div>
 );
 
-
-
-const COLORS = ['#10B981', '#F59E0B', '#EF4444', '#3B82F6'];
+const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const { stats, todayIncome, todaysEvents, isLoading, isFetching } = useDashboardData();
+    const { stats = {}, todayIncome = [], todaysEvents = [], isLoading } = useDashboardData();
 
-    // Prepare data for Pie Chart (safe defaults)
     const pieData = (stats.invoiceStatusCounts ?? []).map(item => ({
         name: item.status,
         value: item.count
@@ -68,292 +67,262 @@ const Dashboard = () => {
 
     if (isLoading) {
         return (
-            <div className="p-4 md:p-6 lg:p-10 w-full mx-auto space-y-6 md:space-y-8 animate-fade-in">
+            <div className="p-4 md:p-8 space-y-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto">
                 <StatCardsSkeleton />
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="card lg:col-span-2 h-[400px] animate-pulse rounded-2xl bg-gray-100/50" />
-                    <div className="card h-[400px] animate-pulse rounded-2xl bg-gray-100/50" />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="bg-white rounded-2xl border border-slate-200 h-[400px] animate-pulse" />
+                    <div className="bg-white rounded-2xl border border-slate-200 h-[400px] animate-pulse" />
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC]">
-            {/* Header Background Strip */}
-            <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-violet-50/50 to-transparent pointer-events-none" />
-
-            <div className="relative p-6 md:p-10 space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                {/* Header Section */}
-                <div className="flex items-center justify-between mb-2">
-                    <div className="space-y-1">
-                        <h1 className="text-[28px] font-bold text-slate-900 leading-tight">Dashboard Overview</h1>
-                        <p className="text-slate-500 font-medium text-[14px]">Welcome back! Here&apos;s what&apos;s happening with your business.</p>
-                    </div>
+        <div className="p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
+            {/* Header with Quick Actions */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div>
+                    <p className="text-[12px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-1">Corporate Intelligence</p>
+                    <h1 className="text-[32px] font-black text-slate-900 tracking-tighter leading-none">Command Overview</h1>
+                    <p className="text-slate-500 text-[14px] font-medium mt-2">Real-time financial synchronization and operational trajectory.</p>
                 </div>
+                <div className="flex flex-wrap gap-3">
+                    <button onClick={() => navigate('/income')} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[13px] font-bold hover:bg-black transition-all flex items-center gap-2 shadow-lg shadow-slate-900/10">
+                        <Plus size={16} strokeWidth={3} />
+                        Income
+                    </button>
+                    <button onClick={() => navigate('/expense')} className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-[13px] font-bold hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+                        <Plus size={16} strokeWidth={2.5} />
+                        Expense
+                    </button>
+                    <button className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all">
+                        <Download size={18} strokeWidth={2.5} />
+                    </button>
+                </div>
+            </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {/* Top Stat Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
-                    title="Total Revenue"
+                    title="Gross Revenue"
                     value={`₹${(stats.totalRevenue ?? 0).toLocaleString('en-IN')}`}
                     icon={DollarSign}
                     trend={12.5}
-                    color="bg-emerald-500"
+                    colorClass="bg-indigo-600 shadow-indigo-200"
+                    subLabel="YTD Trajectory"
+                    subValue={`₹${(stats.totalRevenue * 0.85).toLocaleString('en-IN')}`}
                 />
                 <StatCard
-                    title="Active Clients"
+                    title="Market Reach"
                     value={stats.activeClients ?? 0}
                     subValue={stats.totalClients ?? 0}
-                    subLabel="Total Registered"
+                    subLabel="Total Client Base"
                     icon={Users}
-                    color="bg-blue-500"
                     trend={8.2}
+                    colorClass="bg-emerald-600 shadow-emerald-200"
                 />
                 <StatCard
-                    title="Pending Invoices"
+                    title="Outstanding Capital"
                     value={`₹${(stats.pendingAmount ?? 0).toLocaleString('en-IN')}`}
-                    icon={FileText}
+                    icon={Clock}
                     trend={-2.4}
-                    color="bg-amber-500"
+                    colorClass="bg-amber-500 shadow-amber-200"
+                    subLabel="Collection Queue"
+                    subValue="12 Invoices"
                 />
                 <StatCard
                     title="Conversion Rate"
                     value="24.5%"
-                    icon={Activity}
+                    icon={TrendingUp}
                     trend={4.1}
-                    color="bg-violet-500"
+                    colorClass="bg-violet-600 shadow-violet-200"
+                    subLabel="Lead Pipeline"
+                    subValue="84 Active Opportunities"
                 />
             </div>
 
-
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-                <div className="card lg:col-span-2 px-2 md:px-6">
-                    <div className="flex justify-between items-center mb-6 px-2 md:px-0">
-                        <h3 className="text-lg font-bold text-slate-800">Recent Invoices</h3>
-                        <button
-                            className="text-sm font-medium text-violet-600 hover:text-violet-700"
-                            onClick={() => navigate('/invoices')}
-                        >
-                            View All
-                        </button>
-                    </div>
-                    <div className="overflow-x-auto custom-scrollbar">
-                        <table className="w-full text-sm text-left min-w-[600px]">
-                            <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 rounded-lg">
-                                <tr>
-                                    <th className="px-4 py-3 rounded-l-lg">Invoice ID</th>
-                                    <th className="px-4 py-3">Client</th>
-                                    <th className="px-4 py-3">Date</th>
-                                    <th className="px-4 py-3">Amount</th>
-                                    <th className="px-4 py-3 rounded-r-lg">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {(stats.recentInvoices ?? []).map((inv) => (
-                                    <tr key={inv.id} className="group hover:bg-gray-50/80 transition-colors">
-                                        <td className="px-4 py-4 font-mono font-medium text-violet-600 group-hover:text-violet-700">{inv.id}</td>
-                                        <td className="px-4 py-4 font-semibold text-slate-700">{inv.client_name}</td>
-                                        <td className="px-4 py-4 text-slate-500">{inv.date}</td>
-                                        <td className="px-4 py-4 font-bold text-slate-900">₹{inv.amount.toLocaleString('en-IN')}</td>
-                                        <td className="px-4 py-4">
-                                            <span className={clsx(
-                                                "badge",
-                                                inv.status === 'Paid' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                                                    inv.status === 'Pending' ? "bg-amber-50 text-amber-700 border-amber-100" :
-                                                        "bg-red-50 text-red-700 border-red-100"
-                                            )}>
-                                                {inv.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {(stats.recentInvoices ?? []).length === 0 && (
-                                    <tr>
-                                        <td colSpan="5" className="px-4 py-8 text-center text-gray-400 italic">No recent activity</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div className="flex flex-col gap-6">
-                    {/* Quick Actions & Summary */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100/60 p-6 flex flex-col h-full">
-                        <h3 className="text-lg font-bold text-slate-800 mb-4">Quick Actions</h3>
-
-                        <div className="grid grid-cols-2 gap-3 mb-6">
-                            <button
-                                onClick={() => navigate('/invoices', { state: { openForm: true } })}
-                                className="flex items-center justify-between p-4 rounded-xl bg-brand-50 hover:bg-violet-100/80 transition-all group border border-violet-100/50"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-lg bg-white text-violet-600 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                        <FileText className="w-5 h-5" />
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="font-bold text-slate-800">Add Invoice</p>
-                                        <p className="text-xs text-violet-600/80 font-medium">Create & Send</p>
-                                    </div>
-                                </div>
-                                <ArrowRight className="w-4 h-4 text-violet-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-                            </button>
-
-                            <button
-                                onClick={() => navigate('/clients', { state: { openForm: true } })}
-                                className="flex items-center justify-between p-4 rounded-xl bg-blue-50 hover:bg-blue-100/80 transition-all group border border-blue-100/50"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-lg bg-white text-blue-600 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                        <Users className="w-5 h-5" />
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="font-bold text-slate-800">Add Client</p>
-                                        <p className="text-xs text-blue-600/80 font-medium">Manage Clients</p>
-                                    </div>
-                                </div>
-                                <ArrowRight className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-                            </button>
+            {/* Visual Analytics Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Revenue Trajectory */}
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col h-[400px]">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h4 className="text-[16px] font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                <BarChart3 size={18} className="text-indigo-600" />
+                                Revenue Absorption
+                            </h4>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Monthly financial performance</p>
                         </div>
-
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 text-xs">Today's Overview</h3>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100/50">
-                                <p className="text-xs font-semibold text-emerald-600 mb-1">Income</p>
-                                <p className="text-lg font-bold text-slate-800 truncate" title={`₹${todayIncome ?? 0}`}>
-                                    ₹{(todayIncome ?? 0).toLocaleString('en-IN')}
-                                </p>
-                            </div>
-                            <div
-                                className="p-4 rounded-xl bg-amber-50 border border-amber-100/50 cursor-pointer hover:bg-amber-100/50 transition-colors"
-                                onClick={() => navigate('/invoices', { state: { initialStatus: 'Pending' } })}
-                            >
-                                <p className="text-xs font-semibold text-amber-600 mb-1">Pending</p>
-                                <p className="text-lg font-bold text-slate-800 truncate">
-                                    View All
-                                </p>
-                            </div>
+                        <div className="flex gap-1.5 p-1 bg-slate-50 rounded-lg">
+                            {['7D', '30D', '1Y'].map(p => (
+                                <button key={p} className={clsx("px-2.5 py-1 rounded text-[10px] font-black transition-all", p === '30D' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}>{p}</button>
+                            ))}
                         </div>
                     </div>
-
-                    {/* Today's Commitments */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100/60 p-6 flex flex-col h-full">
-                        <h3 className="text-lg font-bold text-slate-800 mb-3">Today&apos;s Commitments</h3>
-                        {(todaysEvents ?? []).length === 0 ? (
-                            <p className="text-sm text-slate-400">No events scheduled for today.</p>
-                        ) : (
-                            <ul className="space-y-3">
-                                {(todaysEvents ?? []).map((ev) => {
-                                    const status = ev.status || 'scheduled';
-                                    const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
-                                    const color =
-                                        status === 'completed' ? '#10B981' :
-                                            status === 'cancelled' ? '#EF4444' :
-                                                status === 'missed' ? '#FB923C' :
-                                                    status === 'rescheduled' ? '#F59E0B' :
-                                                        ev.category === 'payment' ? '#10B981' :
-                                                            ev.category === 'deadline' ? '#EF4444' :
-                                                                ev.category === 'reminder' ? '#FACC15' :
-                                                                    '#3B82F6';
-
-                                    return (
-                                        <li key={ev.id} className="flex items-start gap-3">
-                                            <div
-                                                className="mt-1 h-2 w-2 rounded-full"
-                                                style={{ backgroundColor: color }}
-                                            ></div>
-                                            <div>
-                                                <p className="text-sm font-semibold text-slate-800">
-                                                    {ev.title} <span className="text-xs text-slate-500">– {statusLabel}</span>
-                                                </p>
-                                                <p className="text-xs text-slate-500">
-                                                    {ev.start_time
-                                                        ? new Date(`1970-01-01T${ev.start_time}`).toLocaleTimeString([], {
-                                                            hour: '2-digit',
-                                                            minute: '2-digit',
-                                                        })
-                                                        : 'All day'}
-                                                </p>
-                                            </div>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-                <div className="card lg:col-span-2 p-6 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6">Revenue Overview</h3>
-                    <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                            <BarChart data={stats.monthlyRevenue ?? []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                <XAxis
-                                    dataKey="month"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#64748B', fontSize: 12 }}
-                                    dy={10}
+                    <div className="flex-1 w-full -ml-4">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={stats.monthlyRevenue?.length > 0 ? stats.monthlyRevenue.map(m => ({ name: m.month, rev: m.revenue })) : [
+                                { name: 'Jan', rev: 0 }, { name: 'Feb', rev: 0 }, { name: 'Mar', rev: 0 },
+                                { name: 'Apr', rev: 0 }, { name: 'May', rev: 0 }, { name: 'Jun', rev: 0 }
+                            ]}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#94a3b8' }} tickFormatter={(v) => `₹${v/1000}k`} />
+                                <RechartsTooltip 
+                                    cursor={{ fill: '#f8fafc' }}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
                                 />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fill: '#64748B', fontSize: 12 }}
-                                    tickFormatter={(value) => `₹${value / 1000}k`}
-                                />
-                                <RechartsTooltip
-                                    cursor={{ fill: '#F1F5F9' }}
-                                    contentStyle={{ borderRadius: '0.75rem', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                />
-                                <Bar
-                                    dataKey="revenue"
-                                    fill="#3B82F6"
-                                    radius={[4, 4, 0, 0]}
-                                    barSize={40}
-                                />
+                                <Bar dataKey="rev" fill="#4f46e5" radius={[6, 6, 0, 0]} barSize={40} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                <div className="card p-6 flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-800 mb-6">Invoice Status</h3>
-                    <div className="h-[300px] w-full flex items-center justify-center relative">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                {/* Distribution Overview */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col h-[400px]">
+                    <div className="mb-6">
+                        <h4 className="text-[16px] font-black text-slate-900 tracking-tight flex items-center gap-2">
+                            <PieChartIcon size={18} className="text-emerald-600" />
+                            Status Allocation
+                        </h4>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Invoice lifecycle distribution</p>
+                    </div>
+                    <div className="flex-1 w-full relative">
+                        <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={pieData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
+                                    data={pieData.length > 0 ? pieData : [{ name: 'N/A', value: 1 }]}
+                                    innerRadius={70}
+                                    outerRadius={100}
+                                    paddingAngle={8}
                                     dataKey="value"
                                 >
                                     {pieData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.name === 'Paid' ? '#10B981' : entry.name === 'Pending' ? '#F59E0B' : entry.name === 'Overdue' ? '#EF4444' : COLORS[index % COLORS.length]} />
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
+                                    {pieData.length === 0 && <Cell fill="#f1f5f9" />}
                                 </Pie>
-                                <RechartsTooltip contentStyle={{ borderRadius: '0.5rem' }} />
+                                <RechartsTooltip 
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
-                        {/* Legend */}
+                        {/* Center Value */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-[28px] font-black text-slate-900 leading-none">{stats.totalInvoices ?? 0}</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Total Assets</span>
+                        </div>
                     </div>
-                    <div className="flex justify-center gap-4 mt-2 flex-wrap">
-                        {pieData.map((entry, index) => (
-                            <div key={index} className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.name === 'Paid' ? '#10B981' : entry.name === 'Pending' ? '#F59E0B' : entry.name === 'Overdue' ? '#EF4444' : COLORS[index % COLORS.length] }}></div>
-                                <span className="text-xs font-medium text-slate-600">{entry.name}</span>
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                        {pieData.map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
+                                <span className="text-[11px] font-bold text-slate-600 truncate">{item.name}</span>
+                                <span className="text-[11px] font-black text-slate-900 ml-auto">{item.value}</span>
                             </div>
                         ))}
                     </div>
                 </div>
             </div>
+
+            {/* Bottom Section: Records & Logistics */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                {/* Recent Transactions */}
+                <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                            <h4 className="text-[16px] font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                <Receipt size={18} className="text-indigo-600" />
+                                Liquidity Stream
+                            </h4>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Latest income records</p>
+                        </div>
+                        <button onClick={() => navigate('/income')} className="text-[12px] font-black text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                            View Registry <ArrowRight size={14} strokeWidth={3} />
+                        </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="bg-slate-50/50 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-slate-100">
+                                    <th className="px-6 py-4">Identification</th>
+                                    <th className="px-6 py-4">Client Source</th>
+                                    <th className="px-6 py-4 text-right">Absorption</th>
+                                    <th className="px-6 py-4">Protocol</th>
+                                    <th className="px-6 py-4">Temporal</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {todayIncome.length === 0 ? (
+                                    <tr><td colSpan="5" className="p-12 text-center"><EmptyState icon={Activity} title="Static Stream" description="No financial activity detected for this cycle." /></td></tr>
+                                ) : todayIncome.slice(0, 5).map((item, idx) => (
+                                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => navigate('/income')}>
+                                        <td className="px-6 py-4 font-mono text-[11px] font-black text-slate-400">#{item.id}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-[13px] font-bold text-slate-900">{item.client || 'General Source'}</span>
+                                                <span className="text-[11px] text-slate-400 font-medium italic">{item.category || 'Revenue'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className="text-[14px] font-black text-emerald-600 italic tracking-tight">+₹{parseFloat(item.amount).toLocaleString()}</span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-wider">{item.method}</span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-[12px] font-bold text-slate-500">{item.receivedDate || item.date}</span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Operations Calendar */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col h-full">
+                    <div className="p-6 border-b border-slate-100">
+                        <h4 className="text-[16px] font-black text-slate-900 tracking-tight flex items-center gap-2">
+                            <Clock size={18} className="text-amber-500" />
+                            Operational Pulse
+                        </h4>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Today's scheduled engagements</p>
+                    </div>
+                    <div className="flex-1 p-6 space-y-4 overflow-y-auto">
+                        {todaysEvents.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-slate-300">
+                                <CheckCircle2 size={40} className="opacity-20 mb-3" />
+                                <p className="text-[13px] font-bold uppercase tracking-widest opacity-40 italic leading-none">Trajectory Clear</p>
+                            </div>
+                        ) : todaysEvents.map((event, idx) => (
+                            <div key={idx} className="flex gap-4 p-3.5 rounded-xl border border-slate-100 bg-slate-50 hover:border-amber-200 hover:bg-amber-50/30 transition-all cursor-pointer group">
+                                <div className="h-10 w-10 shrink-0 bg-white border border-slate-200 rounded-lg flex flex-col items-center justify-center text-slate-400 group-hover:text-amber-500 group-hover:border-amber-200 transition-colors shadow-sm">
+                                    <span className="text-[10px] font-black leading-none">{event.time?.split(':')[0] || '10'}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-tighter leading-none mt-0.5">{event.time?.split(':')[1] || '00'}</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <h5 className="text-[13px] font-black text-slate-800 truncate">{event.title}</h5>
+                                        <div className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[8px] font-black uppercase tracking-wider shrink-0">{event.type || 'LITIGATION'}</div>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 mt-1 truncate">{event.description || 'Logistics and coordination engagement.'}</p>
+                                    <div className="flex items-center gap-3 mt-2">
+                                        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                            <UserCheck size={10} strokeWidth={3} />
+                                            {event.client || 'Internal'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="p-4 bg-slate-50/80 border-t border-slate-100 rounded-b-2xl">
+                        <button onClick={() => navigate('/planner')} className="w-full py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl text-[12px] font-black uppercase tracking-[0.1em] hover:bg-white hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm active:scale-[0.98]">
+                            Expand Control Map
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

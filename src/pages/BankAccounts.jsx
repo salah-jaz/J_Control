@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
-import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Search, Upload, Image, Loader2 } from "lucide-react";
+import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Upload, Image, Loader2, FileText, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
 import { getBankAccounts, createBankAccount, updateBankAccount, deleteBankAccount } from "../services/bankAccountService";
 import { invalidateCache } from "../utils/apiFetch";
 import clsx from "clsx";
+import PageHeader from "../components/ui/PageHeader";
+import ToolbarSearch from "../components/ui/ToolbarSearch";
+import EmptyState from "../components/ui/EmptyState";
+import { TableSectionHeader } from "../components/ui/DataTableSection";
+import { ActionIconButton } from "../components/ui/TableRowActions";
+import SlideOver from "../components/ui/SlideOver";
 
 const emptyForm = {
   bankName: "",
@@ -27,7 +33,13 @@ const emptyForm = {
   qrCodeFile: null,
 };
 
-const tabs = ["Account Info", "Bank Details", "Balance", "QR Code", "Private Notes"];
+const tabs = [
+  { label: "Registry", desc: "Owner and type", icon: Building2 },
+  { label: "Technicals", desc: "Account identifiers", icon: CreditCard },
+  { label: "Treasury", desc: "Amounts and status", icon: Wallet },
+  { label: "Payment QR", desc: "Payment scan", icon: Image },
+  { label: "Administrative", desc: "Internal memo", icon: Edit2 },
+];
 
 export default function BankAccounts() {
   const [data, setData] = useState([]);
@@ -172,36 +184,32 @@ export default function BankAccounts() {
   };
 
   return (
-    <div className="p-6 lg:p-10 w-full mx-auto animate-fade-in space-y-8 overflow-hidden">
+    <div className="p-4 md:p-8 animate-fade-in space-y-8 overflow-hidden">
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Bank Accounts</h1>
-          <p className="text-slate-500 mt-1 text-lg">Manage your banking and payment channels.</p>
-        </div>
-        <button
-          onClick={openAdd}
-          className="btn-primary flex items-center gap-2 shadow-lg shadow-violet-500/30"
-        >
-          <Plus size={20} />
-          Add Account
-        </button>
-      </div>
+      <PageHeader
+        title="Bank Accounts"
+        subtitle="Manage your banking and payment channels."
+        primaryAction={(
+          <button
+            onClick={openAdd}
+            className="btn-primary flex items-center gap-2 shadow-lg shadow-violet-500/30"
+          >
+            <Plus size={20} />
+            Add Account
+          </button>
+        )}
+      />
 
       {/* TABLE */}
       <div className="card p-0 overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <h3 className="font-bold text-slate-800">Accounts</h3>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search accounts..."
-              className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 w-64 transition-all"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+        <div className="p-4 md:p-5 border-b border-gray-100 bg-gray-50/50 space-y-3">
+          <TableSectionHeader title="Accounts" summary={`Showing ${filteredData.length}`} />
+          <ToolbarSearch
+            placeholder="Search accounts..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+            className="max-w-sm"
+          />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
@@ -219,8 +227,12 @@ export default function BankAccounts() {
             <tbody className="divide-y divide-gray-50">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-12 text-center text-slate-400 italic">
-                    No bank accounts found
+                  <td colSpan="7" className="px-6 py-2">
+                    <EmptyState
+                      icon={Wallet}
+                      title="No bank accounts found"
+                      description="Add a bank account or adjust your search."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -254,27 +266,9 @@ export default function BankAccounts() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => openViewModal(item)}
-                          title="View"
-                          className="p-2 rounded-lg text-slate-400 hover:text-violet-600 hover:bg-brand-50 transition-colors"
-                        >
-                          <Eye size={18} />
-                        </button>
-                        <button
-                          onClick={() => openEdit(item)}
-                          title="Edit"
-                          className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                        >
-                          <Edit2 size={18} />
-                        </button>
-                        <button
-                          onClick={() => deleteBankaccounts(item.id)}
-                          title="Delete"
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        <ActionIconButton onClick={() => openViewModal(item)} title="View" icon={Eye} tone="view" />
+                        <ActionIconButton onClick={() => openEdit(item)} title="Edit" icon={Edit2} tone="edit" />
+                        <ActionIconButton onClick={() => deleteBankaccounts(item.id)} title="Delete" icon={Trash2} tone="delete" />
                       </div>
                     </td>
                   </tr>
@@ -338,118 +332,142 @@ export default function BankAccounts() {
         </div>
       )}
 
-      {/* FORM MODAL */}
-      {openForm && (
-        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-slide-up overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-                  {editId ? "Edit Bank Account" : "Add Bank Account"}
-                </h2>
-                <p className="text-sm text-slate-500 mt-1">Configure your bank or payment details.</p>
-              </div>
-              <button onClick={() => setOpenForm(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-gray-100 rounded-full transition-all">
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* TABS */}
-            <div className="flex px-6 border-b border-gray-100 bg-gray-50/30 overflow-x-auto hide-scrollbar flex-shrink-0">
-              {tabs.map((t, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveTab(i)}
-                  className={clsx(
-                    "px-6 py-4 text-sm font-bold uppercase tracking-wide border-b-2 transition-all whitespace-nowrap",
-                    activeTab === i ? "border-violet-600 text-violet-600" : "border-transparent text-slate-500 hover:text-slate-800 hover:border-gray-200"
-                  )}
-                >
-                  {t}
-                </button>
+      {/* FORM SLIDEOVER */}
+      <SlideOver
+        isOpen={openForm}
+        onClose={() => setOpenForm(false)}
+        size="5xl"
+        title={editId ? "Modify Account Registry" : "Initialize New Banking Channel"}
+        footer={(
+          <div className="flex justify-end gap-3 w-full px-1">
+            <button onClick={() => setOpenForm(false)} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Discard Entry</button>
+            <button
+              onClick={saveAccount}
+              disabled={isSaving}
+              className="px-10 py-2.5 bg-indigo-600 text-white text-[14px] font-black rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+            >
+              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+              <span>{isSaving ? 'Synchronizing...' : (editId ? 'Commit Modifications' : 'Finalize Registry')}</span>
+            </button>
+          </div>
+        )}
+      >
+        <div className="flex h-full min-h-[600px] relative">
+          {/* Sidebar Navigation */}
+          <div className="w-64 border-r-2 border-slate-100 pr-6 shrink-0 hidden md:block">
+            <div className="flex flex-col gap-2 sticky top-0">
+              {tabs.map((tabItem, i) => (
+                <div key={tabItem.label}>
+                  <button
+                    onClick={() => setActiveTab(i)}
+                    className={clsx(
+                      "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-[0.15em] transition-all relative group",
+                      activeTab === i
+                        ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100 ring-1 ring-indigo-200/50"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                    )}
+                  >
+                    {activeTab === i && (
+                      <div className="absolute -right-[26px] top-3 bottom-3 w-1 bg-indigo-600 rounded-l-full z-10" />
+                    )}
+                    <tabItem.icon className={clsx("h-4 w-4", activeTab === i ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600")} />
+                    <span>{tabItem.label}</span>
+                  </button>
+                  {i < tabs.length - 1 && <div className="h-px bg-slate-50 mx-4 my-1 opacity-50" />}
+                </div>
               ))}
             </div>
+          </div>
 
-            {/* TAB CONTENT */}
-            <div className="flex-1 overflow-y-auto p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Content Area */}
+          <div className="flex-1 pl-10 overflow-y-auto">
+            <div className="pb-20">
+              <div className="grid grid-cols-1 gap-8">
                 {activeTab === 0 && (
-                  <>
-                    <div>
-                      <label className="label">
-                        Bank Name
-                        <Req />
-                      </label>
-                      {input("bankName")}
+                  <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="grid grid-cols-2 gap-8">
+                      <div className="col-span-2">
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Bank Principal Entity <Req /></label>
+                        <div className="relative">
+                          <Building2 size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-11 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" placeholder="e.g. HDFC Bank Ltd" value={form.bankName} onChange={e => setForm({...form, bankName: e.target.value})} />
+                        </div>
+                        {errors.bankName && <p className="text-[10px] text-rose-500 mt-2 font-bold uppercase tracking-widest">{errors.bankName}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Account Holder Name <Req /></label>
+                        <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" value={form.accountName} onChange={e => setForm({...form, accountName: e.target.value})} />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Alias / Reference Name</label>
+                        <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" value={form.nickName} onChange={e => setForm({...form, nickName: e.target.value})} />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Account Architecture</label>
+                        <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm appearance-none" value={form.accountType} onChange={e => setForm({...form, accountType: e.target.value})}>
+                          <option>Savings</option>
+                          <option>Current</option>
+                          <option>Overdraft</option>
+                          <option>Loan</option>
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="label">
-                        Account Holder Name
-                        <Req />
-                      </label>
-                      {input("accountName")}
-                    </div>
-                    <div>
-                      <label className="label">Alias / Reference Name</label>
-                      {input("nickName")}
-                    </div>
-                    <div>
-                      <label className="label">
-                        Account Type
-                      </label>
-                      <select
-                        className="input"
-                        value={form.accountType}
-                        onChange={(e) =>
-                          setForm({ ...form, accountType: e.target.value })
-                        }
-                      >
-                        <option>Savings</option>
-                        <option>Current</option>
-                        <option>Overdraft</option>
-                        <option>Loan</option>
-                      </select>
-                    </div>
-                  </>
+                  </div>
                 )}
 
                 {activeTab === 1 && (
-                  <>
-                    <div>
-                      <label className="label">
-                        Account Number
-                        <Req />
-                      </label>
-                      {input("accountNumber")}
+                  <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="grid grid-cols-2 gap-8">
+                      <div className="col-span-2">
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Account Identification Number <Req /></label>
+                        <div className="relative">
+                          <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-11 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm font-mono" value={form.accountNumber} onChange={e => setForm({...form, accountNumber: e.target.value})} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">IFSC Protocol Code <Req /></label>
+                        <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm uppercase font-mono" value={form.ifsc} onChange={e => setForm({...form, ifsc: e.target.value})} />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Bank Branch Location</label>
+                        <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" value={form.branch} onChange={e => setForm({...form, branch: e.target.value})} />
+                      </div>
+                      <div><label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">MICR Tracking</label><input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" value={form.micr} onChange={e => setForm({...form, micr: e.target.value})} /></div>
+                      <div><label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">SWIFT / BIC Protocol</label><input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm uppercase" value={form.swift} onChange={e => setForm({...form, swift: e.target.value})} /></div>
                     </div>
-                    <div>
-                      <label className="label">
-                        IFSC Code
-                        <Req />
-                      </label>
-                      {input("ifsc")}
-                    </div>
-                    <div><label className="label">Bank Branch</label>{input("branch")}</div>
-                    <div><label className="label">MICR Code</label>{input("micr")}</div>
-                    <div><label className="label">SWIFT Code</label>{input("swift")}</div>
-                  </>
+                  </div>
                 )}
 
                 {activeTab === 2 && (
-                  <>
-                    <div>
-                      <label className="label">
-                        Opening Balance
-                      </label>
-                      <input
-                        type="number"
-                        value={form.openingBalance}
-                        onChange={(e) => {
+                  <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-6 relative overflow-hidden group shadow-2xl border border-slate-800">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] rounded-full -mr-32 -mt-32 group-hover:bg-indigo-600/20 transition-colors" />
+                      <div className="flex justify-between items-center relative z-10">
+                        <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em]">Treasury Snapshot</h4>
+                        <Wallet className="text-indigo-500" size={24} />
+                      </div>
+                      <div className="space-y-4 relative z-10">
+                        <div className="flex justify-between items-end border-b border-slate-800 pb-4">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase">Opening Balance</span>
+                          <span className="text-[18px] font-black font-mono tracking-tight italic">₹{parseFloat(form.openingBalance || 0).toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex justify-between items-end pt-4">
+                          <span className="text-[13px] font-black text-white uppercase tracking-[0.3em]">Current Treasury</span>
+                          <span className="text-[32px] font-black font-mono tracking-tighter italic text-indigo-400 leading-none">₹{parseFloat(form.currentBalance || 0).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-8">
+                      <div>
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Initial Opening Balance (₹)</label>
+                        <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-black outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm italic" value={form.openingBalance} onChange={e => {
                           const val = e.target.value;
-                          setForm((prev) => {
+                          setForm(prev => {
                             const newer = { ...prev, openingBalance: val };
                             if (editId) {
-                              const original = data.find((d) => d.id === editId);
+                              const original = data.find(d => d.id === editId);
                               if (original) {
                                 const diff = (parseFloat(val) || 0) - (parseFloat(original.openingBalance) || 0);
                                 newer.currentBalance = ((parseFloat(original.currentBalance) || 0) + diff).toFixed(2);
@@ -459,58 +477,53 @@ export default function BankAccounts() {
                             }
                             return newer;
                           });
-                        }}
-                        className={`input ${errors.openingBalance ? "border-red-500 focus:border-red-500 focus:ring-red-200" : ""}`}
-                      />
+                        }} />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Active Current Balance (₹)</label>
+                        <input type="number" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-black outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm italic" value={form.currentBalance} onChange={e => setForm({...form, currentBalance: e.target.value})} />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Functional Currency</label>
+                        <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm uppercase font-mono" value={form.currency} onChange={e => setForm({...form, currency: e.target.value})} />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Operational Status</label>
+                        <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm appearance-none" value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
+                          <option>Active</option>
+                          <option>Inactive</option>
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Account Opening Date</label>
+                        <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" value={form.openingDate} onChange={e => setForm({...form, openingDate: e.target.value})} />
+                      </div>
                     </div>
-                    <div>
-                      <label className="label">
-                        Current Balance
-                      </label>
-                      {input("currentBalance", "number")}
-                    </div>
-                    <div><label className="label">Currency</label>{input("currency")}</div>
-                    <div>
-                      <label className="label">
-                        Status
-                      </label>
-                      <select
-                        className="input"
-                        value={form.status}
-                        onChange={(e) =>
-                          setForm({ ...form, status: e.target.value })
-                        }
-                      >
-                        <option>Active</option>
-                        <option>Inactive</option>
-                      </select>
-                    </div>
-                    <div><label className="label">Opening Date</label>{input("openingDate", "date")}</div>
-                  </>
+                  </div>
                 )}
 
                 {activeTab === 3 && (
-                  <div className="md:col-span-2">
-                    <label className="label">Upload Payment QR Code</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:bg-gray-50 transition cursor-pointer relative flex flex-col items-center justify-center min-h-[300px]">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileChange}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                      />
+                  <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="relative group overflow-hidden rounded-3xl border-2 border-dashed border-slate-200 hover:border-indigo-300 transition-all bg-slate-50 min-h-[400px] flex flex-col items-center justify-center p-8">
+                      <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer z-20" />
                       {qrPreview ? (
-                        <div className="relative">
-                          <img src={qrPreview} alt="QR Preview" className="max-h-64 object-contain rounded-lg border border-gray-200 shadow-sm" />
-                          <p className="mt-4 text-sm text-green-600 font-bold bg-green-50 px-3 py-1 rounded-full inline-block">Image Selected</p>
+                        <div className="relative z-10 flex flex-col items-center animate-in zoom-in-95 duration-300">
+                          <div className="bg-white p-4 rounded-3xl shadow-2xl border border-slate-100 ring-8 ring-indigo-50/50">
+                            <img src={qrPreview} alt="QR Preview" className="max-h-64 object-contain rounded-xl" />
+                          </div>
+                          <p className="mt-8 text-[12px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-6 py-2.5 rounded-xl border border-indigo-100 flex items-center gap-2">
+                            <Plus size={14} className="rotate-45" /> Replace Static QR Code
+                          </p>
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center text-slate-400">
-                          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-400">
+                        <div className="flex flex-col items-center justify-center text-slate-400 space-y-4">
+                          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-slate-300 shadow-sm border border-slate-100 group-hover:scale-110 group-hover:text-indigo-400 transition-all">
                             <Upload size={32} />
                           </div>
-                          <p className="text-lg font-bold text-slate-700">Click to upload QR Code</p>
-                          <p className="text-sm mt-1">PNG, JPG up to 5MB</p>
+                          <div className="text-center">
+                            <p className="text-[16px] font-black text-slate-700 uppercase tracking-widest">Deploy Payment QR</p>
+                            <p className="text-[11px] text-slate-400 mt-1 uppercase font-bold tracking-wider">Drag and drop or click to upload static QR interface</p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -518,39 +531,23 @@ export default function BankAccounts() {
                 )}
 
                 {activeTab === 4 && (
-                  <div className="md:col-span-2">
-                    <textarea
-                      className="input h-32 w-full"
-                      placeholder="Private Notes..."
-                      value={form.notes}
-                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    />
+                  <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div>
+                      <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Internal Administrative Protocol Logs</label>
+                      <textarea
+                        className="w-full bg-slate-50 border border-slate-200 rounded-3xl p-8 text-[14px] font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm min-h-[300px] resize-none"
+                        placeholder="Private audit trail and coordinations memo..."
+                        value={form.notes}
+                        onChange={e => setForm({ ...form, notes: e.target.value })}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
             </div>
-
-            <div className="flex justify-end gap-3 p-6 border-t border-gray-100 bg-white flex-shrink-0">
-              <button onClick={() => setOpenForm(false)} className="btn-secondary" disabled={isSaving}>Cancel</button>
-              <button
-                type="button"
-                onClick={saveAccount}
-                disabled={isSaving}
-                className={clsx("btn-primary flex items-center gap-2", isSaving && "opacity-50 cursor-not-allowed")}
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Account"
-                )}
-              </button>
-            </div>
           </div>
         </div>
-      )}
+      </SlideOver>
     </div>
   );
 }

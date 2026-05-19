@@ -41,6 +41,12 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { toast } from 'react-hot-toast';
+import PageHeader from '../components/ui/PageHeader';
+import ToolbarSearch from '../components/ui/ToolbarSearch';
+import EmptyState from '../components/ui/EmptyState';
+import { FilterSelect, ClearFiltersButton } from '../components/ui/FilterControls';
+import { ActionIconButton } from '../components/ui/TableRowActions';
+import SlideOver from '../components/ui/SlideOver';
 
 const CATEGORY_COLORS = {
     meeting: '#3B82F6', // Blue
@@ -1087,7 +1093,7 @@ const Planner = () => {
     };
 
     return (
-        <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-fade-in space-y-6">
+        <div className="p-4 md:p-6 lg:p-8 animate-fade-in space-y-6">
             {/* In-app event reminder popup at event time */}
             {reminderEvent && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4">
@@ -1307,17 +1313,11 @@ const Planner = () => {
                 </div>
             )}
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                        <CalendarIcon className="h-7 w-7 text-violet-600" />
-                        Planner
-                    </h1>
-                    <p className="text-slate-500 mt-1 text-sm md:text-base">
-                        Manage events, reminders, and notes from a single productivity hub.
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <PageHeader
+                title="Planner"
+                subtitle="Manage events, reminders, and notes from a single productivity hub."
+                secondaryActions={(
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
                     <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
                         <button
                             onClick={() => setCurrentView('dayGridMonth')}
@@ -1358,7 +1358,7 @@ const Planner = () => {
                         className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-medium text-slate-600 hover:bg-gray-50 shadow-sm"
                     >
                         <Filter className="h-4 w-4" />
-                        More Filters
+                        Filters
                     </button>
                     <button
                         type="button"
@@ -1369,8 +1369,9 @@ const Planner = () => {
                         <History className="h-4 w-4" />
                         History
                     </button>
-                </div>
-            </div>
+                    </div>
+                )}
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
                 <StatCard
@@ -1425,20 +1426,16 @@ const Planner = () => {
 
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
                 <div className="flex flex-col lg:flex-row gap-4 flex-wrap items-center lg:items-end">
-                    <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <input
-                            type="text"
-                            placeholder="Search events or meetings..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="pl-9 pr-4 py-2 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 w-full transition-all shadow-sm"
-                        />
-                    </div>
-                    <select
+                    <ToolbarSearch
+                        placeholder="Search events or meetings..."
+                        value={search}
+                        onChange={setSearch}
+                        className="min-w-[200px]"
+                    />
+                    <FilterSelect
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[150px]"
+                        onChange={setStatusFilter}
+                        minWidthClass="min-w-[150px]"
                     >
                         <option value="all">All Status</option>
                         <option value="scheduled">Scheduled</option>
@@ -1446,11 +1443,11 @@ const Planner = () => {
                         <option value="rescheduled">Rescheduled</option>
                         <option value="cancelled">Cancelled</option>
                         <option value="overdue">Overdue</option>
-                    </select>
-                    <select
+                    </FilterSelect>
+                    <FilterSelect
                         value={categoryFilter}
-                        onChange={(e) => setCategoryFilter(e.target.value)}
-                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[150px]"
+                        onChange={setCategoryFilter}
+                        minWidthClass="min-w-[150px]"
                     >
                         <option value="all">All Categories</option>
                         <option value="meeting">Meeting</option>
@@ -1458,20 +1455,19 @@ const Planner = () => {
                         <option value="deadline">Deadline</option>
                         <option value="reminder">Reminder</option>
                         <option value="personal">Personal</option>
-                    </select>
-                    <select
+                    </FilterSelect>
+                    <FilterSelect
                         value={dateFilter}
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        className="flex-1 lg:flex-none px-4 py-2 bg-white border border-gray-100 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 cursor-pointer transition-all hover:border-gray-200 shadow-sm min-w-[140px]"
+                        onChange={setDateFilter}
+                        minWidthClass="min-w-[140px]"
                     >
                         <option value="all">All Time</option>
                         <option value="today">Today</option>
                         <option value="week">This Week</option>
                         <option value="month">This Month</option>
-                    </select>
+                    </FilterSelect>
                     <div className="flex items-center gap-2 ml-auto flex-wrap">
-                        <button
-                            type="button"
+                        <ClearFiltersButton
                             onClick={() => {
                                 setSearch('');
                                 setSearchDebounced('');
@@ -1479,16 +1475,13 @@ const Planner = () => {
                                 setCategoryFilter('all');
                                 setDateFilter('all');
                             }}
-                            className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-gray-50 transition-colors"
-                        >
-                            Reset Filters
-                        </button>
+                        />
                         <button
                             onClick={openNewEventModal}
                             className="btn-primary flex items-center gap-2 shadow-lg shadow-violet-500/30 h-[38px]"
                         >
                             <Plus className="h-5 w-5" />
-                            Add Event
+                            Create Event
                         </button>
                     </div>
                 </div>
@@ -1585,8 +1578,12 @@ const Planner = () => {
                                 <tbody className="divide-y divide-gray-50">
                                     {filteredEvents.length === 0 ? (
                                         <tr>
-                                            <td colSpan={9} className="px-4 py-12 text-center text-slate-500">
-                                                No events found. Add an event or adjust filters.
+                                            <td colSpan={9} className="px-4 py-2">
+                                                <EmptyState
+                                                    icon={CalendarDays}
+                                                    title="No events found"
+                                                    description="Add an event or adjust filters."
+                                                />
                                             </td>
                                         </tr>
                                     ) : (
@@ -1626,8 +1623,20 @@ const Planner = () => {
                                                     <td className="px-4 py-3 text-slate-600">{ev.client_name || '—'}</td>
                                                     <td className="px-4 py-3 text-slate-500 text-xs">{createdStr}</td>
                                                     <td className="px-4 py-3 text-right">
-                                                        <button type="button" onClick={(e) => { e.stopPropagation(); openEditEventModal(ev); }} className="p-1.5 rounded-lg text-slate-500 hover:bg-gray-100 mr-1" title="Edit"><Edit3 className="h-4 w-4" /></button>
-                                                        <button type="button" onClick={(e) => { e.stopPropagation(); handleOpenCompleteModal(ev, ev.id); }} className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50" title="Complete"><CheckCircle2 className="h-4 w-4" /></button>
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <ActionIconButton
+                                                                onClick={(e) => { e.stopPropagation(); openEditEventModal(ev); }}
+                                                                title="Edit"
+                                                                icon={Edit3}
+                                                                tone="edit"
+                                                            />
+                                                            <ActionIconButton
+                                                                onClick={(e) => { e.stopPropagation(); handleOpenCompleteModal(ev, ev.id); }}
+                                                                title="Complete"
+                                                                icon={CheckCircle2}
+                                                                tone="view"
+                                                            />
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -1929,494 +1938,457 @@ const Planner = () => {
                 </div>
             </div>
 
-            {isEventModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex items-center justify-center">
-                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-lg w-full mx-4">
-                        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-slate-900">
-                                {eventForm.id ? 'Edit Event' : 'Add Event'}
-                            </h2>
-                            <button
-                                onClick={() => setIsEventModalOpen(false)}
-                                className="p-1.5 rounded-full hover:bg-gray-100 text-slate-400"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                        </div>
-                        <form onSubmit={handleSaveEvent} className="p-5 space-y-3 max-h-[70vh] overflow-y-auto">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                    Title
-                                </label>
-                                <input
-                                    type="text"
-                                    name="title"
-                                    required
-                                    value={eventForm.title}
-                                    onChange={handleEventFormChange}
-                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                    Description
-                                </label>
-                                <textarea
-                                    name="description"
-                                    value={eventForm.description}
-                                    onChange={handleEventFormChange}
-                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm min-h-[60px]"
-                                />
-                            </div>
-                            {eventError && (
-                                <p className="text-xs text-red-600">
-                                    {eventError}
-                                </p>
-                            )}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        name="event_date"
-                                        required
-                                        value={eventForm.event_date}
-                                        onChange={handleEventFormChange}
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Category
-                                    </label>
-                                    <select
-                                        name="category"
-                                        value={eventForm.category}
-                                        onChange={handleEventFormChange}
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                    >
-                                        <option value="meeting">Meeting</option>
-                                        <option value="payment">Payment</option>
-                                        <option value="deadline">Deadline</option>
-                                        <option value="reminder">Reminder</option>
-                                        <option value="personal">Personal</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Start Time
-                                    </label>
-                                    <input
-                                        type="time"
-                                        name="start_time"
-                                        value={eventForm.start_time}
-                                        onChange={handleEventFormChange}
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        End Time
-                                    </label>
-                                    <input
-                                        type="time"
-                                        name="end_time"
-                                        value={eventForm.end_time}
-                                        onChange={handleEventFormChange}
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                    Reminder
-                                </label>
-                                <select
-                                    name="reminder_time"
-                                    value={eventForm.reminder_time}
-                                    onChange={handleEventFormChange}
-                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                >
-                                    <option value="">No Reminder</option>
-                                    <option value="10">10 minutes before</option>
-                                    <option value="30">30 minutes before</option>
-                                    <option value="60">1 hour before</option>
-                                    <option value="1440">1 day before</option>
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Linked Client
-                                    </label>
-                                    <select
-                                        name="client_id"
-                                        value={eventForm.client_id}
-                                        onChange={handleEventFormChange}
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                    >
-                                        <option value="">None</option>
-                                        {clients.map((c) => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.name || c.company_name || c.client_name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Notes (optional)
-                                    </label>
-                                    <textarea
-                                        name="notes"
-                                        value={eventForm.notes}
-                                        onChange={handleEventFormChange}
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm min-h-[40px]"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                    Attachment
-                                </label>
-                                <input
-                                    type="file"
-                                    name="attachment"
-                                    onChange={handleEventFormChange}
-                                    className="w-full text-xs text-slate-600"
-                                />
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsEventModalOpen(false)}
-                                    className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-slate-600 hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSaving}
-                                    className="px-4 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 disabled:opacity-60"
-                                >
-                                    {isSaving ? 'Saving...' : eventForm.id ? 'Update Event' : 'Create Event'}
-                                </button>
-                            </div>
-                        </form>
+            <SlideOver
+                isOpen={isEventModalOpen}
+                onClose={() => setIsEventModalOpen(false)}
+                title={eventForm.id ? 'Edit Event' : 'Create Event'}
+                size="3xl"
+                footer={(
+                    <div className="flex justify-end gap-2 w-full">
+                        <button
+                            type="button"
+                            onClick={() => setIsEventModalOpen(false)}
+                            className="px-6 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-slate-600 hover:bg-gray-50 transition-all active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            form="event-form"
+                            disabled={isSaving}
+                            className="px-8 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 disabled:opacity-60 transition-all shadow-lg shadow-indigo-200 active:scale-95"
+                        >
+                            {isSaving ? 'Saving...' : eventForm.id ? 'Update Event' : 'Create Event'}
+                        </button>
                     </div>
-                </div>
-            )}
-            {isCompleteModalOpen && selectedEvent && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex items-center justify-center">
-                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-md w-full mx-4">
-                        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-slate-900">Mark Completed</h2>
-                            <button
-                                onClick={() => setIsCompleteModalOpen(false)}
-                                className="p-1.5 rounded-full hover:bg-gray-100 text-slate-400"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
+                )}
+            >
+                <form id="event-form" onSubmit={handleSaveEvent} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="md:col-span-2">
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Title
+                            </label>
+                            <input
+                                type="text"
+                                name="title"
+                                required
+                                value={eventForm.title}
+                                onChange={handleEventFormChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                            />
                         </div>
-                        <form onSubmit={handleSubmitComplete} className="p-5 space-y-3">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                    Meeting Notes
-                                </label>
-                                <textarea
-                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm min-h-[80px]"
-                                    value={completionForm.meeting_notes}
-                                    onChange={(e) =>
-                                        setCompletionForm((prev) => ({
-                                            ...prev,
-                                            meeting_notes: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                    Outcome (optional)
-                                </label>
-                                <input
-                                    type="text"
-                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                    value={completionForm.outcome}
-                                    onChange={(e) =>
-                                        setCompletionForm((prev) => ({
-                                            ...prev,
-                                            outcome: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-                            <div className="flex justify-end gap-2 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsCompleteModalOpen(false)}
-                                    className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-slate-600 hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
-                                >
-                                    Save
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-            {isRescheduleModalOpen && selectedEvent && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex items-center justify-center">
-                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-md w-full mx-4">
-                        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-slate-900">Reschedule Meeting</h2>
-                            <button
-                                onClick={() => setIsRescheduleModalOpen(false)}
-                                className="p-1.5 rounded-full hover:bg-gray-100 text-slate-400"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
+                        <div className="md:col-span-2">
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Description
+                            </label>
+                            <textarea
+                                name="description"
+                                value={eventForm.description}
+                                onChange={handleEventFormChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-medium outline-none focus:border-indigo-500 transition-all min-h-[100px]"
+                            />
                         </div>
-                        <form onSubmit={handleSubmitReschedule} className="p-5 space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        New Date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                        value={rescheduleForm.event_date}
-                                        onChange={(e) =>
-                                            setRescheduleForm((prev) => ({
-                                                ...prev,
-                                                event_date: e.target.value,
-                                            }))
-                                        }
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        New Start Time
-                                    </label>
-                                    <input
-                                        type="time"
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                        value={rescheduleForm.start_time}
-                                        onChange={(e) =>
-                                            setRescheduleForm((prev) => ({
-                                                ...prev,
-                                                start_time: e.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                    New End Time
-                                </label>
-                                <input
-                                    type="time"
-                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                    value={rescheduleForm.end_time}
-                                    onChange={(e) =>
-                                        setRescheduleForm((prev) => ({
-                                            ...prev,
-                                            end_time: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                    Reason (optional)
-                                </label>
-                                <textarea
-                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm min-h-[60px]"
-                                    value={rescheduleForm.reason}
-                                    onChange={(e) =>
-                                        setRescheduleForm((prev) => ({
-                                            ...prev,
-                                            reason: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-                            <div className="flex justify-end gap-2 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsRescheduleModalOpen(false)}
-                                    className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-slate-600 hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 rounded-xl bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600"
-                                >
-                                    Save Changes
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-            {isNextMeetingModalOpen && selectedEvent && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex items-center justify-center">
-                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-md w-full mx-4">
-                        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-slate-900">Schedule Next Meeting</h2>
-                            <button
-                                onClick={() => setIsNextMeetingModalOpen(false)}
-                                className="p-1.5 rounded-full hover:bg-gray-100 text-slate-400"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
+                        {eventError && (
+                            <p className="md:col-span-2 text-xs font-bold text-rose-500 uppercase tracking-wider flex items-center gap-2">
+                                <div className="h-1 w-1 rounded-full bg-rose-500" />
+                                {eventError}
+                            </p>
+                        )}
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Date
+                            </label>
+                            <input
+                                type="date"
+                                name="event_date"
+                                required
+                                value={eventForm.event_date}
+                                onChange={handleEventFormChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                            />
                         </div>
-                        <form onSubmit={handleSubmitNextMeeting} className="p-5 space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                        value={nextMeetingForm.event_date}
-                                        onChange={(e) =>
-                                            setNextMeetingForm((prev) => ({
-                                                ...prev,
-                                                event_date: e.target.value,
-                                            }))
-                                        }
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                        Start Time
-                                    </label>
-                                    <input
-                                        type="time"
-                                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                        value={nextMeetingForm.start_time}
-                                        onChange={(e) =>
-                                            setNextMeetingForm((prev) => ({
-                                                ...prev,
-                                                start_time: e.target.value,
-                                            }))
-                                        }
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                    End Time
-                                </label>
-                                <input
-                                    type="time"
-                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm"
-                                    value={nextMeetingForm.end_time}
-                                    onChange={(e) =>
-                                        setNextMeetingForm((prev) => ({
-                                            ...prev,
-                                            end_time: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                    Notes (optional)
-                                </label>
-                                <textarea
-                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm min-h-[60px]"
-                                    value={nextMeetingForm.meeting_notes}
-                                    onChange={(e) =>
-                                        setNextMeetingForm((prev) => ({
-                                            ...prev,
-                                            meeting_notes: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-                            <div className="flex justify-end gap-2 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsNextMeetingModalOpen(false)}
-                                    className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-slate-600 hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
-                                >
-                                    Create Meeting
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-            {isCancelModalOpen && selectedEvent && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex items-center justify-center">
-                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-md w-full mx-4">
-                        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-slate-900">Cancel Meeting</h2>
-                            <button
-                                onClick={() => setIsCancelModalOpen(false)}
-                                className="p-1.5 rounded-full hover:bg-gray-100 text-slate-400"
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Category
+                            </label>
+                            <select
+                                name="category"
+                                value={eventForm.category}
+                                onChange={handleEventFormChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
                             >
-                                <X className="h-4 w-4" />
-                            </button>
+                                <option value="meeting">Meeting</option>
+                                <option value="payment">Payment</option>
+                                <option value="deadline">Deadline</option>
+                                <option value="reminder">Reminder</option>
+                                <option value="personal">Personal</option>
+                            </select>
                         </div>
-                        <form onSubmit={handleSubmitCancel} className="p-5 space-y-3">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                                    Cancel Reason
-                                </label>
-                                <textarea
-                                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm min-h-[60px]"
-                                    value={cancelForm.cancel_reason}
-                                    onChange={(e) =>
-                                        setCancelForm((prev) => ({
-                                            ...prev,
-                                            cancel_reason: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-                            <div className="flex justify-end gap-2 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsCancelModalOpen(false)}
-                                    className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-medium text-slate-600 hover:bg-gray-50"
-                                >
-                                    Back
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-semibold hover:bg-red-700"
-                                >
-                                    Confirm Cancel
-                                </button>
-                            </div>
-                        </form>
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Start Time
+                            </label>
+                            <input
+                                type="time"
+                                name="start_time"
+                                value={eventForm.start_time}
+                                onChange={handleEventFormChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                End Time
+                            </label>
+                            <input
+                                type="time"
+                                name="end_time"
+                                value={eventForm.end_time}
+                                onChange={handleEventFormChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Reminder
+                            </label>
+                            <select
+                                name="reminder_time"
+                                value={eventForm.reminder_time}
+                                onChange={handleEventFormChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
+                            >
+                                <option value="">No Reminder</option>
+                                <option value="10">10 minutes before</option>
+                                <option value="30">30 minutes before</option>
+                                <option value="60">1 hour before</option>
+                                <option value="1440">1 day before</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Linked Client
+                            </label>
+                            <select
+                                name="client_id"
+                                value={eventForm.client_id}
+                                onChange={handleEventFormChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
+                            >
+                                <option value="">None</option>
+                                {clients.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.name || c.company_name || c.client_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Attachment
+                            </label>
+                            <input
+                                type="file"
+                                name="attachment"
+                                onChange={handleEventFormChange}
+                                className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[11px] file:font-black file:uppercase file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 transition-all"
+                            />
+                        </div>
                     </div>
-                </div>
-            )}
+                </form>
+            </SlideOver>
+            <SlideOver
+                isOpen={isCompleteModalOpen && !!selectedEvent}
+                onClose={() => setIsCompleteModalOpen(false)}
+                title="Mark Completed"
+                size="3xl"
+                footer={(
+                    <div className="flex justify-end gap-2 w-full">
+                        <button
+                            type="button"
+                            onClick={() => setIsCompleteModalOpen(false)}
+                            className="px-6 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-slate-600 hover:bg-gray-50 transition-all active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            form="complete-form"
+                            className="px-8 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 active:scale-95"
+                        >
+                            Save Completion
+                        </button>
+                    </div>
+                )}
+            >
+                <form id="complete-form" onSubmit={handleSubmitComplete} className="space-y-6">
+                    <div>
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                            Meeting Notes
+                        </label>
+                        <textarea
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-medium outline-none focus:border-indigo-500 transition-all min-h-[120px]"
+                            value={completionForm.meeting_notes}
+                            onChange={(e) =>
+                                setCompletionForm((prev) => ({
+                                    ...prev,
+                                    meeting_notes: e.target.value,
+                                }))
+                            }
+                            placeholder="Detail the discussion points and decisions..."
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                            Outcome (optional)
+                        </label>
+                        <input
+                            type="text"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                            value={completionForm.outcome}
+                            onChange={(e) =>
+                                setCompletionForm((prev) => ({
+                                    ...prev,
+                                    outcome: e.target.value,
+                                }))
+                            }
+                            placeholder="Final result or status..."
+                        />
+                    </div>
+                </form>
+            </SlideOver>
+            <SlideOver
+                isOpen={isRescheduleModalOpen && !!selectedEvent}
+                onClose={() => setIsRescheduleModalOpen(false)}
+                title="Reschedule Meeting"
+                size="3xl"
+                footer={(
+                    <div className="flex justify-end gap-2 w-full">
+                        <button
+                            type="button"
+                            onClick={() => setIsRescheduleModalOpen(false)}
+                            className="px-6 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-slate-600 hover:bg-gray-50 transition-all active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            form="reschedule-form"
+                            className="px-8 py-2.5 rounded-xl bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition-all shadow-lg shadow-amber-200 active:scale-95"
+                        >
+                            Save Changes
+                        </button>
+                    </div>
+                )}
+            >
+                <form id="reschedule-form" onSubmit={handleSubmitReschedule} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                New Date
+                            </label>
+                            <input
+                                type="date"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                value={rescheduleForm.event_date}
+                                onChange={(e) =>
+                                    setRescheduleForm((prev) => ({
+                                        ...prev,
+                                        event_date: e.target.value,
+                                    }))
+                                }
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                New Start Time
+                            </label>
+                            <input
+                                type="time"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                value={rescheduleForm.start_time}
+                                onChange={(e) =>
+                                    setRescheduleForm((prev) => ({
+                                        ...prev,
+                                        start_time: e.target.value,
+                                    }))
+                                }
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                New End Time
+                            </label>
+                            <input
+                                type="time"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                value={rescheduleForm.end_time}
+                                onChange={(e) =>
+                                    setRescheduleForm((prev) => ({
+                                        ...prev,
+                                        end_time: e.target.value,
+                                    }))
+                                }
+                            />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Reason (optional)
+                            </label>
+                            <textarea
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-medium outline-none focus:border-indigo-500 transition-all min-h-[80px]"
+                                value={rescheduleForm.reason}
+                                onChange={(e) =>
+                                    setRescheduleForm((prev) => ({
+                                        ...prev,
+                                        reason: e.target.value,
+                                    }))
+                                }
+                                placeholder="Why is this meeting being rescheduled?"
+                            />
+                        </div>
+                    </div>
+                </form>
+            </SlideOver>
+            <SlideOver
+                isOpen={isNextMeetingModalOpen && !!selectedEvent}
+                onClose={() => setIsNextMeetingModalOpen(false)}
+                title="Schedule Next Meeting"
+                size="3xl"
+                footer={(
+                    <div className="flex justify-end gap-2 w-full">
+                        <button
+                            type="button"
+                            onClick={() => setIsNextMeetingModalOpen(false)}
+                            className="px-6 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-slate-600 hover:bg-gray-50 transition-all active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            form="next-meeting-form"
+                            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95"
+                        >
+                            Create Meeting
+                        </button>
+                    </div>
+                )}
+            >
+                <form id="next-meeting-form" onSubmit={handleSubmitNextMeeting} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Date
+                            </label>
+                            <input
+                                type="date"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                value={nextMeetingForm.event_date}
+                                onChange={(e) =>
+                                    setNextMeetingForm((prev) => ({
+                                        ...prev,
+                                        event_date: e.target.value,
+                                    }))
+                                }
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Start Time
+                            </label>
+                            <input
+                                type="time"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                value={nextMeetingForm.start_time}
+                                onChange={(e) =>
+                                    setNextMeetingForm((prev) => ({
+                                        ...prev,
+                                        start_time: e.target.value,
+                                    }))
+                                }
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                End Time
+                            </label>
+                            <input
+                                type="time"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                value={nextMeetingForm.end_time}
+                                onChange={(e) =>
+                                    setNextMeetingForm((prev) => ({
+                                        ...prev,
+                                        end_time: e.target.value,
+                                    }))
+                                }
+                            />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Notes (optional)
+                            </label>
+                            <textarea
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-medium outline-none focus:border-indigo-500 transition-all min-h-[80px]"
+                                value={nextMeetingForm.meeting_notes}
+                                onChange={(e) =>
+                                    setNextMeetingForm((prev) => ({
+                                        ...prev,
+                                        meeting_notes: e.target.value,
+                                    }))
+                                }
+                                placeholder="Context for the follow-up session..."
+                            />
+                        </div>
+                    </div>
+                </form>
+            </SlideOver>
+            <SlideOver
+                isOpen={isCancelModalOpen && !!selectedEvent}
+                onClose={() => setIsCancelModalOpen(false)}
+                title="Cancel Meeting"
+                size="xl"
+                footer={(
+                    <div className="flex justify-end gap-2 w-full">
+                        <button
+                            type="button"
+                            onClick={() => setIsCancelModalOpen(false)}
+                            className="px-6 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-slate-600 hover:bg-gray-50 transition-all active:scale-95"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="submit"
+                            form="cancel-form"
+                            className="px-8 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 active:scale-95"
+                        >
+                            Confirm Cancel
+                        </button>
+                    </div>
+                )}
+            >
+                <form id="cancel-form" onSubmit={handleSubmitCancel} className="space-y-6">
+                    <div>
+                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                            Cancel Reason
+                        </label>
+                        <textarea
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-medium outline-none focus:border-rose-500 transition-all min-h-[100px]"
+                            value={cancelForm.cancel_reason}
+                            onChange={(e) =>
+                                setCancelForm((prev) => ({
+                                    ...prev,
+                                    cancel_reason: e.target.value,
+                                }))
+                            }
+                            placeholder="Please specify the reason for cancellation..."
+                        />
+                    </div>
+                </form>
+            </SlideOver>
         </div>
     );
 };
