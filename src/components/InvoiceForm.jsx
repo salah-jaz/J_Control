@@ -220,14 +220,14 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
         <div className="flex justify-between items-center w-full px-1">
           <div className="flex items-center gap-8">
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Aggregate Invoice Value</span>
-              <span className="text-[22px] font-black text-slate-900 font-mono italic leading-none mt-1">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Aggregate Invoice Value</span>
+              <span className="text-[22px] font-semibold text-slate-900 font-mono  leading-none mt-1">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="w-px h-8 bg-slate-200 hidden md:block" />
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Outstanding Balance</span>
+              <span className="text-xs font-semibold text-rose-400 uppercase tracking-wider">Outstanding Balance</span>
               <span className={clsx(
-                "text-[22px] font-black font-mono italic leading-none mt-1",
+                "text-[22px] font-semibold font-mono  leading-none mt-1",
                 balanceDue > 0 ? "text-rose-600" : "text-emerald-600"
               )}>
                 ₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -239,7 +239,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
             <button
               onClick={handleSubmit}
               disabled={isSaving}
-              className="px-10 py-2.5 bg-indigo-600 text-white text-[14px] font-black rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95"
+              className="px-10 py-2.5 bg-indigo-600 text-slate-900 text-[14px] font-semibold rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95"
             >
               {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
               <span>{isSaving ? 'Synchronizing...' : 'Save Invoice'}</span>
@@ -259,7 +259,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                   <button
                     onClick={() => setActiveTab(step.id)}
                     className={clsx(
-                      "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-[0.15em] transition-all relative group",
+                      "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all relative group",
                       activeTab === step.id
                         ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100 ring-1 ring-indigo-200/50"
                         : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
@@ -285,7 +285,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="grid grid-cols-2 gap-8">
                   <div className="col-span-2">
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Client Selection</label>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Client Selection</label>
                     <SearchableSelect
                       options={clients.map(c => ({ id: c.id, name: c.company_name || c.client_name }))}
                       value={formData.clientId}
@@ -295,10 +295,10 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                       }}
                       placeholder="Select client registry..."
                     />
-                    {errors.clientId && <p className="text-[10px] text-rose-500 font-bold uppercase mt-1.5">{errors.clientId}</p>}
+                    {errors.clientId && <p className="text-xs text-rose-500 font-bold uppercase mt-1.5">{errors.clientId}</p>}
                   </div>
                   <div>
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Invoice Number</label>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Invoice Number</label>
                     <input
                       type="text"
                       value={formData.invoice_no || ''}
@@ -308,7 +308,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Issue Date</label>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Issue Date</label>
                     <input
                       type="date"
                       value={formData.date}
@@ -317,7 +317,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Reference / PO</label>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Reference / PO</label>
                     <input
                       type="text"
                       value={formData.reference_number || ''}
@@ -327,7 +327,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Financial Status</label>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Financial Status</label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
@@ -343,7 +343,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Administrative Notes</label>
+                  <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Administrative Notes</label>
                   <textarea
                     value={formData.notes || ''}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -358,13 +358,13 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-6">
                   <div className="flex flex-col">
-                    <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-widest">Invoice Line Items</h4>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase mt-1">Specify products and services rendered</p>
+                    <h4 className="text-[14px] font-semibold text-slate-900 uppercase tracking-wider">Invoice Line Items</h4>
+                    <p className="text-sm font-bold text-slate-400 uppercase mt-1">Specify products and services rendered</p>
                   </div>
                   <button
                     type="button"
                     onClick={addItem}
-                    className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group"
+                    className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-semibold uppercase tracking-wider hover:bg-indigo-600 hover:text-slate-900 transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group"
                   >
                     <Plus size={16} className="group-hover:rotate-90 transition-transform" />
                     <span>Add Line Item</span>
@@ -372,10 +372,10 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                 </div>
                 <div className="space-y-6">
                   {items.map((item, idx) => (
-                    <div key={idx} className="bg-slate-50/50 border border-slate-200 rounded-2xl p-6 space-y-6 relative group shadow-sm hover:border-indigo-200 transition-colors">
+                    <div key={idx} className="bg-slate-50/50 border border-slate-200 rounded-xl p-6 space-y-6 relative group shadow-sm hover:border-indigo-200 transition-colors">
                       <div className="grid grid-cols-12 gap-6">
                         <div className="col-span-8">
-                          <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Item Name</label>
+                          <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Item Name</label>
                           <SearchableSelect
                             options={products.map(p => ({ id: p.name, name: p.name }))}
                             value={item.serviceName}
@@ -384,56 +384,56 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                           />
                         </div>
                         <div className="col-span-4">
-                          <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Unit Price (₹)</label>
+                          <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Unit Price (₹)</label>
                           <input
                             type="number"
                             value={item.amount}
                             onChange={(e) => updateItem(idx, 'amount', e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-black italic outline-none focus:border-indigo-500 transition-all"
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-semibold  outline-none focus:border-indigo-500 transition-all"
                           />
                         </div>
                       </div>
                       <div className="flex justify-between items-center pt-4 border-t border-slate-200/60">
                         <div className="flex gap-8">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black text-slate-400 uppercase">Status</span>
+                            <span className="text-xs font-semibold text-slate-400 uppercase">Status</span>
                             <select
                               value={item.paymentStatus}
                               onChange={e => updateItem(idx, 'paymentStatus', e.target.value)}
-                              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] font-bold"
+                              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-sm font-bold"
                             >
                               <option value="Pending">Pending</option>
                               <option value="Paid">Paid</option>
                             </select>
                           </div>
                         </div>
-                        <span className="font-mono text-[18px] font-black text-slate-900 italic">₹{(parseFloat(item.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <span className="font-mono text-[18px] font-semibold text-slate-900 ">₹{(parseFloat(item.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
-                      <button onClick={() => removeItem(idx)} className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100">
+                      <button onClick={() => removeItem(idx)} className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-slate-900 transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100">
                         <Trash2 size={16} />
                       </button>
                     </div>
                   ))}
                 </div>
 
-                <div className="p-8 bg-slate-900 rounded-[32px] text-white space-y-4">
-                  <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-400">
+                <div className="p-8 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                  <div className="flex justify-between items-center text-sm font-semibold uppercase tracking-wider text-slate-400">
                     <span>Subtotal</span>
-                    <span className="text-white">₹{subtotal.toLocaleString('en-IN')}</span>
+                    <span className="text-slate-900">₹{subtotal.toLocaleString('en-IN')}</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-8 pt-4 border-t border-slate-800">
+                  <div className="grid grid-cols-2 gap-8 pt-4 border-t border-slate-200">
                     <div>
-                      <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">GST (%)</label>
-                      <input type="number" value={formData.gst} onChange={(e) => setFormData({ ...formData, gst: e.target.value })} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-[13px] font-bold outline-none focus:border-indigo-500" />
+                      <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">GST (%)</label>
+                      <input type="number" value={formData.gst} onChange={(e) => setFormData({ ...formData, gst: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold outline-none focus:border-indigo-500" />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Discount</label>
+                      <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Discount</label>
                       <div className="flex gap-2">
-                        <select value={formData.discountType} onChange={(e) => setFormData({ ...formData, discountType: e.target.value })} className="bg-slate-800 border border-slate-700 rounded-xl px-2 text-[13px] font-bold outline-none">
+                        <select value={formData.discountType} onChange={(e) => setFormData({ ...formData, discountType: e.target.value })} className="bg-white border border-slate-200 rounded-xl px-2 text-[13px] font-bold outline-none">
                           <option value="Flat">₹</option>
                           <option value="Percentage">%</option>
                         </select>
-                        <input type="number" value={formData.discountValue} onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-[13px] font-bold outline-none focus:border-indigo-500" />
+                        <input type="number" value={formData.discountValue} onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-[13px] font-bold outline-none focus:border-indigo-500" />
                       </div>
                     </div>
                   </div>
@@ -443,30 +443,30 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
 
             {activeTab === 'bank' && (
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="bg-slate-900 rounded-3xl p-10 text-white space-y-6 shadow-2xl border border-slate-800 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] rounded-full -mr-32 -mt-32" />
+                <div className="bg-slate-50 rounded-xl p-8 border border-slate-200 space-y-6 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 hidden rounded-full -mr-32 -mt-32" />
                   <div className="flex justify-between items-center relative z-10">
                     <div className="flex flex-col">
-                      <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">Aggregate Value</span>
-                      <span className="text-[36px] font-black text-white font-mono italic leading-none mt-2">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-[12px] font-semibold text-slate-400 uppercase tracking-wider">Aggregate Value</span>
+                      <span className="text-[36px] font-semibold text-slate-900 font-mono  leading-none mt-2">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex flex-col text-right">
-                      <span className="text-[12px] font-black text-emerald-400 uppercase tracking-widest">Total Received</span>
-                      <span className="text-[36px] font-black text-emerald-300 font-mono italic leading-none mt-2">₹{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-[12px] font-semibold text-emerald-400 uppercase tracking-wider">Total Received</span>
+                      <span className="text-[36px] font-semibold text-emerald-300 font-mono  leading-none mt-2">₹{totalPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                   </div>
                   <div className="h-px bg-slate-800 relative z-10" />
                   <div className="flex justify-between items-center relative z-10">
                     <div className="flex flex-col">
-                      <span className="text-[12px] font-black text-rose-400 uppercase tracking-widest">Pending Balance</span>
-                      <span className="text-[28px] font-black text-white font-mono italic leading-none mt-1">₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-[12px] font-semibold text-rose-400 uppercase tracking-wider">Pending Balance</span>
+                      <span className="text-[28px] font-semibold text-slate-900 font-mono  leading-none mt-1">₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Default Deposit Bank</label>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Default Deposit Bank</label>
                     <select
                       value={formData.bankAccountId || ''}
                       onChange={(e) => {
@@ -481,7 +481,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                         <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>
                       ))}
                     </select>
-                    {errors.bankAccountId && <p className="text-[10px] text-rose-500 font-bold uppercase mt-1.5">{errors.bankAccountId}</p>}
+                    {errors.bankAccountId && <p className="text-xs text-rose-500 font-bold uppercase mt-1.5">{errors.bankAccountId}</p>}
                   </div>
 
                   <div className="pt-6 border-t border-slate-100">
@@ -493,17 +493,17 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                         onChange={(e) => setFormData({ ...formData, initialDepositEnabled: e.target.checked })}
                         className="rounded text-indigo-600 focus:ring-indigo-500"
                       />
-                      <label htmlFor="advance" className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Record Advance Payment</label>
+                      <label htmlFor="advance" className="text-sm font-semibold text-slate-700 uppercase tracking-wider">Record Advance Payment</label>
                     </div>
 
                     {formData.initialDepositEnabled && (
-                      <div className="grid grid-cols-2 gap-4 p-6 bg-indigo-50/50 rounded-2xl border border-indigo-100 animate-in slide-in-from-top-2">
+                      <div className="grid grid-cols-2 gap-4 p-6 bg-indigo-50/50 rounded-xl border border-indigo-100 animate-in slide-in-from-top-2">
                         <div>
-                          <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Advance Amount</label>
+                          <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Advance Amount</label>
                           <input type="number" value={formData.initialDepositAmount} onChange={(e) => setFormData({ ...formData, initialDepositAmount: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold" />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Target Bank</label>
+                          <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Target Bank</label>
                           <select
                             value={formData.initialDepositBankId || ''}
                             onChange={(e) => {
@@ -525,14 +525,14 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
 
                   <div className="pt-6 border-t border-slate-100">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-widest">Payment Installments</h4>
+                      <h4 className="text-[14px] font-semibold text-slate-900 uppercase tracking-wider">Payment Installments</h4>
                       <button
                         type="button"
                         onClick={() => setFormData({
                           ...formData,
                           extraInstallments: [...(formData.extraInstallments || []), { date: new Date().toISOString().split('T')[0], amount: '', bankAccountId: '', notes: '' }]
                         })}
-                        className="px-5 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[12px] font-black uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2 border border-emerald-100 group"
+                        className="px-5 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[12px] font-semibold uppercase tracking-wider hover:bg-emerald-600 hover:text-slate-900 transition-all shadow-sm flex items-center gap-2 border border-emerald-100 group"
                       >
                         <Plus size={16} className="group-hover:rotate-90 transition-transform" />
                         <span>Add Installment</span>
@@ -541,10 +541,10 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
 
                     <div className="space-y-6">
                       {(formData.extraInstallments || []).map((inst, idx) => (
-                        <div key={idx} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 relative group animate-in slide-in-from-top-2">
+                        <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-6 relative group animate-in slide-in-from-top-2">
                           <div className="grid grid-cols-2 gap-6">
                             <div>
-                              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Payment Date</label>
+                              <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Payment Date</label>
                               <input
                                 type="date"
                                 value={inst.date}
@@ -553,17 +553,17 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                               />
                             </div>
                             <div>
-                              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Amount Paid (₹)</label>
+                              <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Amount Paid (₹)</label>
                               <input
                                 type="number"
                                 value={inst.amount}
                                 onChange={(e) => updateInstallment(idx, 'amount', e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-black italic outline-none focus:border-indigo-500 transition-all"
+                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-semibold  outline-none focus:border-indigo-500 transition-all"
                                 placeholder="0.00"
                               />
                             </div>
                             <div>
-                              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Deposit Target</label>
+                              <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Deposit Target</label>
                               <select
                                 value={inst.bankAccountId || ''}
                                 onChange={(e) => {
@@ -581,7 +581,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                               </select>
                             </div>
                             <div>
-                              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Transaction Ref</label>
+                              <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Transaction Ref</label>
                               <input
                                 type="text"
                                 value={inst.notes}
@@ -598,7 +598,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                               next.splice(idx, 1);
                               setFormData({ ...formData, extraInstallments: next });
                             }}
-                            className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100"
+                            className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-slate-900 transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -606,10 +606,10 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                       ))}
 
                       {(formData.extraInstallments || []).length === 0 && (
-                        <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-3xl bg-slate-50/50">
+                        <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
                           <Receipt size={40} className="mx-auto text-slate-200 mb-4" />
-                          <p className="text-[13px] font-bold text-slate-400 uppercase tracking-widest">No installment records found</p>
-                          <p className="text-[11px] text-slate-300 uppercase tracking-wider mt-1">Add payments to track outstanding balance</p>
+                          <p className="text-[13px] font-bold text-slate-400 uppercase tracking-wider">No installment records found</p>
+                          <p className="text-sm text-slate-300 uppercase tracking-wider mt-1">Add payments to track outstanding balance</p>
                         </div>
                       )}
                     </div>

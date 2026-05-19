@@ -280,8 +280,8 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
     ];
     // Standard J-Control Label
     const Label = ({ children, required }) => (
-        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
-            {children} {required && <span className="text-rose-500 font-black">*</span>}
+        <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            {children} {required && <span className="text-rose-500 font-semibold">*</span>}
         </label>
     );
 
@@ -348,7 +348,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                     <ValidationIcon fieldName="company_name" value={formData.company_name} alsoErrorKey="client_or_company" />
                                 </div>
                                 {errors.client_or_company && touched.client_name && (
-                                    <p className="text-[10px] text-rose-500 mt-2 font-black uppercase tracking-widest">{errors.client_or_company}</p>
+                                    <p className="text-xs text-rose-500 mt-2 font-semibold uppercase tracking-wider">{errors.client_or_company}</p>
                                 )}
                             </div>
 
@@ -468,16 +468,16 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                         <div className="grid grid-cols-2 gap-10">
                             <div className="col-span-2">
                                 <Label>Compliance Module (GST)</Label>
-                                <div className="flex gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm">
+                                <div className="flex gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 shadow-sm">
                                     {['Regular', 'Composition', 'Unregistered', 'Overseas'].map(type => (
                                         <button
                                             key={type}
                                             type="button"
                                             onClick={() => !readOnly && handleChange({ target: { name: 'gst_registration_type', value: type } })}
                                             className={clsx(
-                                                "flex-1 py-3 text-[11px] font-black uppercase tracking-widest rounded-xl transition-all",
+                                                "flex-1 py-3 text-sm font-semibold uppercase tracking-wider rounded-xl transition-all",
                                                 formData.gst_registration_type === type
-                                                    ? "bg-slate-900 text-white shadow-lg shadow-slate-200"
+                                                    ? "bg-slate-900 text-slate-900 shadow-lg shadow-slate-200"
                                                     : "bg-white text-slate-500 hover:bg-slate-100 border border-slate-100"
                                             )}
                                         >
@@ -517,55 +517,55 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                 return (
                     <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
                         {!readOnly && (
-                            <div className="p-10 bg-slate-900 rounded-[32px] text-white shadow-2xl relative overflow-hidden group">
+                            <div className="p-10 bg-slate-50 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 p-12 opacity-5 translate-x-1/4 translate-y-1/4 group-hover:scale-110 transition-transform duration-700">
                                     <Landmark size={200} />
                                 </div>
                                 <div className="relative z-10">
-                                    <h4 className="text-[14px] font-black uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
+                                    <h4 className="text-[14px] font-semibold uppercase tracking-wider mb-8 flex items-center gap-3">
                                         <div className="h-2 w-2 rounded-full bg-indigo-500"></div>
                                         {editingBankIndex !== null ? 'Modify Treasury Node' : 'Initialize New Node'}
                                     </h4>
                                     
                                     <div className="grid grid-cols-2 gap-8">
                                         <div className="col-span-2">
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Institutional Name</label>
+                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Institutional Name</label>
                                             <input 
                                                 name="bank_name"
-                                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-[15px] font-bold outline-none focus:bg-white/10 focus:border-white/30 transition-all"
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-6 py-4 text-[15px] font-bold outline-none focus:border-indigo-500 transition-all"
                                                 placeholder="e.g. Federal Reserve Bank"
                                                 value={bankForm.bank_name}
                                                 onChange={handleBankFormChange}
                                             />
-                                            {bankFormError && <p className="text-[10px] text-rose-400 mt-2 font-black uppercase tracking-widest">{bankFormError}</p>}
+                                            {bankFormError && <p className="text-xs text-rose-400 mt-2 font-semibold uppercase tracking-wider">{bankFormError}</p>}
                                         </div>
 
                                         <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Account Beneficiary</label>
-                                            <input name="account_holder_name" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-[15px] font-bold outline-none focus:bg-white/10 focus:border-white/30 transition-all" placeholder="Holder Name" value={bankForm.account_holder_name} onChange={handleBankFormChange} />
+                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Account Beneficiary</label>
+                                            <input name="account_holder_name" className="w-full bg-white border border-slate-200 rounded-xl px-6 py-4 text-[15px] font-bold outline-none focus:border-indigo-500 transition-all" placeholder="Holder Name" value={bankForm.account_holder_name} onChange={handleBankFormChange} />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Functional Account Number</label>
-                                            <input name="account_number" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-[15px] font-bold outline-none focus:bg-white/10 focus:border-white/30 transition-all font-mono" placeholder="Digits only" value={bankForm.account_number} onChange={handleBankFormChange} />
+                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Functional Account Number</label>
+                                            <input name="account_number" className="w-full bg-white border border-slate-200 rounded-xl px-6 py-4 text-[15px] font-bold outline-none focus:border-indigo-500 transition-all font-mono" placeholder="Digits only" value={bankForm.account_number} onChange={handleBankFormChange} />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Routing Protocol (IFSC)</label>
-                                            <input name="ifsc_code" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-[15px] font-bold outline-none focus:bg-white/10 focus:border-white/30 transition-all font-mono uppercase" placeholder="Bank Code" value={bankForm.ifsc_code} onChange={handleBankFormChange} />
+                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Routing Protocol (IFSC)</label>
+                                            <input name="ifsc_code" className="w-full bg-white border border-slate-200 rounded-xl px-6 py-4 text-[15px] font-bold outline-none focus:border-indigo-500 transition-all font-mono uppercase" placeholder="Bank Code" value={bankForm.ifsc_code} onChange={handleBankFormChange} />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Digital Identity (UPI)</label>
-                                            <input name="upi_id" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-[15px] font-bold outline-none focus:bg-white/10 focus:border-white/30 transition-all" placeholder="id@bank" value={bankForm.upi_id} onChange={handleBankFormChange} />
+                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Digital Identity (UPI)</label>
+                                            <input name="upi_id" className="w-full bg-white border border-slate-200 rounded-xl px-6 py-4 text-[15px] font-bold outline-none focus:border-indigo-500 transition-all" placeholder="id@bank" value={bankForm.upi_id} onChange={handleBankFormChange} />
                                         </div>
                                     </div>
 
                                     <div className="mt-12 flex justify-end gap-4">
                                         {editingBankIndex !== null && (
-                                            <button type="button" onClick={handleCancelEditBank} className="px-6 py-3 text-[12px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-colors">Discard</button>
+                                            <button type="button" onClick={handleCancelEditBank} className="px-6 py-3 text-[12px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-900 transition-colors">Discard</button>
                                         )}
                                         <button 
                                             type="button" 
                                             onClick={handleAddOrUpdateBank}
-                                            className="px-10 py-4 bg-indigo-600 text-white text-[13px] font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/50 flex items-center gap-3 active:scale-95"
+                                            className="px-10 py-4 bg-indigo-600 text-slate-900 text-[13px] font-semibold uppercase tracking-wider rounded-xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/50 flex items-center gap-3 active:scale-95"
                                         >
                                             {editingBankIndex !== null ? <Edit2 size={18} /> : <Plus size={18} strokeWidth={3} />}
                                             <span>{editingBankIndex !== null ? 'Update Node' : 'Authorize Node'}</span>
@@ -576,34 +576,34 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                         )}
 
                         <div className="space-y-6">
-                            <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-2">Authorized Financial Registry</h5>
+                            <h5 className="text-sm font-semibold text-slate-400 uppercase tracking-wider px-2">Authorized Financial Registry</h5>
                             {bankList.length === 0 ? (
-                                <div className="p-16 border-2 border-dashed border-slate-100 rounded-[32px] flex flex-col items-center justify-center text-center group hover:border-slate-200 transition-colors">
+                                <div className="p-16 border-2 border-dashed border-slate-100 rounded-xl flex flex-col items-center justify-center text-center group hover:border-slate-200 transition-colors">
                                     <Landmark className="text-slate-100 mb-4 group-hover:scale-110 transition-transform duration-500" size={64} />
-                                    <p className="text-[13px] font-black text-slate-300 uppercase tracking-widest">No Treasury Data Initialized</p>
+                                    <p className="text-[13px] font-semibold text-slate-300 uppercase tracking-wider">No Treasury Data Initialized</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-4">
                                     {bankList.map((bank, idx) => (
-                                        <div key={idx} className="group p-8 bg-white border-2 border-slate-100 rounded-[32px] flex items-center justify-between transition-all hover:border-indigo-200 hover:shadow-2xl hover:shadow-indigo-100 relative overflow-hidden">
+                                        <div key={idx} className="group p-8 bg-white border-2 border-slate-100 rounded-xl flex items-center justify-between transition-all hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-100 relative overflow-hidden">
                                             {editingBankIndex === idx && <div className="absolute inset-0 bg-indigo-50/50 backdrop-blur-[2px] z-10 animate-in fade-in duration-300" />}
                                             <div className="flex items-center gap-8 relative z-20">
                                                 <div className="h-16 w-16 rounded-[20px] bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors shadow-sm">
                                                     <Landmark size={24} />
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <p className="text-[15px] font-black text-slate-900 leading-tight">{bank.bank_name}</p>
-                                                    <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">{bank.account_holder_name} • <span className="font-mono">{bank.account_number}</span></p>
+                                                    <p className="text-[15px] font-semibold text-slate-900 leading-tight">{bank.bank_name}</p>
+                                                    <p className="text-[12px] font-bold text-slate-400 uppercase tracking-wider">{bank.account_holder_name} • <span className="font-mono">{bank.account_number}</span></p>
                                                     <div className="flex items-center gap-3 pt-2">
-                                                        <span className="px-3 py-1 bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-lg border border-slate-100">IFSC: {bank.ifsc_code}</span>
-                                                        {bank.upi_id && <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-indigo-100">{bank.upi_id}</span>}
+                                                        <span className="px-3 py-1 bg-slate-50 text-slate-500 text-xs font-semibold uppercase tracking-wider rounded-lg border border-slate-100">IFSC: {bank.ifsc_code}</span>
+                                                        {bank.upi_id && <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-semibold uppercase tracking-wider rounded-lg border border-indigo-100">{bank.upi_id}</span>}
                                                     </div>
                                                 </div>
                                             </div>
                                             {!readOnly && (
                                                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0 relative z-20">
-                                                    <button type="button" onClick={() => handleEditBank(idx)} className="p-4 bg-slate-50 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-2xl transition-all shadow-sm"><Edit2 size={18} /></button>
-                                                    <button type="button" onClick={() => handleDeleteBank(idx)} className="p-4 bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-2xl transition-all shadow-sm"><Trash2 size={18} /></button>
+                                                    <button type="button" onClick={() => handleEditBank(idx)} className="p-4 bg-slate-50 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all shadow-sm"><Edit2 size={18} /></button>
+                                                    <button type="button" onClick={() => handleDeleteBank(idx)} className="p-4 bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-all shadow-sm"><Trash2 size={18} /></button>
                                                 </div>
                                             )}
                                         </div>
@@ -631,7 +631,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                         <button 
                             onClick={handleSubmit} 
                             disabled={isSaving} 
-                            className="px-10 py-2.5 bg-indigo-600 text-white text-[14px] font-black rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                            className="px-10 py-2.5 bg-indigo-600 text-slate-900 text-[14px] font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
                         >
                             {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                             <span>{isSaving ? 'Synchronizing...' : (client ? 'Commit Changes' : 'Record Registry')}</span>
@@ -649,7 +649,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                 <button
                                     onClick={() => setActiveTab(t.id)}
                                     className={clsx(
-                                        "w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] transition-all relative group",
+                                        "w-full flex items-center gap-4 px-5 py-4 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all relative group",
                                         activeTab === t.id
                                             ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100 ring-1 ring-indigo-200/50"
                                             : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
