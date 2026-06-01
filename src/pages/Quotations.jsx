@@ -114,25 +114,25 @@ export default function Quotations() {
         toast.success("Quotation updated");
       } else {
         await createQuotation(payload);
-        toast.success("Quotation generated");
+        toast.success("Quotation created");
       }
       loadData();
       setOpenForm(false);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to sync quotation");
+      toast.error(err.response?.data?.message || "Failed to save quotation");
       throw err;
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Purge this quotation?")) return;
+    if (!window.confirm("Delete this quotation?")) return;
     try {
       await deleteQuotation(id);
-      toast.success("Quotation purged");
+      toast.success("Quotation deleted");
       loadData();
       if (viewQuotation?.id === id) setOpenView(false);
     } catch (e) {
-      toast.error("Operation failed");
+      toast.error("Failed to delete quotation");
     }
   };
 
@@ -151,14 +151,14 @@ export default function Quotations() {
     <div className="flex flex-col h-full bg-slate-50/50 animate-in fade-in duration-500 overflow-hidden">
       <div className="px-6 lg:px-8 pt-8 pb-6 bg-white border-b border-slate-200/60 shadow-sm relative z-10">
         <PageHeader
-          title="Proposal Architecture"
-          subtitle="Generate and track business proposals and price estimates"
+          title="Quotations"
+          subtitle="Create and manage quotations"
           primaryAction={(
             <button onClick={() => { setEditId(null); setOpenForm(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/20 group">
               <div className="bg-white/20 p-1 rounded-lg group-hover:bg-white/30 transition-colors">
                 <Plus size={16} />
               </div>
-              <span>Create New Proposal</span>
+              <span>New Quotation</span>
             </button>
           )}
           secondaryActions={(
@@ -167,7 +167,7 @@ export default function Quotations() {
         />
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-8">
-          <StatCard title="Total Volume" value={summary.total || 0} icon={FileSpreadsheet} colorClass="bg-slate-800" />
+          <StatCard title="Total Value" value={summary.total || 0} icon={FileSpreadsheet} colorClass="bg-slate-800" />
           <StatCard title="Drafts" value={summary.draft || 0} icon={Clock} colorClass="bg-amber-600" />
           <StatCard title="Sent" value={summary.sent || 0} icon={FileOutput} colorClass="bg-blue-600" />
           <StatCard title="Accepted" value={summary.accepted || 0} icon={CheckCircle2} colorClass="bg-emerald-600" />
@@ -182,7 +182,7 @@ export default function Quotations() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
               <input
                 type="text"
-                placeholder="Search by ID, client, or number..."
+                placeholder="Search quotations..."
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -192,7 +192,7 @@ export default function Quotations() {
 
           <div className="flex items-center gap-2">
             <FilterSelect icon={CheckCircle2} value={statusFilter} onChange={setStatusFilter}>
-              <option value="All">All Status</option>
+              <option value="All">All status</option>
               {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
             </FilterSelect>
             <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={clsx("p-2.5 border rounded-xl transition-all shadow-sm", showAdvancedFilters ? "bg-indigo-50 border-indigo-200 text-indigo-600" : "bg-white border-slate-200 text-slate-600")}><Filter size={18} /></button>
@@ -203,17 +203,17 @@ export default function Quotations() {
         {showAdvancedFilters && (
           <div className="bg-white px-6 lg:px-8 py-6 border-b border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
             <div>
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Client Classification</label>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Customer</label>
               <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={clientFilter} onChange={e => setClientFilter(e.target.value)}>
-                <option value="">All Registered Clients</option>
+                <option value="">All customers</option>
                 {safeClients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Temporal Range</label>
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 block">Date range</label>
               <div className="flex items-center gap-2">
                 <input type="date" className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-                <span className="text-slate-300 font-semibold">ΓÇö</span>
+                <span className="text-slate-300 font-semibold">—</span>
                 <input type="date" className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700" value={dateTo} onChange={e => setDateTo(e.target.value)} />
               </div>
             </div>
@@ -226,16 +226,16 @@ export default function Quotations() {
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
                   <th className="px-6 lg:px-8 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider w-32">Quote No</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Engagement Target</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right w-40">Valuation</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Customer</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right w-40">Total</th>
                   <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider w-32">Status</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider w-40">Timeline</th>
-                  <th className="px-6 lg:px-8 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right w-44">Operations</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider w-40">Dates</th>
+                  <th className="px-6 lg:px-8 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right w-44">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {quotationsLoading ? (
-                  <tr><td colSpan="6" className="p-20 text-center text-slate-400 font-bold uppercase tracking-wider animate-pulse ">Synchronizing Proposal Engine...</td></tr>
+                  <tr><td colSpan="6" className="p-20 text-center text-slate-400 font-bold uppercase tracking-wider animate-pulse ">Loading quotations...</td></tr>
                 ) : quotations.map(item => (
                   <tr key={item.id} className="group hover:bg-slate-50/80 transition-all duration-200">
                     <td className="px-6 lg:px-8 py-5">
@@ -289,11 +289,11 @@ export default function Quotations() {
                     </td>
                     <td className="px-6 lg:px-8 py-5 text-right">
                       <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                        <ActionIconButton onClick={() => { setViewQuotation(item); setOpenView(true); }} title="Intelligence View" icon={Eye} tone="view" />
-                        <ActionIconButton onClick={() => { setEditId(item.id); setOpenForm(true); }} title="Modify Structure" icon={Edit2} tone="edit" />
-                        <ActionIconButton onClick={() => handleDelete(item.id)} title="Purge Record" icon={Trash2} tone="delete" />
+                        <ActionIconButton onClick={() => { setViewQuotation(item); setOpenView(true); }} title="View" icon={Eye} tone="view" />
+                        <ActionIconButton onClick={() => { setEditId(item.id); setOpenForm(true); }} title="Edit" icon={Edit2} tone="edit" />
+                        <ActionIconButton onClick={() => handleDelete(item.id)} title="Delete" icon={Trash2} tone="delete" />
                         {item.status !== "Converted" && (
-                          <ActionIconButton onClick={() => handleConvertToInvoice(item)} title="Generate Invoice" icon={FileOutput} tone="convert" />
+                          <ActionIconButton onClick={() => handleConvertToInvoice(item)} title="Create Invoice" icon={FileOutput} tone="convert" />
                         )}
                       </div>
                     </td>
@@ -303,14 +303,14 @@ export default function Quotations() {
             </table>
             {!quotationsLoading && quotations.length === 0 && (
               <div className="p-20">
-                <EmptyState icon={FileText} title="Proposal Pipeline Empty" description="Your sales intelligence is ready. Initiate a new proposal to start tracking conversion." />
+                <EmptyState icon={FileText} title="No quotations found" description="Create a new quotation to get started." />
               </div>
             )}
           </div>
         </div>
 
         <div className="bg-white border-t border-slate-100 px-6 lg:px-8 py-4 flex-shrink-0">
-          {quotationsMeta && <TablePagination summary={`Indexed ${quotations.length} of ${quotationsMeta.total} Proposals`} onPrevious={() => setCurrentPage(p => Math.max(1, p - 1))} onNext={() => setCurrentPage(p => p + 1)} previousDisabled={quotationsMeta.current_page <= 1} nextDisabled={quotationsMeta.current_page >= quotationsMeta.last_page} />}
+          {quotationsMeta && <TablePagination summary={`Showing ${quotations.length} of ${quotationsMeta.total} quotations`} onPrevious={() => setCurrentPage(p => Math.max(1, p - 1))} onNext={() => setCurrentPage(p => p + 1)} previousDisabled={quotationsMeta.current_page <= 1} nextDisabled={quotationsMeta.current_page >= quotationsMeta.last_page} />}
         </div>
       </div>
 
@@ -414,21 +414,21 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
         <SlideOver
             isOpen={isOpen}
             onClose={onClose}
-            title={editId ? 'Architectural Proposal Update' : 'Initialize Business Proposal'}
+            title={editId ? 'Edit Quotation' : 'New Quotation'}
             size="5xl"
             footer={(
                 <div className="flex justify-between items-center w-full px-1">
                     <div className="flex items-center gap-6">
                         <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Aggregate Value</span>
+                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Grand Total</span>
                             <span className="text-[20px] font-semibold text-indigo-600 font-mono  leading-none mt-1">₹{total.toLocaleString()}</span>
                         </div>
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={onClose} className="px-6 py-2.5 text-[13px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all">Discard Changes</button>
+                        <button onClick={onClose} className="px-6 py-2.5 text-[13px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all">Cancel</button>
                         <button onClick={handleSubmit} disabled={isSaving} className="px-8 py-2.5 bg-indigo-600 text-slate-900 text-[13px] font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
                             {isSaving && <Loader2 size={16} className="animate-spin" />}
-                            {editId ? 'Commit Proposal Update' : 'Generate Document'}
+                            {editId ? 'Save Changes' : 'Create Quotation'}
                         </button>
                     </div>
                 </div>
@@ -439,9 +439,9 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
                 <div className="w-64 border-r-2 border-slate-100 pr-6 shrink-0 hidden md:block">
                     <div className="flex flex-col gap-2 sticky top-0">
                         {[
-                            { id: 'basic', label: 'Core Parameters', icon: Target },
-                            { id: 'items', label: 'Catalog Items', icon: Layers },
-                            { id: 'internal', label: 'Administrative', icon: Briefcase }
+                            { id: 'basic', label: 'Basic Info', icon: Target },
+                            { id: 'items', label: 'Items', icon: Layers },
+                            { id: 'internal', label: 'Internal Notes', icon: Briefcase }
                         ].map((tabInfo, idx) => (
                             <div key={tabInfo.id}>
                                 <button
@@ -450,7 +450,7 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
                                         "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all relative group",
                                         tab === tabInfo.id
                                             ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100 ring-1 ring-indigo-200/50"
-                                            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                                             : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                                     )}
                                 >
                                     {tab === tabInfo.id && (
@@ -472,32 +472,32 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
                             <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="grid grid-cols-2 gap-8">
                                     <div className="col-span-2">
-                                        <Label required>Client Engagement Target</Label>
+                                        <Label required>Customer Name</Label>
                                         <select className={inputCls} value={form.client_id} onChange={e => setForm({ ...form, client_id: e.target.value })}>
-                                            <option value="">Search Registered Client Registry...</option>
+                                            <option value="">Select customer...</option>
                                             {clients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
                                         </select>
                                     </div>
                                     <div>
-                                        <Label required>Proposal Generation Date</Label>
+                                        <Label required>Quote Date</Label>
                                         <input type="date" className={inputCls} value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
                                     </div>
                                     <div>
-                                        <Label>Valuation Expiry Threshold</Label>
+                                        <Label>Expiry Date</Label>
                                         <input type="date" className={inputCls} value={form.expiry_date} onChange={e => setForm({ ...form, expiry_date: e.target.value })} />
                                     </div>
                                     <div>
-                                        <Label>Assigned Sales Architect</Label>
-                                        <input className={inputCls} placeholder="Agent name..." value={form.sales_person} onChange={e => setForm({ ...form, sales_person: e.target.value })} />
+                                        <Label>Sales Person</Label>
+                                        <input className={inputCls} placeholder="Name..." value={form.sales_person} onChange={e => setForm({ ...form, sales_person: e.target.value })} />
                                     </div>
                                     <div>
-                                        <Label>Administrative Reference</Label>
-                                        <input className={inputCls} placeholder="EXT-REF-001..." value={form.reference_number} onChange={e => setForm({ ...form, reference_number: e.target.value })} />
+                                        <Label>Reference No</Label>
+                                        <input className={inputCls} placeholder="Ref No..." value={form.reference_number} onChange={e => setForm({ ...form, reference_number: e.target.value })} />
                                     </div>
                                 </div>
                                 <div className="pt-4">
-                                    <Label>Public Communication / Engagement Scope</Label>
-                                    <textarea className={clsx(inputCls, "min-h-[160px] resize-none leading-relaxed")} placeholder="Specify the project scope or terms visible to the client..." value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+                                    <Label>Notes</Label>
+                                    <textarea className={clsx(inputCls, "min-h-[160px] resize-none leading-relaxed")} placeholder="Add notes for the customer..." value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
                                 </div>
                             </div>
                         )}
@@ -506,12 +506,12 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
                             <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex items-center justify-between border-b border-slate-100 pb-6">
                                     <div className="flex flex-col">
-                                        <h4 className="text-[14px] font-semibold text-slate-900 uppercase tracking-wider">Catalog Item Selection</h4>
-                                        <p className="text-sm font-bold text-slate-400 uppercase mt-1">Populate the proposal with organizational offerings</p>
+                                        <h4 className="text-[14px] font-semibold text-slate-900 uppercase tracking-wider">Items</h4>
+                                        <p className="text-sm font-bold text-slate-400 uppercase mt-1">Add items and prices</p>
                                     </div>
                                     <button onClick={() => setForm({ ...form, items: [...form.items, { item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 }] })} className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-semibold uppercase tracking-wider hover:bg-indigo-600 hover:text-slate-900 transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group">
                                         <Plus size={16} className="group-hover:rotate-90 transition-transform" />
-                                        <span>Add Offering</span>
+                                        <span>Add Item</span>
                                     </button>
                                 </div>
                                 <div className="space-y-6">
@@ -519,26 +519,26 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
                                         <div key={idx} className="bg-slate-50/50 border border-slate-200 rounded-xl p-6 space-y-6 relative group shadow-sm hover:border-indigo-200 transition-colors">
                                             <div className="grid grid-cols-12 gap-6">
                                                 <div className="col-span-8">
-                                                    <Label>Offering Selection</Label>
-                                                    <SearchableSelect options={products} value={row.item} onChange={v => updateItem(idx, 'item', v)} placeholder="Search catalog items..." />
+                                                    <Label>Select Item</Label>
+                                                    <SearchableSelect options={products} value={row.item} onChange={v => updateItem(idx, 'item', v)} placeholder="Search items..." />
                                                 </div>
                                                 <div className="col-span-4">
-                                                    <Label>Standard Rate (₹)</Label>
+                                                    <Label>Price (₹)</Label>
                                                     <input type="number" className={clsx(inputCls, "font-semibold ")} value={row.price} onChange={e => updateItem(idx, 'price', e.target.value)} />
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-12 gap-6">
                                                 <div className="col-span-9">
-                                                    <Label>Scope Specification</Label>
+                                                    <Label>Description</Label>
                                                     <textarea className={clsx(inputCls, "min-h-[100px] text-[12px] resize-none leading-relaxed ")} value={row.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
                                                 </div>
                                                 <div className="col-span-3">
-                                                    <Label>Tax Component %</Label>
+                                                    <Label>Tax %</Label>
                                                     <input type="number" className={inputCls} value={row.tax} onChange={e => updateItem(idx, 'tax', e.target.value)} />
                                                 </div>
                                             </div>
                                             <div className="flex justify-between items-center pt-4 border-t border-slate-200/60">
-                                                <span className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Calculated Row Valuation</span>
+                                                <span className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Item Total</span>
                                                 <span className="font-mono text-[18px] font-semibold text-slate-900 ">₹{row.amount.toLocaleString()}</span>
                                             </div>
                                             <button onClick={() => setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })} className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-slate-900 transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100">
@@ -551,19 +551,19 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
                                 <div className="bg-slate-50 rounded-xl p-8 border border-slate-200 space-y-6 shadow-sm relative overflow-hidden">
                                     <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 hidden rounded-full -mr-32 -mt-32" />
                                     <div className="flex justify-between text-[14px] font-bold text-slate-400 relative z-10">
-                                        <span>SUBTOTAL</span>
+                                        <span>Subtotal</span>
                                         <span className="font-mono text-slate-900  text-[18px]">₹{subtotal.toLocaleString()}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-10 py-8 border-y border-slate-200/50 relative z-10">
                                         <div>
-                                            <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 block">ADJUSTMENT DISCOUNT</label>
+                                            <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 block">Discount (₹)</label>
                                             <div className="relative">
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold ">₹</span>
                                                 <input type="number" className="w-full bg-white border border-slate-200 rounded-xl text-slate-900 text-[18px] font-semibold p-4 pl-10 outline-none focus:border-indigo-500 transition-all " value={form.discount} onChange={e => setForm({ ...form, discount: e.target.value })} />
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 block">SUPPLEMENTARY TAX</label>
+                                            <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 block">Tax (₹)</label>
                                             <div className="relative">
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold ">₹</span>
                                                 <input type="number" className="w-full bg-white border border-slate-200 rounded-xl text-slate-900 text-[18px] font-semibold p-4 pl-10 outline-none focus:border-indigo-500 transition-all " value={form.tax} onChange={e => setForm({ ...form, tax: e.target.value })} />
@@ -572,7 +572,7 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
                                     </div>
                                     <div className="flex justify-between items-center pt-4 relative z-10">
                                         <div className="flex flex-col">
-                                            <span className="text-[12px] font-semibold text-indigo-400 uppercase tracking-wider">Aggregate Proposal Value</span>
+                                            <span className="text-[12px] font-semibold text-indigo-400 uppercase tracking-wider">Grand Total</span>
                                             <span className="text-[36px] font-semibold text-slate-900 font-mono  leading-none mt-2">₹{total.toLocaleString()}</span>
                                         </div>
                                         <div className="h-16 w-16 rounded-xl border-4 border-indigo-500/20 flex items-center justify-center">
@@ -586,16 +586,16 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
                         {tab === 'internal' && (
                             <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div>
-                                    <Label>Administrative Context / Internal Logic</Label>
-                                    <textarea className={clsx(inputCls, "min-h-[200px] resize-none leading-relaxed")} placeholder="Confidential internal notes regarding this proposal..." value={form.internal_notes} onChange={e => setForm({ ...form, internal_notes: e.target.value })} />
+                                    <Label>Internal Notes</Label>
+                                    <textarea className={clsx(inputCls, "min-h-[200px] resize-none leading-relaxed")} placeholder="Add internal notes..." value={form.internal_notes} onChange={e => setForm({ ...form, internal_notes: e.target.value })} />
                                 </div>
                                 <div className="pt-4">
-                                    <Label>Minimum Required Mobilization Deposit</Label>
+                                    <Label>Required Deposit</Label>
                                     <div className="relative">
                                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold ">₹</span>
                                         <input type="number" className={clsx(inputCls, "pl-12 font-semibold  text-[16px]")} placeholder="0.00" value={form.initial_deposit} onChange={e => setForm({ ...form, initial_deposit: e.target.value })} />
                                     </div>
-                                    <p className="text-[12px] text-slate-400 mt-3 font-medium ">This value defines the minimum upfront commitment requested from the client.</p>
+                                    <p className="text-[12px] text-slate-400 mt-3 font-medium ">Enter the minimum deposit requested from the customer.</p>
                                 </div>
                             </div>
                         )}

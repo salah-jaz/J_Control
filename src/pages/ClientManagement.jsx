@@ -44,7 +44,7 @@ const defaultFilters = {
     search: '',
     statusFilter: 'all',
     gstFilter: 'all',
-    locationFilter: 'all',
+    locationFilter: '',
     dateFilter: 'all',
     dateFrom: '',
     dateTo: '',
@@ -72,7 +72,7 @@ const ClientManagement = () => {
         search: searchDebounced || undefined,
         status: statusFilter === 'all' ? undefined : statusFilter,
         gstType: gstFilter === 'all' ? undefined : gstFilter,
-        location: locationFilter || undefined,
+        location: (locationFilter === 'all' || !locationFilter) ? undefined : locationFilter,
         dateRange: dateFilter === 'all' ? undefined : dateFilter,
         dateFrom: dateFilter === 'custom' && dateFrom ? dateFrom : undefined,
         dateTo: dateFilter === 'custom' && dateTo ? dateTo : undefined,
@@ -112,26 +112,26 @@ const ClientManagement = () => {
             await saveClientMutation.mutateAsync(clientData);
             setIsFormOpen(false);
             setEditingClient(null);
-            toast.success("Client saved successfully");
+            toast.success("Customer saved");
         } catch (error) {
             console.error("Failed to save client", error);
             const data = error.response?.data;
             const message = data?.message
                 || (data?.errors && Object.values(data.errors).flat()[0])
-                || "Failed to save client. Please try again.";
-            toast.error(typeof message === 'string' ? message : "Failed to save client. Please try again.");
+                || "Failed to save customer. Please try again.";
+            toast.error(typeof message === 'string' ? message : "Failed to save customer. Please try again.");
             throw error;
         }
     };
 
     const handleDelete = async (id) => {
-        if (confirm('Are you sure you want to delete this client company?')) {
+        if (confirm('Are you sure you want to delete this customer?')) {
             try {
                 await deleteClientMutation.mutateAsync(id);
-                toast.success("Client deleted successfully");
+                toast.success("Customer deleted");
             } catch (error) {
                 console.error("Failed to delete client", error);
-                toast.error("Failed to delete client");
+                toast.error("Failed to delete customer");
             }
         }
     };
@@ -177,24 +177,24 @@ const ClientManagement = () => {
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                     <div className="space-y-2">
-                        <h1 className="text-[40px] font-black text-slate-900 tracking-tight leading-none">Client Management</h1>
-                        <p className="text-[15px] font-bold text-slate-400 max-w-xl">Centralized management of your corporate network and strategic business relationships.</p>
+                        <h1 className="text-[40px] font-black text-slate-900 tracking-tight leading-none">Customers</h1>
+                        <p className="text-[15px] font-bold text-slate-400 max-w-xl">Manage your customer relationships.</p>
                     </div>
                     <button
                         onClick={handleAddNew}
                         className="btn-primary h-14 px-8 flex items-center gap-3 shadow-xl shadow-indigo-500/20 rounded-2xl active:scale-95 transition-all"
                     >
                         <Plus size={20} strokeWidth={3} />
-                        <span className="text-[14px] font-black uppercase tracking-widest">Register Client</span>
+                        <span className="text-[14px] font-black uppercase tracking-widest">New Customer</span>
                     </button>
                 </div>
 
                 {/* Stats Overview */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    <StatCard title="Total Accounts" value={totalClients} icon={Users} color="bg-indigo-600" />
-                    <StatCard title="Active Entities" value={activeClients} icon={CheckCircle} color="bg-emerald-500" />
+                    <StatCard title="Total Customers" value={totalClients} icon={Users} color="bg-indigo-600" />
+                    <StatCard title="Active Customers" value={activeClients} icon={CheckCircle} color="bg-emerald-500" />
                     <StatCard title="Tax Registered" value={gstClients} icon={Receipt} color="bg-violet-600" />
-                    <StatCard title="Standard Pipeline" value={totalClients - gstClients} icon={FileText} color="bg-orange-500" />
+                    <StatCard title="Regular Customers" value={totalClients - gstClients} icon={FileText} color="bg-orange-500" />
                 </div>
 
                 {/* Filter Infrastructure */}
@@ -202,7 +202,7 @@ const ClientManagement = () => {
                     <div className="bg-white/80 backdrop-blur-2xl p-4 rounded-[28px] border-2 border-slate-50 shadow-2xl shadow-slate-200/50 flex flex-wrap items-center gap-4">
                         <div className="flex-1 min-w-[300px]">
                             <ToolbarSearch
-                                placeholder="Search by name, organization, or email protocol..."
+                                placeholder="Search customers..."
                                 value={search}
                                 onChange={setSearch}
                                 className="!bg-slate-50/50 !border-slate-100 !rounded-2xl !h-14 !px-6 !text-[14px] font-bold"
@@ -216,7 +216,7 @@ const ClientManagement = () => {
                                 onChange={setStatusFilter}
                                 className="!h-14 !bg-slate-50/50 !border-slate-100 !rounded-2xl !px-6 !text-[12px] font-black uppercase tracking-widest"
                             >
-                                <option value="all">All Status</option>
+                                <option value="all">All status</option>
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                                 <option value="onboarding">Onboarding</option>
@@ -284,12 +284,12 @@ const ClientManagement = () => {
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50/50 border-b-2 border-slate-100">
-                                        <th className="px-10 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Client / Organization</th>
-                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Protocol Status</th>
-                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Portfolio Tags</th>
-                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Liaison</th>
-                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Tax Registry</th>
-                                        <th className="px-10 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Operations</th>
+                                        <th className="px-10 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Customer / Company</th>
+                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Status</th>
+                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Tags</th>
+                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Contact</th>
+                                        <th className="px-8 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">GSTIN</th>
+                                        <th className="px-10 py-6 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y-2 divide-slate-50">
@@ -353,8 +353,8 @@ const ClientManagement = () => {
                                                     onClose={() => setOpenMenuId(null)}
                                                     items={[
                                                         { label: 'View Profile', icon: Eye, onClick: () => handleView(client) },
-                                                        { label: 'Modify Entity', icon: Edit2, onClick: () => handleEdit(client) },
-                                                        { label: 'Terminate Registry', icon: Trash2, onClick: () => handleDelete(client.id), destructive: true, separatorBefore: true },
+                                                        { label: 'Edit Customer', icon: Edit2, onClick: () => handleEdit(client) },
+                                                        { label: 'Delete Customer', icon: Trash2, onClick: () => handleDelete(client.id), destructive: true, separatorBefore: true },
                                                     ]}
                                                 />
                                             </td>
@@ -364,12 +364,12 @@ const ClientManagement = () => {
                                             <td colSpan="6" className="px-10 py-32 text-center">
                                                 <EmptyState
                                                     icon={Building2}
-                                                    title="No corporate entities found"
-                                                    description="Expand your professional network by registering new enterprise clients into the ecosystem."
+                                                    title="No customers found"
+                                                    description="Add a new customer to get started."
                                                     action={
                                                         <button onClick={handleAddNew} className="btn-primary px-8 py-4 flex items-center gap-3 shadow-xl shadow-indigo-500/20 rounded-2xl">
                                                             <Plus size={18} strokeWidth={3} />
-                                                            <span className="text-[13px] font-black uppercase tracking-widest">Register First Client</span>
+                                                            <span className="text-[13px] font-black uppercase tracking-widest">Add Customer</span>
                                                         </button>
                                                     }
                                                 />
@@ -384,7 +384,8 @@ const ClientManagement = () => {
                     {clientsMeta && (clientsMeta.last_page > 1) && (
                         <div className="p-10 border-t-2 border-slate-50 bg-slate-50/30">
                             <TablePagination
-                                summary={`Exhibiting ${(clientsMeta.current_page - 1) * clientsMeta.per_page + 1}–${Math.min(clientsMeta.current_page * clientsMeta.per_page, clientsMeta.total)} of ${clientsMeta.total} corporate accounts`}
+                                style={{}}
+                                summary={`Showing ${(clientsMeta.current_page - 1) * clientsMeta.per_page + 1}–${Math.min(clientsMeta.current_page * clientsMeta.per_page, clientsMeta.total)} of ${clientsMeta.total} customers`}
                                 onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
                                 onNext={() => setCurrentPage((p) => p + 1)}
                                 previousDisabled={clientsMeta.current_page <= 1}

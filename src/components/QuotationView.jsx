@@ -222,8 +222,8 @@ const QuotationView = ({
         {/* Templates Visual Selector (Sidebar Desktop / Top Rail Mobile) */}
         <div className="w-full lg:w-[360px] bg-gradient-to-b from-slate-50 to-slate-100 border-b lg:border-b-0 lg:border-l border-slate-200 flex flex-col shrink-0 overflow-hidden print:hidden relative z-10">
           <div className="p-4 lg:p-6 border-b border-slate-200 bg-white shrink-0 shadow-sm relative z-20">
-            <h3 className="font-extrabold text-slate-900 text-lg tracking-tight">Select Design</h3>
-            <p className="text-sm text-slate-500 mt-1 hidden lg:block">Click any layout to instantly apply it to this quotation.</p>
+            <h3 className="font-extrabold text-slate-900 text-lg tracking-tight">Select Layout</h3>
+            <p className="text-sm text-slate-500 mt-1 hidden lg:block">Choose a style for printing or saving.</p>
           </div>
 
           <div className="flex-1 overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto p-4 lg:p-5 grid grid-flow-col auto-cols-[140px] lg:grid-flow-row lg:grid-cols-2 gap-4 lg:content-start [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 pb-10">
@@ -259,7 +259,7 @@ const QuotationView = ({
                 </div>
               </div>
               <div className="p-3.5 text-center text-sm font-bold text-slate-800 flex-shrink-0 relative flex items-center justify-center gap-2">
-                Standard Form
+                Standard
               </div>
               {selectedPreviewId === 'standard' && (
                 <div className="absolute top-2 right-2 bg-orange-500 text-white p-1.5 rounded-full shadow-sm z-20 flex items-center justify-center">
@@ -444,8 +444,8 @@ const QuotationView = ({
                       </div>
                     ) : (
                       <div className="p-12 text-center text-slate-500">
-                        <p className="font-semibold text-lg">No Template Selected</p>
-                        <p className="text-sm mt-2">Please select a valid print template from the dropdown.</p>
+                        <p className="font-semibold text-lg">No template selected</p>
+                        <p className="text-sm mt-2">Please choose a template from the list.</p>
                       </div>
                     )}
                   </div>

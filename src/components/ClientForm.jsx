@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Building2, User, MapPin, FileText, Landmark, Plus, Pencil, Trash2, Loader2, Edit2, ChevronDown, Check, AlertCircle } from 'lucide-react';
+import { X, Save, Building2, User, MapPin, FileText, Landmark, Plus, Pencil, Trash2, Loader2, Edit2, ChevronDown, Check, AlertCircle, Mail, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
 import SlideOver from './ui/SlideOver';
@@ -272,11 +272,11 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
     if (!isOpen) return null;
 
     const tabs = [
-        { id: 'basic', label: 'Corporate Profile', icon: Building2 },
-        { id: 'contact', label: 'Contact Infrastructure', icon: User },
-        { id: 'address', label: 'Geographic Registry', icon: MapPin },
-        { id: 'tax', label: 'Regulatory Compliance', icon: FileText },
-        { id: 'bank', label: 'Treasury Nodes', icon: Landmark },
+        { id: 'basic', label: 'Basic Info', icon: Building2 },
+        { id: 'contact', label: 'Contact Info', icon: User },
+        { id: 'address', label: 'Address', icon: MapPin },
+        { id: 'tax', label: 'Tax Details', icon: FileText },
+        { id: 'bank', label: 'Bank Accounts', icon: Landmark },
     ];
     // Standard J-Control Label
     const Label = ({ children, required }) => (
@@ -316,13 +316,13 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                     <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
                         <div className="grid grid-cols-2 gap-10">
                             <div className="col-span-2">
-                                <Label required>Client Nomenclature / Identity</Label>
+                                <Label required>Customer Name</Label>
                                 <div className="relative group">
                                     <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                                     <input 
                                         name="client_name"
                                         className={clsx(inputCls('client_name', 'client_or_company'), "pl-12")}
-                                        placeholder="Full Name / Principal"
+                                        placeholder="Full Name"
                                         value={formData.client_name}
                                         onChange={handleChange}
                                         onBlur={handleBlur}
@@ -333,13 +333,13 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                             </div>
 
                             <div className="col-span-2">
-                                <Label required>Corporate Designation / Organization</Label>
+                                <Label required>Company Name</Label>
                                 <div className="relative group">
                                     <Building2 size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                                     <input 
                                         name="company_name"
                                         className={clsx(inputCls('company_name', 'client_or_company'), "pl-12")}
-                                        placeholder="Legal Corporate Name"
+                                        placeholder="Legal Company Name"
                                         value={formData.company_name}
                                         onChange={handleChange}
                                         onBlur={handleBlur}
@@ -353,7 +353,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                             </div>
 
                             <div>
-                                <Label>Entity Structure</Label>
+                                <Label>Company Type</Label>
                                 <select 
                                     name="company_type"
                                     className={clsx(inputCls('company_type'), "appearance-none")}
@@ -372,7 +372,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                             </div>
 
                             <div>
-                                <Label>Transactional Currency</Label>
+                                <Label>Currency</Label>
                                 <select 
                                     name="default_currency"
                                     className={clsx(inputCls('default_currency'), "appearance-none")}
@@ -393,11 +393,11 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                     <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
                         <div className="grid grid-cols-2 gap-10">
                             <div>
-                                <Label>Primary Liaison</Label>
+                                <Label>Contact Person</Label>
                                 <input name="contact_person_name" className={inputCls('contact_person_name')} placeholder="Full Name" value={formData.contact_person_name} onChange={handleChange} readOnly={readOnly} />
                             </div>
                             <div>
-                                <Label>Official Email Pipeline</Label>
+                                <Label>Email</Label>
                                 <div className="relative group">
                                     <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input name="email_address" className={clsx(inputCls('email_address'), "pl-12")} placeholder="corporate@domain.com" value={formData.email_address} onChange={handleChange} onBlur={handleBlur} readOnly={readOnly} />
@@ -405,22 +405,22 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                 </div>
                             </div>
                             <div>
-                                <Label>Primary Access Line</Label>
+                                <Label>Phone</Label>
                                 <div className="relative group">
                                     <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input name="mobile_number" className={clsx(inputCls('mobile_number'), "pl-12")} placeholder="10-digit Mobile" value={formData.mobile_number} onChange={handleChange} onBlur={handleBlur} readOnly={readOnly} />
+                                    <input name="mobile_number" className={clsx(inputCls('mobile_number'), "pl-12")} placeholder="Mobile Number" value={formData.mobile_number} onChange={handleChange} onBlur={handleBlur} readOnly={readOnly} />
                                     <ValidationIcon fieldName="mobile_number" value={formData.mobile_number} />
                                 </div>
                             </div>
                             <div>
-                                <Label>Secondary Access Line</Label>
+                                <Label>Alternate Phone</Label>
                                 <div className="relative group">
                                     <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input name="secondary_mobile_number" className={clsx(inputCls('secondary_mobile_number'), "pl-12")} placeholder="Alternate Number" value={formData.secondary_mobile_number} onChange={handleChange} readOnly={readOnly} />
+                                    <input name="secondary_mobile_number" className={clsx(inputCls('secondary_mobile_number'), "pl-12")} placeholder="Alternate Phone" value={formData.secondary_mobile_number} onChange={handleChange} readOnly={readOnly} />
                                 </div>
                             </div>
                             <div className="col-span-2">
-                                <Label>Corporate Digital Mark (Website)</Label>
+                                <Label>Website</Label>
                                 <input name="website_url" className={inputCls('website_url')} placeholder="https://www.company.com" value={formData.website_url} onChange={handleChange} readOnly={readOnly} />
                             </div>
                         </div>
@@ -431,31 +431,31 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                     <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
                         <div className="space-y-10">
                             <div>
-                                <Label>Headquarters Registry / Line 1</Label>
+                                <Label>Address Line 1</Label>
                                 <div className="relative group">
                                     <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input name="address_line_1" className={clsx(inputCls('address_line_1'), "pl-12")} placeholder="Street, Building, Unit" value={formData.address_line_1} onChange={handleChange} readOnly={readOnly} />
                                 </div>
                             </div>
                             <div>
-                                <Label>Administrative Locality / Line 2</Label>
+                                <Label>Address Line 2</Label>
                                 <input name="address_line_2" className={inputCls('address_line_2')} placeholder="Area, Landmark" value={formData.address_line_2} onChange={handleChange} readOnly={readOnly} />
                             </div>
                             <div className="grid grid-cols-2 gap-10">
                                 <div>
-                                    <Label>Jurisdiction (City)</Label>
+                                    <Label>City</Label>
                                     <input name="city" className={inputCls('city')} placeholder="City" value={formData.city} onChange={handleChange} readOnly={readOnly} />
                                 </div>
                                 <div>
-                                    <Label>Administrative State</Label>
+                                    <Label>State</Label>
                                     <input name="state" className={inputCls('state')} placeholder="State" value={formData.state} onChange={handleChange} readOnly={readOnly} />
                                 </div>
                                 <div>
-                                    <Label>Postal Index Code (PIN)</Label>
+                                    <Label>PIN Code</Label>
                                     <input name="pincode" className={inputCls('pincode')} placeholder="6-digit PIN" value={formData.pincode} onChange={handleChange} readOnly={readOnly} />
                                 </div>
                                 <div>
-                                    <Label>Sovereign Territory</Label>
+                                    <Label>Country</Label>
                                     <input name="country" className={inputCls('country')} placeholder="Country" value={formData.country} onChange={handleChange} readOnly={readOnly} />
                                 </div>
                             </div>
@@ -467,7 +467,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                     <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
                         <div className="grid grid-cols-2 gap-10">
                             <div className="col-span-2">
-                                <Label>Compliance Module (GST)</Label>
+                                <Label>GST Type</Label>
                                 <div className="flex gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200 shadow-sm">
                                     {['Regular', 'Composition', 'Unregistered', 'Overseas'].map(type => (
                                         <button
@@ -477,7 +477,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                             className={clsx(
                                                 "flex-1 py-3 text-sm font-semibold uppercase tracking-wider rounded-xl transition-all",
                                                 formData.gst_registration_type === type
-                                                    ? "bg-slate-900 text-slate-900 shadow-lg shadow-slate-200"
+                                                    ? "bg-slate-900 text-white shadow-lg shadow-slate-200"
                                                     : "bg-white text-slate-500 hover:bg-slate-100 border border-slate-100"
                                             )}
                                         >
@@ -489,34 +489,33 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                             {formData.gst_registration_type !== 'Unregistered' && (
                                 <>
                                     <div className="col-span-2">
-                                        <Label>Tax Identification (GSTIN)</Label>
+                                        <Label>GSTIN</Label>
                                         <div className="relative group">
                                             <FileText size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                            <input name="gst_number" className={clsx(inputCls('gst_number'), "pl-12 font-mono uppercase")} placeholder="15-character GSTIN" value={formData.gst_number} onChange={handleChange} readOnly={readOnly} />
+                                            <input name="gst_number" className={clsx(inputCls('gst_number'), "pl-12 font-mono uppercase")} placeholder="GSTIN" value={formData.gst_number} onChange={handleChange} readOnly={readOnly} />
                                             <ValidationIcon fieldName="gst_number" value={formData.gst_number} />
                                         </div>
                                     </div>
                                     <div>
-                                        <Label>Registry State Code</Label>
+                                        <Label>State Code</Label>
                                         <input name="gst_state_code" className={inputCls('gst_state_code')} placeholder="e.g. 27" value={formData.gst_state_code} onChange={handleChange} readOnly={readOnly} />
                                     </div>
                                 </>
                             )}
                             <div>
-                                <Label>Fiscal Account Index (PAN)</Label>
-                                <input name="pan_number" className={clsx(inputCls('pan_number'), "font-mono uppercase")} placeholder="10-character PAN" value={formData.pan_number} onChange={handleChange} readOnly={readOnly} />
+                                <Label>PAN Number</Label>
+                                <input name="pan_number" className={clsx(inputCls('pan_number'), "font-mono uppercase")} placeholder="PAN" value={formData.pan_number} onChange={handleChange} readOnly={readOnly} />
                             </div>
                             <div>
-                                <Label>Corporate Identity (CIN)</Label>
-                                <input name="cin_number" className={clsx(inputCls('cin_number'), "font-mono uppercase")} placeholder="21-character CIN" value={formData.cin_number} onChange={handleChange} readOnly={readOnly} />
+                                <Label>CIN Number</Label>
+                                <input name="cin_number" className={clsx(inputCls('cin_number'), "font-mono uppercase")} placeholder="CIN" value={formData.cin_number} onChange={handleChange} readOnly={readOnly} />
                             </div>
                         </div>
                     </div>
                 );
             case 'bank':
                 return (
-                    <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
-                        {!readOnly && (
+                    <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">                        {!readOnly && (
                             <div className="p-10 bg-slate-50 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 p-12 opacity-5 translate-x-1/4 translate-y-1/4 group-hover:scale-110 transition-transform duration-700">
                                     <Landmark size={200} />
@@ -524,12 +523,12 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                 <div className="relative z-10">
                                     <h4 className="text-[14px] font-semibold uppercase tracking-wider mb-8 flex items-center gap-3">
                                         <div className="h-2 w-2 rounded-full bg-indigo-500"></div>
-                                        {editingBankIndex !== null ? 'Modify Treasury Node' : 'Initialize New Node'}
+                                        {editingBankIndex !== null ? 'Edit Bank Account' : 'New Bank Account'}
                                     </h4>
                                     
                                     <div className="grid grid-cols-2 gap-8">
                                         <div className="col-span-2">
-                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Institutional Name</label>
+                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Bank Name</label>
                                             <input 
                                                 name="bank_name"
                                                 className="w-full bg-white border border-slate-200 rounded-xl px-6 py-4 text-[15px] font-bold outline-none focus:border-indigo-500 transition-all"
@@ -539,25 +538,25 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                             />
                                             {bankFormError && <p className="text-xs text-rose-400 mt-2 font-semibold uppercase tracking-wider">{bankFormError}</p>}
                                         </div>
-
+ 
                                         <div>
-                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Account Beneficiary</label>
+                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Account Holder</label>
                                             <input name="account_holder_name" className="w-full bg-white border border-slate-200 rounded-xl px-6 py-4 text-[15px] font-bold outline-none focus:border-indigo-500 transition-all" placeholder="Holder Name" value={bankForm.account_holder_name} onChange={handleBankFormChange} />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Functional Account Number</label>
+                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Account Number</label>
                                             <input name="account_number" className="w-full bg-white border border-slate-200 rounded-xl px-6 py-4 text-[15px] font-bold outline-none focus:border-indigo-500 transition-all font-mono" placeholder="Digits only" value={bankForm.account_number} onChange={handleBankFormChange} />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Routing Protocol (IFSC)</label>
+                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">IFSC Code</label>
                                             <input name="ifsc_code" className="w-full bg-white border border-slate-200 rounded-xl px-6 py-4 text-[15px] font-bold outline-none focus:border-indigo-500 transition-all font-mono uppercase" placeholder="Bank Code" value={bankForm.ifsc_code} onChange={handleBankFormChange} />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Digital Identity (UPI)</label>
+                                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">UPI ID</label>
                                             <input name="upi_id" className="w-full bg-white border border-slate-200 rounded-xl px-6 py-4 text-[15px] font-bold outline-none focus:border-indigo-500 transition-all" placeholder="id@bank" value={bankForm.upi_id} onChange={handleBankFormChange} />
                                         </div>
                                     </div>
-
+ 
                                     <div className="mt-12 flex justify-end gap-4">
                                         {editingBankIndex !== null && (
                                             <button type="button" onClick={handleCancelEditBank} className="px-6 py-3 text-[12px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-900 transition-colors">Discard</button>
@@ -568,7 +567,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                             className="px-10 py-4 bg-indigo-600 text-slate-900 text-[13px] font-semibold uppercase tracking-wider rounded-xl hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-900/50 flex items-center gap-3 active:scale-95"
                                         >
                                             {editingBankIndex !== null ? <Edit2 size={18} /> : <Plus size={18} strokeWidth={3} />}
-                                            <span>{editingBankIndex !== null ? 'Update Node' : 'Authorize Node'}</span>
+                                            <span>{editingBankIndex !== null ? 'Save Account' : 'Add Account'}</span>
                                         </button>
                                     </div>
                                 </div>
@@ -576,11 +575,11 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                         )}
 
                         <div className="space-y-6">
-                            <h5 className="text-sm font-semibold text-slate-400 uppercase tracking-wider px-2">Authorized Financial Registry</h5>
+                            <h5 className="text-sm font-semibold text-slate-400 uppercase tracking-wider px-2">Bank Accounts</h5>
                             {bankList.length === 0 ? (
                                 <div className="p-16 border-2 border-dashed border-slate-100 rounded-xl flex flex-col items-center justify-center text-center group hover:border-slate-200 transition-colors">
                                     <Landmark className="text-slate-100 mb-4 group-hover:scale-110 transition-transform duration-500" size={64} />
-                                    <p className="text-[13px] font-semibold text-slate-300 uppercase tracking-wider">No Treasury Data Initialized</p>
+                                    <p className="text-[13px] font-semibold text-slate-300 uppercase tracking-wider">No bank accounts added</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-4">
@@ -623,10 +622,10 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
             isOpen={isOpen}
             onClose={onClose}
             size="5xl"
-            title={readOnly ? 'Review Client Profile' : (client ? 'Modify Corporate Identity' : 'Introduce New Client Entity')}
+            title={readOnly ? 'Customer Details' : (client ? 'Edit Customer' : 'New Customer')}
             footer={(
                 <div className="flex justify-end items-center w-full px-1 gap-4">
-                    <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Discard Changes</button>
+                    <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
                     {!readOnly && (
                         <button 
                             onClick={handleSubmit} 
@@ -634,7 +633,7 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                             className="px-10 py-2.5 bg-indigo-600 text-slate-900 text-[14px] font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
                         >
                             {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                            <span>{isSaving ? 'Synchronizing...' : (client ? 'Commit Changes' : 'Record Registry')}</span>
+                            <span>{isSaving ? 'Synchronizing...' : 'Save Customer'}</span>
                         </button>
                     )}
                 </div>

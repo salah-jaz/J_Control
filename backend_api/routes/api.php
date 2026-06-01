@@ -16,11 +16,40 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\PrintTemplateController;
 
+use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\DepartmentController;
+use App\Http\Controllers\DesignationController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\HrmsDashboardController;
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+
+    // HRMS Staff Management Routes
+    Route::apiResource('departments', DepartmentController::class);
+    Route::apiResource('designations', DesignationController::class);
+    Route::apiResource('employees', EmployeeController::class);
+
+    Route::get('attendances', [AttendanceController::class, 'index']);
+    Route::post('attendances/save', [AttendanceController::class, 'save']);
+    Route::get('attendances/monthly', [AttendanceController::class, 'monthlyReport']);
+
+    Route::post('leaves/{leave}/status', [LeaveController::class, 'updateStatus']);
+    Route::get('leaves/balances', [LeaveController::class, 'balances']);
+    Route::apiResource('leaves', LeaveController::class);
+
+    Route::get('payrolls/calculate', [PayrollController::class, 'calculate']);
+    Route::post('payrolls/process', [PayrollController::class, 'process']);
+    Route::post('payrolls/reopen', [PayrollController::class, 'reopen']);
+    Route::get('payrolls/history', [PayrollController::class, 'history']);
+    Route::apiResource('payrolls', PayrollController::class);
+
+    Route::get('hrms-dashboard/stats', [HrmsDashboardController::class, 'stats']);
     
     Route::apiResource('leads', LeadController::class);
     Route::get('leads/{lead}/notes', [LeadNoteController::class, 'index']);

@@ -108,27 +108,27 @@ export default function Agreements() {
         try {
             if (editId) {
                 await agreementService.update(editId, formData);
-                toast.success("Legal instrument updated");
+                toast.success("Contract updated");
             } else {
                 await agreementService.create(formData);
-                toast.success("New agreement recorded");
+                toast.success("Contract created");
             }
             loadData();
             setOpenForm(false);
         } catch (err) {
-            toast.error(err.response?.data?.message || "Failed to sync agreement");
+            toast.error(err.response?.data?.message || "Failed to save contract");
             throw err;
         }
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Purge this legal instrument?")) return;
+        if (!window.confirm("Delete this contract?")) return;
         try {
             await agreementService.delete(id);
-            toast.success("Instrument purged");
+            toast.success("Contract deleted");
             loadData();
         } catch (e) {
-            toast.error("Operation failed");
+            toast.error("Failed to delete contract");
         }
     };
 
@@ -153,7 +153,7 @@ export default function Agreements() {
             setSelectedAgreement({ ...emptyForm, agreement_no: nextNo, content: initialContent });
             setOpenForm(true);
         } catch (e) {
-            toast.error("Failed to sequence next ID");
+            toast.error("Failed to generate contract number");
         }
     };
 
@@ -163,12 +163,12 @@ export default function Agreements() {
     return (
         <div className="p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
             <PageHeader
-                title="Legal & Agreements"
-                subtitle="Manage professional contracts, service agreements, and binding legal instruments"
+                title="Contracts"
+                subtitle="Create and manage customer contracts."
                 primaryAction={(
                     <button onClick={openAdd} className="btn-primary flex items-center gap-2 shadow-lg shadow-violet-500/20">
                         <Plus size={18} strokeWidth={3} />
-                        <span>Create Agreement</span>
+                        <span>New Contract</span>
                     </button>
                 )}
                 secondaryActions={(
@@ -177,11 +177,11 @@ export default function Agreements() {
             />
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <StatCard title="Aggregated Index" value={summary.total ?? 0} icon={FileSpreadsheet} colorClass="bg-slate-800" />
-                <StatCard title="Draft Stage" value={summary.draft ?? 0} icon={Clock} colorClass="bg-amber-600" />
-                <StatCard title="Sent / Pending" value={summary.sent ?? 0} icon={FileText} colorClass="bg-blue-600" />
-                <StatCard title="Signed / Active" value={summary.signed ?? 0} icon={BadgeCheck} colorClass="bg-emerald-600" />
-                <StatCard title="Expired / Void" value={summary.expired ?? 0} icon={ShieldAlert} colorClass="bg-rose-600" />
+                <StatCard title="Total Contracts" value={summary.total ?? 0} icon={FileSpreadsheet} colorClass="bg-slate-800" />
+                <StatCard title="Drafts" value={summary.draft ?? 0} icon={Clock} colorClass="bg-amber-600" />
+                <StatCard title="Sent" value={summary.sent ?? 0} icon={FileText} colorClass="bg-blue-600" />
+                <StatCard title="Signed" value={summary.signed ?? 0} icon={BadgeCheck} colorClass="bg-emerald-600" />
+                <StatCard title="Expired" value={summary.expired ?? 0} icon={ShieldAlert} colorClass="bg-rose-600" />
             </div>
 
             <div className="bg-white/80 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center gap-3 sticky top-4 z-20">
@@ -190,7 +190,7 @@ export default function Agreements() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <input
                             type="text"
-                            placeholder="Search by ID, client, or title..."
+                            placeholder="Search contracts..."
                             className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[13px] font-medium outline-none focus:bg-white focus:border-violet-500 transition-all shadow-inner"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -199,11 +199,11 @@ export default function Agreements() {
                 </div>
                 <div className="flex items-center gap-2">
                     <FilterSelect icon={Activity} value={statusFilter} onChange={setStatusFilter}>
-                        <option value="All">All Status</option>
+                        <option value="All">All status</option>
                         {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                     </FilterSelect>
                     <FilterSelect icon={User} value={clientFilter} onChange={setClientFilter}>
-                        <option value="">All Clients</option>
+                        <option value="">All customers</option>
                         {clients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
                     </FilterSelect>
                     {(searchQuery || statusFilter !== "All" || clientFilter) && <ClearFiltersButton onClick={() => { setSearchQuery(""); setStatusFilter("All"); setClientFilter(""); }} />}
@@ -211,22 +211,21 @@ export default function Agreements() {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <TableSectionHeader title="Agreement Registry" summary={`${agreements.length} instruments listed`} />
+                <TableSectionHeader title="Contracts" summary={`${agreements.length} contracts`} />
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50 border-b border-slate-200">
-                                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Protocol ID</th>
-                                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Identification</th>
-                                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Client Principal</th>
-                                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Effective Date</th>
+                                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Contract No</th>
+                                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Title</th>
+                                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Customer</th>
+                                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Date</th>
                                 <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
                                 <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {loading ? (
-                                <tr><td colSpan="6" className="p-12 text-center text-slate-400 font-medium">Synchronizing legal data...</td></tr>
+                        <tbody className="divide-y divide-slate-100">                             {loading ? (
+                                <tr><td colSpan="6" className="p-12 text-center text-slate-400 font-medium">Loading contracts...</td></tr>
                             ) : agreements.map((a) => (
                                 <tr key={a.id} className="hover:bg-slate-50/50 transition-colors group">
                                     <td className="px-6 py-4 font-mono text-[13px] font-black text-slate-900 italic tracking-tight">{a.agreement_no}</td>
@@ -249,9 +248,9 @@ export default function Agreements() {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                                            <ActionIconButton onClick={() => { setEditId(a.id); setSelectedAgreement(a); setOpenForm(true); }} title="Modify" icon={Pencil} tone="edit" />
-                                            <ActionIconButton onClick={() => handleDelete(a.id)} title="Purge" icon={Trash2} tone="delete" />
-                                            <ActionIconButton onClick={() => { setSelectedAgreement(a); setOpenPreview(true); }} title="Visual Preview" icon={Eye} tone="view" />
+                                            <ActionIconButton onClick={() => { setEditId(a.id); setSelectedAgreement(a); setOpenForm(true); }} title="Edit" icon={Pencil} tone="edit" />
+                                            <ActionIconButton onClick={() => handleDelete(a.id)} title="Delete" icon={Trash2} tone="delete" />
+                                            <ActionIconButton onClick={() => { setSelectedAgreement(a); setOpenPreview(true); }} title="View" icon={Eye} tone="view" />
                                         </div>
                                     </td>
                                 </tr>
@@ -274,13 +273,13 @@ export default function Agreements() {
                     <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full animate-in zoom-in-95 duration-300">
                         <div className="flex justify-between items-start mb-8">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Select Legal Structure</h2>
-                                <p className="text-slate-500 text-sm mt-1">Initialize your document from a curated architectural base.</p>
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">New Contract</h2>
+                                <p className="text-slate-500 text-sm mt-1">Choose a starting template.</p>
                             </div>
                             <button onClick={() => setShowSelection(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"><X size={20}/></button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {[{ id: 'quotation', name: 'Service Provision', icon: FileText, color: 'bg-indigo-500' }, { id: 'lease', name: 'Asset Leasing', icon: Building2, color: 'bg-emerald-500' }, { id: 'blank', name: 'Custom Framework', icon: Sparkles, color: 'bg-violet-500' }].map(t => (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {[{ id: 'quotation', name: 'Service Contract', icon: FileText, color: 'bg-indigo-500' }, { id: 'lease', name: 'Lease Contract', icon: Building2, color: 'bg-emerald-500' }, { id: 'blank', name: 'Blank Contract', icon: Sparkles, color: 'bg-violet-500' }].map(t => (
                                 <button key={t.id} onClick={() => startWithTemplate(t.id)} className="group flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50 border-2 border-transparent hover:border-violet-500 hover:bg-white hover:shadow-xl transition-all">
                                     <div className={clsx("w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg", t.color)}><t.icon size={24}/></div>
                                     <p className="font-black text-slate-800 text-[14px]">{t.name}</p>
@@ -341,14 +340,14 @@ const AgreementFormOverlay = ({ isOpen, onClose, agreement, clients, onSave }) =
         <SlideOver
             isOpen={isOpen}
             onClose={onClose}
-            title={form.id ? 'Modify Legal Framework' : 'Assemble Agreement'}
+            title={form.id ? 'Edit Contract' : 'New Contract'}
             size="5xl"
             footer={(
                 <div className="flex justify-end items-center w-full px-2 gap-3">
-                    <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Discard Changes</button>
+                    <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
                     <button onClick={handleSubmit} disabled={isSaving} className="px-10 py-2.5 bg-violet-600 text-white text-[14px] font-black rounded-xl hover:bg-violet-700 shadow-lg shadow-violet-500/20 flex items-center gap-2 active:scale-95 transition-all">
                         {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                        <span>{form.id ? 'Commit Update' : 'Finalize Instrument'}</span>
+                        <span>{form.id ? 'Save Changes' : 'Create Contract'}</span>
                     </button>
                 </div>
             )}
@@ -358,8 +357,8 @@ const AgreementFormOverlay = ({ isOpen, onClose, agreement, clients, onSave }) =
                 <div className="w-64 border-r-2 border-slate-100 pr-6 shrink-0 hidden md:block">
                     <div className="flex flex-col gap-2 sticky top-0">
                         {[
-                            { id: 'basic', label: 'Operational Specs', icon: Target },
-                            { id: 'content', label: 'Architectural Builder', icon: Layers }
+                            { id: 'basic', label: 'Basic Info', icon: Target },
+                            { id: 'content', label: 'Editor', icon: Layers }
                         ].map((tabInfo, idx) => (
                             <div key={tabInfo.id}>
                                 <button
@@ -390,23 +389,23 @@ const AgreementFormOverlay = ({ isOpen, onClose, agreement, clients, onSave }) =
                             <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="md:col-span-2">
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Document Designation</label>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Contract Title</label>
                                         <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[15px] font-black tracking-tight outline-none focus:border-violet-500 shadow-sm transition-all" value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="e.g. Master Service Agreement" />
                                     </div>
                                     <div>
-                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Client Principal</label>
+                                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Customer Name</label>
                                         <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold outline-none focus:border-violet-500 shadow-sm transition-all appearance-none" value={form.client_id} onChange={e => setForm({...form, client_id: e.target.value})}>
-                                            <option value="">Select Principal registry...</option>
+                                            <option value="">Select customer...</option>
                                             {clients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
                                         </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Effective Date</label>
+                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Date</label>
                                             <input type="date" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold outline-none focus:border-violet-500 shadow-sm transition-all" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
                                         </div>
                                         <div>
-                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Legal Status</label>
+                                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Status</label>
                                             <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[14px] font-bold outline-none focus:border-violet-500 shadow-sm transition-all appearance-none" value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
                                                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                             </select>
@@ -416,14 +415,14 @@ const AgreementFormOverlay = ({ isOpen, onClose, agreement, clients, onSave }) =
 
                                 <section className="bg-slate-50/50 p-8 rounded-3xl border border-slate-200 space-y-6 relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-violet-600/5 blur-[60px] rounded-full group-hover:bg-violet-600/10 transition-colors" />
-                                    <h4 className="text-[12px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2 relative z-10"><Building2 size={16} className="text-violet-500"/> Entity Branding Parameters</h4>
+                                    <h4 className="text-[12px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2 relative z-10"><Building2 size={16} className="text-violet-500"/> Branding</h4>
                                     <div className="grid grid-cols-2 gap-8 relative z-10">
                                         <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Entity Designation</label>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Company Name</label>
                                             <input className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold outline-none focus:border-violet-500 shadow-sm transition-all" value={form.override_company_name} onChange={e => setForm({...form, override_company_name: e.target.value})} />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Brand Tagline</label>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Tagline</label>
                                             <input className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold outline-none focus:border-violet-500 shadow-sm transition-all" value={form.tagline} onChange={e => setForm({...form, tagline: e.target.value})} />
                                         </div>
                                     </div>
@@ -441,10 +440,10 @@ const AgreementFormOverlay = ({ isOpen, onClose, agreement, clients, onSave }) =
                                         <div className="p-4 bg-white border-b border-slate-200 flex justify-between items-center relative z-10">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                                                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Live Visual Renderer</span>
+                                                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Live Preview</span>
                                             </div>
                                             <select className="text-[11px] font-black bg-slate-100 border-none rounded-xl px-4 py-1.5 focus:ring-0 appearance-none" value={livePreviewTemplateId} onChange={e => setLivePreviewTemplateId(e.target.value)}>
-                                                <option value="standard">Standard Framework</option>
+                                                <option value="standard">Standard</option>
                                                 {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                             </select>
                                         </div>
@@ -463,7 +462,7 @@ const AgreementFormOverlay = ({ isOpen, onClose, agreement, clients, onSave }) =
                                                             </div>
                                                         </div>
                                                         <div className="w-full h-1.5 bg-violet-600 mb-16 rounded-full" />
-                                                        <h1 className="text-[36px] font-black text-center mb-16 uppercase tracking-tighter text-slate-900">{form.title || 'Untitled Agreement'}</h1>
+                                                        <h1 className="text-[36px] font-black text-center mb-16 uppercase tracking-tighter text-slate-900">{form.title || 'Untitled Contract'}</h1>
                                                         <div className="prose prose-slate max-w-none">
                                                             <AgreementContentDisplay blocks={form.content} />
                                                         </div>
@@ -481,7 +480,7 @@ const AgreementFormOverlay = ({ isOpen, onClose, agreement, clients, onSave }) =
                                 {!showPreview && (
                                     <button onClick={() => setShowPreview(true)} className="fixed bottom-12 right-12 bg-violet-600 text-white px-6 py-3 rounded-2xl shadow-2xl hover:bg-violet-700 transition-all animate-bounce flex items-center gap-2 font-black text-[12px] uppercase tracking-widest">
                                         <Sparkles size={18} />
-                                        <span>Show Optical Preview</span>
+                                        <span>Show Preview</span>
                                     </button>
                                 )}
                             </div>

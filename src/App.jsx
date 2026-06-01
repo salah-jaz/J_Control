@@ -22,6 +22,7 @@ import Agreements from "./pages/Agreements";
 import ModernPrintTemplateBuilder from "./pages/ModernPrintTemplateBuilder";
 import ModernPrintTemplatesList from "./pages/ModernPrintTemplatesList";
 import Planner from "./pages/Planner";
+import StaffManagement from "./pages/StaffManagement";
 import { useEffect, useRef } from 'react';
 import { getTodayPlannerEvents } from './services/db';
 
@@ -187,7 +188,7 @@ function App() {
             <Route
               path="/leads"
               element={
-                <Layout title="Lead Management">
+                <Layout title="Leads">
                   <Leads />
                 </Layout>
               }
@@ -195,7 +196,7 @@ function App() {
             <Route
               path="/clients"
               element={
-                <Layout title="Client Management">
+                <Layout title="Customers">
                   <ClientManagement />
                 </Layout>
               }
@@ -203,7 +204,7 @@ function App() {
             <Route
               path="/products"
               element={
-                <Layout title="Products & Services">
+                <Layout title="Products">
                   <Products />
                 </Layout>
               }
@@ -211,7 +212,7 @@ function App() {
             <Route
               path="/quotations"
               element={
-                <Layout title="Quotation Management">
+                <Layout title="Quotations">
                   <Quotations />
                 </Layout>
               }
@@ -227,7 +228,7 @@ function App() {
             <Route
               path="/agreements"
               element={
-                <Layout title="Agreement Management">
+                <Layout title="Contracts">
                   <Agreements />
                 </Layout>
               }
@@ -235,7 +236,7 @@ function App() {
             <Route
               path="/income"
               element={
-                <Layout title="Income">
+                <Layout title="Incomes">
                   <Income />
                 </Layout>
               }
@@ -243,13 +244,13 @@ function App() {
             <Route
               path="/banks"
               element={
-                <Layout title="Bank Accounts">
+                <Layout title="Banks">
                   <BankAccounts />
                 </Layout>
               }
             />
             <Route path="/expense" element={
-              <Layout title="Expense">
+              <Layout title="Expenses">
                 <Expense />
               </Layout>
             } />
@@ -263,10 +264,15 @@ function App() {
                 <Reports />
               </Layout>
             } />
+            <Route path="/staff" element={
+              <Layout title="Staff Management">
+                <StaffManagement />
+              </Layout>
+            } />
             <Route
               path="/planner"
               element={
-                <Layout title="Planner">
+                <Layout title="Tasks">
                   <Planner />
                 </Layout>
               }
@@ -287,7 +293,7 @@ function App() {
             <Route
               path="/print-templates"
               element={
-                <Layout title="Print Templates">
+                <Layout title="Print Settings">
                   <ModernPrintTemplatesList />
                 </Layout>
               }
