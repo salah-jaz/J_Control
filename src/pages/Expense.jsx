@@ -110,10 +110,10 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
   const totalAmount = subtotal - discountVal + taxVal;
 
   const TABS = [
-    { id: 'basic', label: 'Operational Specs', icon: Target },
-    { id: 'financial', label: 'Financial Analytics', icon: Wallet },
-    { id: 'installments', label: 'Disbursement Schedule', icon: Layers },
-    { id: 'internal', label: 'Administrative', icon: Briefcase },
+    { id: 'basic', label: 'Basic Info', icon: Target },
+    { id: 'financial', label: 'Financial Info', icon: Wallet },
+    { id: 'installments', label: 'Payment Milestones', icon: Layers },
+    { id: 'internal', label: 'Notes', icon: Briefcase },
   ];
 
   const Label = ({ children, required }) => (
@@ -129,20 +129,20 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
       isOpen={isOpen}
       onClose={onClose}
       size="5xl"
-      title={expense ? 'Modify Expenditure Record' : 'Initialize New Disbursement'}
+      title={expense ? 'Edit Expense' : 'New Expense'}
       footer={(
         <div className="flex justify-between items-center w-full px-1">
           <div className="flex items-center gap-8">
             <div className="flex flex-col">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Aggregate Outflow</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Total Value</span>
               <span className="text-[24px] font-black text-rose-600 font-mono italic leading-none mt-1">₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
           <div className="flex gap-3">
-            <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Discard Entry</button>
+            <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
             <button onClick={handleSubmit} disabled={isSaving} className="px-10 py-2.5 bg-rose-600 text-white text-[14px] font-black rounded-xl hover:bg-rose-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-rose-500/20 active:scale-95 transition-all">
               {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              <span>{isSaving ? 'Synchronizing...' : (expense ? 'Commit Modifications' : 'Finalize Record')}</span>
+              <span>{isSaving ? 'Saving...' : (expense ? 'Save Changes' : 'Record Expense')}</span>
             </button>
           </div>
         </div>
@@ -182,41 +182,41 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="grid grid-cols-2 gap-8">
                   <div className="col-span-2">
-                    <Label required>Vendor / Beneficiary Entity</Label>
+                    <Label required>Vendor</Label>
                     <div className="relative">
                       <Building2 size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input className={clsx(inputCls, "pl-11")} placeholder="e.g. Amazon Web Services Global" value={form.vendor} onChange={e => setForm({ ...form, vendor: e.target.value })} />
+                      <input className={clsx(inputCls, "pl-11")} placeholder="e.g. Amazon" value={form.vendor} onChange={e => setForm({ ...form, vendor: e.target.value })} />
                     </div>
                     {errors.vendor && <p className="text-[10px] text-rose-500 mt-2 font-bold uppercase tracking-widest">{errors.vendor}</p>}
                   </div>
                   <div className="col-span-2">
-                    <Label required>Expenditure Classification / Type</Label>
-                    <input className={inputCls} placeholder="e.g. Infrastructure Infrastructure Protocol" value={form.expenseType} onChange={e => setForm({ ...form, expenseType: e.target.value })} />
+                    <Label required>Expense Title / Type</Label>
+                    <input className={inputCls} placeholder="e.g. Office Supplies" value={form.expenseType} onChange={e => setForm({ ...form, expenseType: e.target.value })} />
                     {errors.expenseType && <p className="text-[10px] text-rose-500 mt-2 font-bold uppercase tracking-widest">{errors.expenseType}</p>}
                   </div>
                   <div>
-                    <Label>Category Classification</Label>
+                    <Label>Category</Label>
                     <div className="flex gap-2">
                       <select className={clsx(inputCls, "flex-1 appearance-none")} value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
-                        <option value="">Uncategorized Disbursement</option>
+                        <option value="">Uncategorized</option>
                         {expenseCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                       </select>
                       <button onClick={() => {
-                        const name = prompt('New category designation:');
+                        const name = prompt('New category name:');
                         if (name) onAddCategory(name);
                       }} className="px-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-all"><Plus size={18}/></button>
                     </div>
                   </div>
                   <div>
-                    <Label>Associated Bill / Ref</Label>
+                    <Label>Bill Number</Label>
                     <div className="relative">
                       <FileText size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input className={clsx(inputCls, "pl-11")} placeholder="BILL-2024-001" value={form.billNo} onChange={e => setForm({ ...form, billNo: e.target.value })} />
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <Label>Technical Description</Label>
-                    <textarea className={clsx(inputCls, "min-h-[120px] resize-none")} placeholder="Detailed breakdown of expenditure source..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                    <Label>Description</Label>
+                    <textarea className={clsx(inputCls, "min-h-[120px] resize-none")} placeholder="Enter description..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
                   </div>
                 </div>
               </div>
@@ -227,28 +227,28 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
                 <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-6 relative overflow-hidden group shadow-2xl border border-slate-800">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-rose-600/10 blur-[100px] rounded-full -mr-32 -mt-32 group-hover:bg-rose-600/20 transition-colors" />
                   <div className="flex justify-between items-center relative z-10">
-                    <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em]">Expenditure Absorption Model</h4>
+                    <h4 className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em]">Financial Summary</h4>
                     <TrendingDown className="text-rose-500" size={24} />
                   </div>
                   <div className="space-y-4 relative z-10">
                     <div className="flex justify-between items-end border-b border-slate-800 pb-4">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase">Gross Subtotal</span>
+                      <span className="text-[11px] font-bold text-slate-400 uppercase">Subtotal</span>
                       <span className="text-[18px] font-black font-mono tracking-tight italic">₹{subtotal.toLocaleString('en-IN')}</span>
                     </div>
                     {discountVal > 0 && (
                       <div className="flex justify-between items-end border-b border-slate-800 pb-4">
-                        <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest">Adjustments (Discount)</span>
+                        <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest">Discount</span>
                         <span className="text-[18px] font-black font-mono tracking-tight italic text-emerald-400">- ₹{discountVal.toLocaleString('en-IN')}</span>
                       </div>
                     )}
                     {taxVal > 0 && (
                       <div className="flex justify-between items-end border-b border-slate-800 pb-4">
-                        <span className="text-[11px] font-bold text-rose-400 uppercase tracking-widest">Regulatory (GST/Tax)</span>
+                        <span className="text-[11px] font-bold text-rose-400 uppercase tracking-widest">Tax</span>
                         <span className="text-[18px] font-black font-mono tracking-tight italic text-rose-400">+ ₹{taxVal.toLocaleString('en-IN')}</span>
                       </div>
                     )}
                     <div className="flex justify-between items-end pt-4">
-                      <span className="text-[13px] font-black text-white uppercase tracking-[0.3em]">Aggregate Outflow</span>
+                      <span className="text-[13px] font-black text-white uppercase tracking-[0.3em]">Total</span>
                       <span className="text-[32px] font-black font-mono tracking-tighter italic text-rose-400 leading-none">₹{totalAmount.toLocaleString('en-IN')}</span>
                     </div>
                   </div>
@@ -256,7 +256,7 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
 
                 <div className="grid grid-cols-2 gap-8">
                   <div>
-                    <Label required>Base Unit Amount (₹)</Label>
+                    <Label required>Amount (₹)</Label>
                     <input type="number" className={clsx(inputCls, "font-black italic text-slate-900 text-lg")} placeholder="0.00" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
                     {errors.amount && <p className="text-[10px] text-rose-500 mt-2 font-bold uppercase tracking-widest">{errors.amount}</p>}
                   </div>
@@ -271,48 +271,48 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
                     </div>
                   </div>
                   <div>
-                    <Label>Settlement Mode</Label>
+                    <Label>Payment Method</Label>
                     <select className={clsx(inputCls, "appearance-none")} value={form.method} onChange={e => setForm({ ...form, method: e.target.value })}>
                       {['Bank Transfer', 'UPI', 'Cash', 'Cheque', 'Card', 'Other'].map(m => <option key={m}>{m}</option>)}
                     </select>
                   </div>
                   <div>
-                    <Label>Current Settlement Status</Label>
+                    <Label>Status</Label>
                     <select className={clsx(inputCls, "appearance-none")} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
                       {['Paid', 'Pending', 'Partial', 'Overdue'].map(s => <option key={s}>{s}</option>)}
                     </select>
                   </div>
                   <div>
-                    <Label>Settlement Date</Label>
+                    <Label>Payment Date</Label>
                     <input type="date" className={inputCls} value={form.paidDate} onChange={e => setForm({ ...form, paidDate: e.target.value })} />
                   </div>
                   <div>
-                    <Label>Protocol Ref / UTR</Label>
-                    <input className={inputCls} placeholder="Transaction ID..." value={form.transactionId} onChange={e => setForm({ ...form, transactionId: e.target.value })} />
+                    <Label>Transaction ID / Reference</Label>
+                    <input className={inputCls} placeholder="Transaction ID or reference..." value={form.transactionId} onChange={e => setForm({ ...form, transactionId: e.target.value })} />
                   </div>
                 </div>
 
                 <div className={clsx("p-8 rounded-3xl border-2 transition-all group relative overflow-hidden", form.initialDepositEnabled ? "bg-rose-50/50 border-rose-200" : "bg-slate-50 border-slate-100 hover:border-slate-200 cursor-pointer")} onClick={() => !form.initialDepositEnabled && setForm({ ...form, initialDepositEnabled: true })}>
                   <div className="flex items-center gap-4 relative z-10">
-                    <input type="checkbox" checked={form.initialDepositEnabled} onChange={e => setForm({ ...form, initialDepositEnabled: e.target.checked })} className="h-5 w-5 rounded-lg border-slate-300 text-rose-600 focus:ring-rose-500 transition-all" />
+                    <input type="checkbox" checked={form.initialDepositEnabled} onChange={e => setForm({ ...form, initialDepositEnabled: e.target.checked })} className="h-5 w-5 rounded-lg border-rose-300 text-rose-600 focus:ring-rose-500 transition-all" />
                     <div>
-                      <p className="text-[14px] font-black text-slate-900 uppercase tracking-widest leading-none">Register Advance Disbursement</p>
-                      <p className="text-[11px] font-bold text-slate-500 mt-1 uppercase">Track initial treasury extraction</p>
+                      <p className="text-[14px] font-black text-slate-900 uppercase tracking-widest leading-none">Add Advance Payment</p>
+                      <p className="text-[11px] font-bold text-slate-500 mt-1 uppercase">Record advance deposit</p>
                     </div>
                   </div>
                   {form.initialDepositEnabled && (
                     <div className="mt-8 grid grid-cols-2 gap-6 animate-in slide-in-from-top-4 duration-300 relative z-10">
                       <div>
-                        <Label>Advance Value (₹)</Label>
+                        <Label>Advance Amount (₹)</Label>
                         <input type="number" className={clsx(inputCls, "bg-white")} value={form.initialDepositAmount} onChange={e => setForm({ ...form, initialDepositAmount: e.target.value })} />
                       </div>
                       <div>
-                        <Label>Source Bank Channel</Label>
+                        <Label>Bank Account</Label>
                         <select className={clsx(inputCls, "bg-white appearance-none")} value={form.initialDepositBankId} onChange={e => {
                           const b = bankAccounts.find(x => x.id === parseInt(e.target.value));
                           setForm({ ...form, initialDepositBankId: e.target.value, initialDepositBankName: b ? `${b.bankName} - ${b.accountNumber}` : '' });
                         }}>
-                          <option value="">Select Channel registry...</option>
+                          <option value="">Select bank account...</option>
                           {bankAccounts.map(b => <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>)}
                         </select>
                       </div>
@@ -326,8 +326,8 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-6">
                   <div>
-                    <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-widest">Outflow Pipeline</h4>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase mt-1">Fragmented disbursement execution schedule</p>
+                    <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-widest">Milestones</h4>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase mt-1">Upcoming or extra milestone payments</p>
                   </div>
                   <button onClick={() => setForm({ ...form, extraInstallments: [...form.extraInstallments, { date: '', amount: '', bankAccountId: null, bankName: '', note: '' }] })} className="px-6 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-[12px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center gap-2 border border-rose-100 group">
                     <Plus size={18} className="group-hover:rotate-90 transition-transform" />
@@ -339,8 +339,8 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
                   {form.extraInstallments.length === 0 ? (
                     <div className="py-20 border-2 border-dashed border-slate-100 rounded-3xl text-center bg-slate-50/50">
                       <Layers size={48} className="mx-auto text-slate-200 mb-4" />
-                      <p className="text-[14px] font-black text-slate-400 uppercase tracking-widest">No Milestones Projected</p>
-                      <p className="text-[11px] text-slate-300 mt-1 uppercase">Initialize installments to track long-term disbursements</p>
+                      <p className="text-[14px] font-black text-slate-400 uppercase tracking-widest">No Milestones</p>
+                      <p className="text-[11px] text-slate-300 mt-1 uppercase">Add milestones for payment tracking</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-6">
@@ -348,7 +348,7 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
                         <div key={idx} className="bg-slate-50/50 border border-slate-200 rounded-2xl p-6 relative group hover:border-rose-200 transition-colors shadow-sm">
                           <div className="grid grid-cols-12 gap-6">
                             <div className="col-span-4">
-                              <Label>Execution Date</Label>
+                              <Label>Payment Date</Label>
                               <input type="date" className={clsx(inputCls, "bg-white")} value={row.date} onChange={e => {
                                 const n = [...form.extraInstallments];
                                 n[idx].date = e.target.value;
@@ -356,7 +356,7 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
                               }} />
                             </div>
                             <div className="col-span-4">
-                              <Label>Disbursement Value (₹)</Label>
+                              <Label>Amount (₹)</Label>
                               <input type="number" className={clsx(inputCls, "bg-white font-black italic")} value={row.amount} onChange={e => {
                                 const n = [...form.extraInstallments];
                                 n[idx].amount = e.target.value;
@@ -364,7 +364,7 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
                               }} />
                             </div>
                             <div className="col-span-4">
-                              <Label>Source Channel</Label>
+                              <Label>Bank Account</Label>
                               <select className={clsx(inputCls, "bg-white appearance-none")} value={row.bankAccountId} onChange={e => {
                                 const b = bankAccounts.find(x => x.id === parseInt(e.target.value));
                                 const n = [...form.extraInstallments];
@@ -372,7 +372,7 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
                                 n[idx].bankName = b ? `${b.bankName} - ${b.accountNumber}` : '';
                                 setForm({ ...form, extraInstallments: n });
                               }}>
-                                <option value="">Select Channel...</option>
+                                <option value="">Select bank...</option>
                                 {bankAccounts.map(b => <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>)}
                               </select>
                             </div>
@@ -390,36 +390,36 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="grid grid-cols-2 gap-8">
                   <div>
-                    <Label>Assignee staff</Label>
+                    <Label>Assigned To</Label>
                     <div className="relative">
                       <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input className={clsx(inputCls, "pl-11")} placeholder="Staff designation..." value={form.staff} onChange={e => setForm({ ...form, staff: e.target.value })} />
+                      <input className={clsx(inputCls, "pl-11")} placeholder="Staff name..." value={form.staff} onChange={e => setForm({ ...form, staff: e.target.value })} />
                     </div>
                   </div>
                   <div>
-                    <Label>Operational Unit</Label>
+                    <Label>Department</Label>
                     <div className="relative">
                       <Building2 size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input className={clsx(inputCls, "pl-11")} placeholder="Corporate unit..." value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} />
+                      <input className={clsx(inputCls, "pl-11")} placeholder="Department..." value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} />
                     </div>
                   </div>
                   <div>
-                    <Label>Geographic Location</Label>
+                    <Label>Location</Label>
                     <div className="relative">
                       <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input className={clsx(inputCls, "pl-11")} placeholder="Operational site..." value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />
+                      <input className={clsx(inputCls, "pl-11")} placeholder="Location..." value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />
                     </div>
                   </div>
                   <div>
-                    <Label>Internal Ref Protocol</Label>
+                    <Label>Reference No</Label>
                     <div className="relative">
                       <FileText size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input className={clsx(inputCls, "pl-11")} placeholder="Internal tracking ID..." value={form.referenceNumber} onChange={e => setForm({ ...form, referenceNumber: e.target.value })} />
+                      <input className={clsx(inputCls, "pl-11")} placeholder="Reference number..." value={form.referenceNumber} onChange={e => setForm({ ...form, referenceNumber: e.target.value })} />
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <Label>Internal Administrative Logs</Label>
-                    <textarea className={clsx(inputCls, "min-h-[200px] resize-none")} placeholder="Private audit trail and coordination notes..." value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+                    <Label>Notes</Label>
+                    <textarea className={clsx(inputCls, "min-h-[200px] resize-none")} placeholder="Enter private notes..." value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
                   </div>
                 </div>
               </div>
@@ -516,7 +516,7 @@ export default function Expense() {
         await createExpense(formData);
         toast.success("Expense recorded");
       }
-      queryClient.invalidateQueries({ queryKey: queryKeys.expense.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
       setOpenForm(false);
     } catch (e) {
       toast.error(e.response?.data?.message || "Failed to save expense");
@@ -528,7 +528,7 @@ export default function Expense() {
     try {
       await deleteExpense(id);
       toast.success("Expense purged");
-      queryClient.invalidateQueries({ queryKey: queryKeys.expense.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
     } catch (e) {
       toast.error("Operation failed");
     }
@@ -554,14 +554,14 @@ export default function Expense() {
     <div className="flex flex-col h-full bg-slate-50/50 animate-in fade-in duration-500 overflow-hidden">
       <div className="px-6 lg:px-8 pt-8 pb-6 bg-white border-b border-slate-200/60 shadow-sm relative z-10">
         <PageHeader
-          title="Expenditure Tracking"
-          subtitle="Monitor organizational expenditures and vendor settlements"
+          title="Expenses"
+          subtitle="Track and manage your expenses."
           primaryAction={(
             <button onClick={() => { setEditExpense(null); setOpenForm(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-rose-500/20 group">
               <div className="bg-white/20 p-1 rounded-lg group-hover:bg-white/30 transition-colors">
                 <Plus size={16} />
               </div>
-              <span>Record Expense</span>
+              <span>New Expense</span>
             </button>
           )}
           secondaryActions={(
@@ -570,10 +570,10 @@ export default function Expense() {
         />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-          <StatCard title="Total Burn" value={`₹${Number(expenseSummary?.totalExpense || 0).toLocaleString()}`} icon={Wallet} colorClass="bg-slate-800" />
-          <StatCard title="Settled" value={`₹${Number(expenseSummary?.totalPaid || 0).toLocaleString()}`} icon={TrendingDown} colorClass="bg-rose-600" />
+          <StatCard title="Total Value" value={`₹${Number(expenseSummary?.totalExpense || 0).toLocaleString()}`} icon={Wallet} colorClass="bg-slate-800" />
+          <StatCard title="Paid" value={`₹${Number(expenseSummary?.totalPaid || 0).toLocaleString()}`} icon={TrendingDown} colorClass="bg-rose-600" />
           <StatCard title="Outstanding" value={`₹${Number(expenseSummary?.totalBalance || 0).toLocaleString()}`} icon={AlertCircle} colorClass="bg-amber-600" />
-          <StatCard title="Total Entries" value={expenseMeta?.total || 0} icon={ShoppingCart} colorClass="bg-indigo-600" />
+          <StatCard title="Total Expenses" value={expenseMeta?.total || 0} icon={ShoppingCart} colorClass="bg-indigo-600" />
         </div>
       </div>
 
@@ -584,7 +584,7 @@ export default function Expense() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
               <input
                 type="text"
-                placeholder="Search by ID, vendor, or category..."
+                placeholder="Search expenses..."
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -608,26 +608,26 @@ export default function Expense() {
         {showAdvancedFilters && (
           <div className="bg-white px-6 lg:px-8 py-6 border-b border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-2">
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Category Classification</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Category</label>
               <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-                <option value="">All Registered Categories</option>
+                <option value="">All Categories</option>
                 {expenseCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Source Account</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Bank Account</label>
               <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={bankFilter} onChange={e => setBankFilter(e.target.value)}>
-                <option value="">All Corporate Accounts</option>
+                <option value="">All Accounts</option>
                 {bankAccounts.map(b => <option key={b.id} value={b.id}>{b.bankName} - {b.accountNumber}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Spending Window</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Date Range</label>
               <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={dateFilter} onChange={e => setDateFilter(e.target.value)}>
-                <option value="All">All Time Strategy</option>
-                <option value="Today">Current Cycle (Today)</option>
-                <option value="This Month">Monthly Burn</option>
-                <option value="This Year">Annual Horizon</option>
+                <option value="All">All Time</option>
+                <option value="Today">Today</option>
+                <option value="This Month">This Month</option>
+                <option value="This Year">This Year</option>
               </select>
             </div>
           </div>
@@ -638,12 +638,12 @@ export default function Expense() {
             <table className="w-full text-left border-collapse table-fixed">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
-                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-32">Expense Ref</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Vendor Entity</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-44">Settled Amount</th>
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-32">Ref</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Vendor</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-44">Amount</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40">Method</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-44">Timeline</th>
-                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-40">Operations</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-44">Payment Date</th>
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-40">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -699,14 +699,14 @@ export default function Expense() {
             </table>
             {!expenseLoading && expenseRecords.length === 0 && (
               <div className="p-20">
-                <EmptyState icon={ShoppingCart} title="No Expenses Logged" description="The expenditure journal is currently void. Initialize a new record to begin auditing." />
+                <EmptyState icon={ShoppingCart} title="No expenses found" description="Record a new expense to get started." />
               </div>
             )}
           </div>
         </div>
 
         <div className="bg-white border-t border-slate-100 px-6 lg:px-8 py-4 flex-shrink-0">
-          {expenseMeta && <TablePagination summary={`Indexed ${expenseRecords.length} of ${expenseMeta.total} Financial Events`} onPrevious={() => setCurrentPage(p => Math.max(1, p - 1))} onNext={() => setCurrentPage(p => p + 1)} previousDisabled={expenseMeta.current_page <= 1} nextDisabled={expenseMeta.current_page >= expenseMeta.last_page} />}
+          {expenseMeta && <TablePagination summary={`Showing ${expenseRecords.length} of ${expenseMeta.total} expenses`} onPrevious={() => setCurrentPage(p => Math.max(1, p - 1))} onNext={() => setCurrentPage(p => p + 1)} previousDisabled={expenseMeta.current_page <= 1} nextDisabled={expenseMeta.current_page >= expenseMeta.last_page} />}
         </div>
       </div>
 
@@ -723,9 +723,9 @@ export default function Expense() {
       <SlideOver
         isOpen={viewModalOpen}
         onClose={() => setViewModalOpen(false)}
-        title="Expenditure Intelligence Profile"
+        title="Expense Details"
         size="2xl"
-        footer={<div className="flex justify-end w-full px-2"><button onClick={() => setViewModalOpen(false)} className="px-8 py-2.5 bg-slate-900 text-white text-[13px] font-black rounded-xl hover:bg-black transition-all active:scale-95 shadow-lg shadow-slate-900/10">Dismiss Detail</button></div>}
+        footer={<div className="flex justify-end w-full px-2"><button onClick={() => setViewModalOpen(false)} className="px-8 py-2.5 bg-slate-900 text-white text-[13px] font-black rounded-xl hover:bg-black transition-all active:scale-95 shadow-lg shadow-slate-900/10">Close</button></div>}
       >
         {viewDetail && (
           <div className="space-y-10 pb-10">
@@ -734,7 +734,7 @@ export default function Expense() {
                <div className="relative z-10">
                  <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-400">Validated Disbursement</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-400">Details</p>
                  </div>
                  <h3 className="text-[28px] font-black tracking-tight italic">{viewDetail.expenseType || 'General Expense'}</h3>
                  <div className="flex items-center gap-4 mt-3">
@@ -748,23 +748,23 @@ export default function Expense() {
 
             <div className="grid grid-cols-2 gap-10 px-2">
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Beneficiary Entity</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Vendor</p>
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center font-black text-lg shadow-inner border border-rose-100/50">
                     {viewDetail.vendor?.[0] || 'V'}
                   </div>
                   <div className="flex flex-col">
-                    <p className="text-[16px] font-black text-slate-900 leading-none">{viewDetail.vendor || '—'}</p>
-                    <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{viewDetail.category || 'Standard Classification'}</p>
+                    <p className="text-[16px] font-black text-slate-900 leading-none">{viewDetail.vendor || 'Vendor'}</p>
+                    <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{viewDetail.category || 'General'}</p>
                   </div>
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Net Outflow Value</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Amount</p>
                 <p className="text-[32px] font-black text-rose-600 font-mono italic leading-none tracking-tighter">₹{parseFloat(viewDetail.totalAmount || viewDetail.amount || 0).toLocaleString()}</p>
                 <div className="flex items-center gap-2 mt-2">
                    <TrendingDown size={12} className="text-rose-500" />
-                   <span className="text-[10px] font-black text-rose-600 uppercase">Capital Deployment Verified</span>
+                   <span className="text-[10px] font-black text-rose-600 uppercase">Paid</span>
                 </div>
               </div>
             </div>
@@ -772,33 +772,33 @@ export default function Expense() {
             <div className="bg-slate-50 border border-slate-200/60 rounded-3xl p-8 space-y-6 shadow-sm">
                <div className="grid grid-cols-2 gap-8">
                  <div>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Settlement Methodology</p>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Payment Method</p>
                    <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
                       <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500"><Banknote size={16}/></div>
-                      <p className="text-[13px] font-black text-slate-800 uppercase tracking-wide">{viewDetail.method || 'Standard Electronic'}</p>
+                      <p className="text-[13px] font-black text-slate-800 uppercase tracking-wide">{viewDetail.method || 'Standard'}</p>
                    </div>
                  </div>
                  <div>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Disbursement Channel</p>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Bank Account</p>
                    <div className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
                       <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center text-slate-500"><Landmark size={16}/></div>
-                      <p className="text-[13px] font-black text-slate-800 truncate">{viewDetail.bank || 'Corporate Treasury-01'}</p>
+                      <p className="text-[13px] font-black text-slate-800 truncate">{viewDetail.bank || 'Bank'}</p>
                    </div>
                  </div>
                </div>
                <div className="grid grid-cols-2 gap-8 pt-6 border-t border-slate-200/60">
                  <div>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Execution Timestamp</p>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Payment Date</p>
                    <div className="flex items-center gap-3">
                       <CalendarIcon size={14} className="text-rose-500" />
                       <p className="text-[14px] font-black text-slate-800 italic">{viewDetail.paidDate || 'N/A'}</p>
                    </div>
                  </div>
                  <div>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Audit Status</p>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Status</p>
                    <span className="px-3 py-1 bg-rose-50 text-rose-700 border border-rose-100 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] inline-flex items-center gap-2 shadow-sm">
                      <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"></div>
-                     {viewDetail.status || 'Verified Record'}
+                     {viewDetail.status || 'Paid'}
                    </span>
                  </div>
                </div>
@@ -868,125 +868,6 @@ export default function Expense() {
                            <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest">Scheduled Flow</span>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </SlideOver>
-
-      <ExpenseForm
-        isOpen={openForm}
-        onClose={() => setOpenForm(false)}
-        expense={editExpense}
-        onSave={handleSave}
-        bankAccounts={bankAccounts}
-        expenseCategories={expenseCategories}
-        onAddCategory={handleAddCategory}
-      />
-
-      <SlideOver
-        isOpen={viewModalOpen}
-        onClose={() => setViewModalOpen(false)}
-        title="Expenditure Intelligence"
-        footer={<div className="flex justify-end w-full px-2"><button onClick={() => setViewModalOpen(false)} className="px-6 py-2 bg-slate-900 text-white text-[13px] font-bold rounded-xl hover:bg-black transition-colors">Dismiss Detail</button></div>}
-      >
-        {viewDetail && (
-          <div className="space-y-8">
-            <div className="flex items-center gap-5 p-6 bg-slate-900 rounded-2xl text-white relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-8 opacity-10"><ShoppingCart size={120} /></div>
-               <div className="relative z-10">
-                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-400 mb-1">Payment Receipt</p>
-                 <h3 className="text-[24px] font-black tracking-tight">{viewDetail.expenseType || 'General Expense'}</h3>
-                 <p className="text-[12px] text-slate-400 font-medium mt-1">Transaction ID: <span className="font-mono">{viewDetail.transactionId || 'N/A'}</span></p>
-               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-8 px-2">
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Beneficiary</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center font-black">{viewDetail.vendor?.[0]}</div>
-                  <p className="text-[15px] font-bold text-slate-800">{viewDetail.vendor || '—'}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Net Outflow</p>
-                <p className="text-[22px] font-black text-rose-600 font-mono italic leading-none">₹{parseFloat(viewDetail.totalAmount || viewDetail.amount || 0).toLocaleString()}</p>
-              </div>
-            </div>
-
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-5">
-               <div className="grid grid-cols-2 gap-6">
-                 <div>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Settlement Mode</p>
-                   <p className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5"><CreditCard size={14} className="text-slate-400"/> {viewDetail.method || 'Standard'}</p>
-                 </div>
-                 <div>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Payment Account</p>
-                   <p className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5"><Landmark size={14} className="text-slate-400"/> {viewDetail.bank || 'Main Treasury'}</p>
-                 </div>
-               </div>
-               <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-200/60">
-                 <div>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Execution Time</p>
-                   <p className="text-[13px] font-bold text-slate-800">{viewDetail.paidDate || '—'}</p>
-                 </div>
-                 <div>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Status</p>
-                   <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded text-[10px] font-black uppercase tracking-wider">{viewDetail.status || 'Verified'}</span>
-                 </div>
-               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6 px-2">
-               <div>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Reporting Staff</p>
-                 <p className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5"><User size={14} className="text-slate-400"/> {viewDetail.staff || 'System Admin'}</p>
-               </div>
-               <div>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Department</p>
-                 <p className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5"><Briefcase size={14} className="text-slate-400"/> {viewDetail.department || 'Operations'}</p>
-               </div>
-            </div>
-
-            {(viewDetail.description || viewDetail.notes) && (
-              <div className="px-2 space-y-4">
-                {viewDetail.description && (
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Operational Context</p>
-                    <div className="p-4 bg-white border border-slate-100 rounded-xl text-[13px] text-slate-600 leading-relaxed shadow-sm italic">
-                      "{viewDetail.description}"
-                    </div>
-                  </div>
-                )}
-                {viewDetail.notes && (
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Audit Annotations</p>
-                    <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-[13px] text-amber-700 font-medium">
-                      {viewDetail.notes}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {viewDetail.extraInstallments?.length > 0 && (
-              <div className="px-2">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Installment Breakdown</p>
-                <div className="space-y-2">
-                  {viewDetail.extraInstallments.map((inst, i) => (
-                    <div key={i} className="flex justify-between items-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-rose-200 transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-50 rounded flex items-center justify-center text-[11px] font-bold text-slate-400 group-hover:bg-rose-50 group-hover:text-rose-600">#{i+1}</div>
-                        <div className="flex flex-col">
-                          <span className="text-[13px] font-bold text-slate-800">{inst.date}</span>
-                          <span className="text-[11px] text-slate-500 font-medium">{inst.bankName}</span>
-                        </div>
-                      </div>
-                      <span className="font-mono text-[14px] font-black text-slate-900">₹{parseFloat(inst.amount).toLocaleString()}</span>
                     </div>
                   ))}
                 </div>

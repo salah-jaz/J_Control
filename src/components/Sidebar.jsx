@@ -27,43 +27,49 @@ const Sidebar = ({ isOpen, setIsOpen, alertCount = 0 }) => {
 
     const sections = [
         {
-            title: "Overview",
+            title: "Home",
             items: [
                 { label: "Dashboard", path: "/", icon: LayoutDashboard },
-                { label: "Planner", path: "/planner", icon: CalendarClock },
+                { label: "Tasks", path: "/planner", icon: CalendarClock },
                 { label: "Reports", path: "/reports", icon: FileBarChart2 },
             ]
         },
         {
-            title: "Sales & CRM",
+            title: "Sales",
             items: [
                 { label: "Leads", path: "/leads", icon: Briefcase },
-                { label: "Clients", path: "/clients", icon: Building2 },
+                { label: "Customers", path: "/clients", icon: Building2 },
                 { label: "Quotations", path: "/quotations", icon: FileText },
                 { label: "Invoices", path: "/invoices", icon: FileText },
-                { label: "Agreements", path: "/agreements", icon: FileText },
+                { label: "Contracts", path: "/agreements", icon: FileText },
             ]
         },
         {
-            title: "Finance",
+            title: "Accounts",
             items: [
-                { label: "Income", path: "/income", icon: Wallet },
-                { label: "Expense", path: "/expense", icon: CreditCard },
-                { label: "Bank Accounts", path: "/banks", icon: Landmark },
+                { label: "Incomes", path: "/income", icon: Wallet },
+                { label: "Expenses", path: "/expense", icon: CreditCard },
+                { label: "Banks", path: "/banks", icon: Landmark },
                 { label: "Transactions", path: "/transaction", icon: BookOpen },
             ]
         },
         {
             title: "Inventory",
             items: [
-                { label: "Products & Services", path: "/products", icon: Package },
+                { label: "Products", path: "/products", icon: Package },
             ]
         },
         {
-            title: "Administration",
+            title: "HRMS",
+            items: [
+                { label: "Staff", path: "/staff", icon: Users },
+            ]
+        },
+        {
+            title: "Admin",
             items: [
                 { label: "Users", path: "/user", icon: User },
-                { label: "Print Templates", path: "/print-templates", icon: LayoutTemplate },
+                { label: "Print Settings", path: "/print-templates", icon: LayoutTemplate },
                 { label: "Settings", path: "/settings", icon: Settings },
             ]
         }

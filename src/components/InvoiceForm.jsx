@@ -154,7 +154,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
     const client = clients.find((c) => String(c.id) === String(formData.clientId));
     const data = new FormData();
     if (invoice?.id) data.append('id', invoice.id);
-    data.append('client_id', formData.clientId);
+    if (formData.clientId) data.append('client_id', formData.clientId);
     data.append('client_name', client ? (client.company_name || client.client_name) : formData.clientName);
     data.append('date', formData.date);
     data.append('status', formData.status);
@@ -165,16 +165,18 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
     data.append('gpay_number', formData.gpayNumber || '');
     data.append('initial_deposit_enabled', formData.initialDepositEnabled ? '1' : '0');
     data.append('initial_deposit_amount', formData.initialDepositAmount || '0');
-    data.append('initial_deposit_bank_id', formData.initialDepositBankId || '');
+    if (formData.initialDepositBankId) {
+      data.append('initial_deposit_bank_id', formData.initialDepositBankId);
+    }
     data.append('invoice_no', formData.invoice_no);
     data.append('reference_number', formData.reference_number);
     data.append('notes', formData.notes);
 
     (formData.extraInstallments || []).forEach((row, i) => {
-      data.append(`extra_installments[${i}][date]`, row.date || '');
-      data.append(`extra_installments[${i}][amount]`, row.amount || '');
-      data.append(`extra_installments[${i}][bank_account_id]`, row.bankAccountId || '');
-      data.append(`extra_installments[${i}][notes]`, row.notes || '');
+      if (row.date) data.append(`extra_installments[${i}][date]`, row.date);
+      if (row.amount) data.append(`extra_installments[${i}][amount]`, row.amount);
+      if (row.bankAccountId) data.append(`extra_installments[${i}][bank_account_id]`, row.bankAccountId);
+      if (row.notes) data.append(`extra_installments[${i}][notes]`, row.notes);
     });
     items.forEach((item, i) => {
       data.append(`items[${i}][service_name]`, item.serviceName);
@@ -288,10 +290,10 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                     <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Client Selection</label>
                     <SearchableSelect
                       options={clients.map(c => ({ id: c.id, name: c.company_name || c.client_name }))}
-                      value={formData.clientId}
+                      value={formData.clientName}
                       onChange={(val) => {
-                        const c = clients.find(x => String(x.id) === String(val));
-                        setFormData({ ...formData, clientId: val, clientName: c ? (c.company_name || c.client_name) : '' });
+                        const c = clients.find(x => (x.company_name || x.client_name) === val);
+                        setFormData({ ...formData, clientId: c ? c.id : '', clientName: val });
                       }}
                       placeholder="Select client registry..."
                     />

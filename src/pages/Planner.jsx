@@ -1100,11 +1100,11 @@ const Planner = () => {
                     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-[360px] p-6 text-center animate-fade-in">
                         <h2 className="text-lg font-bold text-slate-900 flex items-center justify-center gap-2">
                             <span role="img" aria-label="reminder">🔔</span>
-                            {reminderEvent.minutesBefore != null ? 'Reminder' : 'Event Reminder'}
+                            {reminderEvent.minutesBefore != null ? 'Reminder' : 'Task Reminder'}
                         </h2>
                         <p className="mt-3 text-slate-700">
                             <span className="font-semibold text-slate-900">Title:</span>{' '}
-                            {reminderEvent.title || 'Event'}
+                            {reminderEvent.title || 'Task'}
                         </p>
                         {reminderEvent.minutesBefore != null ? (
                             <p className="mt-1 text-slate-600 font-medium">
@@ -1136,7 +1136,7 @@ const Planner = () => {
                                 }}
                                 className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 shadow-sm"
                             >
-                                View Event
+                                View Task
                             </button>
                             <button
                                 type="button"
@@ -1156,11 +1156,11 @@ const Planner = () => {
                     <div className="bg-white rounded-2xl shadow-xl border border-red-100 w-full max-w-[360px] p-6 text-center animate-fade-in">
                         <h2 className="text-lg font-bold text-red-600 flex items-center justify-center gap-2">
                             <span role="img" aria-label="overdue">⚠️</span>
-                            Event Overdue
+                            Task Overdue
                         </h2>
                         <p className="mt-3 text-slate-700">
-                            <span className="font-semibold text-slate-900">Meeting:</span>{' '}
-                            {overduePopupEvent.title || 'Event'}
+                            <span className="font-semibold text-slate-900">Task:</span>{' '}
+                            {overduePopupEvent.title || 'Task'}
                         </p>
                         <p className="mt-1 text-slate-600">
                             <span className="font-semibold text-slate-900">Scheduled:</span>{' '}
@@ -1217,7 +1217,7 @@ const Planner = () => {
                     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-[1000px] my-8 flex flex-col max-h-[90vh] animate-fade-in">
                         <div className="flex items-center justify-between p-4 border-b border-gray-100 flex-shrink-0">
                             <h2 className="text-lg font-bold text-slate-900">
-                                Planner Monthly History — {historyMonthDate.toLocaleString('default', { month: 'long' })} {historyYear}
+                                Task History — {historyMonthDate.toLocaleString('default', { month: 'long' })} {historyYear}
                             </h2>
                             <button
                                 type="button"
@@ -1247,7 +1247,7 @@ const Planner = () => {
                                                     </div>
                                                     <div className="flex-1 overflow-y-auto min-h-[120px] p-2 bg-gray-50/50">
                                                         {list.length === 0 ? (
-                                                            <p className="text-xs text-slate-400 py-4 text-center">No events this month</p>
+                                                            <p className="text-xs text-slate-400 py-4 text-center">No tasks this month</p>
                                                         ) : (
                                                             list.map((ev) => {
                                                                 const evDate = ev.event_date ? new Date(String(ev.event_date).slice(0, 10) + 'T12:00:00') : null;
@@ -1279,7 +1279,7 @@ const Planner = () => {
                             <div className="mt-6 pt-4 border-t border-gray-100">
                                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Monthly Summary</p>
                                 <div className="flex flex-wrap gap-4 text-sm text-slate-700">
-                                    <span>Total Events: <strong>{historyMonthEvents.length}</strong></span>
+                                    <span>Total Tasks: <strong>{historyMonthEvents.length}</strong></span>
                                     <span>Completed: <strong>{historyMonthEvents.filter((e) => e.status === 'completed').length}</strong></span>
                                     <span>Upcoming: <strong>{historyMonthEvents.filter((e) => e.status === 'scheduled').length}</strong></span>
                                     <span>Cancelled: <strong>{historyMonthEvents.filter((e) => e.status === 'cancelled').length}</strong></span>
@@ -1295,13 +1295,13 @@ const Planner = () => {
             {isHistoryModalOpen && historyDetailsEvent && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 p-4" onClick={() => setHistoryDetailsEvent(null)}>
                     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-[400px] p-5 animate-fade-in" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-base font-bold text-slate-900 mb-3">Event Details</h3>
+                        <h3 className="text-base font-bold text-slate-900 mb-3">Task Details</h3>
                         <p className="text-sm text-slate-700"><span className="font-semibold text-slate-900">Title:</span> {historyDetailsEvent.title || 'Untitled'}</p>
                         <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Category:</span> {(historyDetailsEvent.category || 'meeting').charAt(0).toUpperCase() + (historyDetailsEvent.category || '').slice(1)}</p>
                         <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Date:</span> {historyDetailsEvent.event_date ? new Date(historyDetailsEvent.event_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}</p>
                         <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Time:</span> {(historyDetailsEvent.start_time || '').toString().slice(0, 5) || '—'}</p>
                         <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Status:</span> {((historyDetailsEvent.status === 'missed' ? 'overdue' : historyDetailsEvent.status) || 'scheduled').charAt(0).toUpperCase() + ((historyDetailsEvent.status === 'missed' ? 'overdue' : historyDetailsEvent.status) || 'scheduled').slice(1)}</p>
-                        {historyDetailsEvent.description && <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Notes:</span> {historyDetailsEvent.description}</p>}
+                        {historyDetailsEvent.description && <p className="text-sm text-slate-700 mt-1"><span className="font-semibold text-slate-900">Details:</span> {historyDetailsEvent.description}</p>}
                         <div className="flex flex-wrap gap-2 mt-4">
                             <button type="button" onClick={() => { setSelectedEvent(historyDetailsEvent); setHistoryDetailsEvent(null); setIsHistoryModalOpen(false); fetchEventNotes(historyDetailsEvent.id); }} className="px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold">View in Panel</button>
                             <button type="button" onClick={() => { handleOpenCompleteModal(historyDetailsEvent, historyDetailsEvent.id); setHistoryDetailsEvent(null); setIsHistoryModalOpen(false); }} className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-100">Mark Completed</button>
@@ -1314,8 +1314,8 @@ const Planner = () => {
             )}
 
             <PageHeader
-                title="Planner"
-                subtitle="Manage events, reminders, and notes from a single productivity hub."
+                title="Tasks"
+                subtitle="Manage your tasks and calendar."
                 secondaryActions={(
                     <div className="flex flex-wrap items-center gap-2 md:gap-3">
                     <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
@@ -1364,7 +1364,7 @@ const Planner = () => {
                         type="button"
                         onClick={() => setIsHistoryModalOpen(true)}
                         className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-medium text-slate-600 hover:bg-gray-50 shadow-sm"
-                        title="Planner Monthly History"
+                        title="Task History"
                     >
                         <History className="h-4 w-4" />
                         History
@@ -1375,48 +1375,48 @@ const Planner = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
                 <StatCard
-                    title="Total Events"
-                    description="Events in current view"
+                    title="Total Tasks"
+                    description="Tasks in view"
                     value={viewStats.total_events}
                     icon={CalendarDays}
                     iconBgClass="bg-blue-50 border-blue-100"
                     iconColorClass="text-blue-600"
                 />
                 <StatCard
-                    title="Today's Events"
-                    description="Events scheduled today"
+                    title="Today's Tasks"
+                    description="Tasks for today"
                     value={viewStats.today_events}
                     icon={Clock3}
                     iconBgClass="bg-emerald-50 border-emerald-100"
                     iconColorClass="text-emerald-600"
                 />
                 <StatCard
-                    title="Completed Meetings"
-                    description="Meetings finished"
+                    title="Completed"
+                    description="Finished tasks"
                     value={viewStats.completed_events}
                     icon={CheckCircle2}
                     iconBgClass="bg-green-50 border-green-100"
                     iconColorClass="text-green-600"
                 />
                 <StatCard
-                    title="Upcoming Meetings"
-                    description="Future meetings"
+                    title="Upcoming"
+                    description="Future tasks"
                     value={viewStats.upcoming_events}
                     icon={CalendarClock}
                     iconBgClass="bg-indigo-50 border-indigo-100"
                     iconColorClass="text-indigo-600"
                 />
                 <StatCard
-                    title="Cancelled Meetings"
-                    description="Cancelled events"
+                    title="Cancelled"
+                    description="Cancelled tasks"
                     value={viewStats.cancelled_events}
                     icon={XCircle}
                     iconBgClass="bg-red-50 border-red-100"
                     iconColorClass="text-red-600"
                 />
                 <StatCard
-                    title="Overdue Events"
-                    description="Missed / past due"
+                    title="Overdue"
+                    description="Overdue tasks"
                     value={viewStats.overdue_events}
                     icon={AlertTriangle}
                     iconBgClass="bg-red-50 border-red-200"
@@ -1427,7 +1427,7 @@ const Planner = () => {
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
                 <div className="flex flex-col lg:flex-row gap-4 flex-wrap items-center lg:items-end">
                     <ToolbarSearch
-                        placeholder="Search events or meetings..."
+                        placeholder="Search tasks..."
                         value={search}
                         onChange={setSearch}
                         className="min-w-[200px]"
@@ -1481,7 +1481,7 @@ const Planner = () => {
                             className="btn-primary flex items-center gap-2 shadow-lg shadow-violet-500/30 h-[38px]"
                         >
                             <Plus className="h-5 w-5" />
-                            Create Event
+                            New Task
                         </button>
                     </div>
                 </div>
@@ -1492,14 +1492,14 @@ const Planner = () => {
                     <div className="flex flex-wrap gap-4 items-start">
                         <div className="flex-1 min-w-[160px]">
                             <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
-                                Client
+                                Customer
                             </p>
                             <select
                                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-slate-700 bg-white"
                                 value={clientFilter}
                                 onChange={(e) => setClientFilter(e.target.value)}
                             >
-                                <option value="">All Clients</option>
+                                <option value="">All Customers</option>
                                 {clients.map((c) => (
                                     <option key={c.id} value={c.id}>
                                         {c.name || c.company_name || c.client_name}
@@ -1526,7 +1526,7 @@ const Planner = () => {
                         </div>
                     </div>
                     <p className="text-[11px] text-slate-400">
-                        These filters further narrow down planner events by linked client and user.
+                        These filters narrow down tasks by linked customer and user.
                     </p>
                 </div>
             )}
@@ -1570,7 +1570,7 @@ const Planner = () => {
                                         <th className="px-4 py-3">Date</th>
                                         <th className="px-4 py-3">Start Time</th>
                                         <th className="px-4 py-3">Status</th>
-                                        <th className="px-4 py-3">Linked Client</th>
+                                        <th className="px-4 py-3">Customer</th>
                                         <th className="px-4 py-3">Created</th>
                                         <th className="px-4 py-3 text-right">Actions</th>
                                     </tr>
@@ -1581,8 +1581,8 @@ const Planner = () => {
                                             <td colSpan={9} className="px-4 py-2">
                                                 <EmptyState
                                                     icon={CalendarDays}
-                                                    title="No events found"
-                                                    description="Add an event or adjust filters."
+                                                    title="No tasks found"
+                                                    description="Add a task or adjust filters."
                                                 />
                                             </td>
                                         </tr>
@@ -1719,7 +1719,7 @@ const Planner = () => {
                             eventResize={handleEventDropOrResize}
                             datesSet={handleDatesSet}
                             dayMaxEvents={3}
-                            moreLinkContent={(args) => `+${args.num} More Events`}
+                            moreLinkContent={(args) => `+${args.num} More Tasks`}
                         />
                     )}
                 </div>
@@ -1728,7 +1728,7 @@ const Planner = () => {
                     <div className="p-4 md:p-5 border-b border-gray-100 flex items-center justify-between">
                         <div>
                             <p className="text-xs font-semibold text-violet-600 uppercase tracking-wide mb-1">
-                                {selectedEvent ? 'Event Details' : 'Quick Notes'}
+                                {selectedEvent ? 'Task Details' : 'Quick Notes'}
                             </p>
                             <h3 className="text-lg font-bold text-slate-900">
                                 {selectedEvent ? selectedEvent.title : 'Notes & Ideas'}
@@ -1825,13 +1825,13 @@ const Planner = () => {
                                             onClick={handleOpenNextMeetingModal}
                                             className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-100 hover:bg-blue-100"
                                         >
-                                            Schedule Next Meeting
+                                            Schedule Next Task
                                         </button>
                                         <button
                                             onClick={handleOpenCancelModal}
                                             className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-semibold border border-red-100 hover:bg-red-100"
                                         >
-                                            Cancel Meeting
+                                            Cancel Task
                                         </button>
                                     </div>
                                 </div>
@@ -1941,7 +1941,7 @@ const Planner = () => {
             <SlideOver
                 isOpen={isEventModalOpen}
                 onClose={() => setIsEventModalOpen(false)}
-                title={eventForm.id ? 'Edit Event' : 'Create Event'}
+                title={eventForm.id ? 'Edit Task' : 'New Task'}
                 size="3xl"
                 footer={(
                     <div className="flex justify-end gap-2 w-full">
@@ -1958,7 +1958,7 @@ const Planner = () => {
                             disabled={isSaving}
                             className="px-8 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 disabled:opacity-60 transition-all shadow-lg shadow-indigo-200 active:scale-95"
                         >
-                            {isSaving ? 'Saving...' : eventForm.id ? 'Update Event' : 'Create Event'}
+                            {isSaving ? 'Saving...' : eventForm.id ? 'Save Task' : 'New Task'}
                         </button>
                     </div>
                 )}
@@ -2068,7 +2068,7 @@ const Planner = () => {
                         </div>
                         <div>
                             <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                                Linked Client
+                                Customer
                             </label>
                             <select
                                 name="client_id"
@@ -2125,7 +2125,7 @@ const Planner = () => {
                 <form id="complete-form" onSubmit={handleSubmitComplete} className="space-y-6">
                     <div>
                         <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                            Meeting Notes
+                            Notes
                         </label>
                         <textarea
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-medium outline-none focus:border-indigo-500 transition-all min-h-[120px]"
@@ -2136,7 +2136,7 @@ const Planner = () => {
                                     meeting_notes: e.target.value,
                                 }))
                             }
-                            placeholder="Detail the discussion points and decisions..."
+                            placeholder="Add notes about task completion..."
                         />
                     </div>
                     <div>
@@ -2161,7 +2161,7 @@ const Planner = () => {
             <SlideOver
                 isOpen={isRescheduleModalOpen && !!selectedEvent}
                 onClose={() => setIsRescheduleModalOpen(false)}
-                title="Reschedule Meeting"
+                title="Reschedule Task"
                 size="3xl"
                 footer={(
                     <div className="flex justify-end gap-2 w-full">
@@ -2246,7 +2246,7 @@ const Planner = () => {
                                         reason: e.target.value,
                                     }))
                                 }
-                                placeholder="Why is this meeting being rescheduled?"
+                                placeholder="Reason for rescheduling..."
                             />
                         </div>
                     </div>
@@ -2255,7 +2255,7 @@ const Planner = () => {
             <SlideOver
                 isOpen={isNextMeetingModalOpen && !!selectedEvent}
                 onClose={() => setIsNextMeetingModalOpen(false)}
-                title="Schedule Next Meeting"
+                title="Schedule Next Task"
                 size="3xl"
                 footer={(
                     <div className="flex justify-end gap-2 w-full">
@@ -2271,7 +2271,7 @@ const Planner = () => {
                             form="next-meeting-form"
                             className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95"
                         >
-                            Create Meeting
+                            Create Task
                         </button>
                     </div>
                 )}
@@ -2340,7 +2340,7 @@ const Planner = () => {
                                         meeting_notes: e.target.value,
                                     }))
                                 }
-                                placeholder="Context for the follow-up session..."
+                                placeholder="Details for follow-up task..."
                             />
                         </div>
                     </div>
@@ -2349,7 +2349,7 @@ const Planner = () => {
             <SlideOver
                 isOpen={isCancelModalOpen && !!selectedEvent}
                 onClose={() => setIsCancelModalOpen(false)}
-                title="Cancel Meeting"
+                title="Cancel Task"
                 size="xl"
                 footer={(
                     <div className="flex justify-end gap-2 w-full">
@@ -2384,7 +2384,7 @@ const Planner = () => {
                                     cancel_reason: e.target.value,
                                 }))
                             }
-                            placeholder="Please specify the reason for cancellation..."
+                            placeholder="Reason for cancellation..."
                         />
                     </div>
                 </form>
@@ -2403,7 +2403,7 @@ const EventNotesSection = ({ eventNotes, newNote, setNewNote, handleAddNote, han
                 onClick={() => setOpen((v) => !v)}
                 className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-600 uppercase tracking-wide"
             >
-                <span>Notes for this Event</span>
+                <span>Notes for this Task</span>
                 <span className="text-[10px] text-slate-400">{open ? 'Hide' : 'Show'}</span>
             </button>
             <div
