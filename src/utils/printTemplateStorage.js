@@ -63,24 +63,6 @@ function getAuthToken() {
   }
 }
 
-function syncApi(method, url, body) {
-  try {
-    const xhr = new XMLHttpRequest();
-    xhr.open(method, url, false);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.setRequestHeader('Accept', 'application/json');
-    const token = getAuthToken();
-    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    xhr.send(body ? JSON.stringify(body) : null);
-
-    if (xhr.status >= 200 && xhr.status < 300) {
-      if (!xhr.responseText) return null;
-      return JSON.parse(xhr.responseText);
-    }
-  } catch (_) { }
-  return null;
-}
-
 function migrateFromLegacy() {
   try {
     const raw = localStorage.getItem(LEGACY_KEY);
@@ -252,41 +234,60 @@ function toDbPayload(t) {
   };
 }
 
-function fetchDbTemplates() {
-  const data = syncApi('GET', API_BASE);
-  if (!Array.isArray(data)) return null;
-  return data.map(normalizeTemplate);
+function syncFromDbAsync(force = false) {
+  const now = Date.now();
+  if (!force && now - lastDbSyncMs < 10000 && Array.isArray(memoryCache)) return;
+  lastDbSyncMs = now;
+
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  fetch(API_BASE, { headers })
+    .then((res) => {
+      if (!res.ok) throw new Error('API error');
+      return res.json();
+    })
+    .then((data) => {
+      if (Array.isArray(data)) {
+        const dbList = data.map(normalizeTemplate);
+        const seeded = upsertSeeds(dbList);
+        if (seeded.changed) {
+          pushSeedTemplatesToDbAsync(seeded.list, dbList);
+        }
+        memoryCache = seeded.list;
+        saveRaw(memoryCache);
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('print_templates_updated', { detail: memoryCache }));
+        }
+      }
+    })
+    .catch(() => {});
 }
 
-function pushSeedTemplatesToDb(allList, dbList) {
+function pushSeedTemplatesToDbAsync(allList, dbList) {
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const seeds = getSeedTemplates(allList);
   seeds.forEach((seed) => {
     const existsInDb = dbList.some((x) => x.id === seed.id);
-    if (!existsInDb) {
-      syncApi('POST', API_BASE, toDbPayload(seed));
-    } else {
-      syncApi('PUT', `${API_BASE}/${encodeURIComponent(seed.id)}`, toDbPayload(seed));
-    }
+    const url = existsInDb ? `${API_BASE}/${encodeURIComponent(seed.id)}` : API_BASE;
+    const method = existsInDb ? 'PUT' : 'POST';
+    fetch(url, {
+      method,
+      headers,
+      body: JSON.stringify(toDbPayload(seed))
+    }).catch(() => {});
   });
-}
-
-function syncFromDbIfNeeded(force = false) {
-  const now = Date.now();
-  if (!force && now - lastDbSyncMs < 2000 && Array.isArray(memoryCache)) return memoryCache;
-
-  const dbList = fetchDbTemplates();
-  if (dbList) {
-    const seeded = upsertSeeds(dbList);
-    if (seeded.changed) {
-      pushSeedTemplatesToDb(seeded.list, dbList);
-    }
-    memoryCache = seeded.list;
-    saveRaw(memoryCache);
-    lastDbSyncMs = now;
-    return memoryCache;
-  }
-
-  return null;
 }
 
 function getLocalListWithSeeds() {
@@ -303,8 +304,7 @@ function getLocalListWithSeeds() {
 }
 
 export function getTemplates() {
-  const db = syncFromDbIfNeeded();
-  if (db) return db;
+  syncFromDbAsync();
   if (Array.isArray(memoryCache)) return memoryCache;
   return getLocalListWithSeeds();
 }
@@ -364,13 +364,26 @@ export function saveTemplate(payload) {
   memoryCache = list;
 
   const dbPayload = toDbPayload(template);
-  if (isUpdate) {
-    syncApi('PUT', `${API_BASE}/${encodeURIComponent(template.id)}`, dbPayload);
-  } else {
-    syncApi('POST', API_BASE, dbPayload);
-  }
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  syncFromDbIfNeeded(true);
+  const url = isUpdate ? `${API_BASE}/${encodeURIComponent(template.id)}` : API_BASE;
+  const method = isUpdate ? 'PUT' : 'POST';
+
+  fetch(url, {
+    method,
+    headers,
+    body: JSON.stringify(dbPayload)
+  })
+  .then(() => {
+    syncFromDbAsync(true);
+  })
+  .catch(() => {});
+
   return template;
 }
 
@@ -378,8 +391,22 @@ export function deleteTemplate(id) {
   const list = getTemplates().filter((t) => t.id !== id);
   saveRaw(list);
   memoryCache = list;
-  syncApi('DELETE', `${API_BASE}/${encodeURIComponent(id)}`);
-  syncFromDbIfNeeded(true);
+
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  fetch(`${API_BASE}/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers
+  })
+  .then(() => {
+    syncFromDbAsync(true);
+  })
+  .catch(() => {});
 }
 
 export function duplicateTemplate(id) {
@@ -407,9 +434,26 @@ export function setDefaultTemplate(id) {
   }));
   saveRaw(updated);
   memoryCache = updated;
+
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const changedModule = updated.filter((t) => t.module === target.module);
-  changedModule.forEach((t) => {
-    syncApi('PUT', `${API_BASE}/${encodeURIComponent(t.id)}`, toDbPayload(t));
-  });
-  syncFromDbIfNeeded(true);
+  Promise.all(
+    changedModule.map((t) =>
+      fetch(`${API_BASE}/${encodeURIComponent(t.id)}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(toDbPayload(t))
+      }).catch(() => {})
+    )
+  )
+  .then(() => {
+    syncFromDbAsync(true);
+  })
+  .catch(() => {});
 }
