@@ -14,6 +14,8 @@ import {
 import { StatCardsSkeleton } from '../components/Skeleton';
 import PageHeader from '../components/ui/PageHeader';
 import { TableSectionHeader } from '../components/ui/DataTableSection';
+import EmptyState from '../components/ui/EmptyState';
+
 
 const StatCard = ({ title, value, icon: Icon, trend, colorClass, subValue, subLabel }) => (
   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all group relative overflow-hidden">

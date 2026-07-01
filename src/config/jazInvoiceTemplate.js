@@ -114,9 +114,17 @@ export const JAZ_INVOICE_TEMPLATE_HTML = `
           <span>Tax</span>
           <span>{{invoice.tax_amount}}</span>
         </div>
+        <div class="jaz-total-row">
+          <span>Discount</span>
+          <span>{{invoice.discount}}</span>
+        </div>
+        <div class="jaz-total-row">
+          <span>Paid</span>
+          <span>{{invoice.paid_amount}}</span>
+        </div>
         <div class="jaz-total-row jaz-total-due">
-          <span>Total Due</span>
-          <span>{{invoice.grand_total}}</span>
+          <span>Balance Due</span>
+          <span>{{invoice.balance_due}}</span>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from "react";
-import { X, Edit2, Trash2, FileOutput, Download, Printer } from "lucide-react";
+import { X, Edit2, Trash2, FileOutput, Download, Printer, LayoutTemplate, Loader2 } from "lucide-react";
 import { useReactToPrint } from "react-to-print";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -15,6 +15,7 @@ import {
 } from "../config/printTemplateModules";
 import { getSettings } from "../services/db";
 import PrintConfigModal from "./PrintConfigModal";
+import { getQuotation } from "../services/quotationService";
 
 const QuotationView = ({
   isOpen,
@@ -32,11 +33,34 @@ const QuotationView = ({
   const [printConfig, setPrintConfig] = useState(null);
   const [scaleFactor, setScaleFactor] = useState(1);
   const [selectedPreviewId, setSelectedPreviewId] = useState('standard');
+  const [fullQuotation, setFullQuotation] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
     getSettings().then((data) => setCompanySettings(data?.company || {}));
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !quotation?.id) {
+      setFullQuotation(null);
+      return;
+    }
+    setLoading(true);
+    getQuotation(quotation.id)
+      .then((data) => {
+        setFullQuotation(data);
+      })
+      .catch((err) => {
+        console.error("Failed to load quotation details", err);
+        toast.error("Failed to load quotation details");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [isOpen, quotation?.id]);
+
+  const activeQuotation = fullQuotation || quotation;
 
   const templates = useMemo(() => getTemplates().filter(t => t.module === "quotations"), []);
   const [activeTemplate, setActiveTemplate] = useState(
@@ -53,26 +77,26 @@ const QuotationView = ({
   );
 
   const printHtml = useMemo(() => {
-    if (!quotation || !activeTemplate) return null;
+    if (!activeQuotation || !activeTemplate) return null;
     const keys = getPrintConfigKeys();
     const html = activeTemplate.template_html
       ? getEffectiveTemplateHtml(activeTemplate, "quotations")
       : buildFullTemplateHtml(filterTemplateByPrintConfig(activeTemplate, keys), "quotations");
-    const data = buildQuotationPrintData(quotation, companySettings);
+    const data = buildQuotationPrintData(activeQuotation, companySettings);
     return resolveTemplateHtmlWithData(html, "quotations", data);
-  }, [quotation, activeTemplate, companySettings, getPrintConfigKeys]);
+  }, [activeQuotation, activeTemplate, companySettings, getPrintConfigKeys]);
 
   const buildPreviewForConfig = useCallback(
     (selectedKeys) => {
-      if (!quotation || !activeTemplate) return "";
+      if (!activeQuotation || !activeTemplate) return "";
       const filtered = filterTemplateByPrintConfig(activeTemplate, selectedKeys);
       const html = activeTemplate.template_html
         ? getEffectiveTemplateHtml(activeTemplate, "quotations")
         : buildFullTemplateHtml(filtered, "quotations");
-      const data = buildQuotationPrintData(quotation, companySettings);
+      const data = buildQuotationPrintData(activeQuotation, companySettings);
       return resolveTemplateHtmlWithData(html, "quotations", data);
     },
-    [quotation, activeTemplate, companySettings]
+    [activeQuotation, activeTemplate, companySettings]
   );
 
     // Auto-scaling logic to fit ENTIRE layout on one A4 page
@@ -108,7 +132,7 @@ const QuotationView = ({
 
     const handlePrintTrigger = useReactToPrint({
         contentRef: printRef,
-        documentTitle: quotation?.quotation_no ? `Quotation_${quotation.quotation_no}` : "Quotation",
+        documentTitle: activeQuotation?.quotation_no ? `Quotation_${activeQuotation.quotation_no}` : "Quotation",
         pageStyle: `
             @page {
                 size: A4;
@@ -136,6 +160,16 @@ const QuotationView = ({
                     position: relative !important;
                     display: block !important;
                     overflow: hidden !important;
+                }
+                .print-scale-container {
+                    width: 100% !important;
+                    height: 100% !important;
+                    overflow: visible !important;
+                }
+                /* Do NOT force transform none here; let the inline style handle scaling */
+                .print-scale-content {
+                    width: 210mm !important;
+                    height: auto !important;
                 }
                 /* Target common template wrappers to allow stretch before scale */
                 .jaz-doc, .jaz-inner, .print-doc, .print-doc-dynamic, .invoice, .quotation, .agreement-print-root, .letterhead-doc, .letterhead-inner {
@@ -182,7 +216,7 @@ const QuotationView = ({
   };
 
   if (!isOpen) return null;
-  if (!quotation) {
+  if (!activeQuotation) {
     return (
       <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
         <div className="bg-white rounded-xl p-8 text-slate-500">No quotation selected.</div>
@@ -190,14 +224,14 @@ const QuotationView = ({
     );
   }
 
-  const client = quotation.client;
+  const client = activeQuotation.client;
   const clientName = client ? (client.company_name || client.client_name) : "—";
-  const items = quotation.items || [];
-  const subtotal = parseFloat(quotation.subtotal) || 0;
-  const discount = parseFloat(quotation.discount) || 0;
-  const tax = parseFloat(quotation.tax) || 0;
-  const total = parseFloat(quotation.total) || 0;
-  const dateStr = quotation.date ? (typeof quotation.date === "string" ? quotation.date.split("T")[0] : quotation.date) : "—";
+  const items = activeQuotation.items || [];
+  const subtotal = parseFloat(activeQuotation.subtotal) || 0;
+  const discount = parseFloat(activeQuotation.discount) || 0;
+  const tax = parseFloat(activeQuotation.tax) || 0;
+  const total = parseFloat(activeQuotation.total) || 0;
+  const dateStr = activeQuotation.date ? (typeof activeQuotation.date === "string" ? activeQuotation.date.split("T")[0] : activeQuotation.date) : "—";
 
   const pageStyles = `
     @page { size: A4; margin: 0 !important; }
@@ -272,15 +306,15 @@ const QuotationView = ({
 
             {templates.map(t => {
               const isActive = selectedPreviewId !== 'standard' && activeTemplate?.id === t.id;
-              const previewHtml = (() => {
+              const previewHtml = isActive ? (() => {
                 const keys = getPrintConfigKeys();
                 const html = t.template_html ? getEffectiveTemplateHtml(t, "quotations") : buildFullTemplateHtml(filterTemplateByPrintConfig(t, keys), "quotations");
-                let data = buildQuotationPrintData(quotation, companySettings);
+                let data = buildQuotationPrintData(activeQuotation, companySettings);
                 if (data.quotation && data.quotation.items && data.quotation.items.length > 5) {
                   data.quotation.items = data.quotation.items.slice(0, 5);
                 }
                 return resolveTemplateHtmlWithData(html, "quotations", data);
-              })();
+              })() : null;
 
               return (
                 <div
@@ -298,7 +332,14 @@ const QuotationView = ({
                     isActive ? "bg-orange-100/40 border-orange-100" : "bg-slate-50 border-slate-100"
                   )}>
                     <div className="relative shadow-md border border-slate-300 bg-white overflow-hidden rounded-[2px] transition-transform duration-300 group-hover:scale-105" style={{ width: '100px', height: '141px' }}>
-                      <div className="absolute top-0 left-0 w-[794px] bg-white transform origin-top-left" style={{ transform: 'scale(0.126)' }} dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                      {isActive ? (
+                        <div className="absolute top-0 left-0 w-[794px] bg-white transform origin-top-left" style={{ transform: 'scale(0.126)' }} dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                      ) : (
+                        <div className="w-full h-full bg-slate-50 flex flex-col items-center justify-center p-3 gap-2">
+                          <LayoutTemplate className="w-8 h-8 text-slate-300" />
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center line-clamp-2">{t.name}</span>
+                        </div>
+                      )}
                       <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.02] transition-colors z-10" />
                     </div>
                   </div>
@@ -323,7 +364,7 @@ const QuotationView = ({
         <div className="flex-1 flex flex-col min-w-0 bg-white">
           <div className="p-4 md:p-6 border-b border-gray-100 flex justify-between items-center bg-white flex-shrink-0 print:hidden">
             <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight flex-shrink-0">
-              Quotation {quotation.quotation_no}
+              Quotation {activeQuotation.quotation_no}
             </h2>
             <div className="flex items-center gap-3">
               <button
@@ -337,106 +378,117 @@ const QuotationView = ({
 
           <div className="flex-1 overflow-y-auto bg-slate-200/50 print:p-0 print:bg-white flex flex-col items-center shadow-inner">
             <div className="w-full py-8 lg:py-12 flex flex-col items-center">
-              <div ref={printRef} className={clsx("quotation-a4 bg-white transition-all relative mx-auto print:h-auto print:min-h-[297mm] print:overflow-visible", selectedPreviewId === 'standard' ? "w-[210mm] h-[297mm] p-6 md:p-10 shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:p-0 print:rounded-none" : "w-[210mm] h-[297mm] shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:p-0 print:rounded-none")}>
-                <div className="print-scale-container" style={{ overflow: 'visible', width: '100%', height: '100%' }}>
-                  <div className="print-scale-content" style={{ 
-                    transform: scaleFactor !== 1 ? `scale(${scaleFactor})` : 'none',
-                    transformOrigin: 'top center',
-                    width: '210mm' 
-                  }}>
-                {selectedPreviewId === 'standard' ? (
-                  <>
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6 p-0">
-                      <div className="text-slate-600">
-                        <p className="font-semibold text-slate-800">{companySettings.company_name || "Company Name"}</p>
-                        <p className="text-sm">{companySettings.website || companySettings.email || "www.company.com"}</p>
-                      </div>
-                      <div className="text-right text-slate-800">
-                        <p className="text-sm"><span className="font-bold">Quote No:</span> {quotation.quotation_no}</p>
-                        <p className="text-sm mt-1"><span className="font-bold">Date:</span> {dateStr}</p>
-                      </div>
-                    </div>
-
-                    <div className="h-0.5 w-full bg-amber-400 mb-6 rounded-full" />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                      <div>
-                        <h3 className="text-amber-500 font-bold mb-3">Bill To</h3>
-                        <div className="text-slate-700 text-sm space-y-1">
-                          <p>{clientName}</p>
-                          {client.company_name && client.client_name && <p>{client.client_name}</p>}
-                          <p>{client.address || "Client Address"}</p>
-                          <p>{client.phone || "Client Phone"}</p>
+              {loading ? (
+                <div className="w-[210mm] h-[297mm] bg-white shadow-2xl border border-slate-200 rounded-sm flex flex-col items-center justify-center p-10 gap-4 animate-fade-in">
+                  <Loader2 className="w-12 h-12 text-orange-500 animate-spin" />
+                  <p className="text-slate-500 font-semibold uppercase tracking-wider text-xs">Loading quotation details...</p>
+                </div>
+              ) : (
+                <div ref={printRef} className="quotation-a4 bg-white transition-all relative mx-auto print:h-auto print:min-h-[297mm] print:overflow-visible w-[210mm] h-[297mm] shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:p-0 print:rounded-none">
+                  <div className="print-scale-container" style={{ overflow: 'visible', width: '100%', height: '100%' }}>
+                    <div className="print-scale-content" style={{ 
+                      transform: scaleFactor !== 1 ? `scale(${scaleFactor})` : 'none',
+                      transformOrigin: 'top center',
+                      width: '210mm' 
+                    }}>
+                  {selectedPreviewId === 'standard' ? (
+                    <div className="standard-print-layout">
+                      <div className="print-header">
+                        <div className="print-header-left">
+                          <h2 className="company-name">{companySettings.company_name || "Company Name"}</h2>
+                          <p className="company-details">
+                            {companySettings.address || "Business Address\nCity, Country"}
+                            {companySettings.email && `\nEmail: ${companySettings.email}`}
+                            {companySettings.phone && `\nPhone: ${companySettings.phone}`}
+                            {companySettings.website && `\nWebsite: ${companySettings.website}`}
+                          </p>
+                        </div>
+                        <div className="print-header-right">
+                          <h2 className="doc-number">Quotation No: {activeQuotation.quotation_no}</h2>
+                          <p className="doc-date">Date: {dateStr}</p>
                         </div>
                       </div>
-                      <div>
-                        <h3 className="text-amber-500 font-bold mb-3">From</h3>
-                        <div className="text-slate-700 text-sm space-y-1">
-                          <p>{companySettings.company_name || "Your Company Pvt Ltd"}</p>
-                          <p className="whitespace-pre-line">{companySettings.address || "Business Address\nCity, Country"}</p>
-                          <p>{companySettings.email || "contact@company.com"}</p>
-                          {companySettings.phone && <p>{companySettings.phone}</p>}
+
+                      <hr className="print-divider" />
+
+                      <div className="print-billing">
+                        <div className="print-billing-col">
+                          <h3>Bill To</h3>
+                          <div className="address-details">
+                            <p className="font-bold text-slate-800">{clientName}</p>
+                            {client?.company_name && client?.client_name && <p>{client.client_name}</p>}
+                            <p>{client?.address || "Client Address"}</p>
+                            <p>{client?.phone || "Client Phone"}</p>
+                          </div>
+                        </div>
+                        <div className="print-billing-col">
+                          <h3>From</h3>
+                          <div className="address-details">
+                            <p className="font-bold text-slate-800">{companySettings.company_name || "Your Company Pvt Ltd"}</p>
+                            <p className="whitespace-pre-line">{companySettings.address || "Business Address\nCity, Country"}</p>
+                            {companySettings.email && <p>Email: {companySettings.email}</p>}
+                            {companySettings.phone && <p>Phone: {companySettings.phone}</p>}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="overflow-x-auto rounded-lg border border-slate-200 mb-6">
-                      <table className="w-full text-left text-sm">
-                        <thead className="bg-[#1e293b] text-white">
-                          <tr>
-                            <th className="px-4 py-3 font-semibold">#</th>
-                            <th className="px-4 py-3 font-semibold">Description</th>
-                            <th className="px-4 py-3 font-semibold text-right">Price</th>
-                            <th className="px-4 py-3 font-semibold text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
-                          {items.length === 0 ? (
+                      <div className="print-table-wrapper">
+                        <table className="print-table">
+                          <thead>
                             <tr>
-                              <td colSpan="4" className="px-4 py-6 text-center text-slate-500">No items added.</td>
+                              <th style={{ width: '60px' }}>#</th>
+                              <th>Description</th>
+                              <th className="text-right" style={{ width: '120px' }}>Price</th>
+                              <th className="text-right" style={{ width: '120px' }}>Total</th>
                             </tr>
-                          ) : items.map((item, index) => (
-                            <tr key={index} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-4 py-4">{index + 1}</td>
-                              <td className="px-4 py-4 font-medium">{item.item || item.description || item.item_name || "—"}</td>
-                              <td className="px-4 py-4 text-right">
-                                {quotation.currency || '$'}{parseFloat(item.price || item.unit_price || 0).toFixed(2)}
-                              </td>
-                              <td className="px-4 py-4 text-right font-semibold text-slate-900">
-                                {quotation.currency || '$'}{parseFloat(item.amount || item.total || 0).toFixed(2)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {items.length === 0 ? (
+                              <tr>
+                                <td colSpan="4" className="text-center">No items added.</td>
+                              </tr>
+                            ) : items.map((item, index) => (
+                              <tr key={index}>
+                                <td>{index + 1}</td>
+                                <td>{item.item || item.description || item.item_name || "—"}</td>
+                                <td className="text-right font-medium">
+                                  {activeQuotation.currency || '$'}{parseFloat(item.price || item.unit_price || 0).toFixed(2)}
+                                </td>
+                                <td className="text-right font-bold text-slate-900">
+                                  {activeQuotation.currency || '$'}{parseFloat(item.amount || item.total || 0).toFixed(2)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
 
-                    <div className="flex justify-end mb-4">
-                      <div className="w-full max-w-sm space-y-3 text-sm">
-                        <div className="flex justify-between items-center px-4">
-                          <span className="text-slate-600 font-medium">Subtotal</span>
-                          <span className="font-semibold text-slate-800">{quotation.currency || '$'}{subtotal.toFixed(2)}</span>
-                        </div>
-                        {discount > 0 && (
-                          <div className="flex justify-between items-center px-4">
-                            <span className="text-slate-600 font-medium">Discount</span>
-                            <span className="font-semibold text-emerald-600">-{quotation.currency || '$'}{discount.toFixed(2)}</span>
+                      <div className="print-summary">
+                        <div className="print-summary-box">
+                          <div className="print-summary-row">
+                            <span>Subtotal</span>
+                            <span>{activeQuotation.currency || '$'}{subtotal.toFixed(2)}</span>
                           </div>
-                        )}
-                        {tax > 0 && (
-                          <div className="flex justify-between items-center px-4">
-                            <span className="text-slate-600 font-medium">Tax</span>
-                            <span className="font-semibold text-slate-800">{quotation.currency || '$'}{tax.toFixed(2)}</span>
+                          {discount > 0 && (
+                            <div className="print-summary-row">
+                              <span>Discount</span>
+                              <span className="text-emerald-600 font-medium">-{activeQuotation.currency || '$'}{discount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {tax > 0 && (
+                            <div className="print-summary-row">
+                              <span>Tax</span>
+                              <span>{activeQuotation.currency || '$'}{tax.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="print-summary-row total">
+                            <span>Total</span>
+                            <span className="total-amount font-bold">{activeQuotation.currency || '$'}{total.toFixed(2)}</span>
                           </div>
-                        )}
-                        <div className="flex justify-between items-center p-4 bg-slate-50 rounded-lg border border-slate-100 mt-2">
-                          <span className="text-slate-900 font-bold">Total</span>
-                          <span className="text-lg font-bold text-[#f59e0b]">{quotation.currency || '$'}{total.toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
-                  </>
-                ) : (
+                  ) : (
                   <div className="text-slate-800 w-full min-h-[297mm]">
                     {printHtml ? (
                       <div className="relative isolate" style={{ transform: 'translateZ(0)' }}>
@@ -450,8 +502,10 @@ const QuotationView = ({
                     )}
                   </div>
                 )}
-                </div></div>
-              </div>
+                </div>
+                </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -463,7 +517,7 @@ const QuotationView = ({
               <button onClick={onDelete} className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 bg-white hover:bg-red-50 rounded-lg text-sm font-semibold transition-colors shadow-sm">
                 <Trash2 size={16} /> Delete
               </button>
-              {quotation.status !== "Converted" && (
+              {activeQuotation.status !== "Converted" && (
                 <button
                   onClick={onConvertToInvoice}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-[#f97316] text-white hover:bg-[#ea580c] rounded-lg text-sm font-semibold transition-all shadow-sm shadow-orange-500/20"

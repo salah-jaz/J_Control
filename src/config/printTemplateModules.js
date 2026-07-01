@@ -1426,16 +1426,29 @@ export function buildInvoicePrintData(invoice, company = {}, client = null, bank
   const discount = parseFloat(invoice?.discount) || 0;
   const gstAmount = subtotal * (gst / 100);
   const grandTotal = Math.max(0, subtotal + gstAmount - discount);
-  let paidAmount = 0;
-  if (invoice?.status === 'Paid') {
-    paidAmount = grandTotal;
-  } else if (subtotal > 0 && items.length > 0) {
-    const itemsPaid = items.filter((i) => i.payment_status === 'Paid').reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
-    const ratio = itemsPaid / subtotal;
-    paidAmount = Math.max(0, Math.min(grandTotal, itemsPaid + gstAmount * ratio - discount * ratio));
+
+  const initialDeposit = (invoice?.initial_deposit_enabled || invoice?.initialDepositEnabled) ? (parseFloat(invoice?.initial_deposit_amount || invoice?.initialDepositAmount) || 0) : 0;
+  let extraInstallments = invoice?.extra_installments || invoice?.extraInstallments || [];
+  if (typeof extraInstallments === 'string') {
+    try {
+      extraInstallments = JSON.parse(extraInstallments);
+    } catch (_) {
+      extraInstallments = [];
+    }
   }
+  if (!Array.isArray(extraInstallments)) {
+    extraInstallments = [];
+  }
+  const installmentsTotal = extraInstallments.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+  let paidAmount = initialDeposit + installmentsTotal;
+
+  if (invoice?.status === 'Paid' && paidAmount === 0) {
+    paidAmount = grandTotal;
+  }
+
   const balanceDue = Math.max(0, grandTotal - paidAmount);
   const fmt = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+  const fmtDiscount = (n) => n > 0 ? `-₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : `₹0.00`;
   const dateStr = invoice?.date ? (typeof invoice.date === 'string' ? invoice.date.split('T')[0] : new Date(invoice.date).toLocaleDateString()) : '—';
   const dueDateStr = invoice?.due_date ? (typeof invoice.due_date === 'string' ? invoice.due_date.split('T')[0] : new Date(invoice.due_date).toLocaleDateString()) : dateStr;
   const paymentStatus =
@@ -1460,7 +1473,7 @@ export function buildInvoicePrintData(invoice, company = {}, client = null, bank
     payment_status: paymentStatus,
     items_table: buildItemsTableHtml(items, 'invoice'),
     subtotal: fmt(subtotal),
-    discount: fmt(discount),
+    discount: fmtDiscount(discount),
     tax_amount: fmt(gstAmount),
     grand_total: fmt(grandTotal),
     paid_amount: fmt(paidAmount),
@@ -1787,8 +1800,7 @@ export function buildQuotationPrintData(quotation, company = {}, bank = null) {
   const items = quotation?.items || [];
   const subtotalVal = parseFloat(quotation?.subtotal) || 0;
   const discountVal = parseFloat(quotation?.discount) || 0;
-  const taxPct = parseFloat(quotation?.tax) || 0;
-  const taxAmount = subtotalVal * (taxPct / 100);
+  const taxAmount = parseFloat(quotation?.tax) || 0;
   const total = parseFloat(quotation?.total) || Math.max(0, subtotalVal - discountVal + taxAmount);
   const dateStr = quotation?.date ? (typeof quotation.date === 'string' ? quotation.date.split('T')[0] : quotation.date) : '—';
   const validStr = quotation?.expiry_date || quotation?.valid_until ? (typeof (quotation?.expiry_date || quotation?.valid_until) === 'string' ? (quotation.expiry_date || quotation.valid_until).split('T')[0] : '—') : '—';

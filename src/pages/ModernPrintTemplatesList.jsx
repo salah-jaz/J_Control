@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import clsx from 'clsx';
 import { LayoutTemplate, Plus, Pencil, Trash2, X, FileText, Check, Settings2, FileCode2, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -9,48 +9,9 @@ import {
     saveTemplate,
 } from '../utils/printTemplateStorage';
 
-export default function ModernPrintTemplatesList() {
-    const [templates, setTemplates] = useState(() => getTemplates());
-    const [activeTab, setActiveTab] = useState('All');
-
-    // Modal State
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingId, setEditingId] = useState(null);
-    const [formData, setFormData] = useState({
-        name: '',
-        module: MODULES[0]?.value || 'invoices',
-        description: '',
-        isDefault: false,
-        template_html: '',
-        template_css: ''
-    });
-
-    const [isExampleModalOpen, setIsExampleModalOpen] = useState(false);
-    const [exampleTab, setExampleTab] = useState('html');
-    const [exampleDocType, setExampleDocType] = useState('invoices');
-
-    const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-    const [previewContent, setPreviewContent] = useState('');
-
-    const handleOpenPreview = (t) => {
-        let htmlVal = t.template_html || '';
-        let cssVal = t.template_css || '';
-
-        if (!htmlVal.trim()) {
-            htmlVal = buildFullTemplateHtml(t, t.module, { includeStyle: false });
-            cssVal = cssVal.trim() ? cssVal : getDefaultCss(t.module);
-        }
-
-        const fullHtml = `<style>${cssVal}</style>${htmlVal}`;
-        const sampleData = getSampleData(t.module);
-        const rendered = resolveTemplateHtmlWithData(fullHtml, t.module, sampleData);
-        setPreviewContent(rendered);
-        setIsPreviewModalOpen(true);
-    };
-
-    const EXAMPLE_TEMPLATES = {
-        invoices: {
-            html: `<!DOCTYPE html>
+const EXAMPLE_TEMPLATES = {
+    invoices: {
+        html: `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -119,7 +80,7 @@ export default function ModernPrintTemplatesList() {
 </div>
 </body>
 </html>`,
-            css: `body{
+        css: `body{
 font-family:Arial;
 background:#f2f2f2;
 padding:30px;
@@ -255,9 +216,9 @@ font-size:14px;
   .items, tr, .totals, .terms, .payment, .signature, footer, .client { page-break-inside: avoid; break-inside: avoid; }
   h1, h2, h3, h4, h5, h6 { page-break-after: avoid; break-after: avoid; }
 }`
-        },
-        quotations: {
-            html: `<!DOCTYPE html>
+    },
+    quotations: {
+        html: `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -294,7 +255,7 @@ font-size:14px;
     </div>
 </body>
 </html>`,
-            css: `body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; padding: 20px; color: #333; }
+        css: `body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; padding: 20px; color: #333; }
 .quotation-wrap { max-width: 800px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; }
 .quotation-header { display: flex; justify-content: space-between; border-bottom: 2px solid #f59e0b; padding-bottom: 20px; margin-bottom: 20px; }
 .quotation-header h1 { margin: 0 0 10px 0; font-size: 28px; color: #1e293b; }
@@ -322,9 +283,9 @@ font-size:14px;
   .items-wrap, tr, .totals-section, .client-details { page-break-inside: avoid; break-inside: avoid; }
   h1, h2, h3, h4, .quotation-header { page-break-after: avoid; break-after: avoid; }
 }`
-        },
-        agreements: {
-            html: `<!DOCTYPE html>
+    },
+    agreements: {
+        html: `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -335,7 +296,7 @@ font-size:14px;
         <header class="agreement-header">
             <h1>{{agreement.agreement_title}}</h1>
         </header>
-
+ 
         <div class="party-details">
             <div class="party-block">
                 <h3>Provider</h3>
@@ -348,13 +309,13 @@ font-size:14px;
                 <p>{{agreement.client_address}}</p>
             </div>
         </div>
-
+ 
         <div class="agreement-body">
             <div class="dynamic-content">
                 {{agreement.agreement_content}}
             </div>
         </div>
-
+ 
         <div class="signature-section">
             <div class="sig-box">
                 <p class="sig-title">Provider Signature:</p>
@@ -370,7 +331,7 @@ font-size:14px;
     </div>
 </body>
 </html>`,
-            css: `body { font-family: Georgia, serif; line-height: 1.6; color: #1e293b; padding: 40px; }
+        css: `body { font-family: Georgia, serif; line-height: 1.6; color: #1e293b; padding: 40px; }
 .agreement-wrap { max-width: 850px; margin: 0 auto; background: #fff; }
 .agreement-header { text-align: center; border-bottom: 2px solid #1e293b; margin-bottom: 20px; padding-bottom: 15px; }
 .agreement-header h1 { letter-spacing: 2px; margin: 0; }
@@ -399,9 +360,55 @@ font-size:14px;
   .party-details, .signature-section, .sig-box, .party-block, tr { page-break-inside: avoid; break-inside: avoid; }
   h1, h2, h3, h4, .agreement-header { page-break-after: avoid; break-after: avoid; }
 }`
-        }
-    };
+    }
+};
 
+export default function ModernPrintTemplatesList() {
+    const [templates, setTemplates] = useState(() => getTemplates());
+    const [activeTab, setActiveTab] = useState('All');
+
+    useEffect(() => {
+        const handleUpdate = (e) => {
+            setTemplates(e.detail);
+        };
+        window.addEventListener('print_templates_updated', handleUpdate);
+        return () => window.removeEventListener('print_templates_updated', handleUpdate);
+    }, []);
+
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    const [formData, setFormData] = useState({
+        name: '',
+        module: MODULES[0]?.value || 'invoices',
+        description: '',
+        isDefault: false,
+        template_html: '',
+        template_css: ''
+    });
+
+    const [isExampleModalOpen, setIsExampleModalOpen] = useState(false);
+    const [exampleTab, setExampleTab] = useState('html');
+    const [exampleDocType, setExampleDocType] = useState('invoices');
+
+    const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+    const [previewContent, setPreviewContent] = useState('');
+
+    const handleOpenPreview = (t) => {
+        let htmlVal = t.template_html || '';
+        let cssVal = t.template_css || '';
+
+        if (!htmlVal.trim()) {
+            htmlVal = buildFullTemplateHtml(t, t.module, { includeStyle: false });
+            cssVal = cssVal.trim() ? cssVal : getDefaultCss(t.module);
+        }
+
+        const fullHtml = `<style>${cssVal}</style>${htmlVal}`;
+        const sampleData = getSampleData(t.module);
+        const rendered = resolveTemplateHtmlWithData(fullHtml, t.module, sampleData);
+        setPreviewContent(rendered);
+        setIsPreviewModalOpen(true);
+    };
     const exampleHtmlCode = EXAMPLE_TEMPLATES[exampleDocType].html;
     const exampleCssCode = EXAMPLE_TEMPLATES[exampleDocType].css;
 

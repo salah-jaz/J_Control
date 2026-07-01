@@ -171,9 +171,17 @@ export const PREMIUM_TEMPLATES = {
           <span>TAX (%)</span>
           <span>{{invoice.tax_amount}}</span>
         </div>
+        <div class="jaz-total-row bg-slate">
+          <span>DISCOUNT</span>
+          <span>{{invoice.discount}}</span>
+        </div>
+        <div class="jaz-total-row bg-slate">
+          <span>PAID</span>
+          <span>{{invoice.paid_amount}}</span>
+        </div>
         <div class="jaz-total-row grand-total">
-          <span>Total Due</span>
-          <span>{{invoice.grand_total}}</span>
+          <span>Balance Due</span>
+          <span>{{invoice.balance_due}}</span>
         </div>
 
         <div class="jaz-signature-block" style="margin-top:40px; margin-left:auto;">

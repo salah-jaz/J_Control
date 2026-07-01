@@ -18,12 +18,13 @@ import { Toaster, toast } from 'react-hot-toast';
 import Settings from "./pages/Settings";
 import User from "./pages/User";
 import Products from "./pages/Products";
-import Agreements from "./pages/Agreements";
-import ModernPrintTemplateBuilder from "./pages/ModernPrintTemplateBuilder";
-import ModernPrintTemplatesList from "./pages/ModernPrintTemplatesList";
 import Planner from "./pages/Planner";
 import StaffManagement from "./pages/StaffManagement";
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, lazy, Suspense } from 'react';
+
+const Agreements = lazy(() => import("./pages/Agreements"));
+const ModernPrintTemplateBuilder = lazy(() => import("./pages/ModernPrintTemplateBuilder"));
+const ModernPrintTemplatesList = lazy(() => import("./pages/ModernPrintTemplatesList"));
 import { getTodayPlannerEvents } from './services/db';
 
 const NOTIFICATION_SOUND_PATH = '/notification.mp3';
@@ -167,13 +168,26 @@ function PlannerReminderListener() {
 }
 
 
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[400px] w-full py-12">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-10 h-10 border-4 border-slate-200 border-t-violet-600 rounded-full animate-spin"></div>
+        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Loading Page...</p>
+      </div>
+    </div>
+  );
+}
+
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
         <PlannerReminderListener />
-        <Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
           <Route path="/login" element={<Login />} />
 
           <Route element={<ProtectedRoute />}>
@@ -318,7 +332,8 @@ function App() {
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   );

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import { X, Printer, Check, Edit2, Trash2, Download } from 'lucide-react';
+import { X, Printer, Check, Edit2, Trash2, Download, LayoutTemplate } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
@@ -371,7 +371,7 @@ export default function AgreementPreviewModal({
             {/* Premium/Custom Templates */}
             {templates.map(t => {
               const isActive = selectedPreviewId === t.id;
-              const previewHtml = generateHtmlForTemplate(t, agreementForPrint);
+              const previewHtml = isActive ? generateHtmlForTemplate(t, agreementForPrint) : null;
 
               return (
                 <div
@@ -389,7 +389,14 @@ export default function AgreementPreviewModal({
                     isActive ? "bg-orange-100/40 border-orange-100" : "bg-slate-50 border-slate-100"
                   )}>
                     <div className="relative shadow-md border border-slate-300 bg-white overflow-hidden rounded-[2px] transition-transform duration-300 group-hover:scale-105" style={{ width: '100px', height: '141px' }}>
-                      <div className="absolute top-0 left-0 w-[794px] bg-white transform origin-top-left" style={{ transform: 'scale(0.126)' }} dangerouslySetInnerHTML={{ __html: previewHtml || '' }} />
+                      {isActive ? (
+                        <div className="absolute top-0 left-0 w-[794px] bg-white transform origin-top-left" style={{ transform: 'scale(0.126)' }} dangerouslySetInnerHTML={{ __html: previewHtml || '' }} />
+                      ) : (
+                        <div className="w-full h-full bg-slate-50 flex flex-col items-center justify-center p-3 gap-2">
+                          <LayoutTemplate className="w-8 h-8 text-slate-300" />
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center line-clamp-2">{t.name}</span>
+                        </div>
+                      )}
                       <div className="absolute inset-0 bg-transparent group-hover:bg-black/[0.02] transition-colors z-10" />
                     </div>
                   </div>
@@ -435,105 +442,112 @@ export default function AgreementPreviewModal({
               <div className="print-scale-container" style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
                 <div className="print-scale-content">
                   {selectedPreviewId === 'standard' ? (
-                    <div className="standard-template-print-wrapper w-full h-full">
-                      <div className="relative isolate" style={{ transform: 'translateZ(0)' }}>
-                        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6 print:block">
-                          <div className="text-slate-600">
-                            <p className="font-bold text-xl text-slate-800 tracking-tight">{agreementForPrint?.override_company_name || companySettings?.company_name || companySettings?.name || "JAZ INFOTECH"}</p>
-                            <p className="text-sm">{companySettings?.website || companySettings?.email || "www.company.com"}</p>
-                          </div>
-                          <div className="text-right text-slate-800">
-                            <p className="text-sm border bg-slate-50 px-3 py-1.5 rounded-md inline-block font-medium mb-1"><span className="font-bold">Agreement No:</span> {agreementForPrint?.agreement_no || "—"}</p>
-                            {quotation && <p className="text-sm mt-1 mb-1"><span className="font-bold">Quote No:</span> {quotation.quotation_no}</p>}
-                            <p className="text-sm mt-1"><span className="font-bold">Date:</span> {dateStr}</p>
+                    <div className="standard-print-layout">
+                      <div className="print-header">
+                        <div className="print-header-left">
+                          <h2 className="company-name">{agreementForPrint?.override_company_name || companySettings?.company_name || companySettings?.name || "JAZ INFOTECH"}</h2>
+                          <p className="company-details">
+                            {companySettings?.address || "Business Address\nCity, Country"}
+                            {companySettings?.email && `\nEmail: ${companySettings?.email}`}
+                            {companySettings?.phone && `\nPhone: ${companySettings?.phone}`}
+                            {companySettings?.website && `\nWebsite: ${companySettings?.website}`}
+                          </p>
+                        </div>
+                        <div className="print-header-right">
+                          <h2 className="doc-number">Agreement No: {agreementForPrint?.agreement_no || "—"}</h2>
+                          {quotation && <p className="doc-date" style={{ marginBottom: '4px' }}>Quote No: {quotation.quotation_no}</p>}
+                          <p className="doc-date">Date: {dateStr}</p>
+                        </div>
+                      </div>
+
+                      <hr className="print-divider" />
+
+                      <div className="print-billing">
+                        <div className="print-billing-col">
+                          <h3>Bill To</h3>
+                          <div className="address-details">
+                            <p className="font-bold text-slate-800">{clientName}</p>
+                            {client.company_name && client.client_name && <p>{client.client_name}</p>}
+                            <p>{client.address || "Client Address"}</p>
+                            <p>{client.phone || "Client Phone"}</p>
                           </div>
                         </div>
-
-                        <div className="h-0.5 w-full bg-amber-400 mb-6 rounded-full" />
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 print:block">
-                          <div>
-                            <h3 className="text-amber-500 font-bold mb-3">Bill To</h3>
-                            <div className="text-slate-700 text-sm space-y-1">
-                              <p className="font-bold text-slate-800">{clientName}</p>
-                              {client.company_name && client.client_name && <p>{client.client_name}</p>}
-                              <p>{client.address || "Client Address"}</p>
-                              <p>{client.phone || "Client Phone"}</p>
-                            </div>
-                          </div>
-                          <div className="print:mt-6">
-                            <h3 className="text-amber-500 font-bold mb-3">From</h3>
-                            <div className="text-slate-700 text-sm space-y-1">
-                              <p className="font-bold text-slate-800">{companySettings?.company_name || companySettings?.name || "Your Company Pvt Ltd"}</p>
-                              <p className="whitespace-pre-line">{companySettings?.address || "Business Address\nCity, Country"}</p>
-                              <p>{companySettings?.email || "contact@company.com"}</p>
-                              {companySettings?.phone && <p>{companySettings?.phone}</p>}
-                            </div>
+                        <div className="print-billing-col">
+                          <h3>From</h3>
+                          <div className="address-details">
+                            <p className="font-bold text-slate-800">{companySettings?.company_name || companySettings?.name || "Your Company Pvt Ltd"}</p>
+                            <p className="whitespace-pre-line">{companySettings?.address || "Business Address\nCity, Country"}</p>
+                            {companySettings?.email && <p>Email: {companySettings?.email}</p>}
+                            {companySettings?.phone && <p>Phone: {companySettings?.phone}</p>}
                           </div>
                         </div>
+                      </div>
 
-                        {quotation && items.length > 0 && (
-                          <div className="mb-8">
-                            <div className="overflow-x-auto rounded-lg border border-slate-200 mb-4">
-                              <table className="w-full text-left text-sm">
-                                <thead className="bg-[#1e293b] text-white">
-                                  <tr>
-                                    <th className="px-4 py-3 font-semibold">#</th>
-                                    <th className="px-4 py-3 font-semibold">Description</th>
-                                    <th className="px-4 py-3 font-semibold text-center">Qty</th>
-                                    <th className="px-4 py-3 font-semibold text-right">Price</th>
-                                    <th className="px-4 py-3 font-semibold text-right">Total</th>
+                      {quotation && items.length > 0 && (
+                        <div style={{ width: '100%' }}>
+                          <div className="print-table-wrapper">
+                            <table className="print-table">
+                              <thead>
+                                <tr>
+                                  <th style={{ width: '60px' }}>#</th>
+                                  <th>Description</th>
+                                  <th className="text-center" style={{ width: '80px' }}>Qty</th>
+                                  <th className="text-right" style={{ width: '120px' }}>Price</th>
+                                  <th className="text-right" style={{ width: '120px' }}>Total</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {items.map((item, index) => (
+                                  <tr key={index}>
+                                    <td>{index + 1}</td>
+                                    <td style={{ whiteSpace: 'pre-wrap' }}>{item.description || item.item_name || "—"}</td>
+                                    <td className="text-center">{item.quantity}</td>
+                                    <td className="text-right font-medium">
+                                      {quotation.currency || '$'}{parseFloat(item.unit_price || 0).toFixed(2)}
+                                    </td>
+                                    <td className="text-right font-bold text-slate-900">
+                                      {quotation.currency || '$'}{parseFloat(item.total || 0).toFixed(2)}
+                                    </td>
                                   </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-200 bg-white text-slate-700">
-                                  {items.map((item, index) => (
-                                    <tr key={index} className="hover:bg-slate-50 transition-colors">
-                                      <td className="px-4 py-4">{index + 1}</td>
-                                      <td className="px-4 py-4 font-medium min-w-[200px] whitespace-pre-wrap">{item.description || item.item_name || "—"}</td>
-                                      <td className="px-4 py-4 text-center">{item.quantity}</td>
-                                      <td className="px-4 py-4 text-right whitespace-nowrap">
-                                        {quotation.currency || '$'}{parseFloat(item.unit_price || 0).toFixed(2)}
-                                      </td>
-                                      <td className="px-4 py-4 text-right font-semibold text-slate-900 whitespace-nowrap">
-                                        {quotation.currency || '$'}{parseFloat(item.total || 0).toFixed(2)}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                            <div className="flex justify-end mb-6">
-                              <div className="w-full max-w-sm space-y-3 text-sm">
-                                <div className="flex justify-between items-center px-4">
-                                  <span className="text-slate-600 font-medium">Subtotal</span>
-                                  <span className="font-semibold text-slate-800">{quotation.currency || '$'}{subtotal.toFixed(2)}</span>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div className="print-summary">
+                            <div className="print-summary-box">
+                              <div className="print-summary-row">
+                                <span>Subtotal</span>
+                                <span>{quotation.currency || '$'}{subtotal.toFixed(2)}</span>
+                              </div>
+                              {discount > 0 && (
+                                <div className="print-summary-row">
+                                  <span>Discount</span>
+                                  <span className="text-emerald-600 font-medium">-{quotation.currency || '$'}{discount.toFixed(2)}</span>
                                 </div>
-                                {discount > 0 && (
-                                  <div className="flex justify-between items-center px-4">
-                                    <span className="text-slate-600 font-medium">Discount</span>
-                                    <span className="font-semibold text-emerald-600">-{quotation.currency || '$'}{discount.toFixed(2)}</span>
-                                  </div>
-                                )}
-                                {tax > 0 && (
-                                  <div className="flex justify-between items-center px-4">
-                                    <span className="text-slate-600 font-medium">Tax</span>
-                                    <span className="font-semibold text-slate-800">{quotation.currency || '$'}{tax.toFixed(2)}</span>
-                                  </div>
-                                )}
-                                <div className="flex justify-between items-center p-4 bg-slate-50 rounded-lg border border-slate-100 mt-2">
-                                  <span className="text-slate-900 font-bold">Total</span>
-                                  <span className="text-lg font-bold text-[#f59e0b]">{quotation.currency || '$'}{total.toFixed(2)}</span>
+                              )}
+                              {tax > 0 && (
+                                <div className="print-summary-row">
+                                  <span>Tax</span>
+                                  <span>{quotation.currency || '$'}{tax.toFixed(2)}</span>
                                 </div>
+                              )}
+                              <div className="print-summary-row total">
+                                <span>Total</span>
+                                <span className="total-amount font-bold">{quotation.currency || '$'}{total.toFixed(2)}</span>
                               </div>
                             </div>
-                            <div className="h-px border-t border-dashed border-gray-300 w-full my-8"></div>
                           </div>
-                        )}
 
-                        <h1 className="text-2xl font-bold text-slate-900 mb-6 mt-4 pb-2 border-b border-gray-200 text-center uppercase tracking-tight">
-                          {title}
-                        </h1>
+                          <hr className="agreement-divider" />
+                        </div>
+                      )}
 
+                      <h1 className="agreement-title">
+                        {title}
+                      </h1>
+
+                      <div className="agreement-content">
                         {blocks.length === 0 ? (
                           <p className="text-slate-500 text-center italic mt-4">No agreement content provided.</p>
                         ) : (

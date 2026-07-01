@@ -71,7 +71,6 @@ export default function Agreements() {
     const [showSelection, setShowSelection] = useState(false);
 
     useEffect(() => {
-        loadData();
         loadClients();
     }, []);
 
@@ -224,7 +223,8 @@ export default function Agreements() {
                                 <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">                             {loading ? (
+                        <tbody className="divide-y divide-slate-100">
+                            {loading ? (
                                 <tr><td colSpan="6" className="p-12 text-center text-slate-400 font-medium">Loading contracts...</td></tr>
                             ) : agreements.map((a) => (
                                 <tr key={a.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -260,13 +260,15 @@ export default function Agreements() {
                 </div>
             </div>
 
-            <AgreementFormOverlay
-                isOpen={openForm}
-                onClose={() => setOpenForm(false)}
-                agreement={selectedAgreement}
-                clients={clients}
-                onSave={handleSave}
-            />
+            {openForm && (
+                <AgreementFormOverlay
+                    isOpen={openForm}
+                    onClose={() => setOpenForm(false)}
+                    agreement={selectedAgreement}
+                    clients={clients}
+                    onSave={handleSave}
+                />
+            )}
 
             {showSelection && (
                 <div className="fixed inset-0 bg-slate-900/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">

@@ -20,7 +20,7 @@ import { ActionIconButton } from "../components/ui/TableRowActions";
 import SearchableSelect from "../components/ui/SearchableSelect";
 import SlideOver from "../components/ui/SlideOver";
 
-const QuotationView = lazy(() => import("../components/QuotationView"));
+import QuotationView from "../components/QuotationView";
 
 const emptyForm = {
   client_id: "",
@@ -324,7 +324,6 @@ export default function Quotations() {
         onSave={handleSave}
       />
 
-      <Suspense fallback={null}>
         {openView && (
           <QuotationView
             isOpen={openView}
@@ -336,7 +335,6 @@ export default function Quotations() {
             onSaved={() => loadData()}
           />
         )}
-      </Suspense>
     </div>
   );
 }
