@@ -1,27 +1,39 @@
-import api from "../api/axios";
+import api, { getApiOrigin } from "../api/axios";
 import { apiFetchList } from "../utils/apiFetch";
 
+// Helper to resolve storage paths
+const resolveUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    const origin = getApiOrigin();
+    return `${origin}/storage/${path.replace(/^\/+/, '')}`;
+};
+
 // Helper to transform API data to Frontend format
-const toFrontend = (data) => ({
-    id: data.id,
-    bankName: data.bank_name,
-    accountName: data.account_name,
-    nickName: data.nick_name,
-    accountType: data.account_type,
-    accountNumber: data.account_number,
-    ifsc: data.ifsc_code,
-    branch: data.branch_name,
-    micr: data.micr_code,
-    swift: data.swift_code,
-    openingBalance: data.opening_balance,
-    currentBalance: data.current_balance,
-    currency: data.currency,
-    status: data.status,
-    openingDate: data.opening_date,
-    notes: data.notes,
-    qrCode: data.qr_code,
-    createdAt: data.created_at,
-});
+const toFrontend = (data) => {
+    const mapped = {
+        id: data.id,
+        bankName: data.bank_name,
+        accountName: data.account_name,
+        nickName: data.nick_name,
+        accountType: data.account_type,
+        accountNumber: data.account_number,
+        ifsc: data.ifsc_code,
+        branch: data.branch_name,
+        micr: data.micr_code,
+        swift: data.swift_code,
+        openingBalance: data.opening_balance,
+        currentBalance: data.current_balance,
+        currency: data.currency,
+        status: data.status,
+        isDefault: Boolean(data.is_default),
+        openingDate: data.opening_date,
+        notes: data.notes,
+        qrCode: resolveUrl(data.qr_code),
+        createdAt: data.created_at,
+    };
+    return mapped;
+};
 
 const clean = (val) => (val === "" || val === undefined ? null : val);
 
@@ -40,12 +52,13 @@ const toBackend = (data) => ({
     current_balance: clean(data.currentBalance),
     currency: clean(data.currency),
     status: clean(data.status),
+    is_default: data.isDefault ? 1 : 0,
     opening_date: clean(data.openingDate),
     notes: clean(data.notes),
 });
 
-export const getBankAccounts = async () => {
-    const result = await apiFetchList("/bank-accounts");
+export const getBankAccounts = async ({ useCache = true } = {}) => {
+    const result = await apiFetchList("/bank-accounts", { useCache });
     const arr = Array.isArray(result.data) ? result.data : [];
     return arr.map(toFrontend);
 };
@@ -87,4 +100,13 @@ export const updateBankAccount = async (id, account) => {
 
 export const deleteBankAccount = async (id) => {
     await api.delete(`/bank-accounts/${id}`);
+};
+
+/**
+ * Set a bank account as the default.
+ * Clears the default flag from all others on the server side.
+ */
+export const setDefaultBankAccount = async (id) => {
+    const response = await api.post(`/bank-accounts/${id}/set-default`);
+    return toFrontend(response.data.bank || response.data);
 };

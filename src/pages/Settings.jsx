@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import clsx from "clsx";
 import { Link } from "react-router-dom";
-import { Building2, Wallet, User, Shield, Bell, LayoutTemplate, Stamp } from "lucide-react";
+import { Building2, Wallet, User, Shield, Bell, LayoutTemplate, Stamp, Printer } from "lucide-react";
 import api, { getApiOrigin } from "../api/axios";
 import { toAbsoluteImageUrl } from "../config/printTemplateModules";
 import toast from "react-hot-toast";
@@ -21,6 +21,11 @@ const defaultSettings = {
     tagline: "",
     terms: "",
     notes: "",
+    city: "",
+    state: "",
+    country: "",
+    postal_code: "",
+    website: "",
   },
   finance: {
     currency: "INR",
@@ -203,7 +208,8 @@ export default function Settings() {
   const sealDisplayUrl = useMemo(() => toAbsoluteImageUrl(settings?.company?.seal, apiOrigin), [settings?.company?.seal, apiOrigin]);
 
   const TABS = [
-    { id: 'company', label: 'Corporate Registry', icon: Building2 },
+    { id: 'company', label: 'Company Profile', icon: Building2 },
+    { id: 'print', label: 'Print Settings', icon: Printer },
     { id: 'finance', label: 'Treasury Defaults', icon: Wallet },
     { id: 'preferences', label: 'Personalization', icon: User },
     { id: 'security', label: 'Security Protocols', icon: Shield },
@@ -341,40 +347,62 @@ export default function Settings() {
 
                 <div className="md:col-span-2 space-y-12 mt-12">
                   <div className="grid grid-cols-2 gap-10">
+                    <Input label="Company Name" value={settings.company.name ?? ''}
+                      placeholder="e.g. JAZ INFOTECH"
+                      onChange={v => setSettings({ ...settings, company: { ...settings.company, name: v } })} />
                     <Input label="Authorized Signatory Designation" value={settings.company.authorized_signature_text ?? ''}
                       placeholder="e.g. Director / Managing Partner"
                       onChange={v => setSettings({ ...settings, company: { ...settings.company, authorized_signature_text: v } })} />
-                    <Input label="Official Corporate Designation" value={settings.company.name}
-                      placeholder="e.g. J-Control Enterprise Solutions"
-                      onChange={v => setSettings({ ...settings, company: { ...settings.company, name: v } })} />
-                    <Input label="Registry Email Protocol" value={settings.company.email}
-                      placeholder="corporate@j-control.com"
+                    <Input label="Email Address" value={settings.company.email ?? ''}
+                      placeholder="contact@jazinfotech.com"
                       onChange={v => setSettings({ ...settings, company: { ...settings.company, email: v } })} />
-                    <Input label="Direct Communication Line" value={settings.company.phone}
-                      placeholder="+91 XXXXX XXXXX"
+                    <Input label="Phone Number" value={settings.company.phone ?? ''}
+                      placeholder="+91 9876543210"
                       onChange={v => setSettings({ ...settings, company: { ...settings.company, phone: v } })} />
-                    <Input label="Tax Identification (GST)" value={settings.company.gst}
+                    <Input label="Website" value={settings.company.website ?? ''}
+                      placeholder="www.jazinfotech.com"
+                      onChange={v => setSettings({ ...settings, company: { ...settings.company, website: v } })} />
+                    <Input label="GST Number" value={settings.company.gst ?? ''}
                       placeholder="29AAAAA0000A1Z5"
                       onChange={v => setSettings({ ...settings, company: { ...settings.company, gst: v } })} />
-                    <Input label="Systemic Corporate Tagline" value={settings.company.tagline}
-                      placeholder="Innovating Governance Dynamics"
-                      onChange={v => setSettings({ ...settings, company: { ...settings.company, tagline: v } })} />
+                    <div className="col-span-2">
+                      <Input label="Corporate Tagline" value={settings.company.tagline ?? ''}
+                        placeholder="Innovating Governance Dynamics"
+                        onChange={v => setSettings({ ...settings, company: { ...settings.company, tagline: v } })} />
+                    </div>
                   </div>
                   
                   <div className="space-y-10">
-                    <Textarea label="Corporate Headquarters / Registry Address" value={settings.company.address}
-                      placeholder="123 Corporate Plaza, Financial District..."
+                    <Textarea label="Business Address" value={settings.company.address ?? ''}
+                      placeholder="No. XX, ABC Street..."
                       onChange={v => setSettings({ ...settings, company: { ...settings.company, address: v } })} />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                      <Textarea label="Standard Terms & Conditions Protocol" value={settings.company.terms}
-                        placeholder="Legal boilerplate for all document generations..."
-                        onChange={v => setSettings({ ...settings, company: { ...settings.company, terms: v } })} />
-                      <Textarea label="Internal Administrative Context" value={settings.company.notes}
-                        placeholder="Private notes regarding registry profile..."
-                        onChange={v => setSettings({ ...settings, company: { ...settings.company, notes: v } })} />
+                    <div className="grid grid-cols-2 gap-10">
+                      <Input label="City" value={settings.company.city ?? ''}
+                        placeholder="e.g. Chennai"
+                        onChange={v => setSettings({ ...settings, company: { ...settings.company, city: v } })} />
+                      <Input label="State" value={settings.company.state ?? ''}
+                        placeholder="e.g. Tamil Nadu"
+                        onChange={v => setSettings({ ...settings, company: { ...settings.company, state: v } })} />
+                      <Input label="Country" value={settings.company.country ?? ''}
+                        placeholder="e.g. India"
+                        onChange={v => setSettings({ ...settings, company: { ...settings.company, country: v } })} />
+                      <Input label="Postal Code" value={settings.company.postal_code ?? ''}
+                        placeholder="e.g. 600001"
+                        onChange={v => setSettings({ ...settings, company: { ...settings.company, postal_code: v } })} />
                     </div>
                   </div>
                 </div>
+              </Section>
+            )}
+
+            {tab === "print" && (
+              <Section title="Document Print Settings">
+                <Textarea label="Terms & Conditions" value={settings.company.terms ?? ''}
+                  placeholder="Payment due within 15 days. Goods once sold cannot be returned. All disputes are subject to Chennai jurisdiction..."
+                  onChange={v => setSettings({ ...settings, company: { ...settings.company, terms: v } })} />
+                <Textarea label="Company Notes" value={settings.company.notes ?? ''}
+                  placeholder="Thank you for choosing our services. We appreciate your business..."
+                  onChange={v => setSettings({ ...settings, company: { ...settings.company, notes: v } })} />
               </Section>
             )}
 

@@ -80,6 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('expense-categories', [\App\Http\Controllers\ExpenseCategoryController::class, 'index']);
     Route::post('expense-categories', [\App\Http\Controllers\ExpenseCategoryController::class, 'store']);
     Route::delete('expense-categories/{id}', [\App\Http\Controllers\ExpenseCategoryController::class, 'destroy']);
+    Route::post('bank-accounts/{id}/set-default', [\App\Http\Controllers\BankAccountController::class, 'setDefault']);
     Route::apiResource('bank-accounts', \App\Http\Controllers\BankAccountController::class);
     Route::get('transactions/summary', [\App\Http\Controllers\TransactionController::class, 'summary']);
     Route::apiResource('transactions', \App\Http\Controllers\TransactionController::class);

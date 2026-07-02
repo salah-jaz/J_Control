@@ -135,7 +135,7 @@ export const JAZ_INVOICE_TEMPLATE_HTML = `
         <div class="jaz-terms-list">{{invoice.terms_and_conditions}}</div>
         <p class="jaz-section-heading">Payment Method</p>
         <div class="jaz-payment-row"><strong>Bank Name:</strong> {{invoice.bank_name}}</div>
-        <div class="jaz-payment-row"><strong>Account Name:</strong> {{invoice.company_name}}</div>
+        <div class="jaz-payment-row"><strong>Account Name:</strong> {{invoice.bank_account_name}}</div>
         <div class="jaz-payment-row"><strong>IFSC:</strong> {{invoice.ifsc_code}}</div>
         <div class="jaz-payment-row"><strong>Account Number:</strong> {{invoice.bank_account_number}}</div>
       </div>

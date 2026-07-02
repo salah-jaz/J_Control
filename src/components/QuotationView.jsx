@@ -16,6 +16,7 @@ import {
 import { getSettings } from "../services/db";
 import PrintConfigModal from "./PrintConfigModal";
 import { getQuotation } from "../services/quotationService";
+import { getBankAccounts } from "../services/bankAccountService";
 
 const QuotationView = ({
   isOpen,
@@ -29,6 +30,8 @@ const QuotationView = ({
   const printRef = useRef();
   const pendingPrintRef = useRef(false);
   const [companySettings, setCompanySettings] = useState({});
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [selectedBankId, setSelectedBankId] = useState("");
   const [showPrintConfig, setShowPrintConfig] = useState(false);
   const [printConfig, setPrintConfig] = useState(null);
   const [scaleFactor, setScaleFactor] = useState(1);
@@ -39,7 +42,34 @@ const QuotationView = ({
   useEffect(() => {
     if (!isOpen) return;
     getSettings().then((data) => setCompanySettings(data?.company || {}));
+    getBankAccounts({ useCache: false }).then((banks) => {
+      setBankAccounts(banks || []);
+      const activeBanks = (banks || []).filter(b => b.status === "Active" || b.status === "active");
+
+      // Priority 1: a bank explicitly marked as default
+      const defaultBank = activeBanks.find(b => b.isDefault);
+      if (defaultBank) {
+        setSelectedBankId(String(defaultBank.id));
+        return;
+      }
+
+      // Priority 2: auto-select only if there is exactly ONE active bank
+      if (activeBanks.length === 1) {
+        setSelectedBankId(String(activeBanks[0].id));
+        return;
+      }
+
+      // Priority 3: if no active banks at all, try first bank from the full list
+      if (activeBanks.length === 0 && banks?.length > 0) {
+        setSelectedBankId(String(banks[0].id));
+        return;
+      }
+
+      // Multiple banks, no default — require user to choose
+      setSelectedBankId("");
+    });
   }, [isOpen]);
+
 
   useEffect(() => {
     if (!isOpen || !quotation?.id) {
@@ -62,6 +92,11 @@ const QuotationView = ({
 
   const activeQuotation = fullQuotation || quotation;
 
+  const selectedBank = useMemo(() =>
+    bankAccounts.find(b => String(b.id) === String(selectedBankId)) || null,
+    [bankAccounts, selectedBankId]
+  );
+
   const templates = useMemo(() => getTemplates().filter(t => t.module === "quotations"), []);
   const [activeTemplate, setActiveTemplate] = useState(
     () => templates.find(t => t.isDefault) || templates[0] || null
@@ -82,9 +117,9 @@ const QuotationView = ({
     const html = activeTemplate.template_html
       ? getEffectiveTemplateHtml(activeTemplate, "quotations")
       : buildFullTemplateHtml(filterTemplateByPrintConfig(activeTemplate, keys), "quotations");
-    const data = buildQuotationPrintData(activeQuotation, companySettings);
+    const data = buildQuotationPrintData(activeQuotation, companySettings, selectedBank);
     return resolveTemplateHtmlWithData(html, "quotations", data);
-  }, [activeQuotation, activeTemplate, companySettings, getPrintConfigKeys]);
+  }, [activeQuotation, activeTemplate, companySettings, selectedBank, getPrintConfigKeys]);
 
   const buildPreviewForConfig = useCallback(
     (selectedKeys) => {
@@ -93,47 +128,47 @@ const QuotationView = ({
       const html = activeTemplate.template_html
         ? getEffectiveTemplateHtml(activeTemplate, "quotations")
         : buildFullTemplateHtml(filtered, "quotations");
-      const data = buildQuotationPrintData(activeQuotation, companySettings);
+      const data = buildQuotationPrintData(activeQuotation, companySettings, selectedBank);
       return resolveTemplateHtmlWithData(html, "quotations", data);
     },
-    [activeQuotation, activeTemplate, companySettings]
+    [activeQuotation, activeTemplate, companySettings, selectedBank]
   );
 
-    // Auto-scaling logic to fit ENTIRE layout on one A4 page
-    useEffect(() => {
-        if (!isOpen || !printRef.current || (selectedPreviewId !== 'standard' && !printHtml)) {
-            setScaleFactor(1);
-            return;
-        }
-        
-        const calculateScale = () => {
-            const container = printRef.current;
-            const contentWrap = container.querySelector('.print-scale-content');
-            if (!contentWrap) return;
+  // Auto-scaling logic to fit ENTIRE layout on one A4 page
+  useEffect(() => {
+    if (!isOpen || !printRef.current || (selectedPreviewId !== 'standard' && !printHtml)) {
+      setScaleFactor(1);
+      return;
+    }
 
-            // Reset for calculation
-            contentWrap.style.transform = 'none';
-            contentWrap.style.width = '210mm';
-            
-            const contentHeight = contentWrap.scrollHeight;
-            const a4Height = 1115; 
+    const calculateScale = () => {
+      const container = printRef.current;
+      const contentWrap = container.querySelector('.print-scale-content');
+      if (!contentWrap) return;
 
-            if (contentHeight > a4Height) {
-                setScaleFactor(parseFloat((a4Height / contentHeight).toFixed(4)));
-            } else {
-                setScaleFactor(1);
-            }
-        };
+      // Reset for calculation
+      contentWrap.style.transform = 'none';
+      contentWrap.style.width = '210mm';
 
-        const timer = setTimeout(calculateScale, 400);
-        return () => clearTimeout(timer);
-    }, [isOpen, quotation, activeTemplate, selectedPreviewId, printConfig, printHtml]);
+      const contentHeight = contentWrap.scrollHeight;
+      const a4Height = 1115;
+
+      if (contentHeight > a4Height) {
+        setScaleFactor(parseFloat((a4Height / contentHeight).toFixed(4)));
+      } else {
+        setScaleFactor(1);
+      }
+    };
+
+    const timer = setTimeout(calculateScale, 400);
+    return () => clearTimeout(timer);
+  }, [isOpen, quotation, activeTemplate, selectedPreviewId, printConfig, printHtml]);
 
 
-    const handlePrintTrigger = useReactToPrint({
-        contentRef: printRef,
-        documentTitle: activeQuotation?.quotation_no ? `Quotation_${activeQuotation.quotation_no}` : "Quotation",
-        pageStyle: `
+  const handlePrintTrigger = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: activeQuotation?.quotation_no ? `Quotation_${activeQuotation.quotation_no}` : "Quotation",
+    pageStyle: `
             @page {
                 size: A4;
                 margin: 0 !important;
@@ -190,23 +225,23 @@ const QuotationView = ({
                 }
             }
         `
-    });
+  });
 
-    const handlePrint = useCallback(() => {
-        if (handlePrintTrigger) {
-            handlePrintTrigger();
-        }
-    }, [handlePrintTrigger]);
+  const handlePrint = useCallback(() => {
+    if (handlePrintTrigger) {
+      handlePrintTrigger();
+    }
+  }, [handlePrintTrigger]);
 
-    useEffect(() => {
-        if (printConfig && pendingPrintRef.current && printRef.current) {
-            pendingPrintRef.current = false;
-            const t = setTimeout(() => {
-                handlePrint();
-            }, 150);
-            return () => clearTimeout(t);
-        }
-    }, [printConfig, handlePrint]);
+  useEffect(() => {
+    if (printConfig && pendingPrintRef.current && printRef.current) {
+      pendingPrintRef.current = false;
+      const t = setTimeout(() => {
+        handlePrint();
+      }, 150);
+      return () => clearTimeout(t);
+    }
+  }, [printConfig, handlePrint]);
 
   const openPrintConfig = () => setShowPrintConfig(true);
   const onPrintWithConfig = (selectedKeys) => {
@@ -251,13 +286,41 @@ const QuotationView = ({
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm print:p-0 print:block">
       <style>{pageStyles}</style>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[1400px] h-[95vh] flex flex-col lg:flex-row-reverse overflow-hidden print:shadow-none print:w-full print:max-w-none print:max-h-none print:h-auto print:rounded-none">
-
-        {/* Templates Visual Selector (Sidebar Desktop / Top Rail Mobile) */}
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[1400px] h-[95vh] flex flex-col lg:flex-row-reverse overflow-hidden print:shadow-none print:w-full print:max-w-none print:max-h-none print:h-auto print:rounded-none">        {/* Templates Visual Selector (Sidebar Desktop / Top Rail Mobile) */}
         <div className="w-full lg:w-[360px] bg-gradient-to-b from-slate-50 to-slate-100 border-b lg:border-b-0 lg:border-l border-slate-200 flex flex-col shrink-0 overflow-hidden print:hidden relative z-10">
-          <div className="p-4 lg:p-6 border-b border-slate-200 bg-white shrink-0 shadow-sm relative z-20">
-            <h3 className="font-extrabold text-slate-900 text-lg tracking-tight">Select Layout</h3>
-            <p className="text-sm text-slate-500 mt-1 hidden lg:block">Choose a style for printing or saving.</p>
+          <div className="p-4 lg:p-6 border-b border-slate-200 bg-white shrink-0 shadow-sm relative z-20 space-y-4">
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-lg tracking-tight">Select Layout</h3>
+              <p className="text-sm text-slate-500 mt-1 hidden lg:block">Choose a style for printing or saving.</p>
+            </div>
+
+            {/* Bank Account Selection Dropdown */}
+            <div className="pt-2 border-t border-slate-100">
+              <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Bank Account</label>
+              <select
+                value={selectedBankId}
+                onChange={(e) => setSelectedBankId(e.target.value)}
+                className="w-full bg-slate-50 border-2 border-slate-100 focus:border-slate-900 focus:bg-white rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none transition-all cursor-pointer"
+              >
+                {bankAccounts.length === 0 ? (
+                  <option value="">No bank accounts available</option>
+                ) : (
+                  <>
+                    {!selectedBankId && <option value="">-- Select Bank Account --</option>}
+                    {bankAccounts.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.isDefault ? "★ " : ""}{b.bankName}{b.nickName ? ` (${b.nickName})` : b.accountType ? ` — ${b.accountType}` : ""}{b.isDefault ? " [Default]" : ""}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+              {!selectedBankId && bankAccounts.length > 1 && (
+                <p className="text-[10px] text-amber-600 font-bold mt-1.5 uppercase tracking-wider">
+                  Please select a bank to continue.
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto p-4 lg:p-5 grid grid-flow-col auto-cols-[140px] lg:grid-flow-row lg:grid-cols-2 gap-4 lg:content-start [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 pb-10">
@@ -309,7 +372,7 @@ const QuotationView = ({
               const previewHtml = isActive ? (() => {
                 const keys = getPrintConfigKeys();
                 const html = t.template_html ? getEffectiveTemplateHtml(t, "quotations") : buildFullTemplateHtml(filterTemplateByPrintConfig(t, keys), "quotations");
-                let data = buildQuotationPrintData(activeQuotation, companySettings);
+                let data = buildQuotationPrintData(activeQuotation, companySettings, selectedBank);
                 if (data.quotation && data.quotation.items && data.quotation.items.length > 5) {
                   data.quotation.items = data.quotation.items.slice(0, 5);
                 }
@@ -377,6 +440,40 @@ const QuotationView = ({
           </div>
 
           <div className="flex-1 overflow-y-auto bg-slate-200/50 print:p-0 print:bg-white flex flex-col items-center shadow-inner">
+            {/* Validation Alerts */}
+            {(() => {
+              const isCompanyInfoMissing = !companySettings?.name && !companySettings?.company_name;
+              const isBankMissing = bankAccounts.length === 0;
+              const isBankNotSelected = !selectedBankId;
+              return (
+                <div className="w-full max-w-[210mm] px-4 pt-6 space-y-3 print:hidden">
+                  {isCompanyInfoMissing && (
+                    <div className="bg-rose-50 border-2 border-rose-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                      <div className="text-xs text-rose-800 font-medium">
+                        <span className="font-bold uppercase tracking-wider block mb-0.5 text-rose-900 text-[10px]">Company Profile Incomplete</span>
+                        Please complete the Company Profile in Settings to populate your header/billing details.
+                      </div>
+                    </div>
+                  )}
+                  {isBankMissing ? (
+                    <div className="bg-rose-50 border-2 border-rose-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                      <div className="text-xs text-rose-800 font-medium">
+                        <span className="font-bold uppercase tracking-wider block mb-0.5 text-rose-900 text-[10px]">No Bank Accounts Available</span>
+                        Please create a bank account before printing.
+                      </div>
+                    </div>
+                  ) : isBankNotSelected ? (
+                    <div className="bg-amber-50 border-2 border-amber-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                      <div className="text-xs text-amber-800 font-medium">
+                        <span className="font-bold uppercase tracking-wider block mb-0.5 text-amber-900 text-[10px]">Bank Selection Required</span>
+                        Please select a Bank Account from the dropdown in the layout sidebar to print.
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })()}
+
             <div className="w-full py-8 lg:py-12 flex flex-col items-center">
               {loading ? (
                 <div className="w-[210mm] h-[297mm] bg-white shadow-2xl border border-slate-200 rounded-sm flex flex-col items-center justify-center p-10 gap-4 animate-fade-in">
@@ -386,124 +483,180 @@ const QuotationView = ({
               ) : (
                 <div ref={printRef} className="quotation-a4 bg-white transition-all relative mx-auto print:h-auto print:min-h-[297mm] print:overflow-visible w-[210mm] h-[297mm] shadow-2xl border border-slate-200 rounded-sm print:shadow-none print:border-none print:p-0 print:rounded-none">
                   <div className="print-scale-container" style={{ overflow: 'visible', width: '100%', height: '100%' }}>
-                    <div className="print-scale-content" style={{ 
+                    <div className="print-scale-content" style={{
                       transform: scaleFactor !== 1 ? `scale(${scaleFactor})` : 'none',
                       transformOrigin: 'top center',
-                      width: '210mm' 
+                      width: '210mm'
                     }}>
-                  {selectedPreviewId === 'standard' ? (
-                    <div className="standard-print-layout">
-                      <div className="print-header">
-                        <div className="print-header-left">
-                          <h2 className="company-name">{companySettings.company_name || "Company Name"}</h2>
-                          <p className="company-details">
-                            {companySettings.address || "Business Address\nCity, Country"}
-                            {companySettings.email && `\nEmail: ${companySettings.email}`}
-                            {companySettings.phone && `\nPhone: ${companySettings.phone}`}
-                            {companySettings.website && `\nWebsite: ${companySettings.website}`}
-                          </p>
-                        </div>
-                        <div className="print-header-right">
-                          <h2 className="doc-number">Quotation No: {activeQuotation.quotation_no}</h2>
-                          <p className="doc-date">Date: {dateStr}</p>
-                        </div>
-                      </div>
+                      {selectedPreviewId === 'standard' ? (
+                        <div className="standard-print-layout">
+                          <div className="print-header">
+                            <div className="print-header-left">
+                              <h2 className="company-name">{companySettings.name || companySettings.company_name || "Company Name"}</h2>
+                              <p className="company-details font-medium whitespace-pre-line">
+                                {companySettings.address}
+                                {(companySettings.city || companySettings.state) && `\n${[companySettings.city, companySettings.state].filter(Boolean).join(', ')}`}
+                                {(companySettings.country || companySettings.postal_code) && `\n${[companySettings.country, companySettings.postal_code].filter(Boolean).join(' - ')}`}
+                                {companySettings.phone && `\nPhone: ${companySettings.phone}`}
+                                {companySettings.email && `\nEmail: ${companySettings.email}`}
+                                {companySettings.website && `\nWebsite: ${companySettings.website}`}
+                                {companySettings.gst && `\nGST: ${companySettings.gst}`}
+                              </p>
+                            </div>
+                            <div className="print-header-right">
+                              <h2 className="doc-number">Quotation No: {activeQuotation.quotation_no}</h2>
+                              <p className="doc-date">Date: {dateStr}</p>
+                            </div>
+                          </div>
 
-                      <hr className="print-divider" />
+                          <hr className="print-divider" />
 
-                      <div className="print-billing">
-                        <div className="print-billing-col">
-                          <h3>Bill To</h3>
-                          <div className="address-details">
-                            <p className="font-bold text-slate-800">{clientName}</p>
-                            {client?.company_name && client?.client_name && <p>{client.client_name}</p>}
-                            <p>{client?.address || "Client Address"}</p>
-                            <p>{client?.phone || "Client Phone"}</p>
+                          <div className="print-billing">
+                            <div className="print-billing-col">
+                              <h3>Bill To</h3>
+                              <div className="address-details font-medium">
+                                <p className="font-bold text-slate-800">{clientName}</p>
+                                {client?.company_name && client?.client_name && <p>{client.client_name}</p>}
+                                <p>{client?.address || "Client Address"}</p>
+                                <p>{client?.phone || "Client Phone"}</p>
+                              </div>
+                            </div>
+                            <div className="print-billing-col">
+                              <h3>From</h3>
+                              <div className="address-details font-medium">
+                                <p className="font-bold text-slate-800">{companySettings.name || companySettings.company_name || "Your Company Pvt Ltd"}</p>
+                                <p className="whitespace-pre-line">
+                                  {companySettings.address}
+                                  {(companySettings.city || companySettings.state) && `\n${[companySettings.city, companySettings.state].filter(Boolean).join(', ')}`}
+                                  {(companySettings.country || companySettings.postal_code) && `\n${[companySettings.country, companySettings.postal_code].filter(Boolean).join(' - ')}`}
+                                </p>
+                                {companySettings.phone && <p>P: {companySettings.phone}</p>}
+                                {companySettings.email && <p>E: {companySettings.email}</p>}
+                                {companySettings.website && <p>W: {companySettings.website}</p>}
+                                {companySettings.gst && <p>GST: {companySettings.gst}</p>}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="print-table-wrapper">
+                            <table className="print-table">
+                              <thead>
+                                <tr>
+                                  <th style={{ width: '60px' }}>#</th>
+                                  <th>Description</th>
+                                  <th className="text-right" style={{ width: '120px' }}>Price</th>
+                                  <th className="text-right" style={{ width: '120px' }}>Total</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {items.length === 0 ? (
+                                  <tr>
+                                    <td colSpan="4" className="text-center">No items added.</td>
+                                  </tr>
+                                ) : items.map((item, index) => (
+                                  <tr key={index}>
+                                    <td>{index + 1}</td>
+                                    <td>{item.item || item.description || item.item_name || "—"}</td>
+                                    <td className="text-right font-medium">
+                                      {activeQuotation.currency || '$'}{parseFloat(item.price || item.unit_price || 0).toFixed(2)}
+                                    </td>
+                                    <td className="text-right font-bold text-slate-900">
+                                      {activeQuotation.currency || '$'}{parseFloat(item.amount || item.total || 0).toFixed(2)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <div className="print-summary">
+                            <div className="print-summary-box">
+                              <div className="print-summary-row">
+                                <span>Subtotal</span>
+                                <span>{activeQuotation.currency || '$'}{subtotal.toFixed(2)}</span>
+                              </div>
+                              {discount > 0 && (
+                                <div className="print-summary-row">
+                                  <span>Discount</span>
+                                  <span className="text-emerald-600 font-medium">-{activeQuotation.currency || '$'}{discount.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {tax > 0 && (
+                                <div className="print-summary-row">
+                                  <span>Tax</span>
+                                  <span>{activeQuotation.currency || '$'}{tax.toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div className="print-summary-row total">
+                                <span>Total</span>
+                                <span className="total-amount font-bold">{activeQuotation.currency || '$'}{total.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Terms, Notes, and Bank details */}
+                          <div className="print-bottom-section grid grid-cols-2 gap-8 mt-8 border-t border-slate-200 pt-6">
+                            <div className="print-bottom-left space-y-6">
+                              {/* Terms & Conditions */}
+                              <div>
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Terms & Conditions</h3>
+                                <p className="text-[12px] text-slate-600 whitespace-pre-line leading-relaxed">
+                                  {companySettings.terms || "Standard terms apply."}
+                                </p>
+                              </div>
+
+                              {/* Company Notes */}
+                              {companySettings.notes && (
+                                <div>
+                                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Company Notes</h3>
+                                  <p className="text-[12px] text-slate-600 whitespace-pre-line leading-relaxed">
+                                    {companySettings.notes}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="print-bottom-right space-y-6">
+                              {/* Bank Details */}
+                              {selectedBank ? (
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                  <h3 className="text-[10px] font-black text-slate-700 uppercase tracking-widest mb-3">Bank Transfer</h3>
+                                  <div className="space-y-1.5 text-xs text-slate-600 font-medium">
+                                    <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">Bank Name:</span> <span className="font-bold text-slate-800">{selectedBank.bankName}</span></div>
+                                    <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">Account Name:</span> <span className="font-bold text-slate-800">{selectedBank.accountName}</span></div>
+                                    <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">Account Number:</span> <span className="font-bold text-slate-800">{selectedBank.accountNumber}</span></div>
+                                    <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">IFSC Code:</span> <span className="font-bold text-slate-800">{selectedBank.ifsc}</span></div>
+                                    {(selectedBank.qrCode || selectedBank.qr_code) && (
+                                      <div className="mt-4 flex justify-center">
+                                        <img src={selectedBank.qrCode || selectedBank.qr_code} alt="Bank QR Code" width="110" height="110" className="object-contain" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="bg-rose-50 border border-dashed border-rose-200 p-4 rounded-xl text-rose-700 text-xs text-center font-semibold">
+                                  Please select a bank account.
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div className="print-billing-col">
-                          <h3>From</h3>
-                          <div className="address-details">
-                            <p className="font-bold text-slate-800">{companySettings.company_name || "Your Company Pvt Ltd"}</p>
-                            <p className="whitespace-pre-line">{companySettings.address || "Business Address\nCity, Country"}</p>
-                            {companySettings.email && <p>Email: {companySettings.email}</p>}
-                            {companySettings.phone && <p>Phone: {companySettings.phone}</p>}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="print-table-wrapper">
-                        <table className="print-table">
-                          <thead>
-                            <tr>
-                              <th style={{ width: '60px' }}>#</th>
-                              <th>Description</th>
-                              <th className="text-right" style={{ width: '120px' }}>Price</th>
-                              <th className="text-right" style={{ width: '120px' }}>Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {items.length === 0 ? (
-                              <tr>
-                                <td colSpan="4" className="text-center">No items added.</td>
-                              </tr>
-                            ) : items.map((item, index) => (
-                              <tr key={index}>
-                                <td>{index + 1}</td>
-                                <td>{item.item || item.description || item.item_name || "—"}</td>
-                                <td className="text-right font-medium">
-                                  {activeQuotation.currency || '$'}{parseFloat(item.price || item.unit_price || 0).toFixed(2)}
-                                </td>
-                                <td className="text-right font-bold text-slate-900">
-                                  {activeQuotation.currency || '$'}{parseFloat(item.amount || item.total || 0).toFixed(2)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <div className="print-summary">
-                        <div className="print-summary-box">
-                          <div className="print-summary-row">
-                            <span>Subtotal</span>
-                            <span>{activeQuotation.currency || '$'}{subtotal.toFixed(2)}</span>
-                          </div>
-                          {discount > 0 && (
-                            <div className="print-summary-row">
-                              <span>Discount</span>
-                              <span className="text-emerald-600 font-medium">-{activeQuotation.currency || '$'}{discount.toFixed(2)}</span>
+                      ) : (
+                        <div className="text-slate-800 w-full min-h-[297mm]">
+                          {printHtml ? (
+                            <div className="relative isolate" style={{ transform: 'translateZ(0)' }}>
+                              <div className="w-[210mm] mx-auto p-0" dangerouslySetInnerHTML={{ __html: printHtml }} />
+                            </div>
+                          ) : (
+                            <div className="p-12 text-center text-slate-500">
+                              <p className="font-semibold text-lg">No template selected</p>
+                              <p className="text-sm mt-2">Please choose a template from the list.</p>
                             </div>
                           )}
-                          {tax > 0 && (
-                            <div className="print-summary-row">
-                              <span>Tax</span>
-                              <span>{activeQuotation.currency || '$'}{tax.toFixed(2)}</span>
-                            </div>
-                          )}
-                          <div className="print-summary-row total">
-                            <span>Total</span>
-                            <span className="total-amount font-bold">{activeQuotation.currency || '$'}{total.toFixed(2)}</span>
-                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
-                  ) : (
-                  <div className="text-slate-800 w-full min-h-[297mm]">
-                    {printHtml ? (
-                      <div className="relative isolate" style={{ transform: 'translateZ(0)' }}>
-                        <div className="w-[210mm] mx-auto p-0" dangerouslySetInnerHTML={{ __html: printHtml }} />
-                      </div>
-                    ) : (
-                      <div className="p-12 text-center text-slate-500">
-                        <p className="font-semibold text-lg">No template selected</p>
-                        <p className="text-sm mt-2">Please choose a template from the list.</p>
-                      </div>
-                    )}
                   </div>
-                )}
-                </div>
-                </div>
                 </div>
               )}
             </div>
@@ -528,21 +681,62 @@ const QuotationView = ({
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <button onClick={() => openPrintConfig()} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-lg text-sm font-semibold transition-colors shadow-sm">
-                <Download size={16} /> Download PDF
-              </button>
-              <button
-                onClick={() => {
-                  if (!activeTemplate) {
-                    toast.error("No Quotation template available. Create one in Print Templates.");
-                    return;
-                  }
-                  openPrintConfig();
-                }}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-lg text-sm font-semibold transition-colors shadow-sm"
-              >
-                <Printer size={16} /> Print
-              </button>
+              {(() => {
+                const isBankMissing = bankAccounts.length === 0;
+                const isBankNotSelected = !selectedBankId;
+                return (
+                  <>
+                    <button
+                      disabled={isBankMissing || isBankNotSelected}
+                      onClick={() => {
+                        if (isBankMissing) {
+                          toast.error("No bank accounts available. Please create a bank account before printing.");
+                          return;
+                        }
+                        if (isBankNotSelected) {
+                          toast.error("Please select a Bank Account before printing.");
+                          return;
+                        }
+                        openPrintConfig();
+                      }}
+                      className={clsx(
+                        "inline-flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-semibold transition-colors shadow-sm",
+                        (isBankMissing || isBankNotSelected)
+                          ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                          : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
+                      )}
+                    >
+                      <Download size={16} /> Download PDF
+                    </button>
+                    <button
+                      disabled={isBankMissing || isBankNotSelected}
+                      onClick={() => {
+                        if (!activeTemplate) {
+                          toast.error("No Quotation template available. Create one in Print Templates.");
+                          return;
+                        }
+                        if (isBankMissing) {
+                          toast.error("No bank accounts available. Please create a bank account before printing.");
+                          return;
+                        }
+                        if (isBankNotSelected) {
+                          toast.error("Please select a Bank Account before printing.");
+                          return;
+                        }
+                        openPrintConfig();
+                      }}
+                      className={clsx(
+                        "inline-flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-semibold transition-colors shadow-sm",
+                        (isBankMissing || isBankNotSelected)
+                          ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                          : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
+                      )}
+                    >
+                      <Printer size={16} /> Print
+                    </button>
+                  </>
+                );
+              })()}
               <button onClick={onClose} className="inline-flex items-center gap-2 px-4 py-2 ml-2 border border-slate-200 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-semibold transition-colors">
                 Close
               </button>

@@ -529,11 +529,22 @@ export const PREMIUM_QUOTATION_TEMPLATE_HTML = `
       <div>{{quotation.customer_phone}} | {{quotation.customer_email}}</div>
     </section>
     <section>{{quotation.items_table}}</section>
-    <section class="sum">
-      <div class="r"><span>Subtotal</span><span>{{quotation.subtotal}}</span></div>
-      <div class="r"><span>Discount</span><span>{{quotation.discount}}</span></div>
-      <div class="r"><span>Tax</span><span>{{quotation.tax_amount}}</span></div>
-      <div class="t"><span>Total</span><span>{{quotation.total}}</span></div>
+    <section class="grid" style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; margin-top: 14px; align-items: start;">
+      <div class="card" style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; bg: #f8fafc; font-size: 12px; line-height: 1.5; background: #f8fafc;">
+        <div class="h" style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: .06em; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px;">Terms & Bank Details</div>
+        <div>{{quotation.terms_and_conditions}}</div>
+        <div style="margin-top: 8px;"><strong>Bank Name:</strong> {{quotation.bank_name}}</div>
+        <div><strong>Account Name:</strong> {{quotation.bank_account_name}}</div>
+        <div><strong>Account Number:</strong> {{quotation.bank_account_number}}</div>
+        <div><strong>IFSC Code:</strong> {{quotation.ifsc_code}}</div>
+        <div style="margin-top: 8px; font-style: italic; color: #64748b;">{{quotation.company_notes}}</div>
+      </div>
+      <div class="sum" style="width: 100%; margin-left: 0;">
+        <div class="r"><span>Subtotal</span><span>{{quotation.subtotal}}</span></div>
+        <div class="r"><span>Discount</span><span>{{quotation.discount}}</span></div>
+        <div class="r"><span>Tax</span><span>{{quotation.tax_amount}}</span></div>
+        <div class="t"><span>Total</span><span>{{quotation.total}}</span></div>
+      </div>
     </section>
     <footer class="foot">
       <div>{{quotation.terms_and_conditions}}</div>
