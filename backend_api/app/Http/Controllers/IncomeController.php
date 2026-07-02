@@ -20,17 +20,17 @@ class IncomeController extends Controller
     }
 
     /**
-     * Get status from total vs paid: Unpaid | Partially Paid | Fully Paid.
+     * Get status from total vs paid: Pending | Partially Received | Received.
      */
     private static function getIncomeStatus(float $totalAmount, float $paidAmount): string
     {
         if ($paidAmount <= 0) {
-            return 'Unpaid';
+            return 'Pending';
         }
         if ($paidAmount >= round($totalAmount, 2)) {
-            return 'Fully Paid';
+            return 'Received';
         }
-        return 'Partially Paid';
+        return 'Partially Received';
     }
 
     /**
@@ -136,12 +136,12 @@ class IncomeController extends Controller
 
         if ($request->filled('status') && $request->input('status') !== 'all') {
             $status = $request->input('status');
-            if ($status === 'Paid') {
-                $query->where('status', 'Fully Paid');
-            } elseif ($status === 'Partial') {
-                $query->where('status', 'Partially Paid');
-            } elseif ($status === 'Unpaid') {
-                $query->where('status', 'Unpaid');
+            if ($status === 'Paid' || $status === 'Received') {
+                $query->whereIn('status', ['Received', 'Fully Paid']);
+            } elseif ($status === 'Partial' || $status === 'Partially Received') {
+                $query->whereIn('status', ['Partially Received', 'Partially Paid']);
+            } elseif ($status === 'Unpaid' || $status === 'Pending') {
+                $query->whereIn('status', ['Pending', 'Unpaid']);
             } else {
                 $query->where('status', $status);
             }
@@ -186,12 +186,12 @@ class IncomeController extends Controller
 
         if ($request->filled('status') && $request->input('status') !== 'all') {
             $status = $request->input('status');
-            if ($status === 'Paid') {
-                $query->where('status', 'Fully Paid');
-            } elseif ($status === 'Partial') {
-                $query->where('status', 'Partially Paid');
-            } elseif ($status === 'Unpaid') {
-                $query->where('status', 'Unpaid');
+            if ($status === 'Paid' || $status === 'Received') {
+                $query->whereIn('status', ['Received', 'Fully Paid']);
+            } elseif ($status === 'Partial' || $status === 'Partially Received') {
+                $query->whereIn('status', ['Partially Received', 'Partially Paid']);
+            } elseif ($status === 'Unpaid' || $status === 'Pending') {
+                $query->whereIn('status', ['Pending', 'Unpaid']);
             } else {
                 $query->where('status', $status);
             }
@@ -309,14 +309,25 @@ class IncomeController extends Controller
         $fillable = (new \App\Models\Income)->getFillable();
         $payload = array_intersect_key($validated, array_flip($fillable));
 
-        $totalAmount = (float) $payload['amount'];
+        $amount = (float) $payload['amount'];
+        $discount = isset($payload['discount_amount']) ? (float) $payload['discount_amount'] : 0.0;
+        $gst = isset($payload['gst_amount']) ? (float) $payload['gst_amount'] : 0.0;
+        $netTotal = max(0.0, $amount - $discount + $gst);
+        $payload['net_amount'] = $netTotal;
+
         $initialDeposit = isset($payload['initial_deposit_amount']) ? (float) $payload['initial_deposit_amount'] : null;
         $initialDepositBankId = $payload['initial_deposit_bank_id'] ?? null;
         $extraInstallments = $payload['extra_installments'] ?? [];
         $receivedDate = $payload['received_date'] ?? null;
 
-        $paidAmount = self::getPaidAmount($totalAmount, $initialDeposit, $extraInstallments);
-        $status = self::getIncomeStatus($totalAmount, $paidAmount);
+        // Perform financial validation
+        $valError = \App\Helpers\FinancialValidator::validatePayments($netTotal, $initialDeposit, $initialDepositBankId, $extraInstallments);
+        if ($valError) {
+            return $valError;
+        }
+
+        $paidAmount = self::getPaidAmount($netTotal, $initialDeposit, $extraInstallments);
+        $status = self::getIncomeStatus($netTotal, $paidAmount);
         $payload['status'] = $status;
 
         $income = \App\Models\Income::create($payload);
@@ -381,17 +392,28 @@ class IncomeController extends Controller
             'extra_installments.*.note' => 'nullable|string',
         ]);
 
-        // Reverse existing payments (transactions + bank balances)
-        self::reverseIncomePayments($income);
+        $amount = (float) $validated['amount'];
+        $discount = isset($validated['discount_amount']) ? (float) $validated['discount_amount'] : 0.0;
+        $gst = isset($validated['gst_amount']) ? (float) $validated['gst_amount'] : 0.0;
+        $netTotal = max(0.0, $amount - $discount + $gst);
+        $validated['net_amount'] = $netTotal;
 
-        $totalAmount = (float) $validated['amount'];
         $initialDeposit = isset($validated['initial_deposit_amount']) ? (float) $validated['initial_deposit_amount'] : null;
         $initialDepositBankId = $validated['initial_deposit_bank_id'] ?? null;
         $extraInstallments = $validated['extra_installments'] ?? [];
         $receivedDate = $validated['received_date'] ?? null;
 
-        $paidAmount = self::getPaidAmount($totalAmount, $initialDeposit, $extraInstallments);
-        $validated['status'] = self::getIncomeStatus($totalAmount, $paidAmount);
+        // Perform financial validation first to avoid premature state changes
+        $valError = \App\Helpers\FinancialValidator::validatePayments($netTotal, $initialDeposit, $initialDepositBankId, $extraInstallments);
+        if ($valError) {
+            return $valError;
+        }
+
+        // Reverse existing payments (transactions + bank balances)
+        self::reverseIncomePayments($income);
+
+        $paidAmount = self::getPaidAmount($netTotal, $initialDeposit, $extraInstallments);
+        $validated['status'] = self::getIncomeStatus($netTotal, $paidAmount);
 
         $income->update($validated);
 

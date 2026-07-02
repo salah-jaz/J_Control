@@ -308,6 +308,12 @@ class ExpenseController extends Controller
         $extraInstallments = $validated['extra_installments'] ?? [];
         $paidDate = $validated['paid_date'] ?? null;
 
+        // Perform financial validation
+        $valError = \App\Helpers\FinancialValidator::validatePayments($totalAmount, $initialDeposit, $initialDepositBankId, $extraInstallments);
+        if ($valError) {
+            return $valError;
+        }
+
         $paidAmount = self::getPaidAmount($totalAmount, $initialDeposit, $extraInstallments);
         $validated['status'] = self::getExpenseStatus($totalAmount, $paidAmount);
 
@@ -420,6 +426,12 @@ class ExpenseController extends Controller
         $initialDepositBankId = $validated['initial_deposit_bank_id'] ?? null;
         $extraInstallments = $validated['extra_installments'] ?? [];
         $paidDate = $validated['paid_date'] ?? null;
+
+        // Perform financial validation first to avoid premature state updates
+        $valError = \App\Helpers\FinancialValidator::validatePayments($totalAmount, $initialDeposit, $initialDepositBankId, $extraInstallments);
+        if ($valError) {
+            return $valError;
+        }
 
         self::reverseExpensePayments($expense);
 

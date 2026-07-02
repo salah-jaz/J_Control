@@ -129,7 +129,12 @@ export default function Invoices() {
 
   const handleSave = async () => {
     invalidateCache('/invoices');
+    invalidateCache('/bank-accounts');
+    invalidateCache('/incomes');
     queryClient.invalidateQueries({ queryKey: queryKeys.invoices.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
   };
 
   const handleDelete = async (id) => {

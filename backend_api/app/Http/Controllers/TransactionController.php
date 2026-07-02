@@ -85,7 +85,7 @@ class TransactionController extends Controller
             });
         }
 
-        $paginator = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        $paginator = $query->orderBy('date', 'desc')->orderBy('created_at', 'desc')->orderBy('id', 'desc')->paginate($perPage);
         $paginator->getCollection()->transform(function ($txn) {
             return self::mapTransaction($txn);
         });

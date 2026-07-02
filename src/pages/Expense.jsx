@@ -8,6 +8,8 @@ import {
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { exportToCSV } from "../utils/csvExport";
+import { validateFinancialForm } from "../utils/financialValidation";
+import { invalidateCache } from "../utils/apiFetch";
 
 import { createExpense, updateExpense, deleteExpense } from "../services/expenseService";
 import { getBankAccounts } from "../services/bankAccountService";
@@ -81,14 +83,44 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
     return b ? `${b.bankName} - ${b.accountNumber}` : "";
   };
 
+  const subtotal = parseFloat(form.amount) || 0;
+  const discountVal = parseFloat(form.discount) || 0;
+  const taxVal = parseFloat(form.gstAmount) || 0;
+  const totalAmount = subtotal - discountVal + taxVal;
+
+  useEffect(() => {
+    const initAmt = form.initialDepositEnabled ? (parseFloat(form.initialDepositAmount) || 0) : 0;
+    const installmentsAmt = (form.extraInstallments || []).reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+    const paid = initAmt + installmentsAmt;
+
+    const status = paid <= 0 ? 'Pending' : (paid >= totalAmount ? 'Paid' : 'Partial');
+    setForm(prev => {
+      if (prev.status !== status) {
+        return { ...prev, status };
+      }
+      return prev;
+    });
+  }, [form.initialDepositEnabled, form.initialDepositAmount, form.extraInstallments, totalAmount]);
+
   const validate = () => {
     const e = {};
     if (!form.vendor) e.vendor = "Vendor is required";
     if (!form.expenseType) e.expenseType = "Expense type is required";
     if (!form.amount) e.amount = "Base amount is required";
-    if (form.initialDepositEnabled && (parseFloat(form.initialDepositAmount) || 0) > 0 && !form.initialDepositBankId) {
-      e.initialDepositBank = "Select bank for advance payment";
+
+    const valResult = validateFinancialForm({
+      totalAmount,
+      initialDepositEnabled: form.initialDepositEnabled,
+      initialDepositAmount: form.initialDepositAmount,
+      initialDepositBankId: form.initialDepositBankId,
+      extraInstallments: form.extraInstallments
+    });
+
+    if (!valResult.isValid) {
+      toast.error(valResult.message);
+      e[valResult.field] = valResult.message;
     }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -103,11 +135,6 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
       setIsSaving(false);
     }
   };
-
-  const subtotal = parseFloat(form.amount) || 0;
-  const discountVal = parseFloat(form.discount) || 0;
-  const taxVal = parseFloat(form.gstAmount) || 0;
-  const totalAmount = subtotal - discountVal + taxVal;
 
   const TABS = [
     { id: 'basic', label: 'Basic Info', icon: Target },
@@ -278,8 +305,8 @@ const ExpenseForm = ({ isOpen, onClose, expense, onSave, bankAccounts = [], expe
                   </div>
                   <div>
                     <Label>Status</Label>
-                    <select className={clsx(inputCls, "appearance-none")} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                      {['Paid', 'Pending', 'Partial', 'Overdue'].map(s => <option key={s}>{s}</option>)}
+                    <select className={clsx(inputCls, "appearance-none cursor-not-allowed")} disabled value={form.status}>
+                      {['Paid', 'Pending', 'Partial', 'Overdue'].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                   <div>
@@ -516,7 +543,15 @@ export default function Expense() {
         await createExpense(formData);
         toast.success("Expense recorded");
       }
+      invalidateCache('/bank-accounts');
+      invalidateCache('/expenses');
       queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+      
+      const updatedAccounts = await getBankAccounts();
+      setBankAccounts(updatedAccounts);
+      
       setOpenForm(false);
     } catch (e) {
       toast.error(e.response?.data?.message || "Failed to save expense");
@@ -528,7 +563,14 @@ export default function Expense() {
     try {
       await deleteExpense(id);
       toast.success("Expense purged");
+      invalidateCache('/bank-accounts');
+      invalidateCache('/expenses');
       queryClient.invalidateQueries({ queryKey: queryKeys.expenses.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+      
+      const updatedAccounts = await getBankAccounts();
+      setBankAccounts(updatedAccounts);
     } catch (e) {
       toast.error("Operation failed");
     }
