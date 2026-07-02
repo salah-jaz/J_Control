@@ -75,10 +75,28 @@ class SettingController extends Controller
              $settings = new Setting();
         }
 
-        $settings->fill($request->all());
+        $data = $request->all();
+        if (isset($data['company']) && is_array($data['company'])) {
+            $company = $data['company'];
+            foreach (['logo', 'signature', 'seal'] as $key) {
+                if (!empty($company[$key])) {
+                    $url = $company[$key];
+                    // Strip base URL or schema + host to keep path relative
+                    // E.g., http://localhost:8000/storage/logos/filename.png -> storage/logos/filename.png
+                    if (preg_match('#^https?://[^/]+/(storage/.*)$#i', $url, $matches)) {
+                        $company[$key] = $matches[1];
+                    } elseif (preg_match('#^https?://[^/]+/(.*)$#i', $url, $matches)) {
+                        $company[$key] = $matches[1];
+                    }
+                }
+            }
+            $data['company'] = $company;
+        }
+
+        $settings->fill($data);
         $settings->save();
 
-        return response()->json($settings);
+        return response()->json($this->ensureAbsoluteUrls($settings));
     }
 
     public function uploadLogo(Request $request)

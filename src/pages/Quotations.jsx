@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, Suspense, lazy } from "react";
 import {
-  FileText, Plus, Eye, Edit2, Trash2, FileOutput, X, User, Layers, 
-  Loader2, Filter, Building2, Calendar as CalendarIcon, Clock, Target, 
+  FileText, Plus, Eye, Edit2, Trash2, FileOutput, X, User, Layers,
+  Loader2, Filter, Building2, Calendar as CalendarIcon, Clock, Target,
   MessageSquare, Save, ChevronRight, Download, Search, CheckCircle2,
   TrendingUp, FileSpreadsheet, Briefcase
 } from "lucide-react";
@@ -148,7 +148,7 @@ export default function Quotations() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50/50 animate-in fade-in duration-500 overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-slate-50/50 animate-in fade-in duration-500">
       <div className="px-6 lg:px-8 pt-8 pb-6 bg-white border-b border-slate-200/60 shadow-sm relative z-10">
         <PageHeader
           title="Quotations"
@@ -220,75 +220,76 @@ export default function Quotations() {
           </div>
         )}
 
-        <div className="flex-1 overflow-auto custom-scrollbar">
-          <div className="min-w-full">
+        <div className="overflow-auto custom-scrollbar">
+          <div className="w-full">
             <table className="w-full text-left border-collapse table-fixed">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100 sticky top-0 z-10">
-                  <th className="px-6 lg:px-8 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider w-32">Quote No</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right w-40">Total</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider w-32">Status</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider w-40">Dates</th>
-                  <th className="px-6 lg:px-8 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right w-44">Actions</th>
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[15%]">Quote No</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[32%]">Customer</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-[12%]">Total</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[12%]">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-[19%]">Dates</th>
+                  <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-[10%]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {quotationsLoading ? (
-                  <tr><td colSpan="6" className="p-20 text-center text-slate-400 font-bold uppercase tracking-wider animate-pulse ">Loading quotations...</td></tr>
+                  <tr><td colSpan="6" className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse italic">Loading quotations...</td></tr>
                 ) : quotations.map(item => (
                   <tr key={item.id} className="group hover:bg-slate-50/80 transition-all duration-200">
                     <td className="px-6 lg:px-8 py-5">
-                      <span className="font-mono text-[13px] font-semibold text-slate-900  tracking-tight bg-slate-100 px-2 py-1 rounded-lg">
+                      <span className="font-mono text-[13px] font-semibold text-slate-900 tracking-tight bg-slate-100 px-2 py-1 rounded-lg">
                         {item.quotation_no}
                       </span>
                     </td>
                     <td className="px-6 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center text-[12px] font-semibold text-slate-600 shadow-inner">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
                           {item.client?.company_name?.[0] || item.client?.client_name?.[0] || 'Q'}
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-[13px] font-semibold text-slate-900 truncate max-w-[200px]">{item.client?.company_name || item.client?.client_name || '—'}</span>
-                          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{item.client?.email || 'N/A'}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-slate-900 truncate">{item.client?.company_name || item.client?.client_name || '—'}</span>
+                          <span className="text-[13px] font-medium text-slate-600 truncate">{item.client?.email || 'N/A'}</span>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-5 text-right">
-                      <span className="font-mono text-[15px] font-semibold text-indigo-600 ">
-                        Γé╣{parseFloat(item.total || 0).toLocaleString()}
+                      <span className="font-mono text-[15px] font-semibold text-indigo-600">
+                        ₹{parseFloat(item.total || 0).toLocaleString()}
                       </span>
                     </td>
                     <td className="px-6 py-5">
                       <span className={clsx(
-                        "px-2.5 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-[0.1em] border shadow-sm inline-flex items-center gap-1.5",
-                        item.status === 'Accepted' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                        item.status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-100' : 
-                        item.status === 'Converted' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                        'bg-amber-50 text-amber-700 border-amber-100'
+                        "px-2 py-0.5 rounded text-[11px] font-bold inline-flex items-center gap-1.5",
+                        item.status === 'Accepted' ? 'bg-emerald-50 text-emerald-700' :
+                          item.status === 'Rejected' ? 'bg-rose-50 text-rose-700' :
+                            item.status === 'Converted' ? 'bg-indigo-50 text-indigo-700' :
+                              'bg-amber-50 text-amber-700'
                       )}>
-                        <div className={clsx("w-1 h-1 rounded-full", 
-                          item.status === 'Accepted' ? 'bg-emerald-500' : 
-                          item.status === 'Rejected' ? 'bg-rose-500' : 'bg-amber-500'
+                        <div className={clsx("w-1 h-1 rounded-full",
+                          item.status === 'Accepted' ? 'bg-emerald-500' :
+                            item.status === 'Rejected' ? 'bg-rose-500' : 
+                            item.status === 'Converted' ? 'bg-indigo-500' : 'bg-amber-500'
                         )}></div>
                         {item.status}
                       </span>
                     </td>
                     <td className="px-6 py-5">
-                      <div className="flex flex-col leading-none">
-                        <div className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-700">
-                          <CalendarIcon size={12} className="text-slate-300" />
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5 text-[12px] font-bold text-slate-600">
+                          <CalendarIcon size={12} className="text-slate-400" />
                           {item.date?.split('T')[0]}
                         </div>
                         {item.expiry_date && (
-                          <span className="text-xs text-rose-500 font-bold mt-1.5 flex items-center gap-1">
-                             <Clock size={10} /> Exp: {item.expiry_date?.split('T')[0]}
-                          </span>
+                          <div className="flex items-center gap-1.5 text-[11px] text-rose-500 font-bold">
+                            <Clock size={12} /> {item.expiry_date?.split('T')[0]}
+                          </div>
                         )}
                       </div>
                     </td>
                     <td className="px-6 lg:px-8 py-5 text-right">
-                      <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <ActionIconButton onClick={() => { setViewQuotation(item); setOpenView(true); }} title="View" icon={Eye} tone="view" />
                         <ActionIconButton onClick={() => { setEditId(item.id); setOpenForm(true); }} title="Edit" icon={Edit2} tone="edit" />
                         <ActionIconButton onClick={() => handleDelete(item.id)} title="Delete" icon={Trash2} tone="delete" />
@@ -324,17 +325,17 @@ export default function Quotations() {
         onSave={handleSave}
       />
 
-        {openView && (
-          <QuotationView
-            isOpen={openView}
-            onClose={() => { setOpenView(false); setViewQuotation(null); }}
-            quotation={viewQuotation}
-            onEdit={() => { setOpenView(false); setEditId(viewQuotation.id); setOpenForm(true); }}
-            onDelete={() => viewQuotation && handleDelete(viewQuotation.id)}
-            onConvertToInvoice={() => viewQuotation && handleConvertToInvoice(viewQuotation)}
-            onSaved={() => loadData()}
-          />
-        )}
+      {openView && (
+        <QuotationView
+          isOpen={openView}
+          onClose={() => { setOpenView(false); setViewQuotation(null); }}
+          quotation={viewQuotation}
+          onEdit={() => { setOpenView(false); setEditId(viewQuotation.id); setOpenForm(true); }}
+          onDelete={() => viewQuotation && handleDelete(viewQuotation.id)}
+          onConvertToInvoice={() => viewQuotation && handleConvertToInvoice(viewQuotation)}
+          onSaved={() => loadData()}
+        />
+      )}
     </div>
   );
 }
@@ -370,7 +371,7 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
   const updateItem = (idx, field, val) => {
     const next = [...form.items];
     const item = { ...next[idx], [field]: val };
-    
+
     if (field === "item") {
       const p = products.find(x => x.name === val);
       if (p) {
@@ -378,13 +379,13 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
         item.price = parseFloat(p.price) || 0;
       }
     }
-    
+
     if (field === "price" || field === "tax" || field === "item") {
       const p = parseFloat(item.price) || 0;
       const t = parseFloat(item.tax) || 0;
       item.amount = Math.round((p * (1 + t / 100)) * 100) / 100;
     }
-    
+
     next[idx] = item;
     setForm({ ...form, items: next });
   };
@@ -408,198 +409,198 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
 
   const inputCls = "w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all";
 
-    return (
-        <SlideOver
-            isOpen={isOpen}
-            onClose={onClose}
-            title={editId ? 'Edit Quotation' : 'New Quotation'}
-            size="5xl"
-            footer={(
-                <div className="flex justify-between items-center w-full px-1">
-                    <div className="flex items-center gap-6">
-                        <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Grand Total</span>
-                            <span className="text-[20px] font-semibold text-indigo-600 font-mono  leading-none mt-1">₹{total.toLocaleString()}</span>
-                        </div>
-                    </div>
-                    <div className="flex gap-3">
-                        <button onClick={onClose} className="px-6 py-2.5 text-[13px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all">Cancel</button>
-                        <button onClick={handleSubmit} disabled={isSaving} className="px-8 py-2.5 bg-indigo-600 text-slate-900 text-[13px] font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
-                            {isSaving && <Loader2 size={16} className="animate-spin" />}
-                            {editId ? 'Save Changes' : 'Create Quotation'}
-                        </button>
-                    </div>
-                </div>
-            )}
-        >
-            <div className="flex h-full min-h-[600px] relative">
-                {/* Sidebar Navigation */}
-                <div className="w-64 border-r-2 border-slate-100 pr-6 shrink-0 hidden md:block">
-                    <div className="flex flex-col gap-2 sticky top-0">
-                        {[
-                            { id: 'basic', label: 'Basic Info', icon: Target },
-                            { id: 'items', label: 'Items', icon: Layers },
-                            { id: 'internal', label: 'Internal Notes', icon: Briefcase }
-                        ].map((tabInfo, idx) => (
-                            <div key={tabInfo.id}>
-                                <button
-                                    onClick={() => setTab(tabInfo.id)}
-                                    className={clsx(
-                                        "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all relative group",
-                                        tab === tabInfo.id
-                                            ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100 ring-1 ring-indigo-200/50"
-                                             : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                                    )}
-                                >
-                                    {tab === tabInfo.id && (
-                                        <div className="absolute -right-[26px] top-3 bottom-3 w-1 bg-indigo-600 rounded-l-full z-10" />
-                                    )}
-                                    <tabInfo.icon className={clsx("h-4 w-4", tab === tabInfo.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600")} />
-                                    <span>{tabInfo.label}</span>
-                                </button>
-                                {idx < 2 && <div className="h-px bg-slate-50 mx-4 my-1 opacity-50" />}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Content Area */}
-                <div className="flex-1 pl-10">
-                    <div className="pb-20">
-                        {tab === 'basic' && (
-                            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="grid grid-cols-2 gap-8">
-                                    <div className="col-span-2">
-                                        <Label required>Customer Name</Label>
-                                        <select className={inputCls} value={form.client_id} onChange={e => setForm({ ...form, client_id: e.target.value })}>
-                                            <option value="">Select customer...</option>
-                                            {clients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <Label required>Quote Date</Label>
-                                        <input type="date" className={inputCls} value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <Label>Expiry Date</Label>
-                                        <input type="date" className={inputCls} value={form.expiry_date} onChange={e => setForm({ ...form, expiry_date: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <Label>Sales Person</Label>
-                                        <input className={inputCls} placeholder="Name..." value={form.sales_person} onChange={e => setForm({ ...form, sales_person: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <Label>Reference No</Label>
-                                        <input className={inputCls} placeholder="Ref No..." value={form.reference_number} onChange={e => setForm({ ...form, reference_number: e.target.value })} />
-                                    </div>
-                                </div>
-                                <div className="pt-4">
-                                    <Label>Notes</Label>
-                                    <textarea className={clsx(inputCls, "min-h-[160px] resize-none leading-relaxed")} placeholder="Add notes for the customer..." value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
-                                </div>
-                            </div>
-                        )}
-
-                        {tab === 'items' && (
-                            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="flex items-center justify-between border-b border-slate-100 pb-6">
-                                    <div className="flex flex-col">
-                                        <h4 className="text-[14px] font-semibold text-slate-900 uppercase tracking-wider">Items</h4>
-                                        <p className="text-sm font-bold text-slate-400 uppercase mt-1">Add items and prices</p>
-                                    </div>
-                                    <button onClick={() => setForm({ ...form, items: [...form.items, { item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 }] })} className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-semibold uppercase tracking-wider hover:bg-indigo-600 hover:text-slate-900 transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group">
-                                        <Plus size={16} className="group-hover:rotate-90 transition-transform" />
-                                        <span>Add Item</span>
-                                    </button>
-                                </div>
-                                <div className="space-y-6">
-                                    {form.items.map((row, idx) => (
-                                        <div key={idx} className="bg-slate-50/50 border border-slate-200 rounded-xl p-6 space-y-6 relative group shadow-sm hover:border-indigo-200 transition-colors">
-                                            <div className="grid grid-cols-12 gap-6">
-                                                <div className="col-span-8">
-                                                    <Label>Select Item</Label>
-                                                    <SearchableSelect options={products} value={row.item} onChange={v => updateItem(idx, 'item', v)} placeholder="Search items..." />
-                                                </div>
-                                                <div className="col-span-4">
-                                                    <Label>Price (₹)</Label>
-                                                    <input type="number" className={clsx(inputCls, "font-semibold ")} value={row.price} onChange={e => updateItem(idx, 'price', e.target.value)} />
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-12 gap-6">
-                                                <div className="col-span-9">
-                                                    <Label>Description</Label>
-                                                    <textarea className={clsx(inputCls, "min-h-[100px] text-[12px] resize-none leading-relaxed ")} value={row.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
-                                                </div>
-                                                <div className="col-span-3">
-                                                    <Label>Tax %</Label>
-                                                    <input type="number" className={inputCls} value={row.tax} onChange={e => updateItem(idx, 'tax', e.target.value)} />
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-between items-center pt-4 border-t border-slate-200/60">
-                                                <span className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Item Total</span>
-                                                <span className="font-mono text-[18px] font-semibold text-slate-900 ">₹{row.amount.toLocaleString()}</span>
-                                            </div>
-                                            <button onClick={() => setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })} className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-slate-900 transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100">
-                                                <Trash2 size={16}/>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                                
-                                <div className="bg-slate-50 rounded-xl p-8 border border-slate-200 space-y-6 shadow-sm relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 hidden rounded-full -mr-32 -mt-32" />
-                                    <div className="flex justify-between text-[14px] font-bold text-slate-400 relative z-10">
-                                        <span>Subtotal</span>
-                                        <span className="font-mono text-slate-900  text-[18px]">₹{subtotal.toLocaleString()}</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-10 py-8 border-y border-slate-200/50 relative z-10">
-                                        <div>
-                                            <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 block">Discount (₹)</label>
-                                            <div className="relative">
-                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold ">₹</span>
-                                                <input type="number" className="w-full bg-white border border-slate-200 rounded-xl text-slate-900 text-[18px] font-semibold p-4 pl-10 outline-none focus:border-indigo-500 transition-all " value={form.discount} onChange={e => setForm({ ...form, discount: e.target.value })} />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 block">Tax (₹)</label>
-                                            <div className="relative">
-                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold ">₹</span>
-                                                <input type="number" className="w-full bg-white border border-slate-200 rounded-xl text-slate-900 text-[18px] font-semibold p-4 pl-10 outline-none focus:border-indigo-500 transition-all " value={form.tax} onChange={e => setForm({ ...form, tax: e.target.value })} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-between items-center pt-4 relative z-10">
-                                        <div className="flex flex-col">
-                                            <span className="text-[12px] font-semibold text-indigo-400 uppercase tracking-wider">Grand Total</span>
-                                            <span className="text-[36px] font-semibold text-slate-900 font-mono  leading-none mt-2">₹{total.toLocaleString()}</span>
-                                        </div>
-                                        <div className="h-16 w-16 rounded-xl border-4 border-indigo-500/20 flex items-center justify-center">
-                                            <div className="h-4 w-4 bg-indigo-500 rounded-full hidden"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {tab === 'internal' && (
-                            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div>
-                                    <Label>Internal Notes</Label>
-                                    <textarea className={clsx(inputCls, "min-h-[200px] resize-none leading-relaxed")} placeholder="Add internal notes..." value={form.internal_notes} onChange={e => setForm({ ...form, internal_notes: e.target.value })} />
-                                </div>
-                                <div className="pt-4">
-                                    <Label>Required Deposit</Label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold ">₹</span>
-                                        <input type="number" className={clsx(inputCls, "pl-12 font-semibold  text-[16px]")} placeholder="0.00" value={form.initial_deposit} onChange={e => setForm({ ...form, initial_deposit: e.target.value })} />
-                                    </div>
-                                    <p className="text-[12px] text-slate-400 mt-3 font-medium ">Enter the minimum deposit requested from the customer.</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
+  return (
+    <SlideOver
+      isOpen={isOpen}
+      onClose={onClose}
+      title={editId ? 'Edit Quotation' : 'New Quotation'}
+      size="5xl"
+      footer={(
+        <div className="flex justify-between items-center w-full px-1">
+          <div className="flex items-center gap-6">
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Grand Total</span>
+              <span className="text-[20px] font-semibold text-indigo-600 font-mono  leading-none mt-1">₹{total.toLocaleString()}</span>
             </div>
-        </SlideOver>
-    );
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="px-6 py-2.5 text-[13px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all">Cancel</button>
+            <button onClick={handleSubmit} disabled={isSaving} className="px-8 py-2.5 bg-indigo-600 text-slate-900 text-[13px] font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
+              {isSaving && <Loader2 size={16} className="animate-spin" />}
+              {editId ? 'Save Changes' : 'Create Quotation'}
+            </button>
+          </div>
+        </div>
+      )}
+    >
+      <div className="flex h-full min-h-[600px] relative">
+        {/* Sidebar Navigation */}
+        <div className="w-64 border-r-2 border-slate-100 pr-6 shrink-0 hidden md:block">
+          <div className="flex flex-col gap-2 sticky top-0">
+            {[
+              { id: 'basic', label: 'Basic Info', icon: Target },
+              { id: 'items', label: 'Items', icon: Layers },
+              { id: 'internal', label: 'Internal Notes', icon: Briefcase }
+            ].map((tabInfo, idx) => (
+              <div key={tabInfo.id}>
+                <button
+                  onClick={() => setTab(tabInfo.id)}
+                  className={clsx(
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold uppercase tracking-wider transition-all relative group",
+                    tab === tabInfo.id
+                      ? "bg-indigo-50 text-indigo-700 shadow-sm shadow-indigo-100 ring-1 ring-indigo-200/50"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                  )}
+                >
+                  {tab === tabInfo.id && (
+                    <div className="absolute -right-[26px] top-3 bottom-3 w-1 bg-indigo-600 rounded-l-full z-10" />
+                  )}
+                  <tabInfo.icon className={clsx("h-4 w-4", tab === tabInfo.id ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600")} />
+                  <span>{tabInfo.label}</span>
+                </button>
+                {idx < 2 && <div className="h-px bg-slate-50 mx-4 my-1 opacity-50" />}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 pl-10">
+          <div className="pb-20">
+            {tab === 'basic' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="col-span-2">
+                    <Label required>Customer Name</Label>
+                    <select className={inputCls} value={form.client_id} onChange={e => setForm({ ...form, client_id: e.target.value })}>
+                      <option value="">Select customer...</option>
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <Label required>Quote Date</Label>
+                    <input type="date" className={inputCls} value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Expiry Date</Label>
+                    <input type="date" className={inputCls} value={form.expiry_date} onChange={e => setForm({ ...form, expiry_date: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Sales Person</Label>
+                    <input className={inputCls} placeholder="Name..." value={form.sales_person} onChange={e => setForm({ ...form, sales_person: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Reference No</Label>
+                    <input className={inputCls} placeholder="Ref No..." value={form.reference_number} onChange={e => setForm({ ...form, reference_number: e.target.value })} />
+                  </div>
+                </div>
+                <div className="pt-4">
+                  <Label>Notes</Label>
+                  <textarea className={clsx(inputCls, "min-h-[160px] resize-none leading-relaxed")} placeholder="Add notes for the customer..." value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+                </div>
+              </div>
+            )}
+
+            {tab === 'items' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+                  <div className="flex flex-col">
+                    <h4 className="text-[14px] font-semibold text-slate-900 uppercase tracking-wider">Items</h4>
+                    <p className="text-sm font-bold text-slate-400 uppercase mt-1">Add items and prices</p>
+                  </div>
+                  <button onClick={() => setForm({ ...form, items: [...form.items, { item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 }] })} className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-semibold uppercase tracking-wider hover:bg-indigo-600 hover:text-slate-900 transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group">
+                    <Plus size={16} className="group-hover:rotate-90 transition-transform" />
+                    <span>Add Item</span>
+                  </button>
+                </div>
+                <div className="space-y-6">
+                  {form.items.map((row, idx) => (
+                    <div key={idx} className="bg-slate-50/50 border border-slate-200 rounded-xl p-6 space-y-6 relative group shadow-sm hover:border-indigo-200 transition-colors">
+                      <div className="grid grid-cols-12 gap-6">
+                        <div className="col-span-8">
+                          <Label>Select Item</Label>
+                          <SearchableSelect options={products} value={row.item} onChange={v => updateItem(idx, 'item', v)} placeholder="Search items..." />
+                        </div>
+                        <div className="col-span-4">
+                          <Label>Price (₹)</Label>
+                          <input type="number" className={clsx(inputCls, "font-semibold ")} value={row.price} onChange={e => updateItem(idx, 'price', e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-12 gap-6">
+                        <div className="col-span-9">
+                          <Label>Description</Label>
+                          <textarea className={clsx(inputCls, "min-h-[100px] text-[12px] resize-none leading-relaxed ")} value={row.description} onChange={e => updateItem(idx, 'description', e.target.value)} />
+                        </div>
+                        <div className="col-span-3">
+                          <Label>Tax %</Label>
+                          <input type="number" className={inputCls} value={row.tax} onChange={e => updateItem(idx, 'tax', e.target.value)} />
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center pt-4 border-t border-slate-200/60">
+                        <span className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Item Total</span>
+                        <span className="font-mono text-[18px] font-semibold text-slate-900 ">₹{row.amount.toLocaleString()}</span>
+                      </div>
+                      <button onClick={() => setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })} className="absolute -top-3 -right-3 h-10 w-10 bg-white text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-500 hover:text-slate-900 transition-all opacity-0 group-hover:opacity-100 shadow-xl border border-slate-100">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bg-slate-50 rounded-xl p-8 border border-slate-200 space-y-6 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 hidden rounded-full -mr-32 -mt-32" />
+                  <div className="flex justify-between text-[14px] font-bold text-slate-400 relative z-10">
+                    <span>Subtotal</span>
+                    <span className="font-mono text-slate-900  text-[18px]">₹{subtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-10 py-8 border-y border-slate-200/50 relative z-10">
+                    <div>
+                      <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 block">Discount (₹)</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold ">₹</span>
+                        <input type="number" className="w-full bg-white border border-slate-200 rounded-xl text-slate-900 text-[18px] font-semibold p-4 pl-10 outline-none focus:border-indigo-500 transition-all " value={form.discount} onChange={e => setForm({ ...form, discount: e.target.value })} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 block">Tax (₹)</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-semibold ">₹</span>
+                        <input type="number" className="w-full bg-white border border-slate-200 rounded-xl text-slate-900 text-[18px] font-semibold p-4 pl-10 outline-none focus:border-indigo-500 transition-all " value={form.tax} onChange={e => setForm({ ...form, tax: e.target.value })} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center pt-4 relative z-10">
+                    <div className="flex flex-col">
+                      <span className="text-[12px] font-semibold text-indigo-400 uppercase tracking-wider">Grand Total</span>
+                      <span className="text-[36px] font-semibold text-slate-900 font-mono  leading-none mt-2">₹{total.toLocaleString()}</span>
+                    </div>
+                    <div className="h-16 w-16 rounded-xl border-4 border-indigo-500/20 flex items-center justify-center">
+                      <div className="h-4 w-4 bg-indigo-500 rounded-full hidden"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tab === 'internal' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div>
+                  <Label>Internal Notes</Label>
+                  <textarea className={clsx(inputCls, "min-h-[200px] resize-none leading-relaxed")} placeholder="Add internal notes..." value={form.internal_notes} onChange={e => setForm({ ...form, internal_notes: e.target.value })} />
+                </div>
+                <div className="pt-4">
+                  <Label>Required Deposit</Label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-semibold ">₹</span>
+                    <input type="number" className={clsx(inputCls, "pl-12 font-semibold  text-[16px]")} placeholder="0.00" value={form.initial_deposit} onChange={e => setForm({ ...form, initial_deposit: e.target.value })} />
+                  </div>
+                  <p className="text-[12px] text-slate-400 mt-3 font-medium ">Enter the minimum deposit requested from the customer.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </SlideOver>
+  );
 };

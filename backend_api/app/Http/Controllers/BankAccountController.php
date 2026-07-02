@@ -32,6 +32,7 @@ class BankAccountController extends Controller
             'opening_date' => 'nullable|date',
             'notes' => 'nullable|string',
             'qr_code' => 'nullable|image|max:5120',
+            'is_default' => 'boolean',
         ]);
 
         if ($request->hasFile('qr_code')) {
@@ -41,6 +42,10 @@ class BankAccountController extends Controller
 
         // Initialize current_balance with opening_balance
         $validated['current_balance'] = $validated['opening_balance'] ?? 0;
+
+        if ($request->is_default) {
+            BankAccount::where('is_default', true)->update(['is_default' => false]);
+        }
 
         return BankAccount::create($validated);
     }
@@ -71,6 +76,7 @@ class BankAccountController extends Controller
             'opening_date' => 'nullable|date',
             'notes' => 'nullable|string',
             'qr_code' => 'nullable|image|max:5120',
+            'is_default' => 'boolean',
         ]);
 
         if ($request->hasFile('qr_code')) {
@@ -82,7 +88,19 @@ class BankAccountController extends Controller
             $validated['qr_code'] = $path;
         }
 
+        if ($request->is_default) {
+            BankAccount::where('id', '!=', $id)->update(['is_default' => false]);
+        }
+
         $bankAccount->update($validated);
+        return $bankAccount;
+    }
+
+    public function setDefault($id)
+    {
+        BankAccount::where('is_default', true)->update(['is_default' => false]);
+        $bankAccount = BankAccount::findOrFail($id);
+        $bankAccount->update(['is_default' => true]);
         return $bankAccount;
     }
 

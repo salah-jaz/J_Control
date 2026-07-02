@@ -184,7 +184,12 @@ export function useDeleteInvoice() {
     mutationFn: deleteInvoiceApi,
     onSuccess: () => {
       invalidateCache('/invoices');
+      invalidateCache('/bank-accounts');
+      invalidateCache('/incomes');
       qc.invalidateQueries({ queryKey: queryKeys.invoices.all });
+      qc.invalidateQueries({ queryKey: queryKeys.income.all });
+      qc.invalidateQueries({ queryKey: queryKeys.transactions.all });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard.all });
     },
   });
 }

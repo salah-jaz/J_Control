@@ -9,6 +9,8 @@ import {
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { exportToCSV } from "../utils/csvExport";
+import { validateFinancialForm } from "../utils/financialValidation";
+import { invalidateCache } from "../utils/apiFetch";
 
 import { createIncome, updateIncome, deleteIncome } from "../services/incomeService";
 import { getBankAccounts } from "../services/bankAccountService";
@@ -96,13 +98,43 @@ const IncomeForm = ({ isOpen, onClose, income, onSave, clients = [], bankAccount
     return b ? `${b.bankName} - ${b.accountNumber}` : "";
   };
 
+  const subtotal = parseFloat(form.amount) || 0;
+  const discountVal = parseFloat(form.discount) || 0;
+  const taxVal = parseFloat(form.taxAmount) || 0;
+  const totalAmount = subtotal - discountVal + taxVal;
+
+  useEffect(() => {
+    const initAmt = form.initialDepositEnabled ? (parseFloat(form.initialDepositAmount) || 0) : 0;
+    const installmentsAmt = (form.extraInstallments || []).reduce((acc, curr) => acc + (parseFloat(curr.amount) || 0), 0);
+    const paid = initAmt + installmentsAmt;
+
+    const status = paid <= 0 ? 'Pending' : (paid >= totalAmount ? 'Received' : 'Partially Received');
+    setForm(prev => {
+      if (prev.status !== status) {
+        return { ...prev, status };
+      }
+      return prev;
+    });
+  }, [form.initialDepositEnabled, form.initialDepositAmount, form.extraInstallments, totalAmount]);
+
   const validate = () => {
     const e = {};
     if (!form.client) e.client = "Client is required";
     if (!form.amount) e.amount = "Base amount is required";
-    if (form.initialDepositEnabled && (parseFloat(form.initialDepositAmount) || 0) > 0 && !form.initialDepositBankId) {
-      e.initialDepositBank = "Select bank for advance payment";
+
+    const valResult = validateFinancialForm({
+      totalAmount,
+      initialDepositEnabled: form.initialDepositEnabled,
+      initialDepositAmount: form.initialDepositAmount,
+      initialDepositBankId: form.initialDepositBankId,
+      extraInstallments: form.extraInstallments
+    });
+
+    if (!valResult.isValid) {
+      toast.error(valResult.message);
+      e[valResult.field] = valResult.message;
     }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -118,10 +150,6 @@ const IncomeForm = ({ isOpen, onClose, income, onSave, clients = [], bankAccount
     }
   };
 
-  const subtotal = parseFloat(form.amount) || 0;
-  const discountVal = parseFloat(form.discount) || 0;
-  const taxVal = parseFloat(form.taxAmount) || 0;
-  const totalAmount = subtotal - discountVal + taxVal;
 
   const TABS = [
     { id: 'basic', label: 'Basic Info', icon: Target },
@@ -288,8 +316,8 @@ const IncomeForm = ({ isOpen, onClose, income, onSave, clients = [], bankAccount
                   </div>
                   <div>
                     <Label>Status</Label>
-                    <select className={clsx(inputCls, "appearance-none")} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-                      {['Received', 'Pending', 'Partial', 'Overdue'].map(s => <option key={s}>{s}</option>)}
+                    <select className={clsx(inputCls, "appearance-none cursor-not-allowed")} disabled value={form.status}>
+                      {['Received', 'Pending', 'Partially Received', 'Overdue'].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                   <div>
@@ -533,7 +561,15 @@ export default function Income() {
         await createIncome(formData);
         toast.success("Income recorded");
       }
+      invalidateCache('/bank-accounts');
+      invalidateCache('/incomes');
       queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+      
+      const updatedAccounts = await getBankAccounts();
+      setBankAccounts(updatedAccounts);
+      
       setOpenForm(false);
     } catch (e) {
       toast.error(e.response?.data?.message || "Failed to save income");
@@ -545,7 +581,14 @@ export default function Income() {
     try {
       await deleteIncome(id);
       toast.success("Income deleted");
+      invalidateCache('/bank-accounts');
+      invalidateCache('/incomes');
       queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+      
+      const updatedAccounts = await getBankAccounts();
+      setBankAccounts(updatedAccounts);
     } catch (e) {
       toast.error("Deletion failed");
     }

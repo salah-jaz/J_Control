@@ -23,7 +23,13 @@ class BankAccount extends Model
         'current_balance',
         'currency',
         'status',
+        'is_default',
         'opening_date',
         'notes',
         'qr_code',
-    ];}
+    ];
+
+    protected $casts = [
+        'is_default' => 'boolean',
+    ];
+}

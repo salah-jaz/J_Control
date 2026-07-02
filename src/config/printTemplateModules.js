@@ -185,7 +185,7 @@ export const PRINT_CONFIG_OPTIONS = [
   { key: 'total_amount', label: 'Total Amount', variables: ['grand_total', 'total'] },
   { key: 'paid_amount', label: 'Paid Amount', variables: ['paid_amount'] },
   { key: 'balance_due', label: 'Balance Due', variables: ['balance_due'] },
-  { key: 'bank_details', label: 'Bank Details', variables: ['bank_name', 'bank_account_number', 'ifsc_code'] },
+  { key: 'bank_details', label: 'Bank Details', variables: ['bank_name', 'bank_account_name', 'bank_account_number', 'ifsc_code', 'bank_qr_code'] },
   { key: 'signature', label: 'Signature', variables: ['authorized_signature'] },
   { key: 'authorized_signature_text', label: 'Authorized Signature (Text)', variables: ['authorized_signature_text'] },
   { key: 'seal', label: 'Seal Image', variables: ['company_seal'] },
@@ -268,8 +268,10 @@ export const MODULE_FIELDS = {
     { id: 'items_table', label: 'Items Table', variable: 'items_table' },
     // Bank
     { id: 'bank_name', label: 'Bank Name', variable: 'bank_name' },
+    { id: 'bank_account_name', label: 'Bank Account Name', variable: 'bank_account_name' },
     { id: 'bank_account_number', label: 'Bank Account Number', variable: 'bank_account_number' },
     { id: 'ifsc_code', label: 'IFSC Code', variable: 'ifsc_code' },
+    { id: 'bank_qr_code', label: 'Bank QR Code', variable: 'bank_qr_code' },
     // Signature & Footer
     { id: 'authorized_signature', label: 'Authorized Signature', variable: 'authorized_signature' },
     { id: 'authorized_signature_text', label: 'Authorized Signature (Text)', variable: 'authorized_signature_text' },
@@ -306,8 +308,10 @@ export const MODULE_FIELDS = {
     { id: 'items_table', label: 'Items Table', variable: 'items_table' },
     // Bank
     { id: 'bank_name', label: 'Bank Name', variable: 'bank_name' },
+    { id: 'bank_account_name', label: 'Bank Account Name', variable: 'bank_account_name' },
     { id: 'bank_account_number', label: 'Bank Account Number', variable: 'bank_account_number' },
     { id: 'ifsc_code', label: 'IFSC Code', variable: 'ifsc_code' },
+    { id: 'bank_qr_code', label: 'Bank QR Code', variable: 'bank_qr_code' },
     // Signature & Footer
     { id: 'authorized_signature', label: 'Authorized Signature', variable: 'authorized_signature' },
     { id: 'authorized_signature_text', label: 'Authorized Signature (Text)', variable: 'authorized_signature_text' },
@@ -404,6 +408,7 @@ const VARIABLE_SECTION_MAP = {
     bank_name: 'bankDetails',
     bank_account_number: 'bankDetails',
     ifsc_code: 'bankDetails',
+    bank_qr_code: 'bankDetails',
     authorized_signature: 'signature',
     authorized_signature_text: 'signature',
     designation: 'signature',
@@ -436,6 +441,7 @@ const VARIABLE_SECTION_MAP = {
     bank_name: 'bankDetails',
     bank_account_number: 'bankDetails',
     ifsc_code: 'bankDetails',
+    bank_qr_code: 'bankDetails',
     authorized_signature: 'signature',
     authorized_signature_text: 'signature',
     company_seal: 'signature',
@@ -800,6 +806,7 @@ export function getSampleData(moduleKey) {
       bank_name: 'HDFC Bank',
       bank_account_number: 'XXXX XXXX 1234',
       ifsc_code: 'HDFC0001234',
+      bank_qr_code: '',
       authorized_signature: 'Authorized Signatory',
       authorized_signature_text: 'Authorized Signatory',
       designation: 'Director',
@@ -832,6 +839,7 @@ export function getSampleData(moduleKey) {
       bank_name: 'HDFC Bank',
       bank_account_number: 'XXXX XXXX 1234',
       ifsc_code: 'HDFC0001234',
+      bank_qr_code: '',
       authorized_signature: 'Authorized Signatory',
       authorized_signature_text: 'Authorized Signatory',
       company_seal: '<div class="seal-image" style="height:48px;width:80px;background:#e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#64748b">Seal</div>',
@@ -1481,6 +1489,7 @@ export function buildInvoicePrintData(invoice, company = {}, client = null, bank
     bank_name: bank?.bankName || bank?.bank_name || '',
     bank_account_number: bank?.accountNumber || bank?.account_number || '',
     ifsc_code: bank?.ifsc || bank?.ifsc_code || '',
+    bank_qr_code: bank?.qrCode || bank?.qr_code || '',
     authorized_signature: signatureUrl ? `<img src="${signatureUrl}" alt="Signature" class="sig-image" style="max-height:48px;object-fit:contain" />` : (company?.name || 'Authorized Signatory'),
     authorized_signature_text: company?.authorized_signature_text || '',
     designation: company?.designation || '',
@@ -1812,13 +1821,25 @@ export function buildQuotationPrintData(quotation, company = {}, bank = null) {
   const paymentStatus = quotation?.status === 'Accepted' ? '<span class="payment-badge paid">Accepted</span>' : quotation?.status === 'Rejected' ? '<span class="payment-badge pending">Rejected</span>' : '<span class="payment-badge pending">Pending</span>';
   const authorizedSignature = company?.signature ? `<img src="${company.signature}" alt="Signature" class="sig-image" style="max-height:48px;object-fit:contain" />` : (company?.name || 'Authorized Signatory');
   const companySeal = company?.seal ? `<img src="${company.seal}" alt="Seal" class="seal-image" style="max-height:48px;max-width:80px;object-fit:contain" />` : '';
+  const bankQrCodeUrl = bank?.qrCode || bank?.qr_code || '';
+  const bankQrCodeImg = bankQrCodeUrl ? `<img src="${bankQrCodeUrl}" alt="Bank QR Code" class="bank-qr-code" style="max-height:110px;object-fit:contain" />` : '';
+
+  const compAddressParts = [
+    company?.address,
+    [company?.city, company?.state].filter(Boolean).join(', '),
+    [company?.country, company?.postal_code].filter(Boolean).join(' - ')
+  ].filter(Boolean).join('\n');
+  const compAddress = compAddressParts || company?.address || '';
+
   return {
     quotation_title: 'QUOTATION',
     company_logo: companyLogo,
-    company_name: company?.name || '',
-    company_address: company?.address || '',
+    company_name: company?.name || company?.company_name || '',
+    company_address: compAddress,
     company_phone: company?.phone || '',
     company_email: company?.email || '',
+    company_website: company?.website || '',
+    company_gst_number: company?.gst || company?.gst_number || '',
     quotation_number: quotation?.quotation_no ?? quotation?.id ?? '—',
     date: dateStr,
     valid_until: validStr,
@@ -1835,12 +1856,15 @@ export function buildQuotationPrintData(quotation, company = {}, bank = null) {
     paid_amount: fmt(0),
     balance_due: fmt(total),
     bank_name: bank?.bankName || bank?.bank_name || '',
+    bank_account_name: bank?.accountName || bank?.account_name || '',
     bank_account_number: bank?.accountNumber || bank?.account_number || '',
     ifsc_code: bank?.ifsc || bank?.ifsc_code || '',
+    bank_qr_code: bankQrCodeImg,
+    bank_qr_display: bankQrCodeUrl ? 'block' : 'none',
     authorized_signature: authorizedSignature,
     authorized_signature_text: company?.authorized_signature_text || '',
     company_seal: companySeal,
-    terms_and_conditions: quotation?.notes || company?.terms || '',
+    terms_and_conditions: company?.terms || quotation?.notes || '',
     company_notes: company?.notes || '',
   };
 }

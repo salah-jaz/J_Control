@@ -96,6 +96,7 @@ const SHARED_STYLES = `
   .jaz-sig-title { font-size: 11px; color: #64748b; font-weight: 600; }
 
   .jaz-company-contact { text-align: right; border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 20px; font-size: 11px; color: #3f36a6; font-weight: 600; }
+  img[src=""], img:not([src]) { display: none !important; }
 `;
 
 export const PREMIUM_TEMPLATES = {
@@ -152,13 +153,17 @@ export const PREMIUM_TEMPLATES = {
           <span class="jaz-payment-value">{{invoice.bank_name}}</span>
           
           <span class="jaz-payment-label">Account Name</span>
-          <span class="jaz-payment-value">{{invoice.company_name}}</span>
+          <span class="jaz-payment-value">{{invoice.bank_account_name}}</span>
           
           <span class="jaz-payment-label">IFSC</span>
           <span class="jaz-payment-value">{{invoice.ifsc_code}}</span>
           
           <span class="jaz-payment-label">Account Number</span>
           <span class="jaz-payment-value">{{invoice.bank_account_number}}</span>
+          
+          <div style="grid-column: 1 / -1; margin-top: 12px; text-align: center;">
+            <img src="{{invoice.bank_qr_code}}" alt="Bank QR Code" width="110" height="110" style="object-fit: contain; border-radius: 8px; border: 1px solid #e2e8f0; padding: 4px; background: #fff; max-width: 100%;" />
+          </div>
         </div>
       </div>
       
@@ -253,13 +258,29 @@ export const PREMIUM_TEMPLATES = {
         <h3 class="jaz-section-h">TERM AND CONDITIONS</h3>
         <div class="jaz-text-sm">{{quotation.terms_and_conditions}}</div>
         
-        <h3 class="jaz-section-h" style="margin-top:20px;">PAYMENT TERMS</h3>
+        <h3 class="jaz-section-h" style="margin-top:20px;">PAYMENT TERMS & BANK DETAILS</h3>
         <div class="jaz-payment-info">
           <span class="jaz-payment-label">Status</span>
           <span class="jaz-payment-value">{{quotation.payment_status}}</span>
           
           <span class="jaz-payment-label">Notes</span>
           <span class="jaz-payment-value">{{quotation.company_notes}}</span>
+
+          <span class="jaz-payment-label">Bank Name</span>
+          <span class="jaz-payment-value">{{quotation.bank_name}}</span>
+          
+          <span class="jaz-payment-label">Account Name</span>
+          <span class="jaz-payment-value">{{quotation.bank_account_name}}</span>
+          
+          <span class="jaz-payment-label">Account Number</span>
+          <span class="jaz-payment-value">{{quotation.bank_account_number}}</span>
+          
+          <span class="jaz-payment-label">IFSC Code</span>
+          <span class="jaz-payment-value">{{quotation.ifsc_code}}</span>
+          
+          <div style="grid-column: 1 / -1; margin-top: 12px; text-align: center;">
+            <img src="{{quotation.bank_qr_code}}" alt="Bank QR Code" width="110" height="110" style="object-fit: contain; border-radius: 8px; border: 1px solid #e2e8f0; padding: 4px; background: #fff; max-width: 100%;" />
+          </div>
         </div>
       </div>
       

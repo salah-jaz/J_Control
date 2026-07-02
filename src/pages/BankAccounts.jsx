@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Upload, Image, Loader2, FileText, MapPin } from "lucide-react";
+import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Upload, Image, Loader2, FileText, MapPin, Star } from "lucide-react";
 import toast from "react-hot-toast";
-import { getBankAccounts, createBankAccount, updateBankAccount, deleteBankAccount } from "../services/bankAccountService";
+import { getBankAccounts, createBankAccount, updateBankAccount, deleteBankAccount, setDefaultBankAccount } from "../services/bankAccountService";
 import { invalidateCache } from "../utils/apiFetch";
 import clsx from "clsx";
 import PageHeader from "../components/ui/PageHeader";
@@ -27,6 +27,7 @@ const emptyForm = {
   currentBalance: "", // Add currentBalance to emptyForm
   currency: "INR",
   status: "Active",
+  isDefault: false,
   openingDate: "",
 
   notes: "",
@@ -109,6 +110,17 @@ export default function BankAccounts() {
     } catch (e) {
       console.error("Failed to delete", e);
       toast.error("Failed to delete");
+    }
+  };
+
+  const handleSetDefault = async (id) => {
+    try {
+      await setDefaultBankAccount(id);
+      toast.success("Default bank account updated");
+      loadData();
+    } catch (e) {
+      console.error("Failed to set default", e);
+      toast.error("Failed to set default bank account");
     }
   };
 
@@ -221,6 +233,7 @@ export default function BankAccounts() {
                 <th className="px-6 py-4">Current Balance</th>
                 <th className="px-6 py-4">Type</th>
                 <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-center">Default</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -263,6 +276,20 @@ export default function BankAccounts() {
                       >
                         {item.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <button
+                        onClick={() => !item.isDefault && handleSetDefault(item.id)}
+                        title={item.isDefault ? "Default bank account" : "Set as default"}
+                        className={clsx(
+                          "p-1.5 rounded-lg transition-all",
+                          item.isDefault
+                            ? "text-amber-500 bg-amber-50 cursor-default"
+                            : "text-slate-300 hover:text-amber-400 hover:bg-amber-50"
+                        )}
+                      >
+                        <Star size={16} fill={item.isDefault ? "currentColor" : "none"} />
+                      </button>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
@@ -403,13 +430,41 @@ export default function BankAccounts() {
                         <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm" value={form.nickName} onChange={e => setForm({...form, nickName: e.target.value})} />
                       </div>
                       <div className="col-span-2">
-                        <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Account Type</label>
-                        <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm appearance-none" value={form.accountType} onChange={e => setForm({...form, accountType: e.target.value})}>
-                          <option>Savings</option>
-                          <option>Current</option>
-                          <option>Overdraft</option>
-                          <option>Loan</option>
-                        </select>
+                        <div className="col-span-2">
+                          <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Account Type</label>
+                          <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-sm appearance-none" value={form.accountType} onChange={e => setForm({...form, accountType: e.target.value})}>
+                            <option>Savings</option>
+                            <option>Current</option>
+                            <option>Overdraft</option>
+                            <option>Loan</option>
+                          </select>
+                        </div>
+                        {/* Default Bank Toggle */}
+                        <div className="col-span-2 mt-6">
+                          <label className="flex items-center gap-3 cursor-pointer group">
+                            <div
+                              onClick={() => setForm({ ...form, isDefault: !form.isDefault })}
+                              className={clsx(
+                                "relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 cursor-pointer",
+                                form.isDefault ? "bg-amber-500" : "bg-slate-200"
+                              )}
+                            >
+                              <div className={clsx(
+                                "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200",
+                                form.isDefault ? "translate-x-5" : "translate-x-0"
+                              )} />
+                            </div>
+                            <div>
+                              <span className="text-[13px] font-bold text-slate-700 block">Set as Default Bank Account</span>
+                              <span className="text-[11px] text-slate-400 font-medium">This bank will be pre-selected when printing quotations and invoices.</span>
+                            </div>
+                            {form.isDefault && (
+                              <span className="ml-auto flex items-center gap-1 text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg uppercase tracking-widest">
+                                <Star size={11} fill="currentColor" /> Default
+                              </span>
+                            )}
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>
