@@ -185,7 +185,8 @@ export const PRINT_CONFIG_OPTIONS = [
   { key: 'total_amount', label: 'Total Amount', variables: ['grand_total', 'total'] },
   { key: 'paid_amount', label: 'Paid Amount', variables: ['paid_amount'] },
   { key: 'balance_due', label: 'Balance Due', variables: ['balance_due'] },
-  { key: 'bank_details', label: 'Bank Details', variables: ['bank_name', 'bank_account_name', 'bank_account_number', 'ifsc_code', 'bank_qr_code'] },
+  { key: 'bank_details', label: 'Bank Details', variables: ['bank_name', 'bank_account_name', 'bank_account_number', 'ifsc_code'] },
+  { key: 'qr_code', label: 'Bank QR Code', variables: ['bank_qr_code'] },
   { key: 'signature', label: 'Signature', variables: ['authorized_signature'] },
   { key: 'authorized_signature_text', label: 'Authorized Signature (Text)', variables: ['authorized_signature_text'] },
   { key: 'seal', label: 'Seal Image', variables: ['company_seal'] },
@@ -1092,6 +1093,8 @@ function removeEmptySections(html) {
   try {
     const div = document.createElement('div');
     div.innerHTML = html;
+    
+    // Remove empty standard print sections
     const sections = div.querySelectorAll('.print-section');
     sections.forEach((el) => {
       if (el.classList.contains('print-section-header') || el.classList.contains('print-section-partyDetailsProvider')) {
@@ -1101,6 +1104,74 @@ function removeEmptySections(html) {
       const hasMedia = el.querySelector('img, object, svg, table, canvas, iframe');
       if (text === '' && !hasMedia) el.remove();
     });
+
+    // Remove title wrappers if the title itself is empty
+    const titleWrappers = div.querySelectorAll('.jaz-title-section, .jaz-header-right, .title, .pi-meta-title');
+    titleWrappers.forEach(tw => {
+        const h1 = tw.querySelector('h1, .jaz-doc-title, .jaz-title');
+        if (h1 && h1.textContent.trim() === '') {
+            tw.remove();
+        } else if (!h1 && tw.textContent.trim() === '') {
+            tw.remove();
+        }
+    });
+
+    // Clean up summary rows, table rows, and bottom layout cards that only contain labels but no data
+    const wrappers = div.querySelectorAll('.print-summary-row, tr, .print-bottom-left > div, .print-bottom-right > div, .card, .payment-status-block, .jaz-payment-info');
+    wrappers.forEach((wrapper) => {
+      // payment-status-block and jaz-payment-info specific cleanup
+      if (wrapper.classList.contains('payment-status-block') || wrapper.classList.contains('jaz-payment-info')) {
+         // First, remove individual empty pairs (label followed by value)
+         const values = wrapper.querySelectorAll('.jaz-payment-value');
+         values.forEach(val => {
+            const hasMedia = val.querySelector('img, object, svg, table, canvas, iframe');
+            if (val.textContent.trim() === '' && !hasMedia) {
+                // Remove the preceding label if it exists
+                const prev = val.previousElementSibling;
+                if (prev && prev.classList.contains('jaz-payment-label')) {
+                    prev.remove();
+                }
+                val.remove();
+            }
+         });
+
+         // Then check if the entire wrapper is empty
+         const text = wrapper.textContent.replace(/Status|Bank|Account Name|IFSC|Account Number/gi, '').trim();
+         const hasMediaWrapper = wrapper.querySelector('img, object, svg, table, canvas, iframe');
+         if (text === '' && !hasMediaWrapper) {
+             wrapper.remove();
+         }
+         return; 
+      }
+
+      const children = Array.from(wrapper.children);
+      // Only process wrappers that look like label/value pairs or headers/content
+      if (children.length > 1) {
+        let hasData = false;
+        // Check all children after the first one (assuming the first is a label/header)
+        for (let i = 1; i < children.length; i++) {
+          const child = children[i];
+          const text = (child.textContent || '').trim();
+          const hasMedia = child.querySelector('img, object, svg, table, canvas, iframe');
+          if (text !== '' || hasMedia) {
+            hasData = true;
+            break;
+          }
+        }
+        if (!hasData) {
+          wrapper.remove();
+        }
+      } else if (children.length === 1 && (wrapper.tagName.toLowerCase() === 'tr' || wrapper.classList.contains('print-summary-row'))) {
+         // if there's only one cell and it's empty
+         const text = (wrapper.textContent || '').trim();
+         const hasMedia = wrapper.querySelector('img, object, svg, table, canvas, iframe');
+         // We do not remove colspan=4 "No items" rows because they have text.
+         if (text === '' && !hasMedia) {
+            wrapper.remove();
+         }
+      }
+    });
+
     return div.innerHTML;
   } catch (_) {
     return html;
@@ -1487,9 +1558,10 @@ export function buildInvoicePrintData(invoice, company = {}, client = null, bank
     paid_amount: fmt(paidAmount),
     balance_due: fmt(balanceDue),
     bank_name: bank?.bankName || bank?.bank_name || '',
+    bank_account_name: bank?.accountName || bank?.account_name || '',
     bank_account_number: bank?.accountNumber || bank?.account_number || '',
     ifsc_code: bank?.ifsc || bank?.ifsc_code || '',
-    bank_qr_code: bank?.qrCode || bank?.qr_code || '',
+    bank_qr_code: (bank?.qrCode || bank?.qr_code) ? `<img src="${bank?.qrCode || bank?.qr_code}" alt="Bank QR Code" class="bank-qr-code" style="max-height:110px;object-fit:contain; border-radius: 8px; border: 1px solid #e2e8f0; padding: 4px; background: #fff; max-width: 100%;" />` : '',
     authorized_signature: signatureUrl ? `<img src="${signatureUrl}" alt="Signature" class="sig-image" style="max-height:48px;object-fit:contain" />` : (company?.name || 'Authorized Signatory'),
     authorized_signature_text: company?.authorized_signature_text || '',
     designation: company?.designation || '',
@@ -1822,7 +1894,7 @@ export function buildQuotationPrintData(quotation, company = {}, bank = null) {
   const authorizedSignature = company?.signature ? `<img src="${company.signature}" alt="Signature" class="sig-image" style="max-height:48px;object-fit:contain" />` : (company?.name || 'Authorized Signatory');
   const companySeal = company?.seal ? `<img src="${company.seal}" alt="Seal" class="seal-image" style="max-height:48px;max-width:80px;object-fit:contain" />` : '';
   const bankQrCodeUrl = bank?.qrCode || bank?.qr_code || '';
-  const bankQrCodeImg = bankQrCodeUrl ? `<img src="${bankQrCodeUrl}" alt="Bank QR Code" class="bank-qr-code" style="max-height:110px;object-fit:contain" />` : '';
+  const bankQrCodeImg = bankQrCodeUrl ? `<img src="${bankQrCodeUrl}" alt="Bank QR Code" class="bank-qr-code" style="max-height:110px;object-fit:contain; border-radius: 8px; border: 1px solid #e2e8f0; padding: 4px; background: #fff; max-width: 100%;" />` : '';
 
   const compAddressParts = [
     company?.address,

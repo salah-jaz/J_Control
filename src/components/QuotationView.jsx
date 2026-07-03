@@ -33,7 +33,9 @@ const QuotationView = ({
   const [bankAccounts, setBankAccounts] = useState([]);
   const [selectedBankId, setSelectedBankId] = useState("");
   const [showPrintConfig, setShowPrintConfig] = useState(false);
-  const [printConfig, setPrintConfig] = useState(null);
+  const [printConfig, setPrintConfig] = useState(() => {
+    return getStoredPrintConfig("quotations") || getDefaultPrintConfigKeys();
+  });
   const [scaleFactor, setScaleFactor] = useState(1);
   const [selectedPreviewId, setSelectedPreviewId] = useState('standard');
   const [fullQuotation, setFullQuotation] = useState(null);
@@ -106,20 +108,9 @@ const QuotationView = ({
     setActiveTemplate(templates.find(t => t.isDefault) || templates[0] || null);
   }, [templates]);
 
-  const getPrintConfigKeys = useCallback(
-    () => printConfig || getStoredPrintConfig("quotations") || getDefaultPrintConfigKeys(),
-    [printConfig]
-  );
-
-  const printHtml = useMemo(() => {
-    if (!activeQuotation || !activeTemplate) return null;
-    const keys = getPrintConfigKeys();
-    const html = activeTemplate.template_html
-      ? getEffectiveTemplateHtml(activeTemplate, "quotations")
-      : buildFullTemplateHtml(filterTemplateByPrintConfig(activeTemplate, keys), "quotations");
-    const data = buildQuotationPrintData(activeQuotation, companySettings, selectedBank);
-    return resolveTemplateHtmlWithData(html, "quotations", data);
-  }, [activeQuotation, activeTemplate, companySettings, selectedBank, getPrintConfigKeys]);
+  const isVisible = useCallback((key) => {
+    return (printConfig || []).includes(key);
+  }, [printConfig]);
 
   const buildPreviewForConfig = useCallback(
     (selectedKeys) => {
@@ -129,10 +120,42 @@ const QuotationView = ({
         ? getEffectiveTemplateHtml(activeTemplate, "quotations")
         : buildFullTemplateHtml(filtered, "quotations");
       const data = buildQuotationPrintData(activeQuotation, companySettings, selectedBank);
+
+      if (!selectedKeys.includes("company_name")) data.company_name = "";
+      if (!selectedKeys.includes("company_logo")) data.company_logo = "";
+      if (!selectedKeys.includes("company_address")) data.company_address = "";
+      if (!selectedKeys.includes("company_phone")) data.company_phone = "";
+      if (!selectedKeys.includes("company_email")) data.company_email = "";
+      if (!selectedKeys.includes("document_number")) data.quotation_number = "";
+      if (!selectedKeys.includes("date")) { data.date = ""; data.valid_until = ""; }
+      if (!selectedKeys.includes("customer_name")) data.client_name = "";
+      if (!selectedKeys.includes("customer_address")) data.customer_address = "";
+      if (!selectedKeys.includes("customer_phone")) data.customer_phone = "";
+      if (!selectedKeys.includes("customer_email")) data.customer_email = "";
+      if (!selectedKeys.includes("items_table")) data.items_table = "";
+      if (!selectedKeys.includes("subtotal")) data.subtotal = "";
+      if (!selectedKeys.includes("discount")) data.discount = "";
+      if (!selectedKeys.includes("tax")) data.tax_amount = "";
+      if (!selectedKeys.includes("total_amount")) data.total = "";
+      if (!selectedKeys.includes("bank_details")) { data.bank_name = ""; data.bank_account_name = ""; data.bank_account_number = ""; data.ifsc_code = ""; }
+      if (!selectedKeys.includes("qr_code")) { data.bank_qr_code = ""; data.bank_qr_display = "none"; }
+      if (!selectedKeys.includes("signature")) { data.authorized_signature = ""; }
+      if (!selectedKeys.includes("authorized_signature_text")) { data.authorized_signature_text = ""; }
+      if (!selectedKeys.includes("seal")) { data.company_seal = ""; }
+      if (!selectedKeys.includes("terms_and_conditions")) data.terms_and_conditions = "";
+      if (!selectedKeys.includes("notes")) data.company_notes = "";
+      if (!selectedKeys.includes("title")) data.quotation_title = "";
+      if (!selectedKeys.includes("payment_status")) data.payment_status = "";
+
       return resolveTemplateHtmlWithData(html, "quotations", data);
     },
     [activeQuotation, activeTemplate, companySettings, selectedBank]
   );
+
+  const printHtml = useMemo(() => {
+    const keys = printConfig || getDefaultPrintConfigKeys();
+    return buildPreviewForConfig(keys);
+  }, [buildPreviewForConfig, printConfig]);
 
   // Auto-scaling logic to fit ENTIRE layout on one A4 page
   useEffect(() => {
@@ -234,14 +257,14 @@ const QuotationView = ({
   }, [handlePrintTrigger]);
 
   useEffect(() => {
-    if (printConfig && pendingPrintRef.current && printRef.current) {
+    if (pendingPrintRef.current && printRef.current) {
       pendingPrintRef.current = false;
       const t = setTimeout(() => {
         handlePrint();
       }, 150);
       return () => clearTimeout(t);
     }
-  }, [printConfig, handlePrint]);
+  });
 
   const openPrintConfig = () => setShowPrintConfig(true);
   const onPrintWithConfig = (selectedKeys) => {
@@ -370,12 +393,14 @@ const QuotationView = ({
             {templates.map(t => {
               const isActive = selectedPreviewId !== 'standard' && activeTemplate?.id === t.id;
               const previewHtml = isActive ? (() => {
-                const keys = getPrintConfigKeys();
+                const keys = printConfig || getDefaultPrintConfigKeys();
                 const html = t.template_html ? getEffectiveTemplateHtml(t, "quotations") : buildFullTemplateHtml(filterTemplateByPrintConfig(t, keys), "quotations");
                 let data = buildQuotationPrintData(activeQuotation, companySettings, selectedBank);
                 if (data.quotation && data.quotation.items && data.quotation.items.length > 5) {
                   data.quotation.items = data.quotation.items.slice(0, 5);
                 }
+                if (!keys.includes("title")) data.quotation_title = "";
+                if (!keys.includes("payment_status")) data.payment_status = "";
                 return resolveTemplateHtmlWithData(html, "quotations", data);
               })() : null;
 
@@ -491,155 +516,185 @@ const QuotationView = ({
                       {selectedPreviewId === 'standard' ? (
                         <div className="standard-print-layout">
                           <div className="print-header">
-                            <div className="print-header-left">
-                              <h2 className="company-name">{companySettings.name || companySettings.company_name || "Company Name"}</h2>
-                              <p className="company-details font-medium whitespace-pre-line">
-                                {companySettings.address}
-                                {(companySettings.city || companySettings.state) && `\n${[companySettings.city, companySettings.state].filter(Boolean).join(', ')}`}
-                                {(companySettings.country || companySettings.postal_code) && `\n${[companySettings.country, companySettings.postal_code].filter(Boolean).join(' - ')}`}
-                                {companySettings.phone && `\nPhone: ${companySettings.phone}`}
-                                {companySettings.email && `\nEmail: ${companySettings.email}`}
-                                {companySettings.website && `\nWebsite: ${companySettings.website}`}
-                                {companySettings.gst && `\nGST: ${companySettings.gst}`}
-                              </p>
-                            </div>
-                            <div className="print-header-right">
-                              <h2 className="doc-number">Quotation No: {activeQuotation.quotation_no}</h2>
-                              <p className="doc-date">Date: {dateStr}</p>
-                            </div>
+                            {(isVisible('company_name') || isVisible('company_address') || isVisible('company_phone') || isVisible('company_email')) && (
+                              <div className="print-header-left">
+                                {isVisible('company_name') && <h2 className="company-name">{companySettings.name || companySettings.company_name || "Company Name"}</h2>}
+                                <p className="company-details font-medium whitespace-pre-line">
+                                  {isVisible('company_address') && companySettings.address}
+                                  {isVisible('company_address') && (companySettings.city || companySettings.state) && `\n${[companySettings.city, companySettings.state].filter(Boolean).join(', ')}`}
+                                  {isVisible('company_address') && (companySettings.country || companySettings.postal_code) && `\n${[companySettings.country, companySettings.postal_code].filter(Boolean).join(' - ')}`}
+                                  {isVisible('company_phone') && companySettings.phone && `\nPhone: ${companySettings.phone}`}
+                                  {isVisible('company_email') && companySettings.email && `\nEmail: ${companySettings.email}`}
+                                  {isVisible('company_address') && companySettings.website && `\nWebsite: ${companySettings.website}`}
+                                  {isVisible('company_address') && companySettings.gst && `\nGST: ${companySettings.gst}`}
+                                </p>
+                              </div>
+                            )}
+                            {(isVisible('document_number') || isVisible('date')) && (
+                              <div className="print-header-right">
+                                {isVisible('document_number') && <h2 className="doc-number">Quotation No: {activeQuotation.quotation_no}</h2>}
+                                {isVisible('date') && <p className="doc-date">Date: {dateStr}</p>}
+                              </div>
+                            )}
                           </div>
 
                           <hr className="print-divider" />
 
-                          <div className="print-billing">
-                            <div className="print-billing-col">
-                              <h3>Bill To</h3>
-                              <div className="address-details font-medium">
-                                <p className="font-bold text-slate-800">{clientName}</p>
-                                {client?.company_name && client?.client_name && <p>{client.client_name}</p>}
-                                <p>{client?.address || "Client Address"}</p>
-                                <p>{client?.phone || "Client Phone"}</p>
-                              </div>
-                            </div>
-                            <div className="print-billing-col">
-                              <h3>From</h3>
-                              <div className="address-details font-medium">
-                                <p className="font-bold text-slate-800">{companySettings.name || companySettings.company_name || "Your Company Pvt Ltd"}</p>
-                                <p className="whitespace-pre-line">
-                                  {companySettings.address}
-                                  {(companySettings.city || companySettings.state) && `\n${[companySettings.city, companySettings.state].filter(Boolean).join(', ')}`}
-                                  {(companySettings.country || companySettings.postal_code) && `\n${[companySettings.country, companySettings.postal_code].filter(Boolean).join(' - ')}`}
-                                </p>
-                                {companySettings.phone && <p>P: {companySettings.phone}</p>}
-                                {companySettings.email && <p>E: {companySettings.email}</p>}
-                                {companySettings.website && <p>W: {companySettings.website}</p>}
-                                {companySettings.gst && <p>GST: {companySettings.gst}</p>}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="print-table-wrapper">
-                            <table className="print-table">
-                              <thead>
-                                <tr>
-                                  <th style={{ width: '60px' }}>#</th>
-                                  <th>Description</th>
-                                  <th className="text-right" style={{ width: '120px' }}>Price</th>
-                                  <th className="text-right" style={{ width: '120px' }}>Total</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {items.length === 0 ? (
-                                  <tr>
-                                    <td colSpan="4" className="text-center">No items added.</td>
-                                  </tr>
-                                ) : items.map((item, index) => (
-                                  <tr key={index}>
-                                    <td>{index + 1}</td>
-                                    <td>{item.item || item.description || item.item_name || "—"}</td>
-                                    <td className="text-right font-medium">
-                                      {activeQuotation.currency || '$'}{parseFloat(item.price || item.unit_price || 0).toFixed(2)}
-                                    </td>
-                                    <td className="text-right font-bold text-slate-900">
-                                      {activeQuotation.currency || '$'}{parseFloat(item.amount || item.total || 0).toFixed(2)}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <div className="print-summary">
-                            <div className="print-summary-box">
-                              <div className="print-summary-row">
-                                <span>Subtotal</span>
-                                <span>{activeQuotation.currency || '$'}{subtotal.toFixed(2)}</span>
-                              </div>
-                              {discount > 0 && (
-                                <div className="print-summary-row">
-                                  <span>Discount</span>
-                                  <span className="text-emerald-600 font-medium">-{activeQuotation.currency || '$'}{discount.toFixed(2)}</span>
-                                </div>
-                              )}
-                              {tax > 0 && (
-                                <div className="print-summary-row">
-                                  <span>Tax</span>
-                                  <span>{activeQuotation.currency || '$'}{tax.toFixed(2)}</span>
-                                </div>
-                              )}
-                              <div className="print-summary-row total">
-                                <span>Total</span>
-                                <span className="total-amount font-bold">{activeQuotation.currency || '$'}{total.toFixed(2)}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Terms, Notes, and Bank details */}
-                          <div className="print-bottom-section grid grid-cols-2 gap-8 mt-8 border-t border-slate-200 pt-6">
-                            <div className="print-bottom-left space-y-6">
-                              {/* Terms & Conditions */}
-                              <div>
-                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Terms & Conditions</h3>
-                                <p className="text-[12px] text-slate-600 whitespace-pre-line leading-relaxed">
-                                  {companySettings.terms || "Standard terms apply."}
-                                </p>
-                              </div>
-
-                              {/* Company Notes */}
-                              {companySettings.notes && (
-                                <div>
-                                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Company Notes</h3>
-                                  <p className="text-[12px] text-slate-600 whitespace-pre-line leading-relaxed">
-                                    {companySettings.notes}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="print-bottom-right space-y-6">
-                              {/* Bank Details */}
-                              {selectedBank ? (
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                  <h3 className="text-[10px] font-black text-slate-700 uppercase tracking-widest mb-3">Bank Transfer</h3>
-                                  <div className="space-y-1.5 text-xs text-slate-600 font-medium">
-                                    <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">Bank Name:</span> <span className="font-bold text-slate-800">{selectedBank.bankName}</span></div>
-                                    <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">Account Name:</span> <span className="font-bold text-slate-800">{selectedBank.accountName}</span></div>
-                                    <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">Account Number:</span> <span className="font-bold text-slate-800">{selectedBank.accountNumber}</span></div>
-                                    <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">IFSC Code:</span> <span className="font-bold text-slate-800">{selectedBank.ifsc}</span></div>
-                                    {(selectedBank.qrCode || selectedBank.qr_code) && (
-                                      <div className="mt-4 flex justify-center">
-                                        <img src={selectedBank.qrCode || selectedBank.qr_code} alt="Bank QR Code" width="110" height="110" className="object-contain" />
-                                      </div>
+                          {(isVisible('customer_name') || isVisible('customer_address') || isVisible('customer_phone') || isVisible('company_name') || isVisible('company_address') || isVisible('company_phone') || isVisible('company_email')) && (
+                            <div className="print-billing">
+                              {(isVisible('customer_name') || isVisible('customer_address') || isVisible('customer_phone')) && (
+                                <div className="print-billing-col">
+                                  <h3>Bill To</h3>
+                                  <div className="address-details font-medium">
+                                    {isVisible('customer_name') && (
+                                      <>
+                                        <p className="font-bold text-slate-800">{clientName}</p>
+                                        {client?.company_name && client?.client_name && <p>{client.client_name}</p>}
+                                      </>
                                     )}
+                                    {isVisible('customer_address') && <p>{client?.address || "Client Address"}</p>}
+                                    {isVisible('customer_phone') && <p>{client?.phone || "Client Phone"}</p>}
                                   </div>
                                 </div>
-                              ) : (
-                                <div className="bg-rose-50 border border-dashed border-rose-200 p-4 rounded-xl text-rose-700 text-xs text-center font-semibold">
-                                  Please select a bank account.
+                              )}
+                              {(isVisible('company_name') || isVisible('company_address') || isVisible('company_phone') || isVisible('company_email')) && (
+                                <div className="print-billing-col">
+                                  <h3>From</h3>
+                                  <div className="address-details font-medium">
+                                    {isVisible('company_name') && <p className="font-bold text-slate-800">{companySettings.name || companySettings.company_name || "Your Company Pvt Ltd"}</p>}
+                                    {isVisible('company_address') && (
+                                      <p className="whitespace-pre-line">
+                                        {companySettings.address}
+                                        {(companySettings.city || companySettings.state) && `\n${[companySettings.city, companySettings.state].filter(Boolean).join(', ')}`}
+                                        {(companySettings.country || companySettings.postal_code) && `\n${[companySettings.country, companySettings.postal_code].filter(Boolean).join(' - ')}`}
+                                      </p>
+                                    )}
+                                    {isVisible('company_phone') && companySettings.phone && <p>P: {companySettings.phone}</p>}
+                                    {isVisible('company_email') && companySettings.email && <p>E: {companySettings.email}</p>}
+                                    {isVisible('company_address') && companySettings.website && <p>W: {companySettings.website}</p>}
+                                    {isVisible('company_address') && companySettings.gst && <p>GST: {companySettings.gst}</p>}
+                                  </div>
                                 </div>
                               )}
                             </div>
-                          </div>
+                          )}
+
+                          {isVisible('items_table') && (
+                            <div className="print-table-wrapper">
+                              <table className="print-table">
+                                <thead>
+                                  <tr>
+                                    <th style={{ width: '60px' }}>#</th>
+                                    <th>Description</th>
+                                    <th className="text-right" style={{ width: '120px' }}>Price</th>
+                                    <th className="text-right" style={{ width: '120px' }}>Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {items.length === 0 ? (
+                                    <tr>
+                                      <td colSpan="4" className="text-center">No items added.</td>
+                                    </tr>
+                                  ) : items.map((item, index) => (
+                                    <tr key={index}>
+                                      <td>{index + 1}</td>
+                                      <td>{item.item || item.description || item.item_name || "—"}</td>
+                                      <td className="text-right font-medium">
+                                        {activeQuotation.currency || '$'}{parseFloat(item.price || item.unit_price || 0).toFixed(2)}
+                                      </td>
+                                      <td className="text-right font-bold text-slate-900">
+                                        {activeQuotation.currency || '$'}{parseFloat(item.amount || item.total || 0).toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          {(isVisible('subtotal') || isVisible('discount') || isVisible('tax') || isVisible('total_amount')) && (
+                            <div className="print-summary">
+                              <div className="print-summary-box">
+                                {isVisible('subtotal') && (
+                                  <div className="print-summary-row">
+                                    <span>Subtotal</span>
+                                    <span>{activeQuotation.currency || '$'}{subtotal.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                {isVisible('discount') && discount > 0 && (
+                                  <div className="print-summary-row">
+                                    <span>Discount</span>
+                                    <span className="text-emerald-600 font-medium">-{activeQuotation.currency || '$'}{discount.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                {isVisible('tax') && tax > 0 && (
+                                  <div className="print-summary-row">
+                                    <span>Tax</span>
+                                    <span>{activeQuotation.currency || '$'}{tax.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                {isVisible('total_amount') && (
+                                  <div className="print-summary-row total">
+                                    <span>Total</span>
+                                    <span className="total-amount font-bold">{activeQuotation.currency || '$'}{total.toFixed(2)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Terms, Notes, and Bank details */}
+                          {((isVisible('terms_and_conditions') && companySettings.terms) || (isVisible('notes') && companySettings.notes) || (selectedBank && (isVisible('bank_details') || isVisible('qr_code')))) && (
+                            <div className="print-bottom-section grid grid-cols-2 gap-8 mt-8 border-t border-slate-200 pt-6">
+                              {(isVisible('terms_and_conditions') || isVisible('notes')) && (
+                                <div className="print-bottom-left space-y-6">
+                                  {/* Terms & Conditions */}
+                                  {isVisible('terms_and_conditions') && (
+                                    <div>
+                                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Terms & Conditions</h3>
+                                      <p className="text-[12px] text-slate-600 whitespace-pre-line leading-relaxed">
+                                        {companySettings.terms || "Standard terms apply."}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Company Notes */}
+                                  {isVisible('notes') && companySettings.notes && (
+                                    <div>
+                                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Company Notes</h3>
+                                      <p className="text-[12px] text-slate-600 whitespace-pre-line leading-relaxed">
+                                        {companySettings.notes}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {(selectedBank && (isVisible('bank_details') || isVisible('qr_code'))) && (
+                                <div className="print-bottom-right space-y-6">
+                                  {/* Bank Details */}
+                                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <h3 className="text-[10px] font-black text-slate-700 uppercase tracking-widest mb-3">Bank Transfer</h3>
+                                    <div className="space-y-1.5 text-xs text-slate-600 font-medium">
+                                      {isVisible('bank_details') && (
+                                        <>
+                                          <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">Bank Name:</span> <span className="font-bold text-slate-800">{selectedBank.bankName}</span></div>
+                                          <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">Account Name:</span> <span className="font-bold text-slate-800">{selectedBank.accountName}</span></div>
+                                          <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">Account Number:</span> <span className="font-bold text-slate-800">{selectedBank.accountNumber}</span></div>
+                                          <div className="flex"><span className="w-28 text-slate-400 font-bold uppercase tracking-wider text-[10px]">IFSC Code:</span> <span className="font-bold text-slate-800">{selectedBank.ifsc}</span></div>
+                                        </>
+                                      )}
+                                      {isVisible('qr_code') && (selectedBank.qrCode || selectedBank.qr_code) && (
+                                        <div className="mt-4 flex justify-center">
+                                          <img src={selectedBank.qrCode || selectedBank.qr_code} alt="Bank QR Code" width="110" height="110" className="object-contain" />
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="text-slate-800 w-full min-h-[297mm]">
@@ -755,6 +810,8 @@ const QuotationView = ({
         templates={templates}
         selectedTemplate={activeTemplate}
         onSelectTemplate={setActiveTemplate}
+        onChange={setPrintConfig}
+        printConfig={printConfig}
       />
     </div>
   );
