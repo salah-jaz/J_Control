@@ -303,7 +303,7 @@ export default function Products() {
                <div className="grid grid-cols-2 gap-6">
                  <div>
                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Start Date</p>
-                   <p className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5"><CalendarIcon size={14} className="text-slate-400"/> {viewItem.start_date || 'N/A'}</p>
+                   <p className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5"><Calendar size={14} className="text-slate-400"/> {viewItem.start_date || 'N/A'}</p>
                  </div>
                  <div>
                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">End Date</p>

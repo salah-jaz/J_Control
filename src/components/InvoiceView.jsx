@@ -22,6 +22,7 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
     const [clients, setClients] = useState([]);
     const [bankAccounts, setBankAccounts] = useState([]);
     const [companySettings, setCompanySettings] = useState(null);
+    const [selectedBankId, setSelectedBankId] = useState("");
     const [showPrintConfig, setShowPrintConfig] = useState(false);
     const [printConfig, setPrintConfig] = useState(null);
     const [scaleFactor, setScaleFactor] = useState(1);
@@ -44,6 +45,18 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
             setClients(Array.isArray(clientsData) ? clientsData : []);
             setBankAccounts(banksData);
             setCompanySettings(settingsData?.company || {});
+            
+            const activeBanks = (banksData || []).filter(b => b.status === "Active" || b.status === "active");
+            const defaultBank = activeBanks.find(b => b.isDefault);
+            if (defaultBank) {
+                setSelectedBankId(String(defaultBank.id));
+            } else if (activeBanks.length === 1) {
+                setSelectedBankId(String(activeBanks[0].id));
+            } else if (activeBanks.length === 0 && banksData?.length > 0) {
+                setSelectedBankId(String(banksData[0].id));
+            } else {
+                setSelectedBankId("");
+            }
         };
         if (isOpen) {
             loadData();
@@ -51,22 +64,15 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
     }, [isOpen]);
 
     const client = clients.find(c => c.id == (invoice?.client_id || invoice?.clientId));
-    const bank = bankAccounts.find(b => b.id == (invoice?.bank_account_id || invoice?.bankAccountId));
+    const selectedBank = useMemo(() =>
+        bankAccounts.find(b => String(b.id) === String(selectedBankId)) || null,
+        [bankAccounts, selectedBankId]
+    );
 
     const getPrintConfigKeys = useCallback(
         () => printConfig || getStoredPrintConfig('invoices') || getDefaultPrintConfigKeys(),
         [printConfig]
     );
-
-    const printHtml = useMemo(() => {
-        if (!activeTemplate || !companySettings || !invoice) return null;
-        const keys = getPrintConfigKeys();
-        const html = activeTemplate.template_html
-            ? getEffectiveTemplateHtml(activeTemplate, 'invoices')
-            : buildFullTemplateHtml(filterTemplateByPrintConfig(activeTemplate, keys), 'invoices');
-        const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
-        return resolveTemplateHtmlWithData(html, 'invoices', data);
-    }, [activeTemplate, companySettings, invoice, client, bank, getPrintConfigKeys]);
 
     const buildPreviewForConfig = useCallback(
         (selectedKeys) => {
@@ -75,11 +81,45 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
             const html = activeTemplate.template_html
                 ? getEffectiveTemplateHtml(activeTemplate, 'invoices')
                 : buildFullTemplateHtml(filtered, 'invoices');
-            const data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
+            const data = buildInvoicePrintData(invoice, companySettings, client, selectedBank, { baseUrl: getApiOrigin() });
+
+            if (!selectedKeys.includes("company_name")) data.company_name = "";
+            if (!selectedKeys.includes("company_logo")) data.company_logo = "";
+            if (!selectedKeys.includes("company_address")) data.company_address = "";
+            if (!selectedKeys.includes("company_phone")) data.company_phone = "";
+            if (!selectedKeys.includes("company_email")) data.company_email = "";
+            if (!selectedKeys.includes("document_number")) data.invoice_number = "";
+            if (!selectedKeys.includes("date")) { data.date = ""; data.due_date = ""; }
+            if (!selectedKeys.includes("customer_name")) data.client_name = "";
+            if (!selectedKeys.includes("customer_address")) data.customer_address = "";
+            if (!selectedKeys.includes("customer_phone")) data.customer_phone = "";
+            if (!selectedKeys.includes("customer_email")) data.customer_email = "";
+            if (!selectedKeys.includes("items_table")) data.items_table = "";
+            if (!selectedKeys.includes("subtotal")) data.subtotal = "";
+            if (!selectedKeys.includes("discount")) data.discount = "";
+            if (!selectedKeys.includes("tax")) data.tax_amount = "";
+            if (!selectedKeys.includes("total_amount")) data.grand_total = "";
+            if (!selectedKeys.includes("paid_amount")) data.paid_amount = "";
+            if (!selectedKeys.includes("balance_due")) data.balance_due = "";
+            if (!selectedKeys.includes("bank_details")) { data.bank_name = ""; data.bank_account_name = ""; data.bank_account_number = ""; data.ifsc_code = ""; }
+            if (!selectedKeys.includes("qr_code")) { data.bank_qr_code = ""; data.bank_qr_display = "none"; }
+            if (!selectedKeys.includes("signature")) { data.authorized_signature = ""; }
+            if (!selectedKeys.includes("authorized_signature_text")) { data.authorized_signature_text = ""; }
+            if (!selectedKeys.includes("seal")) { data.company_seal = ""; }
+            if (!selectedKeys.includes("title")) data.invoice_title = "";
+            if (!selectedKeys.includes("payment_status")) data.payment_status = "";
+            if (!selectedKeys.includes("terms_and_conditions")) data.terms_and_conditions = "";
+            if (!selectedKeys.includes("notes")) data.company_notes = "";
+
             return resolveTemplateHtmlWithData(html, 'invoices', data);
         },
-        [activeTemplate, companySettings, invoice, client, bank]
+        [activeTemplate, companySettings, invoice, client, selectedBank]
     );
+
+    const printHtml = useMemo(() => {
+        const keys = getPrintConfigKeys();
+        return buildPreviewForConfig(keys);
+    }, [buildPreviewForConfig, getPrintConfigKeys]);
 
     // Auto-scaling logic to fit ENTIRE layout on one A4 page without cutting off
     useEffect(() => {
@@ -274,6 +314,34 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
                     <div className="p-4 lg:p-6 border-b border-slate-200 bg-white shrink-0 shadow-sm relative z-20">
                         <h3 className="font-extrabold text-slate-900 text-lg tracking-tight">Select Design</h3>
                         <p className="text-sm text-slate-500 mt-1 hidden lg:block">Click any layout to instantly apply it to this invoice.</p>
+                        
+                        {/* Bank Account Selection Dropdown */}
+                        <div className="pt-4 mt-4 border-t border-slate-100">
+                            <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Bank Account</label>
+                            <select
+                                value={selectedBankId}
+                                onChange={(e) => setSelectedBankId(e.target.value)}
+                                className="w-full bg-slate-50 border-2 border-slate-100 focus:border-slate-900 focus:bg-white rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 outline-none transition-all cursor-pointer"
+                            >
+                                {bankAccounts.length === 0 ? (
+                                    <option value="">No bank accounts available</option>
+                                ) : (
+                                    <>
+                                        {!selectedBankId && <option value="">-- Select Bank Account --</option>}
+                                        {bankAccounts.map((b) => (
+                                            <option key={b.id} value={b.id}>
+                                                {b.isDefault ? "★ " : ""}{b.bankName}{b.nickName ? ` (${b.nickName})` : b.accountType ? ` — ${b.accountType}` : ""}{b.isDefault ? " [Default]" : ""}
+                                            </option>
+                                        ))}
+                                    </>
+                                )}
+                            </select>
+                            {!selectedBankId && bankAccounts.length > 1 && (
+                                <p className="text-[10px] text-amber-600 font-bold mt-1.5 uppercase tracking-wider">
+                                    Please select a bank to continue.
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex-1 overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto p-4 lg:p-5 grid grid-flow-col auto-cols-[140px] lg:grid-flow-row lg:grid-cols-2 gap-4 lg:content-start [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 pb-10">
@@ -282,11 +350,13 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
                             const previewHtml = (() => {
                                 const keys = getPrintConfigKeys();
                                 const html = t.template_html ? getEffectiveTemplateHtml(t, "invoices") : buildFullTemplateHtml(filterTemplateByPrintConfig(t, keys), "invoices");
-                                let data = buildInvoicePrintData(invoice, companySettings, client, bank, { baseUrl: getApiOrigin() });
+                                let data = buildInvoicePrintData(invoice, companySettings, client, selectedBank, { baseUrl: getApiOrigin() });
                                 // Downscale items for miniature preview
                                 if (data.invoice && data.invoice.items && data.invoice.items.length > 5) {
                                     data.invoice.items = data.invoice.items.slice(0, 5);
                                 }
+                                if (!keys.includes("title")) data.invoice_title = "";
+                                if (!keys.includes("payment_status")) data.payment_status = "";
                                 return resolveTemplateHtmlWithData(html, "invoices", data);
                             })();
 
@@ -340,6 +410,40 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
                         </div>
                     </div>
 
+                    {/* Validation Alerts */}
+                    {(() => {
+                        const isCompanyInfoMissing = !companySettings?.name && !companySettings?.company_name;
+                        const isBankMissing = bankAccounts.length === 0;
+                        const isBankNotSelected = !selectedBankId;
+                        return (
+                            <div className="w-full max-w-[210mm] mx-auto px-4 pt-6 space-y-3 print:hidden">
+                                {isCompanyInfoMissing && (
+                                    <div className="bg-rose-50 border-2 border-rose-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                                        <div className="text-xs text-rose-800 font-medium">
+                                            <span className="font-bold uppercase tracking-wider block mb-0.5 text-rose-900 text-[10px]">Company Profile Incomplete</span>
+                                            Please complete the Company Profile in Settings to populate your header/billing details.
+                                        </div>
+                                    </div>
+                                )}
+                                {isBankMissing ? (
+                                    <div className="bg-rose-50 border-2 border-rose-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                                        <div className="text-xs text-rose-800 font-medium">
+                                            <span className="font-bold uppercase tracking-wider block mb-0.5 text-rose-900 text-[10px]">No Bank Accounts Available</span>
+                                            Please create a bank account before printing.
+                                        </div>
+                                    </div>
+                                ) : isBankNotSelected ? (
+                                    <div className="bg-amber-50 border-2 border-amber-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                                        <div className="text-xs text-amber-800 font-medium">
+                                            <span className="font-bold uppercase tracking-wider block mb-0.5 text-amber-900 text-[10px]">Bank Selection Required</span>
+                                            Please select a Bank Account from the dropdown in the layout sidebar to print.
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </div>
+                        );
+                    })()}
+
                     {/* Printable Content Scroll Area */}
                     <div className="flex-1 overflow-auto bg-slate-200/50 print:bg-white print:overflow-visible print:h-auto shadow-inner">
 
@@ -385,34 +489,70 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
                             )}
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <button
-                                onClick={() => {
-                                    if (!activeTemplate) {
-                                        toast.error('No Invoice template set. Create one in Print Templates.');
-                                        return;
-                                    }
-                                    openPrintConfig();
-                                }}
-                                className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-lg text-sm font-semibold transition-colors shadow-sm"
-                            >
-                                <Download size={16} /> Download PDF
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    if (!activeTemplate) {
-                                        toast.error('No Invoice template set. Create one in Print Templates.');
-                                        return;
-                                    }
-                                    openPrintConfig();
-                                }}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-[#f59e0b] text-white hover:bg-[#d97706] rounded-lg text-sm font-semibold transition-all shadow-sm shadow-amber-500/20"
-                            >
-                                <Printer size={16} /> Print
-                            </button>
-                            <button onClick={onClose} className="inline-flex items-center gap-2 px-4 py-2 ml-2 border border-slate-200 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-semibold transition-colors">
-                                Close
-                            </button>
+                            {(() => {
+                                const isBankMissing = bankAccounts.length === 0;
+                                const isBankNotSelected = !selectedBankId;
+                                return (
+                                    <>
+                                        <button
+                                            disabled={isBankMissing || isBankNotSelected || !activeTemplate}
+                                            onClick={() => {
+                                                if (isBankMissing) {
+                                                    toast.error("No bank accounts available. Please create a bank account before printing.");
+                                                    return;
+                                                }
+                                                if (isBankNotSelected) {
+                                                    toast.error("Please select a Bank Account before printing.");
+                                                    return;
+                                                }
+                                                if (!activeTemplate) {
+                                                    toast.error('No Invoice template set. Create one in Print Templates.');
+                                                    return;
+                                                }
+                                                openPrintConfig();
+                                            }}
+                                            className={clsx(
+                                                "inline-flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-semibold transition-colors shadow-sm",
+                                                (isBankMissing || isBankNotSelected || !activeTemplate)
+                                                    ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                                                    : "border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
+                                            )}
+                                        >
+                                            <Download size={16} /> Download PDF
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={isBankMissing || isBankNotSelected || !activeTemplate}
+                                            onClick={() => {
+                                                if (isBankMissing) {
+                                                    toast.error("No bank accounts available. Please create a bank account before printing.");
+                                                    return;
+                                                }
+                                                if (isBankNotSelected) {
+                                                    toast.error("Please select a Bank Account before printing.");
+                                                    return;
+                                                }
+                                                if (!activeTemplate) {
+                                                    toast.error('No Invoice template set. Create one in Print Templates.');
+                                                    return;
+                                                }
+                                                openPrintConfig();
+                                            }}
+                                            className={clsx(
+                                                "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm",
+                                                (isBankMissing || isBankNotSelected || !activeTemplate)
+                                                    ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                                    : "bg-[#f59e0b] text-white hover:bg-[#d97706] shadow-amber-500/20"
+                                            )}
+                                        >
+                                            <Printer size={16} /> Print
+                                        </button>
+                                        <button onClick={onClose} className="inline-flex items-center gap-2 px-4 py-2 ml-2 border border-slate-200 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-semibold transition-colors">
+                                            Close
+                                        </button>
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -425,6 +565,8 @@ const InvoiceView = ({ isOpen, onClose, invoice, onEdit, onDelete }) => {
                 moduleLabel="Invoice"
                 getPreviewHtml={buildPreviewForConfig}
                 onPrint={onPrintWithConfig}
+                printConfig={printConfig}
+                onChange={setPrintConfig}
                 templates={templates}
                 selectedTemplate={activeTemplate}
                 onSelectTemplate={setActiveTemplate}

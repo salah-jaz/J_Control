@@ -114,7 +114,7 @@ export const PREMIUM_TEMPLATES = {
         <span class="jaz-brand-name">{{invoice.company_name}}</span>
       </div>
       <div class="jaz-title-section">
-        <h1 class="jaz-doc-title">INVOICE</h1>
+        <h1 class="jaz-doc-title">{{invoice.invoice_title}}</h1>
         <div class="jaz-to-label">TO</div>
         <div class="jaz-client-info">
           <div class="jaz-client-name">{{invoice.client_name}}</div>
@@ -162,7 +162,7 @@ export const PREMIUM_TEMPLATES = {
           <span class="jaz-payment-value">{{invoice.bank_account_number}}</span>
           
           <div style="grid-column: 1 / -1; margin-top: 12px; text-align: center;">
-            <img src="{{invoice.bank_qr_code}}" alt="Bank QR Code" width="110" height="110" style="object-fit: contain; border-radius: 8px; border: 1px solid #e2e8f0; padding: 4px; background: #fff; max-width: 100%;" />
+            {{invoice.bank_qr_code}}
           </div>
         </div>
       </div>
@@ -225,7 +225,7 @@ export const PREMIUM_TEMPLATES = {
         <span class="jaz-brand-name">{{quotation.company_name}}</span>
       </div>
       <div class="jaz-title-section">
-        <h1 class="jaz-doc-title">QUOTATION</h1>
+        <h1 class="jaz-doc-title">{{quotation.quotation_title}}</h1>
         <div class="jaz-to-label">TO</div>
         <div class="jaz-client-info">
           <div class="jaz-client-name">{{quotation.client_name}}</div>
@@ -279,7 +279,7 @@ export const PREMIUM_TEMPLATES = {
           <span class="jaz-payment-value">{{quotation.ifsc_code}}</span>
           
           <div style="grid-column: 1 / -1; margin-top: 12px; text-align: center;">
-            <img src="{{quotation.bank_qr_code}}" alt="Bank QR Code" width="110" height="110" style="object-fit: contain; border-radius: 8px; border: 1px solid #e2e8f0; padding: 4px; background: #fff; max-width: 100%;" />
+            {{quotation.bank_qr_code}}
           </div>
         </div>
       </div>
