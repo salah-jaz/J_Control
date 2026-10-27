@@ -11,6 +11,8 @@ import Leads from './pages/Leads';
 import Reports from './pages/Reports';
 import FollowUpCalendar from './pages/FollowUpCalendar';
 import Income from "./pages/Income";
+import Inv from "./pages/Inv";
+import Assets from "./pages/Assets";
 import BankAccounts from "./pages/BankAccounts";
 import Expense from "./pages/Expense";
 import Transaction from "./pages/Transaction";
@@ -248,6 +250,14 @@ function App() {
               }
             />
             <Route
+              path="/inv"
+              element={
+                <Layout title="INV">
+                  <Inv />
+                </Layout>
+              }
+            />
+            <Route
               path="/income"
               element={
                 <Layout title="Incomes">
@@ -260,6 +270,14 @@ function App() {
               element={
                 <Layout title="Banks">
                   <BankAccounts />
+                </Layout>
+              }
+            />
+            <Route
+              path="/assets"
+              element={
+                <Layout title="Assets">
+                  <Assets />
                 </Layout>
               }
             />

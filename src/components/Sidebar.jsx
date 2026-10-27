@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { useMemo } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard,
     FileText,
@@ -17,63 +18,77 @@ import {
     LayoutTemplate,
     CalendarClock,
     Menu,
+    Receipt,
+    Boxes,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "../context/AuthContext";
 
 const Sidebar = ({ isOpen, setIsOpen, alertCount = 0 }) => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { logout } = useAuth();
 
-    const sections = [
-        {
-            title: "Home",
-            items: [
-                { label: "Dashboard", path: "/", icon: LayoutDashboard },
-                { label: "Tasks", path: "/planner", icon: CalendarClock },
-                { label: "Reports", path: "/reports", icon: FileBarChart2 },
-            ]
-        },
-        {
-            title: "Sales",
-            items: [
-                { label: "Leads", path: "/leads", icon: Briefcase },
-                { label: "Customers", path: "/clients", icon: Building2 },
-                { label: "Quotations", path: "/quotations", icon: FileText },
-                { label: "Invoices", path: "/invoices", icon: FileText },
-                { label: "Contracts", path: "/agreements", icon: FileText },
-            ]
-        },
-        {
-            title: "Accounts",
-            items: [
-                { label: "Incomes", path: "/income", icon: Wallet },
-                { label: "Expenses", path: "/expense", icon: CreditCard },
-                { label: "Banks", path: "/banks", icon: Landmark },
-                { label: "Transactions", path: "/transaction", icon: BookOpen },
-            ]
-        },
-        {
-            title: "Inventory",
-            items: [
-                { label: "Products", path: "/products", icon: Package },
-            ]
-        },
-        {
-            title: "HRMS",
-            items: [
-                { label: "Staff", path: "/staff", icon: Users },
-            ]
-        },
-        {
-            title: "Admin",
-            items: [
-                { label: "Users", path: "/user", icon: User },
-                { label: "Print Settings", path: "/print-templates", icon: LayoutTemplate },
-                { label: "Settings", path: "/settings", icon: Settings },
-            ]
-        }
-    ];
+    const sections = useMemo(() => {
+        const rawSections = [
+            {
+                title: "Home",
+                items: [
+                    { label: "Dashboard", path: "/", icon: LayoutDashboard },
+                    { label: "Reports", path: "/reports", icon: FileBarChart2 },
+                    { label: "Tasks", path: "/planner", icon: CalendarClock },
+                ]
+            },
+            {
+                title: "Sales",
+                items: [
+                    { label: "Contracts", path: "/agreements", icon: FileText },
+                    { label: "Customers", path: "/clients", icon: Building2 },
+                    { label: "Invoices", path: "/invoices", icon: FileText },
+                    { label: "Leads", path: "/leads", icon: Briefcase },
+                    { label: "Quotations", path: "/quotations", icon: FileText },
+                ]
+            },
+            {
+                title: "Accounts",
+                items: [
+                    { label: "Assets", path: "/assets", icon: Boxes },
+                    { label: "Banks", path: "/banks", icon: Landmark },
+                    { label: "Expenses", path: "/expense", icon: CreditCard },
+                    { label: "Incomes", path: "/income", icon: Wallet },
+                    { label: "INV", path: "/inv", icon: Receipt },
+                    { label: "Transactions", path: "/transaction", icon: BookOpen },
+                ]
+            },
+            {
+                title: "Inventory",
+                items: [
+                    { label: "Products", path: "/products", icon: Package },
+                ]
+            },
+            {
+                title: "HRMS",
+                items: [
+                    { label: "Staff", path: "/staff", icon: Users },
+                ]
+            },
+            {
+                title: "Admin",
+                items: [
+                    { label: "Print Settings", path: "/print-templates", icon: LayoutTemplate },
+                    { label: "Settings", path: "/settings", icon: Settings },
+                    { label: "Users", path: "/user", icon: User },
+                ]
+            }
+        ];
+
+        return rawSections.map((section) => ({
+            ...section,
+            items: [...section.items].sort((a, b) =>
+                a.label.localeCompare(b.label, undefined, { sensitivity: "base", numeric: true })
+            )
+        }));
+    }, []);
 
     return (
         <aside className={clsx(
@@ -116,23 +131,31 @@ const Sidebar = ({ isOpen, setIsOpen, alertCount = 0 }) => {
                                     <Link
                                         key={item.path}
                                         to={item.path}
+                                        onClick={() => {
+                                            if (location.pathname !== item.path) {
+                                                navigate(item.path);
+                                            }
+                                            if (setIsOpen && typeof setIsOpen === 'function' && window.innerWidth < 1024) {
+                                                setIsOpen(false);
+                                            }
+                                        }}
                                         title={!isOpen ? item.label : undefined}
                                         className={clsx(
-                                            "sidebar-item relative group",
+                                            "sidebar-item relative group cursor-pointer",
                                             isActive && "active",
                                             !isOpen && "justify-center px-2 py-2"
                                         )}
                                     >
                                         <Icon className={clsx(
-                                            "w-4 h-4 flex-shrink-0",
+                                            "w-4 h-4 flex-shrink-0 pointer-events-none",
                                             isActive ? "text-indigo-600" : "text-slate-400 group-hover:text-slate-600"
                                         )} />
                                         {isOpen && (
-                                            <span className="truncate">{item.label}</span>
+                                            <span className="truncate pointer-events-none">{item.label}</span>
                                         )}
                                         {item.path === '/products' && alertCount > 0 && (
                                             <span className={clsx(
-                                                "absolute right-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-indigo-500",
+                                                "absolute right-2 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-indigo-500 pointer-events-none",
                                                 !isOpen && "right-1 top-1"
                                             )} />
                                         )}

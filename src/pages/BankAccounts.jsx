@@ -3,6 +3,8 @@ import { Plus, Eye, Edit2, Trash2, X, Wallet, Building2, CreditCard, Upload, Ima
 import toast from "react-hot-toast";
 import { getBankAccounts, createBankAccount, updateBankAccount, deleteBankAccount, setDefaultBankAccount } from "../services/bankAccountService";
 import { invalidateCache } from "../utils/apiFetch";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "../query/queryKeys";
 import clsx from "clsx";
 import PageHeader from "../components/ui/PageHeader";
 import ToolbarSearch from "../components/ui/ToolbarSearch";
@@ -43,6 +45,7 @@ const tabs = [
 ];
 
 export default function BankAccounts() {
+  const queryClient = useQueryClient();
   const [data, setData] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
@@ -106,6 +109,13 @@ export default function BankAccounts() {
     try {
       await deleteBankAccount(id);
       toast.success("Bank account deleted successfully");
+      invalidateCache("/bank-accounts");
+      invalidateCache("/incomes");
+      invalidateCache("/transactions");
+      queryClient.invalidateQueries({ queryKey: queryKeys.bankAccounts() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       loadData();
     } catch (e) {
       console.error("Failed to delete", e);
@@ -117,6 +127,8 @@ export default function BankAccounts() {
     try {
       await setDefaultBankAccount(id);
       toast.success("Default bank account updated");
+      invalidateCache("/bank-accounts");
+      queryClient.invalidateQueries({ queryKey: queryKeys.bankAccounts() });
       loadData();
     } catch (e) {
       console.error("Failed to set default", e);
@@ -154,6 +166,12 @@ export default function BankAccounts() {
         setData((prev) => [newAccount, ...prev]);
       }
       invalidateCache("/bank-accounts");
+      invalidateCache("/incomes");
+      invalidateCache("/transactions");
+      queryClient.invalidateQueries({ queryKey: queryKeys.bankAccounts() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.income.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       await loadData();
       setOpenForm(false);
     } catch (e) {
@@ -264,7 +282,7 @@ export default function BankAccounts() {
                     <td className="px-6 py-4 font-medium text-slate-700">{item.accountName}</td>
                     <td className="px-6 py-4 font-mono text-slate-600">{item.accountNumber}</td>
                     <td className="px-6 py-4 font-bold text-slate-900">
-                      {item.currency} {parseFloat(item.currentBalance || item.openingBalance || 0).toLocaleString()}
+                      {item.currency} {parseFloat(item.currentBalance !== null && item.currentBalance !== undefined && item.currentBalance !== "" ? item.currentBalance : (item.openingBalance || 0)).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-slate-600">{item.accountType}</td>
                     <td className="px-6 py-4">
@@ -325,7 +343,7 @@ export default function BankAccounts() {
                 <div>
                   <p className="text-xs font-bold text-violet-600 uppercase tracking-wide">Current Balance</p>
                   <p className="text-2xl font-bold text-slate-900">
-                    {viewItem.currency} {parseFloat(viewItem.currentBalance || viewItem.openingBalance || 0).toLocaleString()}
+                    {viewItem.currency} {parseFloat(viewItem.currentBalance !== null && viewItem.currentBalance !== undefined && viewItem.currentBalance !== "" ? viewItem.currentBalance : (viewItem.openingBalance || 0)).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -524,8 +542,13 @@ export default function BankAccounts() {
                             if (editId) {
                               const original = data.find(d => d.id === editId);
                               if (original) {
-                                const diff = (parseFloat(val) || 0) - (parseFloat(original.openingBalance) || 0);
-                                newer.currentBalance = ((parseFloat(original.currentBalance) || 0) + diff).toFixed(2);
+                                const origOB = parseFloat(original.openingBalance) || 0;
+                                const origCB = (original.currentBalance !== null && original.currentBalance !== undefined && original.currentBalance !== "")
+                                  ? parseFloat(original.currentBalance)
+                                  : origOB;
+                                const newOB = parseFloat(val) || 0;
+                                const diff = newOB - origOB;
+                                newer.currentBalance = (origCB + diff).toFixed(2);
                               }
                             } else {
                               newer.currentBalance = val;

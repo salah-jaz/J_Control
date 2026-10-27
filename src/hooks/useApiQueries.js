@@ -27,6 +27,7 @@ import { getIncomes, getIncomeSummary } from '../services/incomeService';
 import { getQuotations, getQuotationSummary } from '../services/quotationService';
 import { getExpenses, getExpenseSummary } from '../services/expenseService';
 import { getTransactions, getTransactionSummary } from '../services/transactionService';
+import { getInvs } from '../services/invService';
 
 const STALE_TWO_MIN = 2 * 60 * 1000;
 
@@ -349,3 +350,14 @@ export function useSettings() {
     placeholderData: (prev) => prev,
   });
 }
+
+// ----- INV -----
+export function useInvList(filters = {}) {
+  return useQuery({
+    queryKey: queryKeys.inv.list(filters),
+    queryFn: () => getInvs(filters),
+    staleTime: STALE_TWO_MIN,
+    placeholderData: (prev) => prev,
+  });
+}
+

@@ -11,11 +11,26 @@ class BankAccountController extends Controller
 {
     public function index()
     {
+        BankAccount::ensureDefaultCashAccount();
         return BankAccount::orderBy('created_at', 'desc')->get();
     }
 
     public function store(Request $request)
     {
+        $bankName = strtolower(trim((string)$request->bank_name));
+        $accountNum = strtolower(trim((string)$request->account_number));
+        if ($bankName === 'cash' || $accountNum === 'cash') {
+            $existingCash = BankAccount::whereRaw('LOWER(bank_name) = ?', ['cash'])
+                ->orWhereRaw('LOWER(account_number) = ?', ['cash'])
+                ->first();
+            if ($existingCash) {
+                return response()->json([
+                    'message' => 'A default Cash account already exists.',
+                    'errors' => ['bank_name' => ['A Cash account already exists.']]
+                ], 422);
+            }
+        }
+
         $validated = $request->validate([
             'bank_name' => 'required|string',
             'account_name' => 'required|string',
@@ -92,8 +107,13 @@ class BankAccountController extends Controller
             BankAccount::where('id', '!=', $id)->update(['is_default' => false]);
         }
 
+        if (array_key_exists('opening_balance', $validated)) {
+            $newOpening = (float) ($validated['opening_balance'] ?? 0);
+            $validated['current_balance'] = $bankAccount->calculateCurrentBalance($newOpening);
+        }
+
         $bankAccount->update($validated);
-        return $bankAccount;
+        return $bankAccount->fresh();
     }
 
     public function setDefault($id)
@@ -107,6 +127,9 @@ class BankAccountController extends Controller
     public function destroy($id)
     {
         $bankAccount = BankAccount::findOrFail($id);
+        if (strtolower(trim($bankAccount->bank_name)) === 'cash' || strtolower(trim($bankAccount->account_number)) === 'cash') {
+            return response()->json(['message' => 'The default Cash account cannot be deleted.'], 422);
+        }
         $bankAccount->delete();
         return response()->json(['message' => 'Deleted successfully']);
     }
