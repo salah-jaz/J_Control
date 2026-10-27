@@ -69,13 +69,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('quotations/{quotation}', [QuotationController::class, 'destroy']);
     Route::post('quotations/{quotation}/convert-to-invoice', [QuotationController::class, 'convertToInvoice']);
     Route::apiResource('follow-ups', \App\Http\Controllers\FollowUpController::class);
-    Route::apiResource('call-logs', \App\Http\Controllers\CallLogController::class);
+    Route::apiResource('invs', \App\Http\Controllers\InvController::class);
+    Route::apiResource('inv', \App\Http\Controllers\InvController::class);
     Route::get('incomes/summary', [\App\Http\Controllers\IncomeController::class, 'summary']);
+    Route::post('incomes/{id}/record-payment', [\App\Http\Controllers\IncomeController::class, 'recordPayment']);
     Route::apiResource('incomes', \App\Http\Controllers\IncomeController::class);
     Route::get('income-categories', [\App\Http\Controllers\IncomeCategoryController::class, 'index']);
     Route::post('income-categories', [\App\Http\Controllers\IncomeCategoryController::class, 'store']);
     Route::delete('income-categories/{id}', [\App\Http\Controllers\IncomeCategoryController::class, 'destroy']);
     Route::get('expenses/summary', [\App\Http\Controllers\ExpenseController::class, 'summary']);
+    Route::post('expenses/{id}/record-payment', [\App\Http\Controllers\ExpenseController::class, 'recordPayment']);
     Route::apiResource('expenses', \App\Http\Controllers\ExpenseController::class);
     Route::get('expense-categories', [\App\Http\Controllers\ExpenseCategoryController::class, 'index']);
     Route::post('expense-categories', [\App\Http\Controllers\ExpenseCategoryController::class, 'store']);
@@ -84,6 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('bank-accounts', \App\Http\Controllers\BankAccountController::class);
     Route::get('transactions/summary', [\App\Http\Controllers\TransactionController::class, 'summary']);
     Route::apiResource('transactions', \App\Http\Controllers\TransactionController::class);
+    Route::apiResource('assets', \App\Http\Controllers\AssetController::class);
     Route::apiResource('users', \App\Http\Controllers\UserController::class);
     Route::apiResource('products', \App\Http\Controllers\ProductController::class);
     Route::get('planner-events/today', [\App\Http\Controllers\PlannerEventController::class, 'today']);

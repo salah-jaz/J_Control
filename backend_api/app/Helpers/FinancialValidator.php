@@ -14,51 +14,59 @@ class FinancialValidator
      * @param float|null $initialDeposit
      * @param int|null $initialDepositBankId
      * @param array|null $extraInstallments
+     * @param string|null $method
      * @return JsonResponse|null - returns a validation error JsonResponse or null if valid
      */
-    public static function validatePayments(float $netTotal, ?float $initialDeposit, ?int $initialDepositBankId, ?array $extraInstallments): ?JsonResponse
-    {
+    public static function validatePayments(
+        float $netTotal,
+        ?float $initialDeposit = 0.0,
+        ?int $initialDepositBankId = null,
+        ?array $extraInstallments = [],
+        ?string $method = 'Bank Account'
+    ): ?JsonResponse {
         $initialDeposit = $initialDeposit ?? 0.0;
+        $isCash = strtolower(trim((string)$method)) === 'cash';
 
-        // 1. Bank Account selection is mandatory for initial deposit
-        if ($initialDeposit > 0 && !$initialDepositBankId) {
+        // 1. Bank Account selection is mandatory for initial deposit IF method is Bank Account and amount > 0
+        if ($initialDeposit > 0 && !$isCash && !$initialDepositBankId) {
             return response()->json([
                 'message' => 'Please select a Bank Account before recording the payment.'
             ], 422);
         }
 
         // 2. Initial deposit cannot exceed net total
-        if ($initialDeposit > $netTotal) {
+        if ($initialDeposit > $netTotal + 0.01) {
             $formattedNet = number_format($netTotal, 0, '.', ',');
             return response()->json([
                 'message' => "Payment amount cannot exceed the remaining balance. Remaining Amount: ₹{$formattedNet}."
             ], 422);
         }
 
-        $totalPaidSoFar = $initialDeposit;
-
         // 3. Validate milestones/installments
+        $milestonesTotal = 0.0;
         foreach ($extraInstallments ?? [] as $idx => $inst) {
             $instAmt = isset($inst['amount']) && $inst['amount'] !== '' ? (float) $inst['amount'] : 0.0;
             if ($instAmt > 0) {
-                // Laravel request array sometimes has 'bank_account_id' instead of camelCase depending on request mapping
+                $instMethod = strtolower(trim((string)($inst['method'] ?? 'bank account')));
+                $instIsCash = $instMethod === 'cash';
                 $bankId = $inst['bank_account_id'] ?? null;
-                if (!$bankId) {
+
+                if (!$instIsCash && !$bankId && (isset($inst['status']) && strtolower(trim($inst['status'])) === 'paid')) {
                     return response()->json([
-                        'message' => 'Please select a Bank Account before recording the payment.'
+                        'message' => "Please select a Bank Account for milestone #" . ($idx + 1) . " before recording payment."
                     ], 422);
                 }
 
-                $remainingBeforeThis = round($netTotal - $totalPaidSoFar, 2);
-                if ($instAmt > $remainingBeforeThis) {
-                    $formattedRemaining = number_format($remainingBeforeThis, 0, '.', ',');
-                    return response()->json([
-                        'message' => "Payment amount cannot exceed the remaining balance. Remaining Amount: ₹{$formattedRemaining}."
-                    ], 422);
-                }
-
-                $totalPaidSoFar += $instAmt;
+                $milestonesTotal += $instAmt;
             }
+        }
+
+        // Sum of all milestones cannot exceed netTotal
+        if ($milestonesTotal > $netTotal + 0.01) {
+            $formattedNet = number_format($netTotal, 0, '.', ',');
+            return response()->json([
+                'message' => "Total milestone payments (₹" . number_format($milestonesTotal, 0, '.', ',') . ") cannot exceed the total payable amount: ₹{$formattedNet}."
+            ], 422);
         }
 
         return null; // Valid

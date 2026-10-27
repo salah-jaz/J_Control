@@ -34,6 +34,8 @@ const getPageTitle = (pathname) => {
         '/agreements': 'Agreements',
         '/income': 'Income',
         '/banks': 'Bank Accounts',
+        '/assets': 'Assets',
+        '/inv': 'INV',
         '/expense': 'Expense',
         '/transaction': 'Transactions',
         '/reports': 'Reports',

@@ -13,6 +13,8 @@ class Transaction extends Model
         'type',
         'date',
         'amount',
+        'previous_balance',
+        'current_balance',
         'currency',
         'category',
         'method',
@@ -24,6 +26,12 @@ class Transaction extends Model
         'related_id',
         'related_type',
         'invoice_id',
+        'inv_id',
+    ];
+
+    protected $casts = [
+        'previous_balance' => 'float',
+        'current_balance' => 'float',
     ];
 
     public function related()

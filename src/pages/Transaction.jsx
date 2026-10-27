@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Download, ArrowUpRight, ArrowDownLeft, Filter, X, Eye, Receipt, TrendingUp, TrendingDown, Activity, Search } from "lucide-react";
+import { Download, ArrowUpRight, ArrowDownLeft, Filter, X, Eye, Receipt, TrendingUp, TrendingDown, Activity, Search, Landmark, Banknote } from "lucide-react";
 import clsx from "clsx";
 import { exportToCSV } from "../utils/csvExport";
 import { useTransactionList, useTransactionSummary } from "../hooks/useApiQueries";
@@ -87,6 +87,65 @@ export default function Transaction() {
     setViewModalOpen(true);
   };
 
+  const getBankNameDisplay = (txn) => {
+    if (!txn) return "—";
+
+    const isCash = String(txn.method).toLowerCase() === 'cash' ||
+      txn.bankAccount?.bank_name?.toLowerCase() === 'cash' ||
+      txn.bankAccount?.account_type?.toLowerCase() === 'cash' ||
+      txn.bankAccount?.account_name?.toLowerCase()?.includes('cash') ||
+      String(txn.bank).toLowerCase() === 'cash' ||
+      String(txn.bankName).toLowerCase() === 'cash';
+
+    const targetId = txn.bankAccountId || txn.bank_account_id || txn.bankAccount?.id;
+    if (targetId) {
+      const b = bankAccounts.find((acc) => String(acc.id) === String(targetId));
+      if (b) {
+        const isAccCash = b.accountType?.toLowerCase() === 'cash' ||
+          b.bankName?.toLowerCase() === 'cash' ||
+          b.accountNumber?.toLowerCase() === 'cash' ||
+          b.accountName?.toLowerCase()?.includes('cash');
+        if (isAccCash) return b.accountName || "Cash Account";
+        return b.bankName || b.accountName || b.nickName || "Bank Account";
+      }
+    }
+
+    if (txn.bankAccount) {
+      const isRelCash = txn.bankAccount.bank_name?.toLowerCase() === 'cash' ||
+        txn.bankAccount.account_type?.toLowerCase() === 'cash' ||
+        txn.bankAccount.account_name?.toLowerCase()?.includes('cash');
+      if (isRelCash) {
+        return txn.bankAccount.account_name || "Cash Account";
+      }
+      return txn.bankAccount.bank_name || txn.bankAccount.bankName || txn.bankAccount.account_name || "Bank Account";
+    }
+
+    if (txn.bankName) {
+      if (txn.bankName.toLowerCase() === 'cash') return "Cash Account";
+      return txn.bankName;
+    }
+
+    if (txn.bank) {
+      if (txn.bank.toLowerCase() === 'cash') return "Cash Account";
+      return txn.bank;
+    }
+
+    if (isCash) return "Cash Account";
+    return "—";
+  };
+
+  const getTransactionDescription = (txn) => {
+    if (!txn) return "—";
+    const isOB = txn.category === 'Opening Balance' ||
+      (txn.reference && String(txn.reference).startsWith('BANK-OB-')) ||
+      (txn.transactionId && String(txn.transactionId).startsWith('BANK-OB-'));
+    if (isOB) {
+      return "Opening Balance";
+    }
+    const defaultParty = txn.party ? (txn.type === 'Expense' ? `Expense payment for ${txn.party}` : `Income payment from ${txn.party}`) : "Transaction record";
+    return txn.description || txn.reference || defaultParty;
+  };
+
   const displayStatus = (txn) => txn?.incomeStatus || txn?.status || "—";
 
   return (
@@ -110,7 +169,20 @@ export default function Transaction() {
                 <span>Intelligence Filters</span>
               </button>
               <button
-                onClick={() => exportToCSV(transactions, "transactions_export")}
+                onClick={() => {
+                  const exportData = transactions.map((t) => ({
+                    ID: t.id,
+                    Type: t.type,
+                    Party: t.party || '—',
+                    Date: t.date,
+                    Amount: t.amount,
+                    Bank: getBankNameDisplay(t),
+                    Status: displayStatus(t),
+                    Reference: t.reference || t.transactionId || '—',
+                    Description: getTransactionDescription(t),
+                  }));
+                  exportToCSV(exportData, "transactions_export");
+                }}
                 className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 shadow-sm transition-all active:scale-95 flex items-center gap-2 text-[13px] font-bold"
               >
                 <Download size={18} />
@@ -226,7 +298,7 @@ export default function Transaction() {
                   <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Party / Counterpart</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-32">Execution</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-44">Quantum</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-36">Method</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40">Bank</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-36">Status</th>
                   <th className="px-6 lg:px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right w-24">Ops</th>
                 </tr>
@@ -258,17 +330,37 @@ export default function Transaction() {
                       <span className="text-[12px] font-black text-slate-600 italic">{txn.date}</span>
                     </td>
                     <td className="px-6 py-5 text-right">
-                      <span className={clsx(
-                        "font-mono text-[16px] font-black italic tracking-tight",
-                        txn.type === "Income" ? "text-emerald-600" : "text-rose-600"
-                      )}>
-                        ₹ {parseFloat(txn.amount || 0).toLocaleString("en-IN")}
-                      </span>
+                      <div className="flex flex-col items-end">
+                        <span className={clsx(
+                          "font-mono text-[16px] font-black italic tracking-tight",
+                          txn.type === "Income" ? "text-emerald-600" : "text-rose-600"
+                        )}>
+                          ₹ {parseFloat(txn.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </span>
+                        {txn.currentBalance != null && (
+                          <span className="text-[10px] font-bold text-slate-400 font-mono tracking-tighter mt-0.5">
+                            Bal: ₹ {Number(txn.currentBalance).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-5">
-                      <div className="flex items-center gap-2 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200/50 w-fit">
-                        <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">{txn.method || 'Standard'}</span>
-                      </div>
+                      {(() => {
+                        const bankDisplay = getBankNameDisplay(txn);
+                        const isCashDisplay = bankDisplay.toLowerCase().includes('cash');
+                        return (
+                          <div className="flex items-center gap-2 text-slate-700 min-w-0">
+                            {isCashDisplay ? (
+                              <Banknote size={14} className="text-emerald-600 shrink-0" />
+                            ) : (
+                              <Landmark size={14} className="text-indigo-600 shrink-0" />
+                            )}
+                            <span className="text-[12px] font-bold text-slate-800 tracking-tight truncate" title={bankDisplay}>
+                              {bankDisplay}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-5 text-right">
                       <span className="px-3 py-1.5 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-900/10">
@@ -312,21 +404,61 @@ export default function Transaction() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="overflow-y-auto p-6 space-y-4">
+            <div className="overflow-y-auto p-6 space-y-5">
               {viewDetail ? (
                 <>
+                  {/* Account Ledger Running Balance Card */}
+                  <div className="p-4 bg-gradient-to-br from-slate-50 to-indigo-50/40 rounded-2xl border border-indigo-100/70 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-indigo-600 uppercase tracking-wider flex items-center gap-1.5">
+                        <Landmark size={13} />
+                        Account Ledger Movement
+                      </span>
+                      <span className="text-[11px] font-bold text-slate-600 truncate max-w-[200px]" title={getBankNameDisplay(viewDetail)}>
+                        {getBankNameDisplay(viewDetail)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2.5 pt-1">
+                      <div className="bg-white p-3 rounded-xl border border-slate-200/70 shadow-sm">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Previous Balance</span>
+                        <span className="text-[14px] font-black text-slate-700 font-mono italic mt-0.5 block">
+                          {viewDetail.previousBalance != null
+                            ? `₹ ${Number(viewDetail.previousBalance).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            : "—"}
+                        </span>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-slate-200/70 shadow-sm">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Amount</span>
+                        <span className={clsx(
+                          "text-[14px] font-black font-mono italic mt-0.5 block",
+                          viewDetail.type === "Income" ? "text-emerald-600" : "text-rose-600"
+                        )}>
+                          {viewDetail.type === "Income" ? "+" : "-"} ₹ {Number(viewDetail.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-indigo-100 shadow-sm">
+                        <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest block">Current Balance</span>
+                        <span className="text-[14px] font-black text-indigo-700 font-mono italic mt-0.5 block">
+                          {viewDetail.currentBalance != null
+                            ? `₹ ${Number(viewDetail.currentBalance).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="text-slate-500">Transaction ID</div>
                     <div className="font-semibold text-slate-800">{viewDetail.id}</div>
-                    <div className="text-slate-500">Amount</div>
+                    <div className="text-slate-500">Transaction Amount</div>
                     <div className="font-bold text-slate-900">₹ {parseFloat(viewDetail.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
-                    <div className="text-slate-500">Bank/Treasury</div>
-                    <div className="font-medium text-slate-800">{viewDetail.bankName || viewDetail.bank || "—"}</div>
+                    <div className="text-slate-500">Bank / Channel</div>
+                    <div className="font-medium text-slate-800">{getBankNameDisplay(viewDetail)}</div>
                     <div className="text-slate-500">Related Party</div>
                     <div className="font-medium text-slate-800">{viewDetail.party || "—"}</div>
                     <div className="text-slate-500">Transaction Date</div>
                     <div className="font-medium text-slate-800">{viewDetail.date || "—"}</div>
-                    <div className="text-slate-500">Type</div>
+                    <div className="text-slate-500">Nature / Type</div>
                     <div>
                       <span
                         className={clsx(
@@ -344,12 +476,24 @@ export default function Transaction() {
                     <div className="text-slate-500">Reference No.</div>
                     <div className="font-mono text-xs text-slate-700">{viewDetail.reference || viewDetail.transactionId || "—"}</div>
                   </div>
-                  {viewDetail.description && (
+
+                  <div className="space-y-3">
                     <div>
-                      <div className="text-slate-500 text-sm mb-1">Description</div>
-                      <p className="text-slate-800 text-sm">{viewDetail.description}</p>
+                      <div className="text-slate-500 text-sm mb-1 font-medium">Source Description</div>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-slate-800 text-sm leading-relaxed font-semibold">
+                        {getTransactionDescription(viewDetail)}
+                      </div>
                     </div>
-                  )}
+
+                    {viewDetail.userDescription && viewDetail.userDescription !== getTransactionDescription(viewDetail) && (
+                      <div>
+                        <div className="text-slate-500 text-sm mb-1 font-medium">Original Remarks / Notes</div>
+                        <div className="p-3 bg-white rounded-xl border border-slate-200 text-slate-600 text-sm leading-relaxed font-medium">
+                          {viewDetail.userDescription}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </>
               ) : (
                 <p className="text-slate-500 text-center py-8">No details available.</p>

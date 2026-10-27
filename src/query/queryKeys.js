@@ -64,4 +64,14 @@ export const queryKeys = {
     events: (params) => ['planner', 'events', params],
     today: () => ['planner', 'today'],
   },
+  inv: {
+    all: ['inv'],
+    list: (filters = {}) => ['inv', 'list', filters],
+    detail: (id) => ['inv', 'detail', id],
+  },
+  assets: {
+    all: ['assets'],
+    list: (filters = {}) => ['assets', 'list', filters],
+    detail: (id) => ['assets', 'detail', id],
+  },
 };
