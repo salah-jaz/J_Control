@@ -10,7 +10,9 @@ class Invoice extends Model
     use HasFactory;
 
     protected $fillable = [
-        'client_id', 'client_name', 'date', 'amount', 'status', 'gst', 'discount', 'discount_type', 'grand_total',
+        'client_id', 'client_name', 'client_address', 'client_phone', 'client_email', 'document_type',
+        'product_notes', 'service_notes',
+        'date', 'amount', 'status', 'gst', 'discount', 'discount_type', 'grand_total',
         'bank_account_id', 'bank_name', 'account_number', 'gpay_number', 'qr_code', 'invoice_number',
         'initial_deposit_enabled', 'initial_deposit_amount', 'initial_deposit_bank_id', 'extra_installments',
         'operational_expenses',

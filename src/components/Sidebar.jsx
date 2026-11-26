@@ -24,6 +24,9 @@ import {
 import clsx from "clsx";
 import { useAuth } from "../context/AuthContext";
 
+// Set to true to restore Tasks in the sidebar without changing routes or data.
+const SHOW_TASKS_NAV = false;
+
 const Sidebar = ({ isOpen, setIsOpen, alertCount = 0 }) => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -36,7 +39,9 @@ const Sidebar = ({ isOpen, setIsOpen, alertCount = 0 }) => {
                 items: [
                     { label: "Dashboard", path: "/", icon: LayoutDashboard },
                     { label: "Reports", path: "/reports", icon: FileBarChart2 },
-                    { label: "Tasks", path: "/planner", icon: CalendarClock },
+                    ...(SHOW_TASKS_NAV
+                        ? [{ label: "Tasks", path: "/planner", icon: CalendarClock }]
+                        : []),
                 ]
             },
             {
@@ -63,7 +68,7 @@ const Sidebar = ({ isOpen, setIsOpen, alertCount = 0 }) => {
             {
                 title: "Inventory",
                 items: [
-                    { label: "Products", path: "/products", icon: Package },
+                    { label: "Items", path: "/products", icon: Package },
                 ]
             },
             {

@@ -220,7 +220,7 @@ function App() {
             <Route
               path="/products"
               element={
-                <Layout title="Products">
+                <Layout title="Items">
                   <Products />
                 </Layout>
               }

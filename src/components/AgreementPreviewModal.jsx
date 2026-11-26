@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import { X, Printer, Check, Edit2, Trash2, Download, LayoutTemplate } from 'lucide-react';
+import { X, Printer, Check, Edit2, Trash2, Download, LayoutTemplate, Paperclip, ExternalLink } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import toast from 'react-hot-toast';
 import clsx from 'clsx';
@@ -11,6 +11,7 @@ import {
   buildAgreementPrintData,
 } from '../config/printTemplateModules';
 import AgreementContentDisplay from './AgreementContentDisplay';
+import agreementService from '../services/agreementService';
 
 const A4_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
@@ -579,7 +580,7 @@ export default function AgreementPreviewModal({
 
           {/* Footer Actions */}
           <div className="p-5 border-t border-slate-100 bg-slate-50 flex flex-wrap gap-3 items-center justify-between rounded-b-2xl print:hidden">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
               {onEdit && (
                 <button onClick={onEdit} className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 rounded-lg text-sm font-semibold transition-colors shadow-sm">
                   <Edit2 size={16} /> Edit
@@ -589,6 +590,19 @@ export default function AgreementPreviewModal({
                 <button onClick={onDelete} className="inline-flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 bg-white hover:bg-red-50 rounded-lg text-sm font-semibold transition-colors shadow-sm">
                   <Trash2 size={16} /> Delete
                 </button>
+              )}
+              {agreement?.attachment && (
+                <a
+                  href={agreementService.resolveAttachmentUrl(agreement.attachment)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 border border-violet-200 text-violet-700 bg-white hover:bg-violet-50 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                  title={agreement.attachment_name || 'Open attachment'}
+                >
+                  <Paperclip size={16} />
+                  <span className="max-w-[180px] truncate">{agreement.attachment_name || 'Attachment'}</span>
+                  <ExternalLink size={14} className="opacity-60" />
+                </a>
               )}
             </div>
 

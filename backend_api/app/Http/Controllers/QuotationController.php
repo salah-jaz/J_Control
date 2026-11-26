@@ -98,15 +98,25 @@ class QuotationController extends Controller
 
     public function store(Request $request)
     {
+        $request->merge([
+            'client_email' => strlen(trim((string) ($request->input('client_email') ?? ''))) > 0 ? $request->input('client_email') : null,
+        ]);
+
         $validated = $request->validate([
             'quotation_no' => 'nullable|string',
             'client_id' => 'required|exists:clients,id',
+            'client_address' => 'nullable|string',
+            'client_phone' => 'nullable|string',
+            'client_email' => 'nullable|email',
+            'document_type' => 'nullable|string|in:Products,Services,Both Products & Services',
             'date' => 'required|date',
             'expiry_date' => 'nullable|date',
             'reference_number' => 'nullable|string',
             'sales_person' => 'nullable|string',
             'status' => 'required|in:Draft,Sent,Accepted,Rejected,Converted',
             'notes' => 'nullable|string',
+            'product_notes' => 'nullable|string',
+            'service_notes' => 'nullable|string',
             'internal_notes' => 'nullable|string',
             'subtotal' => 'nullable|numeric',
             'discount' => 'nullable|numeric',
@@ -114,6 +124,7 @@ class QuotationController extends Controller
             'total' => 'nullable|numeric',
             'initial_deposit' => 'nullable|numeric',
             'items' => 'nullable|array',
+            'items.*.product_id' => 'nullable|integer',
             'items.*.item' => 'required|string',
             'items.*.description' => 'nullable|string',
             'items.*.qty' => 'nullable|numeric',
@@ -123,17 +134,26 @@ class QuotationController extends Controller
             'agreement_content' => 'nullable|array',
         ]);
 
+        $items = $validated['items'] ?? [];
+        $productIds = collect($items)->pluck('product_id')->filter()->map(fn ($id) => (string) $id);
+        if ($productIds->count() !== $productIds->unique()->count()) {
+            return response()->json(['message' => 'Duplicate catalog items are not allowed on a quotation'], 422);
+        }
+
         $validated['quotation_no'] = $validated['quotation_no'] ?? self::nextQuotationNo();
         $validated['subtotal'] = $validated['subtotal'] ?? 0;
         $validated['discount'] = $validated['discount'] ?? 0;
         $validated['tax'] = $validated['tax'] ?? 0;
         $validated['total'] = $validated['total'] ?? 0;
+        $validated['document_type'] = $validated['document_type'] ?? 'Both Products & Services';
 
+        $agreementContent = $validated['agreement_content'] ?? null;
+        unset($validated['items'], $validated['agreement_content']);
         $quotation = Quotation::create($validated);
 
-        $items = $validated['items'] ?? [];
         foreach ($items as $row) {
             $quotation->items()->create([
+                'product_id' => $row['product_id'] ?? null,
                 'item' => $row['item'],
                 'description' => $row['description'] ?? null,
                 'qty' => $row['qty'] ?? 1,
@@ -143,14 +163,14 @@ class QuotationController extends Controller
             ]);
         }
 
-        if (!empty($validated['agreement_content'])) {
+        if (!empty($agreementContent)) {
             $quotation->agreement()->create([
                 'agreement_no' => \App\Http\Controllers\AgreementController::generateNextNumber(),
                 'title' => 'Quotation Agreement - ' . $quotation->quotation_no,
                 'client_id' => $quotation->client_id,
                 'date' => now()->toDateString(),
                 'status' => 'Draft',
-                'content' => $validated['agreement_content'],
+                'content' => $agreementContent,
             ]);
         }
 
@@ -164,15 +184,25 @@ class QuotationController extends Controller
 
     public function update(Request $request, Quotation $quotation)
     {
+        $request->merge([
+            'client_email' => strlen(trim((string) ($request->input('client_email') ?? ''))) > 0 ? $request->input('client_email') : null,
+        ]);
+
         $validated = $request->validate([
             'quotation_no' => 'nullable|string',
             'client_id' => 'required|exists:clients,id',
+            'client_address' => 'nullable|string',
+            'client_phone' => 'nullable|string',
+            'client_email' => 'nullable|email',
+            'document_type' => 'nullable|string|in:Products,Services,Both Products & Services',
             'date' => 'required|date',
             'expiry_date' => 'nullable|date',
             'reference_number' => 'nullable|string',
             'sales_person' => 'nullable|string',
             'status' => 'required|in:Draft,Sent,Accepted,Rejected,Converted',
             'notes' => 'nullable|string',
+            'product_notes' => 'nullable|string',
+            'service_notes' => 'nullable|string',
             'internal_notes' => 'nullable|string',
             'subtotal' => 'nullable|numeric',
             'discount' => 'nullable|numeric',
@@ -181,6 +211,7 @@ class QuotationController extends Controller
             'initial_deposit' => 'nullable|numeric',
             'items' => 'nullable|array',
             'items.*.id' => 'nullable|exists:quotation_items,id',
+            'items.*.product_id' => 'nullable|integer',
             'items.*.item' => 'required|string',
             'items.*.description' => 'nullable|string',
             'items.*.qty' => 'nullable|numeric',
@@ -190,12 +221,19 @@ class QuotationController extends Controller
             'agreement_content' => 'nullable|array',
         ]);
 
-        $quotation->update($validated);
-
         $items = $validated['items'] ?? [];
+        $productIds = collect($items)->pluck('product_id')->filter()->map(fn ($id) => (string) $id);
+        if ($productIds->count() !== $productIds->unique()->count()) {
+            return response()->json(['message' => 'Duplicate catalog items are not allowed on a quotation'], 422);
+        }
+
+        $updateData = collect($validated)->except(['items', 'agreement_content'])->all();
+        $quotation->update($updateData);
+
         $quotation->items()->delete();
         foreach ($items as $row) {
             $quotation->items()->create([
+                'product_id' => $row['product_id'] ?? null,
                 'item' => $row['item'],
                 'description' => $row['description'] ?? null,
                 'qty' => $row['qty'] ?? 1,

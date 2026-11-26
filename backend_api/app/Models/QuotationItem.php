@@ -9,7 +9,7 @@ class QuotationItem extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['quotation_id', 'item', 'description', 'qty', 'price', 'tax', 'amount'];
+    protected $fillable = ['quotation_id', 'product_id', 'item', 'description', 'qty', 'price', 'tax', 'amount'];
 
     protected $casts = [
         'qty' => 'decimal:2',

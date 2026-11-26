@@ -122,9 +122,19 @@ class InvoiceController extends Controller
 
     public function store(Request $request)
     {
+        $request->merge([
+            'client_email' => strlen(trim((string) ($request->input('client_email') ?? ''))) > 0 ? $request->input('client_email') : null,
+        ]);
+
         $validated = $request->validate([
             'client_name' => 'required|string',
             'client_id' => 'nullable',
+            'client_address' => 'nullable|string',
+            'client_phone' => 'nullable|string',
+            'client_email' => 'nullable|email',
+            'document_type' => 'nullable|string|in:Products,Services,Both Products & Services',
+            'product_notes' => 'nullable|string',
+            'service_notes' => 'nullable|string',
             'date' => 'required|date',
             'status' => 'required|string|in:Paid,Pending,Overdue,Draft,Sent,Partial,Cancelled',
             'gst' => 'nullable|numeric|min:0',
@@ -134,6 +144,7 @@ class InvoiceController extends Controller
             'gpay_number' => 'nullable|string',
             'qr_code' => 'nullable|file|mimes:jpg,jpeg,png',
             'items' => 'nullable|array',
+            'items.*.product_id' => 'nullable|integer',
             'items.*.service_name' => 'required|string',
             'items.*.payment_status' => 'nullable|string',
             'items.*.amount' => 'required|numeric',
@@ -153,6 +164,11 @@ class InvoiceController extends Controller
         ]);
 
         $items = $validated['items'] ?? [];
+        $productIds = collect($items)->pluck('product_id')->filter()->map(fn ($id) => (string) $id);
+        if ($productIds->count() !== $productIds->unique()->count()) {
+            return response()->json(['message' => 'Duplicate catalog items are not allowed on an invoice'], 422);
+        }
+
         $subtotal = collect($items)->sum(fn ($i) => (float) ($i['amount'] ?? 0));
         $gst = (float) ($validated['gst'] ?? 0);
         $discountType = $validated['discount_type'] ?? 'Flat';
@@ -167,6 +183,12 @@ class InvoiceController extends Controller
         $data = [
             'client_id' => $validated['client_id'] ?? null,
             'client_name' => $validated['client_name'],
+            'client_address' => $validated['client_address'] ?? null,
+            'client_phone' => $validated['client_phone'] ?? null,
+            'client_email' => $validated['client_email'] ?? null,
+            'document_type' => $validated['document_type'] ?? 'Both Products & Services',
+            'product_notes' => $validated['product_notes'] ?? null,
+            'service_notes' => $validated['service_notes'] ?? null,
             'date' => $validated['date'],
             'status' => $validated['status'],
             'amount' => $subtotal,
@@ -194,6 +216,7 @@ class InvoiceController extends Controller
 
         foreach ($items as $item) {
             $invoice->items()->create([
+                'product_id' => $item['product_id'] ?? null,
                 'service_name' => $item['service_name'],
                 'payment_status' => $item['payment_status'] ?? 'Pending',
                 'amount' => $item['amount'],
@@ -233,9 +256,19 @@ class InvoiceController extends Controller
 
     public function update(Request $request, Invoice $invoice)
     {
+        $request->merge([
+            'client_email' => strlen(trim((string) ($request->input('client_email') ?? ''))) > 0 ? $request->input('client_email') : null,
+        ]);
+
         $validated = $request->validate([
             'client_name' => 'required|string',
             'client_id' => 'nullable',
+            'client_address' => 'nullable|string',
+            'client_phone' => 'nullable|string',
+            'client_email' => 'nullable|email',
+            'document_type' => 'nullable|string|in:Products,Services,Both Products & Services',
+            'product_notes' => 'nullable|string',
+            'service_notes' => 'nullable|string',
             'date' => 'required|date',
             'status' => 'required|string|in:Paid,Pending,Overdue,Draft,Sent,Partial,Cancelled',
             'gst' => 'nullable|numeric|min:0',
@@ -245,6 +278,7 @@ class InvoiceController extends Controller
             'gpay_number' => 'nullable|string',
             'qr_code' => 'nullable',
             'items' => 'nullable|array',
+            'items.*.product_id' => 'nullable|integer',
             'items.*.service_name' => 'required|string',
             'items.*.payment_status' => 'nullable|string',
             'items.*.amount' => 'required|numeric',
@@ -264,6 +298,11 @@ class InvoiceController extends Controller
         ]);
 
         $items = $validated['items'] ?? [];
+        $productIds = collect($items)->pluck('product_id')->filter()->map(fn ($id) => (string) $id);
+        if ($productIds->count() !== $productIds->unique()->count()) {
+            return response()->json(['message' => 'Duplicate catalog items are not allowed on an invoice'], 422);
+        }
+
         $subtotal = collect($items)->sum(fn ($i) => (float) ($i['amount'] ?? 0));
         $gst = (float) ($validated['gst'] ?? 0);
         $discountType = $validated['discount_type'] ?? 'Flat';
@@ -276,6 +315,12 @@ class InvoiceController extends Controller
         $data = [
             'client_id' => $validated['client_id'] ?? null,
             'client_name' => $validated['client_name'],
+            'client_address' => $validated['client_address'] ?? null,
+            'client_phone' => $validated['client_phone'] ?? null,
+            'client_email' => $validated['client_email'] ?? null,
+            'document_type' => $validated['document_type'] ?? 'Both Products & Services',
+            'product_notes' => $validated['product_notes'] ?? null,
+            'service_notes' => $validated['service_notes'] ?? null,
             'date' => $validated['date'],
             'status' => $validated['status'],
             'amount' => $subtotal,
@@ -305,6 +350,7 @@ class InvoiceController extends Controller
         $invoice->items()->delete();
         foreach ($items as $item) {
             $invoice->items()->create([
+                'product_id' => $item['product_id'] ?? null,
                 'service_name' => $item['service_name'],
                 'payment_status' => $item['payment_status'] ?? 'Pending',
                 'amount' => $item['amount'],

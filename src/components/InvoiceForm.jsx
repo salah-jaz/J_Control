@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Plus, Trash2, Landmark, Loader2, Save, FileText, Receipt, Layers,
 } from 'lucide-react';
@@ -10,10 +10,23 @@ import { getClients } from '../services/db';
 import { getBankAccounts } from '../services/bankAccountService';
 import { getProducts } from '../services/productService';
 import SlideOver from './ui/SlideOver';
+import {
+  DOCUMENT_TYPES,
+  getClientContactSnapshot,
+  allowedItemFilters,
+  filterCatalogItems,
+  notesVisibility,
+} from '../utils/documentCatalog';
 
 const emptyForm = {
   clientId: '',
   clientName: '',
+  clientAddress: '',
+  clientPhone: '',
+  clientEmail: '',
+  documentType: 'Both Products & Services',
+  productNotes: '',
+  serviceNotes: '',
   date: new Date().toISOString().split('T')[0],
   status: 'Draft',
   gst: 0,
@@ -34,6 +47,8 @@ const emptyForm = {
   notes: '',
 };
 
+const emptyLineItem = () => ({ sNo: 1, productId: null, serviceName: '', paymentStatus: 'Pending', amount: '' });
+
 const STEPS = [
   { id: 'basic', label: 'Basic Info', icon: FileText },
   { id: 'services', label: 'Line Items', icon: Receipt },
@@ -46,9 +61,25 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
   const [activeTab, setActiveTab] = useState('basic');
   const [formData, setFormData] = useState(emptyForm);
   const [products, setProducts] = useState([]);
-  const [items, setItems] = useState([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
+  const [items, setItems] = useState([emptyLineItem()]);
+  const [itemFilter, setItemFilter] = useState('All');
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+
+  const filterOptions = useMemo(
+    () => allowedItemFilters(formData.documentType),
+    [formData.documentType]
+  );
+  const { showProductNotes, showServiceNotes } = useMemo(
+    () => notesVisibility(formData.documentType),
+    [formData.documentType]
+  );
+
+  const resolveProductId = (name, existingId) => {
+    if (existingId != null && existingId !== '') return existingId;
+    const match = products.find((p) => p.name === name);
+    return match?.id ?? null;
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -82,6 +113,12 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
         ...emptyForm,
         clientId: invoice.client_id || invoice.clientId || '',
         clientName: invoice.client_name || invoice.clientName || '',
+        clientAddress: invoice.client_address || '',
+        clientPhone: invoice.client_phone || '',
+        clientEmail: invoice.client_email || '',
+        documentType: invoice.document_type || 'Both Products & Services',
+        productNotes: invoice.product_notes || '',
+        serviceNotes: invoice.service_notes || '',
         date: typeof invoice.date === 'string' ? invoice.date.split('T')[0] : (invoice.date || ''),
         status: invoice.status || 'Draft',
         gst: parseFloat(invoice.gst || 0),
@@ -102,22 +139,47 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
           bankName: getBankDisplay(o.bank_account_id ?? o.bankAccountId) || o.bank_name || '',
           paid: o.paid === true || o.paid === '1' || o.paid === 'Paid',
         })),
-        invoice_no: invoice.invoice_no || '',
+        invoice_no: invoice.invoice_no || invoice.invoice_number || '',
         reference_number: invoice.reference_number || '',
         notes: invoice.notes || '',
       });
       const invItems = invoice.items || [];
       setItems(invItems.length
-        ? invItems.map((it, idx) => ({ sNo: idx + 1, serviceName: it.service_name || '', paymentStatus: it.payment_status || 'Pending', amount: it.amount != null ? String(it.amount) : '' }))
-        : [{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
+        ? invItems.map((it, idx) => ({
+            sNo: idx + 1,
+            productId: it.product_id ?? null,
+            serviceName: it.service_name || '',
+            paymentStatus: it.payment_status || 'Pending',
+            amount: it.amount != null ? String(it.amount) : '',
+          }))
+        : [emptyLineItem()]);
+      const allowed = allowedItemFilters(invoice.document_type || 'Both Products & Services');
+      setItemFilter(allowed[0] || 'All');
     } else if (!invoice && isOpen) {
       setFormData({ ...emptyForm, invoice_no: nextInvoiceNumber || '' });
-      setItems([{ sNo: 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
+      setItems([emptyLineItem()]);
+      setItemFilter('All');
     }
     setActiveTab('basic');
     setErrors({});
     setIsSaving(false);
   }, [invoice, isOpen, bankAccounts, nextInvoiceNumber]);
+
+  // Backfill productId from catalog when editing older invoices that only stored names
+  useEffect(() => {
+    if (!isOpen || !products.length) return;
+    setItems((prev) => {
+      let changed = false;
+      const next = prev.map((row) => {
+        if (row.productId || !row.serviceName) return row;
+        const match = products.find((p) => p.name === row.serviceName);
+        if (!match) return row;
+        changed = true;
+        return { ...row, productId: match.id };
+      });
+      return changed ? next : prev;
+    });
+  }, [products, isOpen]);
 
   const subtotal = items.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
   const gstPct   = parseFloat(formData.gst) || 0;
@@ -171,6 +233,12 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
     data.append('invoice_no', formData.invoice_no);
     data.append('reference_number', formData.reference_number);
     data.append('notes', formData.notes);
+    data.append('client_address', formData.clientAddress || '');
+    data.append('client_phone', formData.clientPhone || '');
+    data.append('client_email', formData.clientEmail || '');
+    data.append('document_type', formData.documentType || 'Both Products & Services');
+    data.append('product_notes', formData.productNotes || '');
+    data.append('service_notes', formData.serviceNotes || '');
 
     (formData.extraInstallments || []).forEach((row, i) => {
       if (row.date) data.append(`extra_installments[${i}][date]`, row.date);
@@ -179,6 +247,8 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
       if (row.notes) data.append(`extra_installments[${i}][notes]`, row.notes);
     });
     items.forEach((item, i) => {
+      const pid = resolveProductId(item.serviceName, item.productId);
+      if (pid != null && pid !== '') data.append(`items[${i}][product_id]`, pid);
       data.append(`items[${i}][service_name]`, item.serviceName);
       data.append(`items[${i}][payment_status]`, item.paymentStatus);
       data.append(`items[${i}][amount]`, item.amount);
@@ -197,14 +267,62 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
     const next = [...items];
     let updatedItem = { ...next[idx], [field]: val };
     if (field === 'serviceName') {
-      const selectedProduct = products.find(p => p.name === val);
-      if (selectedProduct) updatedItem.amount = selectedProduct.price || '';
+      const selectedProduct = products.find((p) => p.name === val);
+      if (selectedProduct) {
+        const alreadyUsed = items.some(
+          (row, i) => i !== idx && row.productId != null && String(row.productId) === String(selectedProduct.id)
+        );
+        if (alreadyUsed) {
+          toast.error('This item is already selected on another line');
+          return;
+        }
+        updatedItem.productId = selectedProduct.id;
+        updatedItem.amount = selectedProduct.price || '';
+      } else {
+        updatedItem.productId = null;
+      }
     }
     next[idx] = updatedItem;
     setItems(next);
   };
   const removeItem = (idx) => setItems(items.filter((_, i) => i !== idx).map((it, i) => ({ ...it, sNo: i + 1 })));
-  const addItem    = () => setItems([...items, { sNo: items.length + 1, serviceName: '', paymentStatus: 'Pending', amount: '' }]);
+  const addItem = () => setItems([...items, { ...emptyLineItem(), sNo: items.length + 1 }]);
+
+  const handleDocumentTypeChange = (nextType) => {
+    const allowed = allowedItemFilters(nextType);
+    setItemFilter((prev) => (allowed.includes(prev) ? prev : allowed[0]));
+    setFormData({
+      ...formData,
+      documentType: nextType,
+      productNotes: notesVisibility(nextType).showProductNotes ? formData.productNotes : '',
+      serviceNotes: notesVisibility(nextType).showServiceNotes ? formData.serviceNotes : '',
+    });
+    // Drop line items that no longer match the chosen type
+    setItems((prev) => {
+      const filtered = prev.filter((row) => {
+        if (!row.serviceName && !row.productId) return true;
+        const p = products.find((x) => String(x.id) === String(row.productId) || x.name === row.serviceName);
+        if (!p) return true;
+        if (nextType === 'Products') return p.type === 'Product';
+        if (nextType === 'Services') return p.type === 'Service';
+        return true;
+      });
+      return filtered.length
+        ? filtered.map((it, i) => ({ ...it, sNo: i + 1 }))
+        : [emptyLineItem()];
+    });
+  };
+
+  const getOptionsForRow = (idx) => {
+    const selectedIds = items.map((row) => row.productId).filter((id) => id != null && id !== '');
+    return filterCatalogItems({
+      products,
+      documentType: formData.documentType,
+      itemFilter,
+      selectedProductIds: selectedIds,
+      currentProductId: items[idx]?.productId,
+    });
+  };
 
   const updateInstallment = (idx, field, val) => {
     const next = [...(formData.extraInstallments || [])];
@@ -293,11 +411,60 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                       value={formData.clientName}
                       onChange={(val) => {
                         const c = clients.find(x => (x.company_name || x.client_name) === val);
-                        setFormData({ ...formData, clientId: c ? c.id : '', clientName: val });
+                        const snapshot = getClientContactSnapshot(c);
+                        setFormData({
+                          ...formData,
+                          clientId: c ? c.id : '',
+                          clientName: val,
+                          clientAddress: snapshot.client_address,
+                          clientPhone: snapshot.client_phone,
+                          clientEmail: snapshot.client_email,
+                        });
                       }}
                       placeholder="Select client registry..."
                     />
                     {errors.clientId && <p className="text-xs text-rose-500 font-bold uppercase mt-1.5">{errors.clientId}</p>}
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Address</label>
+                    <textarea
+                      value={formData.clientAddress || ''}
+                      onChange={(e) => setFormData({ ...formData, clientAddress: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-medium outline-none focus:border-indigo-500 transition-all min-h-[80px] resize-none"
+                      placeholder="Customer address (auto-filled from client)"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Phone Number</label>
+                    <input
+                      type="text"
+                      value={formData.clientPhone || ''}
+                      onChange={(e) => setFormData({ ...formData, clientPhone: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                      placeholder="Phone number"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Email</label>
+                    <input
+                      type="email"
+                      value={formData.clientEmail || ''}
+                      onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all"
+                      placeholder="Email address"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Type</label>
+                    <select
+                      value={formData.documentType}
+                      onChange={(e) => handleDocumentTypeChange(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
+                    >
+                      {DOCUMENT_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Invoice Number</label>
@@ -344,6 +511,28 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                     </select>
                   </div>
                 </div>
+                {showProductNotes && (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Product Notes</label>
+                    <textarea
+                      value={formData.productNotes || ''}
+                      onChange={(e) => setFormData({ ...formData, productNotes: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-medium outline-none focus:border-indigo-500 transition-all min-h-[100px] resize-none"
+                      placeholder="Notes related to product items..."
+                    />
+                  </div>
+                )}
+                {showServiceNotes && (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Service Notes</label>
+                    <textarea
+                      value={formData.serviceNotes || ''}
+                      onChange={(e) => setFormData({ ...formData, serviceNotes: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[13px] font-medium outline-none focus:border-indigo-500 transition-all min-h-[100px] resize-none"
+                      placeholder="Notes related to service items..."
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Administrative Notes</label>
                   <textarea
@@ -358,19 +547,36 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
 
             {activeTab === 'services' && (
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-6 gap-4 flex-wrap">
                   <div className="flex flex-col">
                     <h4 className="text-[14px] font-semibold text-slate-900 uppercase tracking-wider">Invoice Line Items</h4>
                     <p className="text-sm font-bold text-slate-400 uppercase mt-1">Specify products and services rendered</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={addItem}
-                    className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-semibold uppercase tracking-wider hover:bg-indigo-600 hover:text-slate-900 transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group"
-                  >
-                    <Plus size={16} className="group-hover:rotate-90 transition-transform" />
-                    <span>Add Line Item</span>
-                  </button>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                      {filterOptions.map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setItemFilter(f)}
+                          className={clsx(
+                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-all",
+                            itemFilter === f ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                          )}
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addItem}
+                      className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-semibold uppercase tracking-wider hover:bg-indigo-600 hover:text-slate-900 transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group"
+                    >
+                      <Plus size={16} className="group-hover:rotate-90 transition-transform" />
+                      <span>Add Line Item</span>
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-6">
                   {items.map((item, idx) => (
@@ -379,7 +585,7 @@ const InvoiceForm = ({ isOpen, onClose, onSave, invoice, nextInvoiceNumber, next
                         <div className="col-span-8">
                           <label className="block text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2">Item Name</label>
                           <SearchableSelect
-                            options={products.map(p => ({ id: p.name, name: p.name }))}
+                            options={getOptionsForRow(idx)}
                             value={item.serviceName}
                             onChange={v => updateItem(idx, 'serviceName', v)}
                             placeholder="Search catalog..."

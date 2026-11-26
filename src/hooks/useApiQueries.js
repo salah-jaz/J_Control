@@ -31,8 +31,21 @@ import { getInvs } from '../services/invService';
 
 const STALE_TWO_MIN = 2 * 60 * 1000;
 
-// ----- Dashboard (single API: all stats + today income + events) -----
+// ----- Dashboard (single API: period-filtered financial stats) -----
 const defaultDashboardStats = {
+  period: 'month',
+  dateFrom: null,
+  dateTo: null,
+  totalIncome: 0,
+  totalExpenses: 0,
+  netCashFlow: 0,
+  outstandingIncome: 0,
+  outstandingExpenses: 0,
+  incomeObligation: 0,
+  expenseObligation: 0,
+  incomeCount: 0,
+  expenseCount: 0,
+  trend: [],
   totalClients: 0,
   activeClients: 0,
   totalInvoices: 0,
@@ -46,11 +59,12 @@ const defaultDashboardStats = {
   todaysEvents: [],
 };
 
-export function useDashboardData() {
+export function useDashboardData(period = 'month') {
   const statsQuery = useQuery({
-    queryKey: queryKeys.dashboard.stats(),
-    queryFn: getDashboardStats,
+    queryKey: queryKeys.dashboard.stats(period),
+    queryFn: () => getDashboardStats(period),
     staleTime: STALE_TWO_MIN,
+    placeholderData: (prev) => prev,
   });
   const stats = statsQuery.data ?? defaultDashboardStats;
   const todayIncome = stats.recentIncomes ?? [];

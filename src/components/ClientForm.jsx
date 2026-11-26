@@ -125,14 +125,22 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
         if (!hasClientName && !hasCompanyName) {
             newErrors.client_or_company = "This field is required";
         }
-        // Email format validation
-        if (data.email_address?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email_address)) {
+
+        // Phone Number, Address, and Email are mandatory
+        if (!data.mobile_number?.trim()) {
+            newErrors.mobile_number = "Phone number is required";
+        } else if (data.mobile_number.trim().length < 10) {
+            newErrors.mobile_number = "Phone number must be at least 10 digits";
+        }
+
+        if (!data.email_address?.trim()) {
+            newErrors.email_address = "Email is required";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email_address.trim())) {
             newErrors.email_address = "Please enter a valid email address";
         }
 
-        // Phone length validation (standard 10 digits as baseline)
-        if (data.mobile_number?.trim() && data.mobile_number.length < 10) {
-            newErrors.mobile_number = "Phone number must be at least 10 digits";
+        if (!data.address_line_1?.trim()) {
+            newErrors.address_line_1 = "Address is required";
         }
 
         return newErrors;
@@ -155,6 +163,14 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                 allTouched.company_name = true;
             }
             setTouched(prev => ({ ...prev, ...allTouched }));
+            // Navigate to the tab that contains the first error
+            if (validationErrors.mobile_number || validationErrors.email_address) {
+                setActiveTab('contact');
+            } else if (validationErrors.address_line_1) {
+                setActiveTab('address');
+            } else if (validationErrors.client_or_company) {
+                setActiveTab('basic');
+            }
             toast.error("Please fix the validation errors");
             return;
         }
@@ -397,20 +413,26 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                                 <input name="contact_person_name" className={inputCls('contact_person_name')} placeholder="Full Name" value={formData.contact_person_name} onChange={handleChange} readOnly={readOnly} />
                             </div>
                             <div>
-                                <Label>Email</Label>
+                                <Label required>Email</Label>
                                 <div className="relative group">
                                     <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input name="email_address" className={clsx(inputCls('email_address'), "pl-12")} placeholder="corporate@domain.com" value={formData.email_address} onChange={handleChange} onBlur={handleBlur} readOnly={readOnly} />
                                     <ValidationIcon fieldName="email_address" value={formData.email_address} />
                                 </div>
+                                {errors.email_address && touched.email_address && (
+                                    <p className="text-xs text-rose-500 mt-2 font-semibold uppercase tracking-wider">{errors.email_address}</p>
+                                )}
                             </div>
                             <div>
-                                <Label>Phone</Label>
+                                <Label required>Phone Number</Label>
                                 <div className="relative group">
                                     <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input name="mobile_number" className={clsx(inputCls('mobile_number'), "pl-12")} placeholder="Mobile Number" value={formData.mobile_number} onChange={handleChange} onBlur={handleBlur} readOnly={readOnly} />
                                     <ValidationIcon fieldName="mobile_number" value={formData.mobile_number} />
                                 </div>
+                                {errors.mobile_number && touched.mobile_number && (
+                                    <p className="text-xs text-rose-500 mt-2 font-semibold uppercase tracking-wider">{errors.mobile_number}</p>
+                                )}
                             </div>
                             <div>
                                 <Label>Alternate Phone</Label>
@@ -431,11 +453,15 @@ const ClientForm = ({ isOpen, onClose, client, onSave, readOnly = false }) => {
                     <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
                         <div className="space-y-10">
                             <div>
-                                <Label>Address Line 1</Label>
+                                <Label required>Address</Label>
                                 <div className="relative group">
                                     <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input name="address_line_1" className={clsx(inputCls('address_line_1'), "pl-12")} placeholder="Street, Building, Unit" value={formData.address_line_1} onChange={handleChange} readOnly={readOnly} />
+                                    <input name="address_line_1" className={clsx(inputCls('address_line_1'), "pl-12")} placeholder="Street, Building, Unit" value={formData.address_line_1} onChange={handleChange} onBlur={handleBlur} readOnly={readOnly} />
+                                    <ValidationIcon fieldName="address_line_1" value={formData.address_line_1} />
                                 </div>
+                                {errors.address_line_1 && touched.address_line_1 && (
+                                    <p className="text-xs text-rose-500 mt-2 font-semibold uppercase tracking-wider">{errors.address_line_1}</p>
+                                )}
                             </div>
                             <div>
                                 <Label>Address Line 2</Label>

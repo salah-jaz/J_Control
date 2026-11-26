@@ -21,6 +21,8 @@ class Agreement extends Model
         'status',
         'content',
         'notes',
+        'attachment',
+        'attachment_name',
     ];
 
     protected $casts = [

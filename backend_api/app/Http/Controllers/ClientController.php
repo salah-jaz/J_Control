@@ -106,16 +106,19 @@ class ClientController extends Controller
      */
     public function store(Request $request)
     {
-        // Normalize empty strings to null for optional fields so nullable|email passes
-        $request->merge([
-            'email_address' => strlen(trim((string) ($request->input('email_address') ?? ''))) > 0 ? $request->input('email_address') : null,
-        ]);
-
         $validatedData = $request->validate([
             'client_name' => 'nullable|string|max:255',
             'company_name' => 'nullable|string|max:255',
             'contact_person_name' => 'nullable|string|max:255',
-            'email_address' => 'nullable|email',
+            'email_address' => 'required|email',
+            'mobile_number' => 'required|string|min:10|max:20',
+            'address_line_1' => 'required|string|max:500',
+        ], [
+            'email_address.required' => 'Email is required',
+            'email_address.email' => 'Please enter a valid email address',
+            'mobile_number.required' => 'Phone number is required',
+            'mobile_number.min' => 'Phone number must be at least 10 digits',
+            'address_line_1.required' => 'Address is required',
         ]);
         if (!strlen(trim((string) ($request->input('client_name') ?? ''))) && !strlen(trim((string) ($request->input('company_name') ?? '')))) {
             return response()->json(['message' => 'Please enter Client Name or Company Name'], 422);
@@ -152,15 +155,19 @@ class ClientController extends Controller
      */
     public function update(Request $request, Client $client)
     {
-        $request->merge([
-            'email_address' => strlen(trim((string) ($request->input('email_address') ?? ''))) > 0 ? $request->input('email_address') : null,
-        ]);
-
         $validatedData = $request->validate([
             'client_name' => 'nullable|string|max:255',
             'company_name' => 'nullable|string|max:255',
             'contact_person_name' => 'nullable|string|max:255',
-            'email_address' => 'nullable|email',
+            'email_address' => 'required|email',
+            'mobile_number' => 'required|string|min:10|max:20',
+            'address_line_1' => 'required|string|max:500',
+        ], [
+            'email_address.required' => 'Email is required',
+            'email_address.email' => 'Please enter a valid email address',
+            'mobile_number.required' => 'Phone number is required',
+            'mobile_number.min' => 'Phone number must be at least 10 digits',
+            'address_line_1.required' => 'Address is required',
         ]);
         if (!strlen(trim((string) ($request->input('client_name') ?? ''))) && !strlen(trim((string) ($request->input('company_name') ?? '')))) {
             return response()->json(['message' => 'Please enter Client Name or Company Name'], 422);

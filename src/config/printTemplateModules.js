@@ -1533,8 +1533,9 @@ export function buildInvoicePrintData(invoice, company = {}, client = null, bank
   const paymentStatus =
     paidAmount >= grandTotal ? '<span class="payment-badge paid">Paid</span>' : paidAmount > 0 ? '<span class="payment-badge partial">Partially Paid</span>' : '<span class="payment-badge pending">Pending</span>';
   const companyLogo = logoUrl ? `<img src="${logoUrl}" alt="Logo" class="company-logo" style="max-height:56px;max-width:160px;object-fit:contain" />` : '<div class="company-logo" style="height:56px;width:160px;background:#e2e8f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#64748b">Logo</div>';
-  const clientName = client ? (client.company_name || client.client_name || '') : '';
-  const clientAddress = client ? [client.address_line_1, client.address_line_2, client.city, client.state, client.country].filter(Boolean).join(', ') : '';
+  const clientName = invoice?.client_name || (client ? (client.company_name || client.client_name || '') : '');
+  const clientAddressFromRecord = client ? [client.address_line_1, client.address_line_2, client.city, client.state, client.country].filter(Boolean).join(', ') : '';
+  const clientAddress = invoice?.client_address || clientAddressFromRecord;
   return {
     invoice_title: 'INVOICE',
     company_logo: companyLogo,
@@ -1542,13 +1543,13 @@ export function buildInvoicePrintData(invoice, company = {}, client = null, bank
     company_address: company?.address || '',
     company_phone: company?.phone || '',
     company_email: company?.email || '',
-    invoice_number: invoice?.id ?? invoice?.invoice_no ?? '—',
+    invoice_number: invoice?.invoice_number ?? invoice?.invoice_no ?? invoice?.id ?? '—',
     date: dateStr,
     due_date: dueDateStr,
     client_name: clientName,
     customer_address: clientAddress,
-    customer_email: client?.email_address || client?.email || '',
-    customer_phone: client?.mobile_number || client?.phone || '',
+    customer_email: invoice?.client_email || client?.email_address || client?.email || '',
+    customer_phone: invoice?.client_phone || client?.mobile_number || client?.phone || '',
     payment_status: paymentStatus,
     items_table: buildItemsTableHtml(items, 'invoice'),
     subtotal: fmt(subtotal),
@@ -1887,8 +1888,10 @@ export function buildQuotationPrintData(quotation, company = {}, bank = null) {
   const validStr = quotation?.expiry_date || quotation?.valid_until ? (typeof (quotation?.expiry_date || quotation?.valid_until) === 'string' ? (quotation.expiry_date || quotation.valid_until).split('T')[0] : '—') : '—';
   const fmt = (n) => `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
   const clientName = client ? (client.company_name || client.client_name || '') : '—';
-  const clientAddress = client ? [client.address_line_1, client.address_line_2, client.city, client.state, client.country].filter(Boolean).join(', ') : '';
-  const clientPhone = client?.mobile_number || client?.phone || '';
+  const clientAddressFromRecord = client ? [client.address_line_1, client.address_line_2, client.city, client.state, client.country].filter(Boolean).join(', ') : '';
+  const clientAddress = quotation?.client_address || clientAddressFromRecord;
+  const clientPhone = quotation?.client_phone || client?.mobile_number || client?.phone || '';
+  const clientEmail = quotation?.client_email || client?.email_address || client?.email || '';
   const companyLogo = company?.logo ? `<img src="${company.logo}" alt="Logo" class="company-logo" style="max-height:48px;max-width:120px;object-fit:contain" />` : '<div class="company-logo" style="height:48px;width:120px;background:#e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#64748b">Logo</div>';
   const paymentStatus = quotation?.status === 'Accepted' ? '<span class="payment-badge paid">Accepted</span>' : quotation?.status === 'Rejected' ? '<span class="payment-badge pending">Rejected</span>' : '<span class="payment-badge pending">Pending</span>';
   const authorizedSignature = company?.signature ? `<img src="${company.signature}" alt="Signature" class="sig-image" style="max-height:48px;object-fit:contain" />` : (company?.name || 'Authorized Signatory');
@@ -1917,7 +1920,7 @@ export function buildQuotationPrintData(quotation, company = {}, bank = null) {
     valid_until: validStr,
     client_name: clientName,
     customer_address: clientAddress,
-    customer_email: client?.email_address || client?.email || '',
+    customer_email: clientEmail,
     customer_phone: clientPhone,
     payment_status: paymentStatus,
     items_table: buildItemsTableHtml(items, 'quotation'),
