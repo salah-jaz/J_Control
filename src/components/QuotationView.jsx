@@ -552,8 +552,19 @@ const QuotationView = ({
                                         {client?.company_name && client?.client_name && <p>{client.client_name}</p>}
                                       </>
                                     )}
-                                    {isVisible('customer_address') && <p>{client?.address || "Client Address"}</p>}
-                                    {isVisible('customer_phone') && <p>{client?.phone || "Client Phone"}</p>}
+                                    {isVisible('customer_address') && (
+                                      <p>
+                                        {quotation?.client_address
+                                          || [client?.address_line_1, client?.address_line_2, client?.city, client?.state, client?.country].filter(Boolean).join(', ')
+                                          || "Client Address"}
+                                      </p>
+                                    )}
+                                    {isVisible('customer_phone') && (
+                                      <p>{quotation?.client_phone || client?.mobile_number || client?.phone || "Client Phone"}</p>
+                                    )}
+                                    {isVisible('customer_email') && (
+                                      <p>{quotation?.client_email || client?.email_address || client?.email || ""}</p>
+                                    )}
                                   </div>
                                 </div>
                               )}

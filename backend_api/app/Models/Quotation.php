@@ -12,6 +12,10 @@ class Quotation extends Model
     protected $fillable = [
         'quotation_no',
         'client_id',
+        'client_address',
+        'client_phone',
+        'client_email',
+        'document_type',
         'date',
         'expiry_date',
         'status',
@@ -23,6 +27,8 @@ class Quotation extends Model
         'total',
         'initial_deposit',
         'notes',
+        'product_notes',
+        'service_notes',
         'internal_notes',
     ];
 

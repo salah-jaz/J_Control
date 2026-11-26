@@ -293,13 +293,26 @@ export const saveAssignee = (name) => {
 };
 
 
-export const getDashboardStats = async () => {
+export const getDashboardStats = async (period = 'month') => {
     try {
-        const response = await api.get('/dashboard-stats');
+        const response = await api.get('/dashboard-stats', { params: { period } });
         return response.data;
     } catch (error) {
         console.error("Failed to fetch dashboard stats:", error);
         return {
+            period,
+            dateFrom: null,
+            dateTo: null,
+            totalIncome: 0,
+            totalExpenses: 0,
+            netCashFlow: 0,
+            outstandingIncome: 0,
+            outstandingExpenses: 0,
+            incomeObligation: 0,
+            expenseObligation: 0,
+            incomeCount: 0,
+            expenseCount: 0,
+            trend: [],
             totalClients: 0,
             activeClients: 0,
             totalInvoices: 0,
@@ -307,6 +320,7 @@ export const getDashboardStats = async () => {
             pendingAmount: 0,
             todayIncome: 0,
             recentInvoices: [],
+            recentIncomes: [],
             monthlyRevenue: [],
             invoiceStatusCounts: [],
             todaysEvents: [],

@@ -3,7 +3,8 @@ import {
     Plus, Eye, X, User, Layout, Calendar, Filter, Sparkles, ShieldAlert,
     Pencil, Trash2, ChevronRight, ChevronLeft, Building2, Target, StickyNote,
     Layers, Briefcase, Info, Image as ImageIcon, Check, Loader2, Save, FileText,
-    TrendingUp, FileSpreadsheet, Search, Download, BadgeCheck, Activity, Clock
+    TrendingUp, FileSpreadsheet, Search, Download, BadgeCheck, Activity, Clock,
+    Paperclip, Upload, Trash
 } from "lucide-react";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -32,7 +33,14 @@ const emptyForm = {
     status: "Draft",
     notes: "",
     content: [],
+    attachment: null,
+    attachment_name: null,
+    attachmentFile: null,
+    remove_attachment: false,
 };
+
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_ATTACHMENT_TYPES = ".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt,.zip";
 
 const STATUS_OPTIONS = ["Draft", "Sent", "Signed", "Expired"];
 
@@ -229,7 +237,23 @@ export default function Agreements() {
                             ) : agreements.map((a) => (
                                 <tr key={a.id} className="hover:bg-slate-50/50 transition-colors group">
                                     <td className="px-6 py-4 font-mono text-[13px] font-black text-slate-900 italic tracking-tight">{a.agreement_no}</td>
-                                    <td className="px-6 py-4 font-bold text-slate-800 text-[13px]">{a.title}</td>
+                                    <td className="px-6 py-4 font-bold text-slate-800 text-[13px]">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="truncate">{a.title}</span>
+                                            {a.attachment && (
+                                                <a
+                                                    href={agreementService.resolveAttachmentUrl(a.attachment)}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    title={a.attachment_name || 'View attachment'}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="inline-flex items-center justify-center p-1 rounded-md text-violet-600 bg-violet-50 hover:bg-violet-100 shrink-0"
+                                                >
+                                                    <Paperclip size={13} />
+                                                </a>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
                                             <div className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center text-[11px] font-bold text-slate-500">{a.client?.company_name?.[0] || '—'}</div>
@@ -312,13 +336,52 @@ const AgreementFormOverlay = ({ isOpen, onClose, agreement, clients, onSave }) =
     const [templates, setTemplates] = useState([]);
     const [livePreviewTemplateId, setLivePreviewTemplateId] = useState("standard");
     const [showPreview, setShowPreview] = useState(true);
+    const [attachmentError, setAttachmentError] = useState("");
 
     useEffect(() => {
-        if (agreement && isOpen) setForm({ ...emptyForm, ...agreement });
-        else setForm(emptyForm);
+        if (agreement && isOpen) {
+            setForm({
+                ...emptyForm,
+                ...agreement,
+                attachmentFile: null,
+                remove_attachment: false,
+            });
+        } else {
+            setForm(emptyForm);
+        }
+        setAttachmentError("");
         setTab("basic");
         setTemplates(getTemplates().filter(t => t.module === 'agreements'));
     }, [agreement, isOpen]);
+
+    const displayedAttachmentName = form.attachmentFile?.name
+        || (!form.remove_attachment ? (form.attachment_name || (form.attachment ? form.attachment.split('/').pop() : null)) : null);
+
+    const handleAttachmentChange = (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file) return;
+        if (file.size > MAX_ATTACHMENT_BYTES) {
+            setAttachmentError("File must be 10 MB or smaller.");
+            return;
+        }
+        setAttachmentError("");
+        setForm((prev) => ({
+            ...prev,
+            attachmentFile: file,
+            remove_attachment: false,
+        }));
+    };
+
+    const clearAttachment = () => {
+        setAttachmentError("");
+        setForm((prev) => ({
+            ...prev,
+            attachmentFile: null,
+            remove_attachment: Boolean(prev.attachment),
+            attachment_name: prev.attachment ? prev.attachment_name : null,
+        }));
+    };
 
     const getLivePreviewHtml = () => {
         if (!livePreviewTemplateId || livePreviewTemplateId === 'standard') return null;
@@ -330,6 +393,10 @@ const AgreementFormOverlay = ({ isOpen, onClose, agreement, clients, onSave }) =
     };
 
     const handleSubmit = async () => {
+        if (attachmentError) {
+            toast.error(attachmentError);
+            return;
+        }
         setIsSaving(true);
         try {
             await onSave(form);
@@ -428,6 +495,57 @@ const AgreementFormOverlay = ({ isOpen, onClose, agreement, clients, onSave }) =
                                             <input className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold outline-none focus:border-violet-500 shadow-sm transition-all" value={form.tagline} onChange={e => setForm({...form, tagline: e.target.value})} />
                                         </div>
                                     </div>
+                                </section>
+
+                                <section className="bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
+                                    <h4 className="text-[12px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                                        <Paperclip size={16} className="text-violet-500" /> Attachment
+                                    </h4>
+                                    <p className="text-[12px] text-slate-500 font-medium">
+                                        Upload a contract file (PDF, Word, Excel, image, or ZIP). Max 10 MB.
+                                    </p>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                        <label className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl text-[12px] font-black uppercase tracking-wider cursor-pointer hover:bg-violet-100 transition-all">
+                                            <Upload size={14} strokeWidth={2.5} />
+                                            {displayedAttachmentName ? 'Replace File' : 'Choose File'}
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept={ACCEPTED_ATTACHMENT_TYPES}
+                                                onChange={handleAttachmentChange}
+                                            />
+                                        </label>
+                                        {displayedAttachmentName && (
+                                            <div className="flex-1 flex items-center gap-2 min-w-0 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                                                <FileText size={16} className="text-slate-400 shrink-0" />
+                                                <span className="text-[13px] font-bold text-slate-700 truncate" title={displayedAttachmentName}>
+                                                    {displayedAttachmentName}
+                                                </span>
+                                                {!form.attachmentFile && form.attachment && !form.remove_attachment && (
+                                                    <a
+                                                        href={agreementService.resolveAttachmentUrl(form.attachment)}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="ml-auto text-[11px] font-black uppercase tracking-wider text-indigo-600 hover:text-indigo-700 shrink-0"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        View
+                                                    </a>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={clearAttachment}
+                                                    className="ml-1 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all shrink-0"
+                                                    title="Remove attachment"
+                                                >
+                                                    <Trash size={14} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {attachmentError && (
+                                        <p className="text-[11px] font-bold text-rose-500 uppercase tracking-wider">{attachmentError}</p>
+                                    )}
                                 </section>
                             </div>
                         )}

@@ -5,7 +5,7 @@
 export const queryKeys = {
   dashboard: {
     all: ['dashboard'],
-    stats: () => ['dashboard', 'stats'],
+    stats: (period = 'month') => ['dashboard', 'stats', period],
     todayIncome: (today) => ['dashboard', 'todayIncome', today],
   },
   clients: {

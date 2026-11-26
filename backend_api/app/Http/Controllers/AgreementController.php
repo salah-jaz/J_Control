@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Agreement;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AgreementController extends Controller
 {
@@ -71,19 +72,8 @@ class AgreementController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'agreement_no' => 'nullable|string',
-            'title' => 'required|string',
-            'tagline' => 'nullable|string',
-            'override_company_name' => 'nullable|string',
-            'company_logo' => 'nullable|string',
-            'client_id' => 'required|exists:clients,id',
-            'quotation_id' => 'nullable|exists:quotations,id',
-            'date' => 'required|date',
-            'status' => 'required|in:Draft,Sent,Signed,Expired',
-            'content' => 'nullable|array',
-            'notes' => 'nullable|string',
-        ]);
+        $validated = $this->validateAgreement($request);
+        $this->applyAttachmentUpload($request, $validated);
 
         if (empty($validated['agreement_no'])) {
             $validated['agreement_no'] = self::generateNextNumber();
@@ -101,7 +91,43 @@ class AgreementController extends Controller
 
     public function update(Request $request, Agreement $agreement)
     {
-        $validated = $request->validate([
+        $validated = $this->validateAgreement($request);
+        $this->applyAttachmentUpload($request, $validated, $agreement);
+
+        // Explicit removal when client sends remove_attachment=1 without a new file
+        if ($request->boolean('remove_attachment') && !$request->hasFile('attachment')) {
+            if ($agreement->attachment) {
+                Storage::disk('public')->delete($agreement->attachment);
+            }
+            $validated['attachment'] = null;
+            $validated['attachment_name'] = null;
+        }
+
+        $agreement->update($validated);
+
+        return $agreement->load(['client', 'quotation.items', 'quotation.client']);
+    }
+
+    public function destroy(Agreement $agreement)
+    {
+        if ($agreement->attachment) {
+            Storage::disk('public')->delete($agreement->attachment);
+        }
+        $agreement->delete();
+        return response()->json(null, 204);
+    }
+
+    private function validateAgreement(Request $request): array
+    {
+        // JSON body may send content as array; multipart FormData sends content as JSON string
+        if ($request->has('content') && is_string($request->input('content'))) {
+            $decoded = json_decode($request->input('content'), true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $request->merge(['content' => $decoded]);
+            }
+        }
+
+        return $request->validate([
             'agreement_no' => 'nullable|string',
             'title' => 'required|string',
             'tagline' => 'nullable|string',
@@ -113,16 +139,26 @@ class AgreementController extends Controller
             'status' => 'required|in:Draft,Sent,Signed,Expired',
             'content' => 'nullable|array',
             'notes' => 'nullable|string',
+            'attachment' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg,gif,webp,txt,zip',
+            'remove_attachment' => 'nullable|boolean',
         ]);
-
-        $agreement->update($validated);
-
-        return $agreement->load(['client', 'quotation.items', 'quotation.client']);
     }
 
-    public function destroy(Agreement $agreement)
+    private function applyAttachmentUpload(Request $request, array &$validated, ?Agreement $existing = null): void
     {
-        $agreement->delete();
-        return response()->json(null, 204);
+        unset($validated['attachment'], $validated['remove_attachment']);
+
+        if (!$request->hasFile('attachment')) {
+            return;
+        }
+
+        if ($existing?->attachment) {
+            Storage::disk('public')->delete($existing->attachment);
+        }
+
+        $file = $request->file('attachment');
+        $path = $file->store('agreement_attachments', 'public');
+        $validated['attachment'] = $path;
+        $validated['attachment_name'] = $file->getClientOriginalName();
     }
 }

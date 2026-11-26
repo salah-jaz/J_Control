@@ -28,7 +28,7 @@ const getPageTitle = (pathname) => {
         '/': 'Dashboard',
         '/leads': 'Leads',
         '/clients': 'Clients',
-        '/products': 'Products & Services',
+        '/products': 'Items',
         '/quotations': 'Quotations',
         '/invoices': 'Invoices',
         '/agreements': 'Agreements',

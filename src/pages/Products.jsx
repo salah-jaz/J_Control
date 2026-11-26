@@ -89,22 +89,22 @@ export default function Products() {
     try {
       if (editItem) {
         await updateMutation.mutateAsync({ id: editItem.id, data: formData });
-        toast.success("Product updated");
+        toast.success("Item updated");
       } else {
         await createMutation.mutateAsync(formData);
-        toast.success("Product created");
+        toast.success("Item created");
       }
       setOpenForm(false);
     } catch (e) {
-      toast.error("Failed to save product");
+      toast.error("Failed to save item");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this product?")) return;
+    if (!window.confirm("Are you sure you want to delete this item?")) return;
     try {
       await deleteMutation.mutateAsync(id);
-      toast.success("Product deleted");
+      toast.success("Item deleted");
     } catch (e) {
       toast.error("Operation failed");
     }
@@ -124,14 +124,14 @@ export default function Products() {
     <div className="flex flex-col h-full bg-slate-50/50 animate-in fade-in duration-500 overflow-hidden">
       <div className="px-6 lg:px-8 pt-8 pb-6 bg-white border-b border-slate-200/60 shadow-sm relative z-10">
         <PageHeader
-          title="Products"
+          title="Items"
           subtitle="Manage your products and services."
           primaryAction={(
             <button onClick={() => { setEditItem(null); setOpenForm(true); }} className="btn-primary flex items-center gap-2 shadow-lg shadow-indigo-500/20 group">
               <div className="bg-white/20 p-1 rounded-lg group-hover:bg-white/30 transition-colors">
                 <Plus size={16} />
               </div>
-              <span>New Product</span>
+              <span>New Item</span>
             </button>
           )}
           secondaryActions={(
@@ -142,7 +142,7 @@ export default function Products() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8">
           <StatCard title="Total Items" value={stats.total} icon={Package} colorClass="bg-slate-800" />
           <StatCard title="Active Items" value={stats.active} icon={CheckCircle2} colorClass="bg-emerald-600" />
-          <StatCard title="Products" value={stats.products} icon={ShoppingCart} colorClass="bg-indigo-600" />
+          <StatCard title="Product Type" value={stats.products} icon={ShoppingCart} colorClass="bg-indigo-600" />
           <StatCard title="Services" value={stats.services} icon={Activity} colorClass="bg-violet-600" />
         </div>
       </div>
@@ -154,7 +154,7 @@ export default function Products() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
               <input
                 type="text"
-                placeholder="Search products..."
+                placeholder="Search items..."
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[13px] font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -179,8 +179,8 @@ export default function Products() {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 block">Type</label>
               <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
                 <option value="all">All Types</option>
-                <option value="Product">Products</option>
-                <option value="Service">Services</option>
+                <option value="Product">Product</option>
+                <option value="Service">Service</option>
               </select>
             </div>
           </div>
@@ -200,7 +200,7 @@ export default function Products() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {isLoading ? (
-                  <tr><td colSpan="5" className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse italic">Loading products...</td></tr>
+                  <tr><td colSpan="5" className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest animate-pulse italic">Loading items...</td></tr>
                 ) : filteredData.map(item => (
                   <tr key={item.id} className="group hover:bg-slate-50/80 transition-all duration-200">
                     <td className="px-6 lg:px-8 py-5">
@@ -249,7 +249,7 @@ export default function Products() {
             </table>
             {!isLoading && filteredData.length === 0 && (
               <div className="p-20">
-                <EmptyState icon={Package} title="No products found" description="Try adjusting your filters or add a new product." />
+                <EmptyState icon={Package} title="No items found" description="Try adjusting your filters or add a new item." />
               </div>
             )}
           </div>
@@ -272,7 +272,7 @@ export default function Products() {
       <SlideOver
         isOpen={openView}
         onClose={() => setOpenView(false)}
-        title="Product Details"
+        title="Item Details"
         footer={<div className="flex justify-end w-full px-2"><button onClick={() => setOpenView(false)} className="px-6 py-2 bg-slate-900 text-white text-[13px] font-bold rounded-xl hover:bg-black transition-colors">Close</button></div>}
       >
         {viewItem && (
@@ -378,13 +378,13 @@ const ProductForm = ({ isOpen, onClose, product, onSave }) => {
       isOpen={isOpen}
       onClose={onClose}
       size="5xl"
-      title={product ? 'Edit Product' : 'New Product'}
+      title={product ? 'Edit Item' : 'New Item'}
       footer={(
         <div className="flex justify-end items-center w-full px-1 gap-3">
           <button onClick={onClose} className="px-6 py-2.5 text-[14px] font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
           <button onClick={handleSubmit} disabled={isSaving} className="px-10 py-2.5 bg-indigo-600 text-white text-[14px] font-black rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">
             {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            <span>{isSaving ? 'Saving...' : (product ? 'Save Changes' : 'Create Product')}</span>
+            <span>{isSaving ? 'Saving...' : (product ? 'Save Changes' : 'Create Item')}</span>
           </button>
         </div>
       )}
@@ -423,7 +423,7 @@ const ProductForm = ({ isOpen, onClose, product, onSave }) => {
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="grid grid-cols-2 gap-8">
                   <div className="col-span-2">
-                    <Label required>Product Name</Label>
+                    <Label required>Item Name</Label>
                     <div className="relative">
                       <Package size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input className={clsx(inputCls, "pl-11", errors.name && "border-rose-400")} placeholder="e.g. Website Design" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />

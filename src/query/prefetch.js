@@ -15,8 +15,8 @@ const STALE_TWO_MIN = 2 * 60 * 1000;
 export function prefetchAppData() {
   Promise.all([
     queryClient.prefetchQuery({
-      queryKey: queryKeys.dashboard.stats(),
-      queryFn: getDashboardStats,
+      queryKey: queryKeys.dashboard.stats('month'),
+      queryFn: () => getDashboardStats('month'),
       staleTime: STALE_TWO_MIN,
     }),
     queryClient.prefetchQuery({

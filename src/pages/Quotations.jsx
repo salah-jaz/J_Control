@@ -19,11 +19,24 @@ import { TableSectionHeader, TablePagination } from "../components/ui/DataTableS
 import { ActionIconButton } from "../components/ui/TableRowActions";
 import SearchableSelect from "../components/ui/SearchableSelect";
 import SlideOver from "../components/ui/SlideOver";
+import {
+  DOCUMENT_TYPES,
+  getClientContactSnapshot,
+  allowedItemFilters,
+  filterCatalogItems,
+  notesVisibility,
+} from "../utils/documentCatalog";
 
 import QuotationView from "../components/QuotationView";
 
+const emptyLineItem = () => ({ product_id: null, item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 });
+
 const emptyForm = {
   client_id: "",
+  client_address: "",
+  client_phone: "",
+  client_email: "",
+  document_type: "Both Products & Services",
   quotation_no: "",
   date: new Date().toISOString().split("T")[0],
   expiry_date: "",
@@ -31,13 +44,15 @@ const emptyForm = {
   sales_person: "",
   status: "Draft",
   notes: "",
+  product_notes: "",
+  service_notes: "",
   internal_notes: "",
   subtotal: 0,
   discount: 0,
   tax: 0,
   total: 0,
   initial_deposit: "",
-  items: [{ item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 }],
+  items: [emptyLineItem()],
   agreement_content: [],
 };
 
@@ -344,24 +359,68 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
   const [form, setForm] = useState(emptyForm);
   const [tab, setTab] = useState("basic");
   const [isSaving, setIsSaving] = useState(false);
+  const [itemFilter, setItemFilter] = useState("All");
+
+  const filterOptions = useMemo(
+    () => allowedItemFilters(form.document_type),
+    [form.document_type]
+  );
+  const { showProductNotes, showServiceNotes } = useMemo(
+    () => notesVisibility(form.document_type),
+    [form.document_type]
+  );
 
   useEffect(() => {
     if (editId) {
       const q = quotations.find(x => x.id === editId);
       if (q) {
+        const docType = q.document_type || "Both Products & Services";
         setForm({
           ...emptyForm,
           ...q,
+          client_address: q.client_address || "",
+          client_phone: q.client_phone || "",
+          client_email: q.client_email || "",
+          document_type: docType,
+          product_notes: q.product_notes || "",
+          service_notes: q.service_notes || "",
           date: q.date?.split('T')[0],
-          expiry_date: q.expiry_date?.split('T')[0],
-          items: q.items.map(i => ({ ...i, qty: parseFloat(i.qty), price: parseFloat(i.price), tax: parseFloat(i.tax), amount: parseFloat(i.amount) }))
+          expiry_date: q.expiry_date?.split('T')[0] || "",
+          items: (q.items || []).map(i => ({
+            ...emptyLineItem(),
+            ...i,
+            product_id: i.product_id ?? null,
+            qty: parseFloat(i.qty) || 1,
+            price: parseFloat(i.price) || 0,
+            tax: parseFloat(i.tax) || 0,
+            amount: parseFloat(i.amount) || 0,
+          })),
         });
+        const allowed = allowedItemFilters(docType);
+        setItemFilter(allowed[0] || "All");
       }
     } else {
       setForm({ ...emptyForm, date: new Date().toISOString().split("T")[0] });
+      setItemFilter("All");
     }
     setTab("basic");
   }, [editId, isOpen, quotations]);
+
+  // Backfill product_id from catalog for older quotations
+  useEffect(() => {
+    if (!isOpen || !products?.length) return;
+    setForm((prev) => {
+      let changed = false;
+      const items = (prev.items || []).map((row) => {
+        if (row.product_id || !row.item) return row;
+        const match = products.find((p) => p.name === row.item);
+        if (!match) return row;
+        changed = true;
+        return { ...row, product_id: match.id };
+      });
+      return changed ? { ...prev, items } : prev;
+    });
+  }, [products, isOpen]);
 
   const subtotal = (form.items || []).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
   const discountVal = parseFloat(form.discount) || 0;
@@ -375,8 +434,18 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
     if (field === "item") {
       const p = products.find(x => x.name === val);
       if (p) {
+        const alreadyUsed = form.items.some(
+          (row, i) => i !== idx && row.product_id != null && String(row.product_id) === String(p.id)
+        );
+        if (alreadyUsed) {
+          toast.error("This item is already selected on another line");
+          return;
+        }
+        item.product_id = p.id;
         item.description = p.description || "";
         item.price = parseFloat(p.price) || 0;
+      } else {
+        item.product_id = null;
       }
     }
 
@@ -390,10 +459,63 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
     setForm({ ...form, items: next });
   };
 
+  const handleClientChange = (clientId) => {
+    const c = clients.find((x) => String(x.id) === String(clientId));
+    const snapshot = getClientContactSnapshot(c);
+    setForm({
+      ...form,
+      client_id: clientId,
+      client_address: snapshot.client_address,
+      client_phone: snapshot.client_phone,
+      client_email: snapshot.client_email,
+    });
+  };
+
+  const handleDocumentTypeChange = (nextType) => {
+    const allowed = allowedItemFilters(nextType);
+    setItemFilter((prev) => (allowed.includes(prev) ? prev : allowed[0]));
+    const vis = notesVisibility(nextType);
+    setForm({
+      ...form,
+      document_type: nextType,
+      product_notes: vis.showProductNotes ? form.product_notes : "",
+      service_notes: vis.showServiceNotes ? form.service_notes : "",
+      items: (() => {
+        const filtered = (form.items || []).filter((row) => {
+          if (!row.item && !row.product_id) return true;
+          const p = products.find((x) => String(x.id) === String(row.product_id) || x.name === row.item);
+          if (!p) return true;
+          if (nextType === "Products") return p.type === "Product";
+          if (nextType === "Services") return p.type === "Service";
+          return true;
+        });
+        return filtered.length ? filtered : [emptyLineItem()];
+      })(),
+    });
+  };
+
+  const getOptionsForRow = (idx) => {
+    const selectedIds = (form.items || []).map((row) => row.product_id).filter((id) => id != null && id !== "");
+    return filterCatalogItems({
+      products,
+      documentType: form.document_type,
+      itemFilter,
+      selectedProductIds: selectedIds,
+      currentProductId: form.items[idx]?.product_id,
+    });
+  };
+
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
-      await onSave({ ...form, subtotal, total });
+      const payloadItems = (form.items || []).map((row) => {
+        const match = products.find((p) => p.name === row.item);
+        return {
+          ...row,
+          product_id: row.product_id ?? match?.id ?? null,
+        };
+      });
+      await onSave({ ...form, items: payloadItems, subtotal, total });
     } catch (e) {
       // toast handled in parent
     } finally {
@@ -472,9 +594,45 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
                 <div className="grid grid-cols-2 gap-8">
                   <div className="col-span-2">
                     <Label required>Customer Name</Label>
-                    <select className={inputCls} value={form.client_id} onChange={e => setForm({ ...form, client_id: e.target.value })}>
+                    <select className={inputCls} value={form.client_id} onChange={e => handleClientChange(e.target.value)}>
                       <option value="">Select customer...</option>
                       {clients.map(c => <option key={c.id} value={c.id}>{c.company_name || c.client_name}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Address</Label>
+                    <textarea
+                      className={clsx(inputCls, "min-h-[80px] resize-none")}
+                      placeholder="Customer address (auto-filled from client)"
+                      value={form.client_address || ""}
+                      onChange={e => setForm({ ...form, client_address: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Phone Number</Label>
+                    <input
+                      className={inputCls}
+                      placeholder="Phone number"
+                      value={form.client_phone || ""}
+                      onChange={e => setForm({ ...form, client_phone: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <input
+                      type="email"
+                      className={inputCls}
+                      placeholder="Email address"
+                      value={form.client_email || ""}
+                      onChange={e => setForm({ ...form, client_email: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Type</Label>
+                    <select className={inputCls} value={form.document_type} onChange={e => handleDocumentTypeChange(e.target.value)}>
+                      {DOCUMENT_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -494,6 +652,18 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
                     <input className={inputCls} placeholder="Ref No..." value={form.reference_number} onChange={e => setForm({ ...form, reference_number: e.target.value })} />
                   </div>
                 </div>
+                {showProductNotes && (
+                  <div className="pt-2">
+                    <Label>Product Notes</Label>
+                    <textarea className={clsx(inputCls, "min-h-[120px] resize-none leading-relaxed")} placeholder="Notes related to product items..." value={form.product_notes || ""} onChange={e => setForm({ ...form, product_notes: e.target.value })} />
+                  </div>
+                )}
+                {showServiceNotes && (
+                  <div className="pt-2">
+                    <Label>Service Notes</Label>
+                    <textarea className={clsx(inputCls, "min-h-[120px] resize-none leading-relaxed")} placeholder="Notes related to service items..." value={form.service_notes || ""} onChange={e => setForm({ ...form, service_notes: e.target.value })} />
+                  </div>
+                )}
                 <div className="pt-4">
                   <Label>Notes</Label>
                   <textarea className={clsx(inputCls, "min-h-[160px] resize-none leading-relaxed")} placeholder="Add notes for the customer..." value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
@@ -503,15 +673,32 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
 
             {tab === 'items' && (
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-6 gap-4 flex-wrap">
                   <div className="flex flex-col">
                     <h4 className="text-[14px] font-semibold text-slate-900 uppercase tracking-wider">Items</h4>
                     <p className="text-sm font-bold text-slate-400 uppercase mt-1">Add items and prices</p>
                   </div>
-                  <button onClick={() => setForm({ ...form, items: [...form.items, { item: "", description: "", qty: 1, price: "", tax: 0, amount: 0 }] })} className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-semibold uppercase tracking-wider hover:bg-indigo-600 hover:text-slate-900 transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group">
-                    <Plus size={16} className="group-hover:rotate-90 transition-transform" />
-                    <span>Add Item</span>
-                  </button>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                      {filterOptions.map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setItemFilter(f)}
+                          className={clsx(
+                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-all",
+                            itemFilter === f ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                          )}
+                        >
+                          {f}
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={() => setForm({ ...form, items: [...form.items, emptyLineItem()] })} className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[12px] font-semibold uppercase tracking-wider hover:bg-indigo-600 hover:text-slate-900 transition-all shadow-sm flex items-center gap-2 border border-indigo-100 group">
+                      <Plus size={16} className="group-hover:rotate-90 transition-transform" />
+                      <span>Add Item</span>
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-6">
                   {form.items.map((row, idx) => (
@@ -519,7 +706,7 @@ const QuotationForm = ({ isOpen, onClose, editId, quotations, clients, products,
                       <div className="grid grid-cols-12 gap-6">
                         <div className="col-span-8">
                           <Label>Select Item</Label>
-                          <SearchableSelect options={products} value={row.item} onChange={v => updateItem(idx, 'item', v)} placeholder="Search items..." />
+                          <SearchableSelect options={getOptionsForRow(idx)} value={row.item} onChange={v => updateItem(idx, 'item', v)} placeholder="Search items..." />
                         </div>
                         <div className="col-span-4">
                           <Label>Price (₹)</Label>
